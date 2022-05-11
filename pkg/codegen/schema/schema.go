@@ -543,6 +543,31 @@ type Function struct {
 	IsOverlay bool
 }
 
+// Determines if codegen should emit a ${fn}Output version that
+// automatically accepts Inputs and returns Outputs.
+func (fun *Function) NeedsOutputVersion() bool {
+	// Skip functions that return no value. Arguably we could
+	// support them and return `Task`, but there are no such
+	// functions in `pulumi-azure-native` or `pulumi-aws` so we
+	// omit to simplify.
+	if fun.Outputs == nil {
+		return false
+	}
+
+	// Skip functions that have no inputs. The user can simply
+	// lift the `Task` to `Output` manually.
+	if fun.Inputs == nil {
+		return false
+	}
+
+	// No properties is kind of like no inputs.
+	if len(fun.Inputs.Properties) == 0 {
+		return false
+	}
+
+	return true
+}
+
 // Package describes a Pulumi package.
 type Package struct {
 	moduleFormat *regexp.Regexp
@@ -883,20 +908,22 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	spec = &PackageSpec{
-		Name:              pkg.Name,
-		Version:           version,
-		Description:       pkg.Description,
-		Keywords:          pkg.Keywords,
-		Homepage:          pkg.Homepage,
-		License:           pkg.License,
-		Attribution:       pkg.Attribution,
-		Repository:        pkg.Repository,
-		LogoURL:           pkg.LogoURL,
-		PluginDownloadURL: pkg.PluginDownloadURL,
-		Meta:              metadata,
-		Types:             map[string]ComplexTypeSpec{},
-		Resources:         map[string]ResourceSpec{},
-		Functions:         map[string]FunctionSpec{},
+		PackageInfoSpec: PackageInfoSpec{
+			Name:              pkg.Name,
+			Version:           version,
+			Description:       pkg.Description,
+			Keywords:          pkg.Keywords,
+			Homepage:          pkg.Homepage,
+			License:           pkg.License,
+			Attribution:       pkg.Attribution,
+			Repository:        pkg.Repository,
+			LogoURL:           pkg.LogoURL,
+			PluginDownloadURL: pkg.PluginDownloadURL,
+			Meta:              metadata,
+		},
+		Types:     map[string]ComplexTypeSpec{},
+		Resources: map[string]ResourceSpec{},
+		Functions: map[string]FunctionSpec{},
 	}
 
 	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
@@ -1265,6 +1292,17 @@ func marshalLanguage(lang map[string]interface{}) (map[string]RawMessage, error)
 	return result, nil
 }
 
+func jsonMarshal(v interface{}) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
 type RawMessage []byte
 
 func (m RawMessage) MarshalJSON() ([]byte, error) {
@@ -1472,8 +1510,8 @@ type MetadataSpec struct {
 	ModuleFormat string `json:"moduleFormat,omitempty" yaml:"moduleFormat,omitempty"`
 }
 
-// PackageSpec is the serializable description of a Pulumi package.
-type PackageSpec struct {
+// PackageInfoSpec is the serializable description of a Pulumi package's metadata.
+type PackageInfoSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
 	Name string `json:"name" yaml:"name"`
 	// DisplayName is the human-friendly name of the package.
@@ -1510,6 +1548,11 @@ type PackageSpec struct {
 
 	// A list of allowed package name in addition to the Name property.
 	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+}
+
+// PackageSpec is the serializable description of a Pulumi package.
+type PackageSpec struct {
+	PackageInfoSpec
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
@@ -1526,39 +1569,22 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
-func jsonMarshal(v interface{}) ([]byte, error) {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
+// PartialPackageSpec is a serializable description of a Pulumi package that defers the deserialization of most package
+// members until they are needed. Used to support PartialPackage and PackageReferences.
+type PartialPackageSpec struct {
+	PackageInfoSpec
 
-// Determines if codegen should emit a ${fn}Output version that
-// automatically accepts Inputs and returns Outputs.
-func (fun *Function) NeedsOutputVersion() bool {
-
-	// Skip functions that return no value. Arguably we could
-	// support them and return `Task`, but there are no such
-	// functions in `pulumi-azure-native` or `pulumi-aws` so we
-	// omit to simplify.
-	if fun.Outputs == nil {
-		return false
-	}
-
-	// Skip functions that have no inputs. The user can simply
-	// lift the `Task` to `Output` manually.
-	if fun.Inputs == nil {
-		return false
-	}
-
-	// No properties is kind of like no inputs.
-	if len(fun.Inputs.Properties) == 0 {
-		return false
-	}
-
-	return true
+	// Config describes the set of configuration variables defined by this package.
+	Config json.RawMessage `json:"config" yaml:"config"`
+	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
+	// defined by this package.
+	Types map[string]json.RawMessage `json:"types,omitempty" yaml:"types,omitempty"`
+	// Provider describes the provider type for this package.
+	Provider json.RawMessage `json:"provider" yaml:"provider"`
+	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
+	Resources map[string]json.RawMessage `json:"resources,omitempty" yaml:"resources,omitempty"`
+	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
+	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
+	// Language specifies additional language-specific data about the package.
+	Language map[string]json.RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }

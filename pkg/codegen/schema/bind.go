@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -48,6 +49,16 @@ func init() {
 		return jsonschema.LoadURL(u)
 	}
 	MetaSchema = compiler.MustCompile("blob://pulumi.json")
+}
+
+func sortedKeys(m interface{}) []string {
+	rv := reflect.ValueOf(m)
+	keys := make([]string, 0, rv.Len())
+	for it := rv.MapRange(); it.Next(); {
+		keys = append(keys, it.Key().String())
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func memberPath(section, token string, rest ...string) string {
@@ -131,15 +142,73 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		diags = diags.Extend(validationDiags)
 	}
 
+	types, pkgDiags, err := newBinder(spec.PackageInfoSpec, packageSpecSource{&spec}, loader)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer contract.IgnoreClose(types)
+	diags = diags.Extend(pkgDiags)
+
+	diags = diags.Extend(spec.validateTypeTokens())
+
+	config, configDiags, err := bindConfig(spec.Config, types)
+	if err != nil {
+		return nil, nil, err
+	}
+	diags = diags.Extend(configDiags)
+
+	provider, resources, resourceDiags, err := types.finishResources(sortedKeys(spec.Resources))
+	if err != nil {
+		return nil, nil, err
+	}
+	diags = diags.Extend(resourceDiags)
+
+	functions, functionDiags, err := types.finishFunctions(sortedKeys(spec.Functions))
+	if err != nil {
+		return nil, nil, err
+	}
+	diags = diags.Extend(functionDiags)
+
+	typeList, typeDiags, err := types.finishTypes(sortedKeys(spec.Types))
+	if err != nil {
+		return nil, nil, err
+	}
+	diags = diags.Extend(typeDiags)
+
+	language := make(map[string]interface{})
+	for name, raw := range spec.Language {
+		language[name] = json.RawMessage(raw)
+	}
+
+	pkg := types.pkg
+	pkg.Config = config
+	pkg.Types = typeList
+	pkg.Provider = provider
+	pkg.Resources = resources
+	pkg.Functions = functions
+	pkg.Language = language
+	pkg.resourceTable = types.resourceDefs
+	pkg.functionTable = types.functionDefs
+	pkg.typeTable = types.typeDefs
+	pkg.resourceTypeTable = types.resources
+	if err := pkg.ImportLanguages(languages); err != nil {
+		return nil, nil, err
+	}
+	return pkg, diags, nil
+}
+
+func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
 	// Validate that there is a name
-	if spec.Name == "" {
+	if info.Name == "" {
 		diags = diags.Append(errorf("#/name", "no name provided"))
 	}
 
 	// Parse the version, if any.
 	var version *semver.Version
-	if spec.Version != "" {
-		v, err := semver.ParseTolerant(spec.Version)
+	if info.Version != "" {
+		v, err := semver.ParseTolerant(info.Version)
 		if err != nil {
 			diags = diags.Append(errorf("#/version", "failed to parse semver: %v", err))
 		} else {
@@ -149,20 +218,32 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	// Parse the module format, if any.
 	moduleFormat := "(.*)"
-	if spec.Meta != nil && spec.Meta.ModuleFormat != "" {
-		moduleFormat = spec.Meta.ModuleFormat
+	if info.Meta != nil && info.Meta.ModuleFormat != "" {
+		moduleFormat = info.Meta.ModuleFormat
 	}
 	moduleFormatRegexp, err := regexp.Compile(moduleFormat)
 	if err != nil {
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
 
-	diags = diags.Extend(spec.validateTypeTokens())
-
-	pkg := &Package{Name: spec.Name}
+	pkg := &Package{
+		moduleFormat:      moduleFormatRegexp,
+		Name:              info.Name,
+		DisplayName:       info.DisplayName,
+		Version:           version,
+		Description:       info.Description,
+		Keywords:          info.Keywords,
+		Homepage:          info.Homepage,
+		License:           info.License,
+		Attribution:       info.Attribution,
+		Repository:        info.Repository,
+		PluginDownloadURL: info.PluginDownloadURL,
+		Publisher:         info.Publisher,
+	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
 	// reference is nil.
+	var loadCtx io.Closer
 	if loader == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -172,16 +253,16 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		defer contract.IgnoreClose(ctx)
 
-		loader = NewPluginLoader(ctx.Host)
+		loader, loadCtx = NewPluginLoader(ctx.Host), ctx
 	}
 
 	// Create a type binder.
 	types := &types{
 		pkg:          pkg,
-		spec:         packageSpecSource{&spec},
+		spec:         spec,
 		loader:       loader,
+		loadCtx:      loadCtx,
 		typeDefs:     map[string]Type{},
 		functionDefs: map[string]*Function{},
 		resourceDefs: map[string]*Resource{},
@@ -194,93 +275,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		optionals:    map[Type]*OptionalType{},
 	}
 
-	config, configDiags, err := bindConfig(spec.Config, types)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(configDiags)
-
-	provider, resources, resourceDiags, err := types.finishResources(spec)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(resourceDiags)
-
-	typeDiags, err := types.finishTypes(spec)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(typeDiags)
-
-	functions, functionDiags, err := types.finishFunctions(spec)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(functionDiags)
-
-	// Build the type list.
-	var typeList []Type
-	for _, t := range types.resources {
-		typeList = append(typeList, t)
-	}
-	for _, t := range types.typeDefs {
-		typeList = append(typeList, t)
-		if obj, ok := t.(*ObjectType); ok {
-			// t is a plain shape: add it and its corresponding input shape to the type list.
-			typeList = append(typeList, obj.InputShape)
-		}
-	}
-	for _, t := range types.arrays {
-		typeList = append(typeList, t)
-	}
-	for _, t := range types.maps {
-		typeList = append(typeList, t)
-	}
-	for _, t := range types.unions {
-		typeList = append(typeList, t)
-	}
-	for _, t := range types.tokens {
-		typeList = append(typeList, t)
-	}
-
-	sort.Slice(typeList, func(i, j int) bool {
-		return typeList[i].String() < typeList[j].String()
-	})
-
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
-	*pkg = Package{
-		moduleFormat:      moduleFormatRegexp,
-		Name:              spec.Name,
-		DisplayName:       spec.DisplayName,
-		Version:           version,
-		Description:       spec.Description,
-		Keywords:          spec.Keywords,
-		Homepage:          spec.Homepage,
-		License:           spec.License,
-		Attribution:       spec.Attribution,
-		Repository:        spec.Repository,
-		PluginDownloadURL: spec.PluginDownloadURL,
-		Publisher:         spec.Publisher,
-		Config:            config,
-		Types:             typeList,
-		Provider:          provider,
-		Resources:         resources,
-		Functions:         functions,
-		Language:          language,
-		resourceTable:     types.resourceDefs,
-		functionTable:     types.functionDefs,
-		typeTable:         types.typeDefs,
-		resourceTypeTable: types.resources,
-	}
-	if err := pkg.ImportLanguages(languages); err != nil {
-		return nil, nil, err
-	}
-	return pkg, diags, nil
-
+	return types, diags, nil
 }
 
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
@@ -303,6 +298,25 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 		return nil, diags
 	}
 	return pkg, nil
+}
+
+// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
+// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
+// contents of a package are not needed (e.g. for referenced packages).
+func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (*PartialPackage, error) {
+	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, nil)
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	return &PartialPackage{
+		spec:      &spec,
+		languages: languages,
+		types:     types,
+	}, nil
 }
 
 type specSource interface {
@@ -333,12 +347,62 @@ func (s packageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, er
 	return spec, ok, nil
 }
 
+type partialPackageSpecSource struct {
+	spec *PartialPackageSpec
+}
+
+func (s partialPackageSpecSource) GetTypeDefSpec(token string) (ComplexTypeSpec, bool, error) {
+	rawSpec, ok := s.spec.Types[token]
+	if !ok {
+		return ComplexTypeSpec{}, false, nil
+	}
+
+	var spec ComplexTypeSpec
+	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+		return ComplexTypeSpec{}, false, err
+	}
+	return spec, true, nil
+}
+
+func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, bool, error) {
+	rawSpec, ok := s.spec.Functions[token]
+	if !ok {
+		return FunctionSpec{}, false, nil
+	}
+
+	var spec FunctionSpec
+	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+		return FunctionSpec{}, false, err
+	}
+	return spec, true, nil
+}
+
+func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
+	var rawSpec json.RawMessage
+	if token == "pulumi:providers:"+s.spec.Name {
+		rawSpec = s.spec.Provider
+	} else {
+		raw, ok := s.spec.Resources[token]
+		if !ok {
+			return ResourceSpec{}, false, nil
+		}
+		rawSpec = raw
+	}
+
+	var spec ResourceSpec
+	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+		return ResourceSpec{}, false, err
+	}
+	return spec, true, nil
+}
+
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
-	pkg    *Package
-	spec   specSource
-	loader Loader
+	pkg     *Package
+	spec    specSource
+	loader  Loader
+	loadCtx io.Closer
 
 	typeDefs     map[string]Type      // objects and enums
 	functionDefs map[string]*Function // function definitions
@@ -351,6 +415,13 @@ type types struct {
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
+}
+
+func (t *types) Close() error {
+	if t.loadCtx != nil {
+		return t.loadCtx.Close()
+	}
+	return nil
 }
 
 //nolint: goconst
@@ -1098,19 +1169,48 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
-func (t *types) finishTypes(spec PackageSpec) (hcl.Diagnostics, error) {
+func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Ensure all of the types defined by the package are bound.
-	for token := range spec.Types {
+	for _, token := range tokens {
 		_, typeDiags, err := t.bindTypeDef(token)
 		if err != nil {
-			return nil, fmt.Errorf("error binding type %v", token)
+			return nil, nil, fmt.Errorf("error binding type %v", token)
 		}
 		diags = diags.Extend(typeDiags)
 	}
 
-	return diags, nil
+	// Build the type list.
+	var typeList []Type
+	for _, t := range t.resources {
+		typeList = append(typeList, t)
+	}
+	for _, t := range t.typeDefs {
+		typeList = append(typeList, t)
+		if obj, ok := t.(*ObjectType); ok {
+			// t is a plain shape: add it and its corresponding input shape to the type list.
+			typeList = append(typeList, obj.InputShape)
+		}
+	}
+	for _, t := range t.arrays {
+		typeList = append(typeList, t)
+	}
+	for _, t := range t.maps {
+		typeList = append(typeList, t)
+	}
+	for _, t := range t.unions {
+		typeList = append(typeList, t)
+	}
+	for _, t := range t.tokens {
+		typeList = append(typeList, t)
+	}
+
+	sort.Slice(typeList, func(i, j int) bool {
+		return typeList[i].String() < typeList[j].String()
+	})
+
+	return typeList, diags, nil
 }
 
 func bindMethods(path, resourceToken string, methods map[string]string,
@@ -1304,7 +1404,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	return diags, nil
 }
 
-func (t *types) finishResources(spec PackageSpec) (*Resource, []*Resource, hcl.Diagnostics, error) {
+func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:" + t.pkg.Name)
@@ -1314,7 +1414,7 @@ func (t *types) finishResources(spec PackageSpec) (*Resource, []*Resource, hcl.D
 	diags = diags.Extend(provDiags)
 
 	var resources []*Resource
-	for token := range spec.Resources {
+	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
 		if err != nil {
@@ -1384,11 +1484,11 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	return fn, diags, nil
 }
 
-func (t *types) finishFunctions(spec PackageSpec) ([]*Function, hcl.Diagnostics, error) {
+func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	var functions []*Function
-	for token := range spec.Functions {
+	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)
 		if err != nil {
