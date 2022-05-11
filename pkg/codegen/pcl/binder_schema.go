@@ -29,67 +29,55 @@ import (
 )
 
 type packageSchema struct {
-	schema    *schema.Package
-	resources map[string]*schema.Resource
-	functions map[string]*schema.Function
+	schema schema.PackageReference
 
-	resourceAliases map[string]string
+	// These maps map from canonical tokens to actual tokens.
+	resourceTokenMap map[string]string
+	functionTokenMap map[string]string
 }
 
-func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool) {
-	contract.Assert(ps != nil)
-	r, ok := ps.functions[token]
-	if ok {
-		return r, token, true
+func (ps *packageSchema) probeFunction(token string) (*schema.Function, string, bool, error) {
+	if mappedToken, isMapped := ps.functionTokenMap[token]; isMapped {
+		token = mappedToken
 	}
-	canon := canonicalizeToken(token, ps.schema)
-	r, ok = ps.functions[canon]
-	if ok {
-		return r, canon, true
-	}
-	return nil, "", false
+	fn, ok, err := ps.schema.Functions().Get(token)
+	return fn, token, ok, err
 }
 
-func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool) {
+func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
 	contract.Assert(ps != nil)
-	r, ok := ps.resources[token]
-	if ok {
-		return r, token, true
-	}
-	canon := canonicalizeToken(token, ps.schema)
-	r, ok = ps.resources[canon]
-	if ok {
-		return r, canon, true
+
+	fn, tk, ok, err := ps.probeFunction(token)
+	if err != nil {
+		return nil, "", false, err
+	} else if ok {
+		return fn, tk, true, nil
 	}
 
-	// Handle aliases
-	if ps.resourceAliases == nil {
-		m := map[string]string{}
-		for v, r := range ps.resources {
-			for _, k := range r.Aliases {
-				if k.Type != nil {
-					_, ok := m[*k.Type]
-					contract.Assertf(!ok, "found duplicate key '%s', which makes this process non-deterministic", *k.Type)
-					m[*k.Type] = v
-				}
-			}
-		}
-		ps.resourceAliases = m
+	return ps.probeFunction(canonicalizeToken(token, ps.schema))
+}
+
+func (ps *packageSchema) probeResource(token string) (*schema.Resource, string, bool, error) {
+	if mappedToken, isMapped := ps.resourceTokenMap[token]; isMapped {
+		token = mappedToken
 	}
-	actual, ok := ps.resourceAliases[token]
-	if ok {
-		r, ok = ps.resources[actual]
-		contract.Assert(ok)
-		return r, actual, true
-	}
-	actual, ok = ps.resourceAliases[canon]
-	if ok {
-		r, ok = ps.resources[actual]
-		contract.Assert(ok)
-		return r, actual, true
+	res, ok, err := ps.schema.Resources().Get(token)
+	return res, token, ok, err
+}
+
+func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
+	contract.Assert(ps != nil)
+
+	// TODO: aliases?
+
+	res, tk, ok, err := ps.probeResource(token)
+	if err != nil {
+		return nil, "", false, err
+	} else if ok {
+		return res, tk, true, nil
 	}
 
-	return nil, "", false
+	return ps.probeResource(canonicalizeToken(token, ps.schema))
 }
 
 type PackageCache struct {
@@ -127,19 +115,23 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 		return nil, err
 	}
 
-	resources := map[string]*schema.Resource{}
-	for _, r := range pkg.Resources {
-		resources[canonicalizeToken(r.Token, pkg)] = r
+	resourceTokenMap := map[string]string{}
+	for it := pkg.Resources().Range(); it.Next(); {
+		if canon := canonicalizeToken(it.Token(), pkg); canon != it.Token() {
+			resourceTokenMap[canon] = it.Token()
+		}
 	}
-	functions := map[string]*schema.Function{}
-	for _, f := range pkg.Functions {
-		functions[canonicalizeToken(f.Token, pkg)] = f
+	functionTokenMap := map[string]string{}
+	for it := pkg.Functions().Range(); it.Next(); {
+		if canon := canonicalizeToken(it.Token(), pkg); canon != it.Token() {
+			functionTokenMap[canon] = it.Token()
+		}
 	}
 
 	schema := &packageSchema{
-		schema:    pkg,
-		resources: resources,
-		functions: functions,
+		schema:           pkg,
+		resourceTokenMap: resourceTokenMap,
+		functionTokenMap: functionTokenMap,
 	}
 
 	c.m.Lock()
@@ -154,9 +146,9 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
-func canonicalizeToken(tok string, pkg *schema.Package) string {
+func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkg.Name, pkg.TokenToModule(tok), member)
+	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.

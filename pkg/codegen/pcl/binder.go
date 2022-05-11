@@ -49,7 +49,7 @@ func (opts bindOptions) modelOptions() []model.BindOption {
 type binder struct {
 	options bindOptions
 
-	referencedPackages map[string]*schema.Package
+	referencedPackages map[string]schema.PackageReference
 	schemaTypes        map[schema.Type]model.Type
 
 	tokens syntax.TokenMap
@@ -119,7 +119,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	b := &binder{
 		options:            options,
 		tokens:             syntax.NewTokenMapForFiles(files),
-		referencedPackages: map[string]*schema.Package{},
+		referencedPackages: map[string]schema.PackageReference{},
 		schemaTypes:        map[schema.Type]model.Type{},
 		root:               model.NewRootScope(syntax.None),
 	}

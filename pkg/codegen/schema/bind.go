@@ -1286,15 +1286,16 @@ func (t *types) bindResourceDef(token string) (res *Resource, diags hcl.Diagnost
 
 	// Declare the resource.
 	res = &Resource{}
-	t.resourceDefs[token] = res
 
 	if token == "pulumi:providers:"+t.pkg.Name {
+		t.resourceDefs[token] = res
 		diags, err = t.bindProvider(res)
 	} else {
 		spec, ok, err := t.spec.GetResourceSpec(token)
 		if err != nil || !ok {
 			return nil, nil, err
 		}
+		t.resourceDefs[token] = res
 		diags, err = t.bindResourceDetails(memberPath("resources", token), token, spec, res)
 	}
 	if err != nil {

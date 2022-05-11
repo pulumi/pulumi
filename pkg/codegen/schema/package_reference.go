@@ -20,6 +20,8 @@ type PackageReference interface {
 	Resources() PackageResources
 	Functions() PackageFunctions
 
+	TokenToModule(token string) string
+
 	Definition() (*Package, error)
 }
 
@@ -87,6 +89,10 @@ func (p packageDefRef) Resources() PackageResources {
 
 func (p packageDefRef) Functions() PackageFunctions {
 	return packageDefFunctions{p.pkg}
+}
+
+func (p packageDefRef) TokenToModule(token string) string {
+	return p.pkg.TokenToModule(token)
 }
 
 func (p packageDefRef) Definition() (*Package, error) {
@@ -287,6 +293,13 @@ func (p *PartialPackage) Functions() PackageFunctions {
 	return partialPackageFunctions{p}
 }
 
+func (p *PartialPackage) TokenToModule(token string) string {
+	if p.def != nil {
+		return p.def.TokenToModule(token)
+	}
+	return p.types.pkg.TokenToModule(token)
+}
+
 func (p *PartialPackage) Definition() (*Package, error) {
 	if p.def != nil {
 		return p.def, nil
@@ -408,7 +421,7 @@ type partialPackageTypes struct {
 func (p partialPackageTypes) Range() TypesIter {
 	return &partialPackageTypesIter{
 		types: p,
-		iter:  reflect.ValueOf(p.types.typeDefs).MapRange(),
+		iter:  reflect.ValueOf(p.spec.Types).MapRange(),
 	}
 }
 
@@ -448,7 +461,7 @@ type partialPackageResources struct {
 func (p partialPackageResources) Range() ResourcesIter {
 	return &partialPackageResourcesIter{
 		resources: p,
-		iter:      reflect.ValueOf(p.types.resourceDefs).MapRange(),
+		iter:      reflect.ValueOf(p.spec.Resources).MapRange(),
 	}
 }
 
@@ -499,7 +512,7 @@ type partialPackageFunctions struct {
 func (p partialPackageFunctions) Range() FunctionsIter {
 	return &partialPackageFunctionsIter{
 		functions: p,
-		iter:      reflect.ValueOf(p.types.functionDefs).MapRange(),
+		iter:      reflect.ValueOf(p.spec.Functions).MapRange(),
 	}
 }
 
