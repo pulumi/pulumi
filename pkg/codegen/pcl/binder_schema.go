@@ -36,33 +36,20 @@ type packageSchema struct {
 	functionTokenMap map[string]string
 }
 
-func (ps *packageSchema) probeFunction(token string) (*schema.Function, string, bool, error) {
-	if mappedToken, isMapped := ps.functionTokenMap[token]; isMapped {
-		token = mappedToken
-	}
-	fn, ok, err := ps.schema.Functions().Get(token)
-	return fn, token, ok, err
-}
-
 func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
 	contract.Assert(ps != nil)
 
-	fn, tk, ok, err := ps.probeFunction(token)
-	if err != nil {
-		return nil, "", false, err
-	} else if ok {
-		return fn, tk, true, nil
+	schemaToken, ok := ps.functionTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.functionTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
+		}
 	}
 
-	return ps.probeFunction(canonicalizeToken(token, ps.schema))
-}
-
-func (ps *packageSchema) probeResource(token string) (*schema.Resource, string, bool, error) {
-	if mappedToken, isMapped := ps.resourceTokenMap[token]; isMapped {
-		token = mappedToken
-	}
-	res, ok, err := ps.schema.Resources().Get(token)
-	return res, token, ok, err
+	fn, ok, err := ps.schema.Functions().Get(schemaToken)
+	return fn, token, ok, err
 }
 
 func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
@@ -70,14 +57,17 @@ func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string,
 
 	// TODO: aliases?
 
-	res, tk, ok, err := ps.probeResource(token)
-	if err != nil {
-		return nil, "", false, err
-	} else if ok {
-		return res, tk, true, nil
+	schemaToken, ok := ps.resourceTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.resourceTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
+		}
 	}
 
-	return ps.probeResource(canonicalizeToken(token, ps.schema))
+	res, ok, err := ps.schema.Resources().Get(schemaToken)
+	return res, token, ok, err
 }
 
 type PackageCache struct {
@@ -117,15 +107,11 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 
 	resourceTokenMap := map[string]string{}
 	for it := pkg.Resources().Range(); it.Next(); {
-		if canon := canonicalizeToken(it.Token(), pkg); canon != it.Token() {
-			resourceTokenMap[canon] = it.Token()
-		}
+		resourceTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
 	functionTokenMap := map[string]string{}
 	for it := pkg.Functions().Range(); it.Next(); {
-		if canon := canonicalizeToken(it.Token(), pkg); canon != it.Token() {
-			functionTokenMap[canon] = it.Token()
-		}
+		functionTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
 
 	schema := &packageSchema{

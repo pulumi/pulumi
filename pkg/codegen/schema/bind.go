@@ -175,18 +175,12 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(typeDiags)
 
-	language := make(map[string]interface{})
-	for name, raw := range spec.Language {
-		language[name] = json.RawMessage(raw)
-	}
-
 	pkg := types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.Language = language
 	pkg.resourceTable = types.resourceDefs
 	pkg.functionTable = types.functionDefs
 	pkg.typeTable = types.typeDefs
@@ -226,6 +220,11 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
 
+	language := make(map[string]interface{}, len(info.Language))
+	for name, v := range info.Language {
+		language[name] = json.RawMessage(v)
+	}
+
 	pkg := &Package{
 		moduleFormat:      moduleFormatRegexp,
 		Name:              info.Name,
@@ -239,6 +238,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 		Repository:        info.Repository,
 		PluginDownloadURL: info.PluginDownloadURL,
 		Publisher:         info.Publisher,
+		Language:          language,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the

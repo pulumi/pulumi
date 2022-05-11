@@ -58,7 +58,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	packageDefs, err := program.PackageSnapshots()
+	packageDefs, err := programPackageDefs(program)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -155,7 +155,7 @@ require (
 `)
 
 	// For each package add a PackageReference line
-	packages, err := program.PackageSnapshots()
+	packages, err := programPackageDefs(program)
 	if err != nil {
 		return err
 	}
@@ -901,4 +901,20 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 		return alias
 	}
 	return mod
+}
+
+// Go needs complete package definitions in order to properly resolve names.
+//
+// TODO: naming decisions should really be encoded statically so that they can be decided locally.
+func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
+	refs := program.Packages()
+	defs := make([]*schema.Package, len(refs))
+	for i, ref := range refs {
+		def, err := ref.Definition()
+		if err != nil {
+			return nil, err
+		}
+		defs[i] = def
+	}
+	return defs, nil
 }

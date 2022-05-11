@@ -224,10 +224,16 @@ type PartialPackage struct {
 }
 
 func (p *PartialPackage) Name() string {
+	if p.def != nil {
+		return p.def.Name
+	}
 	return p.types.pkg.Name
 }
 
 func (p *PartialPackage) Version() *semver.Version {
+	if p.def != nil {
+		return p.def.Version
+	}
 	return p.types.pkg.Version
 }
 
@@ -329,18 +335,12 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 	diags = diags.Extend(typeDiags)
 
-	language := make(map[string]interface{}, len(p.spec.Language))
-	for name, v := range p.spec.Language {
-		language[name] = v
-	}
-
 	pkg := p.types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.Language = language
 	pkg.resourceTable = p.types.resourceDefs
 	pkg.functionTable = p.types.functionDefs
 	pkg.typeTable = p.types.typeDefs
@@ -353,9 +353,11 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	}
 
 	contract.IgnoreClose(p.types)
+	p.spec = nil
 	p.types = nil
 	p.languages = nil
 	p.config = nil
+	p.def = pkg
 
 	return pkg, nil
 }
@@ -391,18 +393,12 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	contract.Assert(err == nil)
 	contract.Assert(len(diags) == 0)
 
-	language := make(map[string]interface{}, len(p.spec.Language))
-	for name, v := range p.spec.Language {
-		language[name] = v
-	}
-
 	pkg := p.types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.Language = language
 	pkg.resourceTable = p.types.resourceDefs
 	pkg.functionTable = p.types.functionDefs
 	pkg.typeTable = p.types.typeDefs

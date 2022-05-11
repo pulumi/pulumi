@@ -1548,11 +1548,14 @@ type PackageInfoSpec struct {
 
 	// A list of allowed package name in addition to the Name property.
 	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+
+	// Language specifies additional language-specific data about the package.
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
-	PackageInfoSpec
+	PackageInfoSpec `yaml:",inline"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
@@ -1565,14 +1568,12 @@ type PackageSpec struct {
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]FunctionSpec `json:"functions,omitempty" yaml:"functions,omitempty"`
-	// Language specifies additional language-specific data about the package.
-	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // PartialPackageSpec is a serializable description of a Pulumi package that defers the deserialization of most package
 // members until they are needed. Used to support PartialPackage and PackageReferences.
 type PartialPackageSpec struct {
-	PackageInfoSpec
+	PackageInfoSpec `yaml:",inline"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config json.RawMessage `json:"config" yaml:"config"`
@@ -1585,6 +1586,4 @@ type PartialPackageSpec struct {
 	Resources map[string]json.RawMessage `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]json.RawMessage `json:"functions,omitempty" yaml:"functions,omitempty"`
-	// Language specifies additional language-specific data about the package.
-	Language map[string]json.RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }

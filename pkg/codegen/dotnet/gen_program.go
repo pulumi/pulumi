@@ -164,7 +164,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// For each package add a PackageReference line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, p := range packages {
 		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
