@@ -1,13 +1,14 @@
 package schema
 
 import (
-	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/segmentio/encoding/json"
 )
 
 type PackageReference interface {
@@ -254,8 +255,8 @@ func (p *PartialPackage) Config() ([]*Property, error) {
 	}
 
 	var spec ConfigSpec
-	if err := json.Unmarshal([]byte(p.spec.Config), &spec); err != nil {
-		return nil, err
+	if err := parseJSONPropertyValue(p.spec.Config, &spec); err != nil {
+		return nil, fmt.Errorf("unmarshaling config: %w", err)
 	}
 
 	config, diags, err := bindConfig(spec, p.types)
@@ -539,4 +540,14 @@ func (i *partialPackageFunctionsIter) Function() (*Function, error) {
 
 func (i *partialPackageFunctionsIter) Next() bool {
 	return i.iter.Next()
+}
+
+// parseJSONPropertyValue parses a JSON value from the given RawMessage. If the RawMessage is empty, parsing is skipped
+// and the function returns nil.
+func parseJSONPropertyValue(raw json.RawMessage, dest interface{}) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	_, err := json.Parse([]byte(raw), dest, json.ZeroCopy)
+	return err
 }

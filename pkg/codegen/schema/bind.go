@@ -16,7 +16,6 @@ package schema
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -33,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/segmentio/encoding/json"
 )
 
 //go:embed pulumi.json
@@ -362,7 +362,7 @@ func (s partialPackageSpecSource) GetTypeDefSpec(token string) (ComplexTypeSpec,
 	}
 
 	var spec ComplexTypeSpec
-	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+	if err := parseJSONPropertyValue(rawSpec, &spec); err != nil {
 		return ComplexTypeSpec{}, false, err
 	}
 	return spec, true, nil
@@ -375,7 +375,7 @@ func (s partialPackageSpecSource) GetFunctionSpec(token string) (FunctionSpec, b
 	}
 
 	var spec FunctionSpec
-	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+	if err := parseJSONPropertyValue(rawSpec, &spec); err != nil {
 		return FunctionSpec{}, false, err
 	}
 	return spec, true, nil
@@ -394,7 +394,7 @@ func (s partialPackageSpecSource) GetResourceSpec(token string) (ResourceSpec, b
 	}
 
 	var spec ResourceSpec
-	if err := json.Unmarshal([]byte(rawSpec), &spec); err != nil {
+	if err := parseJSONPropertyValue(rawSpec, &spec); err != nil {
 		return ResourceSpec{}, false, err
 	}
 	return spec, true, nil
