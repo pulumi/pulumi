@@ -66,7 +66,8 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 }
 
@@ -84,16 +85,16 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 }
 
 //nolint:paralleltest // mutates environment variables
-func TestPassphraseManagerEmptyPassphraseReturnsError(t *testing.T) {
+func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	resetEnv := resetPassphraseTestEnvVars()
 	defer resetEnv()
 
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
-	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
-		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NoError(t, err)
+	assert.NotNil(t, sm)
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -110,7 +111,8 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
 
-	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 }
 
