@@ -57,6 +57,7 @@ const (
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
+	var stack string
 	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
@@ -74,7 +75,7 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				summary := getSummaryAbout(transitiveDependencies)
+				summary := getSummaryAbout(transitiveDependencies, stack)
 				if jsonOut {
 					return printJSON(summary)
 				}
@@ -84,6 +85,9 @@ func newAboutCmd() *cobra.Command {
 		}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to get info on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
 		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
 
@@ -106,7 +110,7 @@ type summaryAbout struct {
 	LogMessage    string                    `json:"-"`
 }
 
-func getSummaryAbout(transitiveDependencies bool) summaryAbout {
+func getSummaryAbout(transitiveDependencies bool, selectedStack string) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -158,7 +162,7 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 		addError(err, "Could not access the backend")
 	} else {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(backend); err != nil {
+		if stack, err = getCurrentStackAbout(backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -322,17 +326,27 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(b backend.Backend) (currentStackAbout, error) {
+func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStackAbout, error) {
 	context := commandContext()
 	var stack backend.Stack
 	var err error
-	stack, err = state.CurrentStack(context, b)
+	if selectedStack == "" {
+		stack, err = state.CurrentStack(context, b)
+	} else {
+		var ref backend.StackReference
+		ref, err = b.ParseStackReference(selectedStack)
+		if err != nil {
+			return currentStackAbout{}, err
+		}
+		stack, err = b.GetStack(context, ref)
+	}
 	if err != nil {
 		return currentStackAbout{}, err
 	}
 	if stack == nil {
 		return currentStackAbout{}, errors.New("No current stack")
 	}
+
 	name := stack.Ref().String()
 	var snapshot *deploy.Snapshot
 	snapshot, err = stack.Snapshot(context)

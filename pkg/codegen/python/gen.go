@@ -60,8 +60,8 @@ func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bo
 	}
 }
 
-func (imports imports) addEnum(mod *modContext, tok string) {
-	if imp := mod.importEnumFromToken(tok); imp != "" {
+func (imports imports) addEnum(mod *modContext, enum *schema.EnumType) {
+	if imp := mod.importEnumType(enum); imp != "" {
 		codegen.StringSet(imports).Add(imp)
 	}
 }
@@ -731,8 +731,12 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 	return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, components[0])
 }
 
-func (mod *modContext) importEnumFromToken(tok string) string {
-	modName := mod.tokenToModule(tok)
+func (mod *modContext) importEnumType(e *schema.EnumType) string {
+	if e.Package != mod.pkg {
+		return fmt.Sprintf("import %s", pyPack(e.Package.Name))
+	}
+
+	modName := mod.tokenToModule(e.Token)
 	if modName == mod.mod {
 		return "from ._enums import *"
 	}
@@ -925,7 +929,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 							return imp != "from ._inputs import *"
 						})
 					case *schema.EnumType:
-						imports.addEnum(mod, t.Token)
+						imports.addEnum(mod, t)
 					case *schema.ResourceType:
 						imports.addResource(mod, t)
 					}
@@ -936,7 +940,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 			}
 		}
 		for _, e := range mod.enums {
-			imports.addEnum(mod, e.Token)
+			imports.addEnum(mod, e)
 		}
 
 		mod.genHeader(w, true /*needsSDK*/, imports)
@@ -1920,7 +1924,7 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 		case *schema.ObjectType:
 			imports.addType(mod, t, input)
 		case *schema.EnumType:
-			imports.addEnum(mod, t.Token)
+			imports.addEnum(mod, t)
 		case *schema.ResourceType:
 			// Don't import itself.
 			if t.Resource != res {
