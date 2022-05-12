@@ -38,7 +38,7 @@ type otherResourceArgs struct {
 
 // The set of arguments for constructing a OtherResource resource.
 type OtherResourceArgs struct {
-	Bar []string
+	Bar []pulumi.StringInput
 	Foo ResourceInput
 }
 
@@ -77,6 +77,10 @@ func (o OtherResourceOutput) ToOtherResourceOutput() OtherResourceOutput {
 
 func (o OtherResourceOutput) ToOtherResourceOutputWithContext(ctx context.Context) OtherResourceOutput {
 	return o
+}
+
+func (o OtherResourceOutput) Foo() ResourceOutput {
+	return o.ApplyT(func(v *OtherResource) ResourceOutput { return v.Foo }).(ResourceOutput)
 }
 
 func init() {

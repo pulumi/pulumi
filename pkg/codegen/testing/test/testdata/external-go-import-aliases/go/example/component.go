@@ -200,6 +200,38 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
+func (o ComponentOutput) ResourceLocalAlias() awsec2.InstanceOutput {
+	return o.ApplyT(func(v *Component) awsec2.InstanceOutput { return v.ResourceLocalAlias }).(awsec2.InstanceOutput)
+}
+
+func (o ComponentOutput) ResourceLocalInsteadOfRemoteAlias() gcpiamv1.KeyOutput {
+	return o.ApplyT(func(v *Component) gcpiamv1.KeyOutput { return v.ResourceLocalInsteadOfRemoteAlias }).(gcpiamv1.KeyOutput)
+}
+
+func (o ComponentOutput) ResourceNoAlias() s3.BucketOutput {
+	return o.ApplyT(func(v *Component) s3.BucketOutput { return v.ResourceNoAlias }).(s3.BucketOutput)
+}
+
+func (o ComponentOutput) ResourceRemoteAlias() dns.PolicyOutput {
+	return o.ApplyT(func(v *Component) dns.PolicyOutput { return v.ResourceRemoteAlias }).(dns.PolicyOutput)
+}
+
+func (o ComponentOutput) TypeLocalAlias() awsec2.InstanceLaunchTemplateOutput {
+	return o.ApplyT(func(v *Component) awsec2.InstanceLaunchTemplateOutput { return v.TypeLocalAlias }).(awsec2.InstanceLaunchTemplateOutput)
+}
+
+func (o ComponentOutput) TypeLocalInsteadOfRemoteAlias() gcpiamv1.AuditConfigResponseOutput {
+	return o.ApplyT(func(v *Component) gcpiamv1.AuditConfigResponseOutput { return v.TypeLocalInsteadOfRemoteAlias }).(gcpiamv1.AuditConfigResponseOutput)
+}
+
+func (o ComponentOutput) TypeNoAlias() s3.BucketWebsiteOutput {
+	return o.ApplyT(func(v *Component) s3.BucketWebsiteOutput { return v.TypeNoAlias }).(s3.BucketWebsiteOutput)
+}
+
+func (o ComponentOutput) TypeRemoteAlias() dns.DnsKeySpecResponseOutput {
+	return o.ApplyT(func(v *Component) dns.DnsKeySpecResponseOutput { return v.TypeRemoteAlias }).(dns.DnsKeySpecResponseOutput)
+}
+
 type ComponentArrayOutput struct{ *pulumi.OutputState }
 
 func (ComponentArrayOutput) ElementType() reflect.Type {

@@ -4915,6 +4915,36 @@ func TestEventSecrets(t *testing.T) {
 	p.Run(t, snap)
 }
 
+func TestPluginsAreDownloaded(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	semver10 := semver.MustParse("1.0.0")
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+		return nil
+	}, workspace.PluginInfo{Name: "pkgA"}, workspace.PluginInfo{Name: "pkgB", Version: &semver10})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+	assert.Nil(t, res)
+}
+
 func TestDefaultParents(t *testing.T) {
 	t.Parallel()
 

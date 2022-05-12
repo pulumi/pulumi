@@ -48,6 +48,6 @@ export class OtherResource extends pulumi.ComponentResource {
  * The set of arguments for constructing a OtherResource resource.
  */
 export interface OtherResourceArgs {
-    bar?: string[];
+    bar?: pulumi.Input<string>[];
     foo?: pulumi.Input<Resource>;
 }

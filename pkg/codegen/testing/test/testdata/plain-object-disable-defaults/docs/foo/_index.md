@@ -18,14 +18,19 @@ test new feature with resoruces
 
 
 ## Create a Foo Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -37,17 +42,42 @@ test new feature with resoruces
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Foo</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -69,9 +99,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -93,9 +125,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -123,9 +157,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -147,19 +183,47 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">FooArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
 
 ## Foo Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_csharp">
@@ -168,7 +232,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_csharp" style="color: inherit; text-decoration: inherit;">Argument</a>
@@ -176,7 +241,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
@@ -184,7 +249,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="settings_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_csharp" style="color: inherit; text-decoration: inherit;">Settings</a>
@@ -192,10 +258,13 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_go">
@@ -204,7 +273,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_go" style="color: inherit; text-decoration: inherit;">Argument</a>
@@ -212,7 +282,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
@@ -220,7 +290,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="settings_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_go" style="color: inherit; text-decoration: inherit;">Settings</a>
@@ -228,10 +299,54 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backupkubeclientsettings_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#backupkubeclientsettings_java" style="color: inherit; text-decoration: inherit;">backup<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="argument_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_java" style="color: inherit; text-decoration: inherit;">argument</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="kubeclientsettings_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_java" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="settings_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_java" style="color: inherit; text-decoration: inherit;">settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+    </dt>
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_nodejs">
@@ -240,7 +355,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_nodejs" style="color: inherit; text-decoration: inherit;">argument</a>
@@ -248,7 +364,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
@@ -256,7 +372,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="settings_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_nodejs" style="color: inherit; text-decoration: inherit;">settings</a>
@@ -264,10 +381,13 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backup_kube_client_settings_python">
@@ -276,7 +396,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_python" style="color: inherit; text-decoration: inherit;">argument</a>
@@ -284,7 +405,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="kube_client_settings_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kube_client_settings_python" style="color: inherit; text-decoration: inherit;">kube_<wbr>client_<wbr>settings</a>
@@ -292,7 +413,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="settings_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_python" style="color: inherit; text-decoration: inherit;">settings</a>
@@ -300,8 +422,51 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backupkubeclientsettings_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#backupkubeclientsettings_yaml" style="color: inherit; text-decoration: inherit;">backup<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Property Map</a></span>
+    </dt>
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="argument_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#argument_yaml" style="color: inherit; text-decoration: inherit;">argument</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="kubeclientsettings_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_yaml" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Property Map</a></span>
+    </dt>
+    <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="settings_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_yaml" style="color: inherit; text-decoration: inherit;">settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Property Map</a></span>
+    </dt>
+    <dd><p>describing things</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -310,7 +475,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -319,7 +485,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="defaultkubeclientsettings_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
@@ -327,10 +494,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -339,7 +509,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="defaultkubeclientsettings_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultkubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
@@ -347,10 +518,37 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="defaultkubeclientsettings_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultkubeclientsettings_java" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -359,7 +557,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="defaultkubeclientsettings_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultkubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
@@ -367,10 +566,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -379,7 +581,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="default_kube_client_settings_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#default_kube_client_settings_python" style="color: inherit; text-decoration: inherit;">default_<wbr>kube_<wbr>client_<wbr>settings</a>
@@ -387,8 +590,34 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="defaultkubeclientsettings_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultkubeclientsettings_yaml" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Property Map</a></span>
+    </dt>
+    <dd><p>A test for plain types</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -402,7 +631,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 <h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_csharp">
@@ -411,7 +641,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -419,7 +650,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -427,10 +659,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_go">
@@ -439,7 +674,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -447,7 +683,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -455,10 +692,46 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_java" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="driver_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_java" style="color: inherit; text-decoration: inherit;">driver</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="pluginspath_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_java" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_nodejs">
@@ -467,7 +740,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -475,7 +749,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -483,10 +758,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_arg_python">
@@ -495,7 +773,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -503,7 +782,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
@@ -511,12 +791,48 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="driver_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_yaml" style="color: inherit; text-decoration: inherit;">driver</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="pluginspath_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_yaml" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="kubeclientsettings">Kube<wbr>Client<wbr>Settings</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_csharp">
@@ -525,7 +841,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}Maximum burst for throttle. Default value is 10.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="qps_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_csharp" style="color: inherit; text-decoration: inherit;">Qps</a>
@@ -533,7 +850,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="rectest_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rectest_csharp" style="color: inherit; text-decoration: inherit;">Rec<wbr>Test</a>
@@ -541,10 +859,12 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_go">
@@ -553,7 +873,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}Maximum burst for throttle. Default value is 10.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="qps_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_go" style="color: inherit; text-decoration: inherit;">Qps</a>
@@ -561,7 +882,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="rectest_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rectest_go" style="color: inherit; text-decoration: inherit;">Rec<wbr>Test</a>
@@ -569,10 +891,44 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="burst_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#burst_java" style="color: inherit; text-decoration: inherit;">burst</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Integer</span>
+    </dt>
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="qps_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_java" style="color: inherit; text-decoration: inherit;">qps</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rectest_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rectest_java" style="color: inherit; text-decoration: inherit;">rec<wbr>Test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_nodejs">
@@ -581,7 +937,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Maximum burst for throttle. Default value is 10.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="qps_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_nodejs" style="color: inherit; text-decoration: inherit;">qps</a>
@@ -589,7 +946,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="rectest_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rectest_nodejs" style="color: inherit; text-decoration: inherit;">rec<wbr>Test</a>
@@ -597,10 +955,12 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_python">
@@ -609,7 +969,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}Maximum burst for throttle. Default value is 10.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="qps_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_python" style="color: inherit; text-decoration: inherit;">qps</a>
@@ -617,7 +978,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="rec_test_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_test_python" style="color: inherit; text-decoration: inherit;">rec_<wbr>test</a>
@@ -625,12 +987,46 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="burst_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#burst_yaml" style="color: inherit; text-decoration: inherit;">burst</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Maximum burst for throttle. Default value is 10.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="qps_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#qps_yaml" style="color: inherit; text-decoration: inherit;">qps</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Maximum queries per second (QPS) to the API server from this client. Default value is 5.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rectest_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rectest_yaml" style="color: inherit; text-decoration: inherit;">rec<wbr>Test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Property Map</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="layeredtype">Layered<wbr>Type</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_csharp">
@@ -639,7 +1035,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="thinker_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_csharp" style="color: inherit; text-decoration: inherit;">Thinker</a>
@@ -647,7 +1043,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_csharp" style="color: inherit; text-decoration: inherit;">Answer</a>
@@ -655,7 +1052,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plainother_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainother_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Other</a>
@@ -663,7 +1061,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="question_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_csharp" style="color: inherit; text-decoration: inherit;">Question</a>
@@ -671,7 +1070,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="recursive_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_csharp" style="color: inherit; text-decoration: inherit;">Recursive</a>
@@ -679,10 +1079,12 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_go">
@@ -691,7 +1093,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="thinker_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_go" style="color: inherit; text-decoration: inherit;">Thinker</a>
@@ -699,7 +1101,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_go" style="color: inherit; text-decoration: inherit;">Answer</a>
@@ -707,7 +1110,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plainother_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainother_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Other</a>
@@ -715,7 +1119,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="question_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_go" style="color: inherit; text-decoration: inherit;">Question</a>
@@ -723,7 +1128,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="recursive_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_go" style="color: inherit; text-decoration: inherit;">Recursive</a>
@@ -731,10 +1137,70 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="other_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_java" style="color: inherit; text-decoration: inherit;">other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="thinker_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_java" style="color: inherit; text-decoration: inherit;">thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="answer_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_java" style="color: inherit; text-decoration: inherit;">answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="plainother_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainother_java" style="color: inherit; text-decoration: inherit;">plain<wbr>Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_java" style="color: inherit; text-decoration: inherit;">question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_java" style="color: inherit; text-decoration: inherit;">recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_nodejs">
@@ -743,7 +1209,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="thinker_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_nodejs" style="color: inherit; text-decoration: inherit;">thinker</a>
@@ -751,7 +1217,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_nodejs" style="color: inherit; text-decoration: inherit;">answer</a>
@@ -759,7 +1226,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plainother_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainother_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Other</a>
@@ -767,7 +1235,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="question_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_nodejs" style="color: inherit; text-decoration: inherit;">question</a>
@@ -775,7 +1244,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="recursive_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_nodejs" style="color: inherit; text-decoration: inherit;">recursive</a>
@@ -783,10 +1253,12 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_python">
@@ -795,7 +1267,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="thinker_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_python" style="color: inherit; text-decoration: inherit;">thinker</a>
@@ -803,7 +1275,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_python" style="color: inherit; text-decoration: inherit;">answer</a>
@@ -811,7 +1284,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plain_other_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_other_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>other</a>
@@ -819,7 +1293,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="question_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_python" style="color: inherit; text-decoration: inherit;">question</a>
@@ -827,7 +1302,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="recursive_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_python" style="color: inherit; text-decoration: inherit;">recursive</a>
@@ -835,8 +1311,67 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="other_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_yaml" style="color: inherit; text-decoration: inherit;">other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="thinker_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thinker_yaml" style="color: inherit; text-decoration: inherit;">thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>To ask and answer</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="answer_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#answer_yaml" style="color: inherit; text-decoration: inherit;">answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>The answer to the question</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="plainother_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plainother_yaml" style="color: inherit; text-decoration: inherit;">plain<wbr>Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
+    </dt>
+    <dd><p>Test how plain types interact</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#question_yaml" style="color: inherit; text-decoration: inherit;">question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The question already answered</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#recursive_yaml" style="color: inherit; text-decoration: inherit;">recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Property Map</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

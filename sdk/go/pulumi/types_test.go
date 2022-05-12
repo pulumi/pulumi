@@ -339,6 +339,11 @@ func TestToOutputAnyDeps(t *testing.T) {
 	}()
 
 	res := &ResourceState{}
+	urnOut := URNOutput{newOutputState(nil, reflect.TypeOf(URN("")), res)}
+	go func() {
+		urnOut.resolve(URN("foo"), true, false, nil)
+	}()
+	res.urn = urnOut
 
 	out := ToOutput(&args{
 		S: stringOut,
@@ -352,7 +357,7 @@ func TestToOutputAnyDeps(t *testing.T) {
 	v, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
-	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, intDep1, intDep2, boolDep1, boolDep2, res}, deps)
+	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, intDep1, intDep2, boolDep1, boolDep2}, deps)
 	assert.NoError(t, err)
 
 	argsV := v.(*args)
@@ -377,6 +382,15 @@ func TestToOutputAnyDeps(t *testing.T) {
 	assert.Equal(t, uint32(outputResolved), bo.getState().state)
 	assert.Equal(t, true, bo.value)
 	assert.ElementsMatch(t, []Resource{boolDep1, boolDep2}, bo.deps)
+
+	ro, ok := argsV.R.(Resource)
+	assert.True(t, ok)
+	urn, known, secret, deps, err := await(ro.URN())
+	assert.Equal(t, URN("foo"), urn)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{res}, deps)
+	assert.NoError(t, err)
 }
 
 type args struct {
@@ -775,4 +789,31 @@ func TestAll(t *testing.T) {
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{}, deps)
 	assert.NoError(t, err)
+}
+
+func TestApplyTOutput(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
+	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
+	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
+	r4 := newSimpleCustomResource(ctx, URN("urn4"), ID("id4"))
+	out1 := StringOutput{newOutputState(nil, reflect.TypeOf(""), r1)}
+	out2 := IntOutput{newOutputState(nil, reflect.TypeOf(0), r2)}
+	go func() {
+		out1.resolve("r1 output", true, false, []Resource{r3})
+		out2.resolve(42, true, false, []Resource{r4})
+	}()
+	{
+		out3 := out1.ApplyT(func(v string) (IntOutput, error) {
+			return out2, nil
+		})
+		v, _, _, deps, err := out3.getState().await(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, 42, v)
+		assert.Equal(t, fmt.Sprintf("%v", reflect.TypeOf(v)), "int")
+		assert.Len(t, deps, 4)
+	}
 }

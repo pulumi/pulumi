@@ -113,6 +113,38 @@ func (o TypeUsesOutput) ToTypeUsesOutputWithContext(ctx context.Context) TypeUse
 	return o
 }
 
+func (o TypeUsesOutput) Alpha() OutputOnlyEnumTypePtrOutput {
+	return o.ApplyT(func(v *TypeUses) OutputOnlyEnumTypePtrOutput { return v.Alpha }).(OutputOnlyEnumTypePtrOutput)
+}
+
+func (o TypeUsesOutput) Bar() SomeOtherObjectPtrOutput {
+	return o.ApplyT(func(v *TypeUses) SomeOtherObjectPtrOutput { return v.Bar }).(SomeOtherObjectPtrOutput)
+}
+
+func (o TypeUsesOutput) Baz() ObjectWithNodeOptionalInputsPtrOutput {
+	return o.ApplyT(func(v *TypeUses) ObjectWithNodeOptionalInputsPtrOutput { return v.Baz }).(ObjectWithNodeOptionalInputsPtrOutput)
+}
+
+func (o TypeUsesOutput) Beta() OutputOnlyObjectTypeArrayOutput {
+	return o.ApplyT(func(v *TypeUses) OutputOnlyObjectTypeArrayOutput { return v.Beta }).(OutputOnlyObjectTypeArrayOutput)
+}
+
+func (o TypeUsesOutput) Foo() ObjectPtrOutput {
+	return o.ApplyT(func(v *TypeUses) ObjectPtrOutput { return v.Foo }).(ObjectPtrOutput)
+}
+
+func (o TypeUsesOutput) Gamma() OutputOnlyEnumTypeMapOutput {
+	return o.ApplyT(func(v *TypeUses) OutputOnlyEnumTypeMapOutput { return v.Gamma }).(OutputOnlyEnumTypeMapOutput)
+}
+
+func (o TypeUsesOutput) Qux() RubberTreeVarietyPtrOutput {
+	return o.ApplyT(func(v *TypeUses) RubberTreeVarietyPtrOutput { return v.Qux }).(RubberTreeVarietyPtrOutput)
+}
+
+func (o TypeUsesOutput) Zed() OutputOnlyObjectTypePtrOutput {
+	return o.ApplyT(func(v *TypeUses) OutputOnlyObjectTypePtrOutput { return v.Zed }).(OutputOnlyObjectTypePtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*TypeUsesInput)(nil)).Elem(), &TypeUses{})
 	pulumi.RegisterOutputType(TypeUsesOutput{})

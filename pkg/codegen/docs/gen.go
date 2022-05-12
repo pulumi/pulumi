@@ -33,6 +33,10 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/pgavlin/goldmark"
+
+	"github.com/pulumi/pulumi-java/pkg/codegen/java"
+	yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -186,7 +190,7 @@ func (dctx *docGenContext) setModules(modules map[string]*modContext) {
 }
 
 func newDocGenContext() *docGenContext {
-	supportedLanguages := []string{"csharp", "go", "nodejs", "python"}
+	supportedLanguages := []string{"csharp", "go", "nodejs", "python", "yaml", "java"}
 	docHelpers := make(map[string]codegen.DocLanguageHelper)
 	for _, lang := range supportedLanguages {
 		switch lang {
@@ -198,12 +202,16 @@ func newDocGenContext() *docGenContext {
 			docHelpers[lang] = &nodejs.DocLanguageHelper{}
 		case "python":
 			docHelpers[lang] = &python.DocLanguageHelper{}
+		case "yaml":
+			docHelpers[lang] = &yaml.DocLanguageHelper{}
+		case "java":
+			docHelpers[lang] = &java.DocLanguageHelper{}
 		}
 	}
 
 	return &docGenContext{
 		supportedLanguages:   supportedLanguages,
-		snippetLanguages:     []string{"csharp", "go", "python", "typescript"},
+		snippetLanguages:     []string{"csharp", "go", "python", "typescript", "yaml", "java"},
 		langModuleNameLookup: map[string]string{},
 		docHelpers:           docHelpers,
 	}
@@ -808,6 +816,60 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
+func (mod *modContext) genConstructorYaml() []formalParam {
+	return []formalParam{
+		{
+			Name:    "properties",
+			Comment: ctorArgsArgComment,
+		},
+		{
+			Name:    "options",
+			Comment: ctorOptsArgComment,
+		},
+	}
+}
+
+func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool) []formalParam {
+	name := resourceName(r)
+	optsType := "CustomResourceOptions"
+
+	if mod.isComponentResource() {
+		optsType = "ComponentResourceOptions"
+	}
+
+	docLangHelper := mod.docGenContext.getLanguageDocHelper("java")
+
+	result := []formalParam{
+		{
+			Name: "name",
+			Type: propertyType{
+				Name: "String",
+			},
+			Comment: ctorNameArgComment,
+		},
+		{
+			Name: "args",
+			Type: propertyType{
+				Name: name + "Args",
+				Link: "#inputs",
+			},
+			Comment: ctorArgsArgComment,
+		},
+	}
+	if !argsOverload {
+		result = append(result, formalParam{
+			Name:         "options",
+			OptionalFlag: "@Nullable",
+			Type: propertyType{
+				Name: optsType,
+				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, optsType),
+			},
+			Comment: ctorOptsArgComment,
+		})
+	}
+	return result
+}
+
 func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, argsOverload bool) []formalParam {
 	docLanguageHelper := mod.docGenContext.getLanguageDocHelper("python")
 	isK8sOverlayMod := mod.isKubernetesOverlayModule()
@@ -1103,6 +1165,8 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 
 	// Add an extra language for Python's ResourceArg __init__ overload.
 	langs := append(dctx.supportedLanguages, "pythonargs")
+	// Add an extra language for Java's ResourceArg overload.
+	langs = append(langs, "javaargs")
 
 	for _, lang := range langs {
 		var (
@@ -1124,6 +1188,12 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 		case "csharp":
 			params = mod.genConstructorCS(r, allOptionalInputs)
 			paramTemplate = "csharp_formal_param"
+		case "java":
+			fallthrough
+		case "javaargs":
+			argsOverload := lang == "javaargs"
+			params = mod.genConstructorJava(r, argsOverload)
+			paramTemplate = "java_formal_param"
 		case "python":
 			fallthrough
 		case "pythonargs":
@@ -1132,16 +1202,20 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(resourceName(r)))}
+		case "yaml":
+			params = mod.genConstructorYaml()
 		}
 
-		for i, p := range params {
-			if i != 0 {
-				if err := dctx.templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
+		if paramTemplate != "" {
+			for i, p := range params {
+				if i != 0 {
+					if err := dctx.templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
+						panic(err)
+					}
+				}
+				if err := dctx.templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
 					panic(err)
 				}
-			}
-			if err := dctx.templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
-				panic(err)
 			}
 		}
 		renderedParams[lang] = b.String()
@@ -1153,9 +1227,10 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 
 // getConstructorResourceInfo returns a map of per-language information about
 // the resource being constructed.
-func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]propertyType {
+func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) map[string]propertyType {
 
 	dctx := mod.docGenContext
+	docLangHelper := dctx.getLanguageDocHelper("yaml")
 	resourceMap := make(map[string]propertyType)
 	resourceDisplayName := resourceTypeName
 
@@ -1166,7 +1241,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		resourceTypeName = resourceDisplayName
 
 		switch lang {
-		case "nodejs", "go", "python":
+		case "nodejs", "go", "python", "java":
 			// Intentionally left blank.
 		case "csharp":
 			namespace := title(mod.pkg.Name, lang)
@@ -1179,6 +1254,12 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			}
 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
+		case "yaml":
+			resourceMap[lang] = propertyType{
+				Name:        resourceTypeName,
+				DisplayName: docLangHelper.GetLanguageTypeString(mod.pkg, mod.mod, &schema.ResourceType{Token: tok}, false),
+			}
+			continue
 		default:
 			panic(fmt.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
@@ -1313,6 +1394,40 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 	}
 }
 
+func (mod *modContext) getJavaLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	dctx := mod.docGenContext
+	docLangHelper := dctx.getLanguageDocHelper("java")
+
+	return []formalParam{
+		{
+			Name: "name",
+			Type: propertyType{
+				Name: "String",
+			},
+		},
+		{
+			Name: "id",
+			Type: propertyType{
+				Name: "Output<String>",
+				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Output"),
+			},
+		},
+		{
+			Name: "state",
+			Type: propertyType{
+				Name: stateParam,
+			},
+		},
+		{
+			Name: "options",
+			Type: propertyType{
+				Name: "CustomResourceOptions",
+				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "CustomResourceOptions"),
+			},
+		},
+	}
+}
+
 func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	dctx := mod.docGenContext
 	// The input properties for a resource needs to be exploded as
@@ -1361,6 +1476,9 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 		case "csharp":
 			params = mod.getCSLookupParams(r, stateParam)
 			paramTemplate = "csharp_formal_param"
+		case "java":
+			params = mod.getJavaLookupParams(r, stateParam)
+			paramTemplate = "java_formal_param"
 		case "python":
 			params = mod.getPythonLookupParams(r, stateParam)
 			paramTemplate = "py_formal_param"
@@ -1497,7 +1615,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,
 
-		ConstructorResource: mod.getConstructorResourceInfo(name),
+		ConstructorResource: mod.getConstructorResourceInfo(name, r.Token),
 		ArgsRequired:        !allOptionalInputs,
 
 		InputProperties:  inputProps,
@@ -1940,6 +2058,15 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			// which will most certainly fail.
 			// nolint gosec
 			return template.HTML(html)
+		},
+		"markdownify": func(html string) template.HTML {
+			// Convert a string of Markdown into HTML.
+			var buf bytes.Buffer
+			if err := goldmark.Convert([]byte(html), &buf); err != nil {
+				glog.Fatalf("rendering Markdown: %v", err)
+			}
+			// nolint gosec
+			return template.HTML(buf.String())
 		},
 	})
 

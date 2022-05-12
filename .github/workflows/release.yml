@@ -2,6 +2,7 @@ on:
   push:
     tags:
       - v*.*.*
+      - '!v*.*.*-**'
     paths-ignore:
       - "CHANGELOG.md"
       - "CHANGELOG_PENDING.md"
@@ -324,20 +325,20 @@ jobs:
           sort goreleaser/*-checksums.txt
           echo "Checking that tested and release checksums are identical:"
           diff <(sort goreleaser/*-checksums.txt) $C
+      - name: Download pulumi-language-*
+        run: |
+          ./scripts/get-language-providers.sh
       - name: Run GoReleaser to actually release
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
-      - name: Verify checksums again
-        run: |
-          C=artifacts/checksums/pulumi-tested-checksums-2.txt
-          echo "Tested tarballs with the following checksums:"
-          cat artifacts/checksums/*/* | sort | tee $C
-          echo "Released tarballs with the following checksums:"
-          sort goreleaser/*-checksums.txt
-          echo "Checking that tested and released checksums are identical:"
-          diff <(sort goreleaser/*-checksums.txt) $C
+      - uses: actions/upload-artifact@v3
+        with:
+          name: goreleaser-artifacts
+          path: |
+            goreleaser/pulumi-*.zip
+            goreleaser/pulumi-*.tar.gz
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
     container: golangci/golangci-lint:v1.44

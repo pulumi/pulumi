@@ -361,6 +361,8 @@ type Property struct {
 	Secret bool
 	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
 	ReplaceOnChanges bool
+
+	Plain bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -2105,6 +2107,9 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 }
 
 func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
+	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
+	// `Plain` property of the underlying `Property`, which is passed as
+	// `plainProperty`.
 	if inputShape && !spec.Plain {
 		defer func() {
 			result = t.newInputType(result)
@@ -2312,7 +2317,15 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	var result []*Property
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
-		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape && !spec.Plain)
+		// NOTE: The correct determination for if we should bind an input is:
+		//
+		// inputShape && !spec.Plain
+		//
+		// We will then be able to remove the markedPlain field of t.bindType
+		// since `arg(inputShape, t.bindType) <=> inputShape && !spec.Plain`.
+		// Unfortunately, this fix breaks backwards compatibility in a major
+		// way, across all providers.
+		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape)
 		diags = diags.Extend(typDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding type for property %q: %w", name, err)
@@ -2339,6 +2352,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			Language:           language,
 			Secret:             spec.Secret,
 			ReplaceOnChanges:   spec.ReplaceOnChanges,
+			Plain:              spec.Plain,
 		}
 
 		propertyMap[name], result = p, append(result, p)

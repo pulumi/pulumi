@@ -159,6 +159,22 @@ func (o ToyStoreOutput) ToToyStoreOutputWithContext(ctx context.Context) ToyStor
 	return o
 }
 
+func (o ToyStoreOutput) Chew() ChewPtrOutput {
+	return o.ApplyT(func(v *ToyStore) ChewPtrOutput { return v.Chew }).(ChewPtrOutput)
+}
+
+func (o ToyStoreOutput) Laser() LaserPtrOutput {
+	return o.ApplyT(func(v *ToyStore) LaserPtrOutput { return v.Laser }).(LaserPtrOutput)
+}
+
+func (o ToyStoreOutput) Stuff() ToyArrayOutput {
+	return o.ApplyT(func(v *ToyStore) ToyArrayOutput { return v.Stuff }).(ToyArrayOutput)
+}
+
+func (o ToyStoreOutput) Wanted() ToyArrayOutput {
+	return o.ApplyT(func(v *ToyStore) ToyArrayOutput { return v.Wanted }).(ToyArrayOutput)
+}
+
 type ToyStoreArrayOutput struct{ *pulumi.OutputState }
 
 func (ToyStoreArrayOutput) ElementType() reflect.Type {

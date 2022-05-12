@@ -35,8 +35,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// GetIndent computes a step's parent indentation.
-func GetIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+// getIndent computes a step's parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		if par, has := seen[p]; !has {
@@ -66,16 +66,8 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
-func GetIndentationString(indent int) string {
-	var result string
-	for i := 0; i < indent; i++ {
-		result += "    "
-	}
-	return result
-}
-
 func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
-	var result = GetIndentationString(indent)
+	result := strings.Repeat("    ", indent)
 
 	if !prefix {
 		return result
@@ -116,7 +108,7 @@ func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func GetResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
+func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
 	op := step.Op
@@ -178,7 +170,7 @@ func GetResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	return b.String()
 }
 
-func GetResourcePropertiesDetails(
+func getResourcePropertiesDetails(
 	step engine.StepEventMetadata, indent int, planning bool, summary bool, debug bool) string {
 	var b bytes.Buffer
 
@@ -340,9 +332,9 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 	}
 }
 
-// GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
+// getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func GetResourceOutputsPropertiesString(
+func getResourceOutputsPropertiesString(
 	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
@@ -809,6 +801,11 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 	} else if v.IsNumber() {
 		p.write("%v", v.NumberValue())
 	} else if v.IsString() {
+		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
+			p.write("(%s) ", kind)
+			p.printPropertyValue(vv)
+			return
+		}
 		p.write("%q", v.StringValue())
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
@@ -1197,7 +1194,11 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 
 		r.Reset(repr)
 		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
-			return object, "yaml", true
+			translated, ok := p.translateYAMLValue(object)
+			if !ok {
+				return nil, "", false
+			}
+			return translated, "yaml", true
 		}
 
 		return nil, "", false
@@ -1211,4 +1212,59 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 		}
 	}
 	return resource.PropertyValue{}, "", false
+}
+
+// translateYAMLValue attempts to replace map[interface{}]interface{} values in a decoded YAML value with
+// map[string]interface{} values. map[interface{}]interface{} values can arise from YAML mappings with keys that are
+// not strings. This method only translates such maps if they have purely numeric keys--maps with slice or map keys
+// are not translated.
+func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) {
+	switch v := v.(type) {
+	case []interface{}:
+		for i, e := range v {
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			v[i] = ee
+		}
+		return v, true
+	case map[string]interface{}:
+		for k, e := range v {
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			v[k] = ee
+		}
+		return v, true
+	case map[interface{}]interface{}:
+		vv := make(map[string]interface{}, len(v))
+		for k, e := range v {
+			sk := ""
+			switch k := k.(type) {
+			case string:
+				sk = k
+			case int:
+				sk = strconv.FormatInt(int64(k), 10)
+			case int64:
+				sk = strconv.FormatInt(k, 10)
+			case uint64:
+				sk = strconv.FormatUint(k, 10)
+			case float64:
+				sk = strconv.FormatFloat(k, 'g', -1, 64)
+			default:
+				return nil, false
+			}
+
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			vv[sk] = ee
+		}
+		return vv, true
+	default:
+		return v, true
+	}
 }

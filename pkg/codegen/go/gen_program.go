@@ -5,6 +5,8 @@ import (
 	"fmt"
 	gofmt "go/format"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 	"sync"
 
@@ -17,7 +19,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type generator struct {
@@ -117,6 +121,107 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "go" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("go", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build a go.mod based on the packages used by program
+	var gomod bytes.Buffer
+	gomod.WriteString("module " + project.Name.String() + "\n")
+	gomod.WriteString(`
+go 1.17
+
+require (
+	github.com/pulumi/pulumi/sdk/v3 v3.30.0
+`)
+
+	// For each package add a PackageReference line
+	packages := program.Packages()
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+			return err
+		}
+
+		if p.Version != nil && p.Version.Major <= 0 {
+			// Let `go mod tidy` resolve pre-1.0 and non-module package versions on InstallDependencies,
+			// as it better handles the way we use `importBasePath`. What we need is a `modulePath`. `go
+			// get` handles these cases, which are not parseable, they depend on retrieving the target
+			// repository and downloading it to disk.
+			//
+			// Here are two cases, first the parseable case:
+			//
+			// * go get github.com/pulumi/pulumi-aws/sdk/v5/go/aws@v5.3.0
+			//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+			//                                           ~~ major version
+			//                                              ~~~~~~ package path - can be any number of path parts
+			//                                                     ~~~~~~ version
+			//
+			// Here, we can cut on the major version.
+
+			// * go get github.com/pulumi/pulumi-aws-native/sdk/go/aws@v0.16.0
+			//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+			//                                                  ~~~~~~ package path - can be any number of path parts
+			//                                                         ~~~~~~~ version
+			//
+			// Here we cannot cut on the major version, as it isn't present. The only way to resolve this
+			// package is to pull the repo.
+			//
+			// Fortunately for these pre-1.0 releases, `go mod tidy` on the generated repo will at least
+			// add the module based on the import generated in the .go files, but it will always get the
+			// latest version.
+
+			continue
+		}
+
+		// Relatively safe default, this works for Pulumi provider packages:
+		vPath := fmt.Sprintf("/v%d", p.Version.Major)
+		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
+		if langInfo, found := p.Language["go"]; found {
+			goInfo, ok := langInfo.(GoPackageInfo)
+			if ok && goInfo.ImportBasePath != "" {
+				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
+				if separatorIndex < 0 {
+					packageName = ""
+				} else {
+					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
+					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
+				}
+			}
+		}
+
+		if packageName != "" {
+			gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+		}
+	}
+
+	gomod.WriteString(")")
+
+	files["go.mod"] = gomod.Bytes()
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 var packageContexts sync.Map

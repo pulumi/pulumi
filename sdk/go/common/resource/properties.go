@@ -333,23 +333,21 @@ func NewPropertyValueRepl(v interface{},
 	case reflect.Map:
 		// If a map, create a new property map, provided the keys and values are okay.
 		obj := PropertyMap{}
-		for _, key := range rv.MapKeys() {
-			var pk PropertyKey
-			switch k := key.Interface().(type) {
-			case string:
-				pk = PropertyKey(k)
-			case PropertyKey:
-				pk = k
-			default:
-				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
+		for iter := rv.MapRange(); iter.Next(); {
+			key := iter.Key()
+			if key.Kind() != reflect.String {
+				contract.Failf("Unrecognized PropertyMap key type %v", key.Type())
 			}
+
+			pk := PropertyKey(key.String())
 			if replk != nil {
 				if rk, repl := replk(string(pk)); repl {
 					pk = rk
 				}
 			}
-			val := rv.MapIndex(key)
-			pv := NewPropertyValueRepl(val.Interface(), replk, replv)
+
+			val := iter.Value().Interface()
+			pv := NewPropertyValueRepl(val, replk, replv)
 			obj[pk] = pv
 		}
 		return NewObjectProperty(obj)

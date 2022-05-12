@@ -91,6 +91,32 @@ func UnwrapType(t schema.Type) schema.Type {
 	}
 }
 
+// MapInnerType applies f to the first non-wrapper type in t.
+// MapInnerType does not mutate it's input, and t should not either.
+func MapInnerType(t schema.Type, f func(schema.Type) schema.Type) schema.Type {
+	switch t := t.(type) {
+	case *schema.InputType:
+		return &schema.InputType{ElementType: MapInnerType(t.ElementType, f)}
+	case *schema.OptionalType:
+		return &schema.OptionalType{ElementType: MapInnerType(t.ElementType, f)}
+	case *schema.ArrayType:
+		return &schema.ArrayType{ElementType: MapInnerType(t.ElementType, f)}
+	case *schema.MapType:
+		return &schema.MapType{ElementType: MapInnerType(t.ElementType, f)}
+	default:
+		return f(t)
+	}
+}
+
+// Applies f to the first non-optional type in t.
+// If t is Optional{v} then returns Optional{f(v)}, otherwise f(t) is returned
+func MapOptionalType(t schema.Type, f func(schema.Type) schema.Type) schema.Type {
+	if opt, ok := t.(*schema.OptionalType); ok {
+		return &schema.OptionalType{ElementType: f(opt.ElementType)}
+	}
+	return f(t)
+}
+
 func IsNOptionalInput(t schema.Type) bool {
 	for {
 		switch typ := t.(type) {

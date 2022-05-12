@@ -57,9 +57,9 @@ type componentArgs struct {
 type ComponentArgs struct {
 	A      bool
 	B      *bool
-	Bar    *Foo
-	Baz    []Foo
-	BazMap map[string]Foo
+	Bar    *FooArgs
+	Baz    []FooInput
+	BazMap map[string]FooInput
 	C      int
 	D      *int
 	E      string
@@ -102,6 +102,42 @@ func (o ComponentOutput) ToComponentOutput() ComponentOutput {
 
 func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) ComponentOutput {
 	return o
+}
+
+func (o ComponentOutput) A() pulumi.BoolOutput {
+	return o.ApplyT(func(v *Component) pulumi.BoolOutput { return v.A }).(pulumi.BoolOutput)
+}
+
+func (o ComponentOutput) B() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Component) pulumi.BoolPtrOutput { return v.B }).(pulumi.BoolPtrOutput)
+}
+
+func (o ComponentOutput) Bar() FooPtrOutput {
+	return o.ApplyT(func(v *Component) FooPtrOutput { return v.Bar }).(FooPtrOutput)
+}
+
+func (o ComponentOutput) Baz() FooArrayOutput {
+	return o.ApplyT(func(v *Component) FooArrayOutput { return v.Baz }).(FooArrayOutput)
+}
+
+func (o ComponentOutput) C() pulumi.IntOutput {
+	return o.ApplyT(func(v *Component) pulumi.IntOutput { return v.C }).(pulumi.IntOutput)
+}
+
+func (o ComponentOutput) D() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *Component) pulumi.IntPtrOutput { return v.D }).(pulumi.IntPtrOutput)
+}
+
+func (o ComponentOutput) E() pulumi.StringOutput {
+	return o.ApplyT(func(v *Component) pulumi.StringOutput { return v.E }).(pulumi.StringOutput)
+}
+
+func (o ComponentOutput) F() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Component) pulumi.StringPtrOutput { return v.F }).(pulumi.StringPtrOutput)
+}
+
+func (o ComponentOutput) Foo() FooPtrOutput {
+	return o.ApplyT(func(v *Component) FooPtrOutput { return v.Foo }).(FooPtrOutput)
 }
 
 func init() {

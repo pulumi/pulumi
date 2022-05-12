@@ -72,9 +72,8 @@ dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 # NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
-brew:: BREW_VERSION := $(shell scripts/get-version HEAD)
 brew::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" ${PROJECT}
+	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_pkg lint_sdk lint_tests
 lint:: lint_pkg lint_sdk lint_tests
@@ -168,4 +167,5 @@ get_schemas: schema-aws!4.26.0			\
 			 schema-azure-native!1.29.0	\
 			 schema-azure!4.18.0		\
 			 schema-kubernetes!3.7.2	\
-			 schema-random!4.2.0
+			 schema-random!4.2.0	\
+			 schema-eks!0.37.1

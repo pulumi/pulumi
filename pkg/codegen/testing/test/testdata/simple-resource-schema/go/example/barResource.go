@@ -78,6 +78,10 @@ func (o BarResourceOutput) ToBarResourceOutputWithContext(ctx context.Context) B
 	return o
 }
 
+func (o BarResourceOutput) Foo() ResourceOutput {
+	return o.ApplyT(func(v *BarResource) ResourceOutput { return v.Foo }).(ResourceOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*BarResourceInput)(nil)).Elem(), &BarResource{})
 	pulumi.RegisterOutputType(BarResourceOutput{})

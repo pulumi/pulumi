@@ -149,6 +149,10 @@ func (o WorkloadOutput) ToWorkloadOutputWithContext(ctx context.Context) Workloa
 	return o
 }
 
+func (o WorkloadOutput) Pod() corev1.PodPtrOutput {
+	return o.ApplyT(func(v *Workload) corev1.PodPtrOutput { return v.Pod }).(corev1.PodPtrOutput)
+}
+
 type WorkloadArrayOutput struct{ *pulumi.OutputState }
 
 func (WorkloadArrayOutput) ElementType() reflect.Type {

@@ -272,10 +272,10 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 
 func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool, err error) {
 	if useEnv {
-		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
+		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok && phrase != "" {
 			return phrase, false, nil
 		}
-		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phraseFile != "" {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
