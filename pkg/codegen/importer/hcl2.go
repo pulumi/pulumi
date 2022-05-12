@@ -43,7 +43,10 @@ func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names N
 		return nil, err
 	}
 
-	r, ok := pkg.GetResource(string(state.Type))
+	r, ok, err := pkg.Resources().Get(string(state.Type))
+	if err != nil {
+		return nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
+	}
 	if !ok {
 		return nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
