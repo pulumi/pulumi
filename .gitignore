@@ -67,3 +67,6 @@ goreleaser-prebuilt/
 goreleaser-lang/
 
 __pycache__
+
+# File targets for make
+*.phony

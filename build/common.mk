@@ -93,7 +93,7 @@
 SHELL       ?= /bin/bash
 .SHELLFLAGS := -ec
 
-STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
+STEP_MESSAGE = @printf "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m\n"
 
 # Our install targets place items item into $PULUMI_ROOT.
 PULUMI_ROOT ?= $$HOME/.pulumi-dev
@@ -112,7 +112,7 @@ GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cov
 GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
 GOPROXY = 'https://proxy.golang.org'
 
-.PHONY: default all ensure only_build only_test build lint install test_all core
+.PHONY: default all only_build only_test lint install test_all core build
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -127,7 +127,6 @@ default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 install_all:: $(SUB_PROJECTS:%=%_install_all)
 test_all:: $(SUB_PROJECTS:%=%_test_all)
-ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
 endif
@@ -151,9 +150,6 @@ endif
 default:: build install lint test_fast
 all:: build install lint test_all
 
-ensure::
-	$(call STEP_MESSAGE)
-	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::
 	$(call STEP_MESSAGE)
@@ -242,3 +238,17 @@ format::
 		-path "./*/compilation_error/*" -or \
 		-path "./*/testdata/*" \
 	\) | xargs gofmt -s -w
+
+# Defines the target `ensure.%` where `%` is an executable to check for. For
+# example, the target `ensure.foo` will check that `foo` is available on the
+# user's path.
+%.ensure:
+	@pad=$$(printf '%0.1s' "."{1..20});                                        \
+	exec=$$(echo $@ | sed 's/\.ensure//');                                     \
+	printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
+	if command -v $${exec} > /dev/null ; then                                  \
+	    echo "✓";                                                              \
+	else                                                                       \
+	    echo "X";                                                              \
+	    exit 1;                                                                \
+	fi                                                                         \
