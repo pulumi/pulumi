@@ -1549,7 +1549,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("invalid", true, false)]
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
-            var testMinVersion = SemVersion.Parse("2.21.1");
+            var testMinVersion = new SemVersion(2, 21, 1);
 
             if (errorExpected)
             {
