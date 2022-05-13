@@ -1103,7 +1103,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["id"] = crs.id
 	}
 
-	rawOutput, _, _ := ctx.NewOutput()
+	rawOutputState := ctx.newOutputState(anyType, resourceV)
+	rawOutputs := AnyOutput{rawOutputState}
 
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
@@ -1114,8 +1115,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
-		state.rawOutputs = rawOutput
-		rs.rawOutputs = rawOutput
+		state.rawOutputs = rawOutputs
+		rs.rawOutputs = rawOutputs
 		state.pluginDownloadURL = pluginDownloadURL
 		rs.pluginDownloadURL = pluginDownloadURL
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
