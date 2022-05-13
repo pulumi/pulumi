@@ -7,6 +7,8 @@ PROJECT_ROOT     := $(realpath ../..)
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
+BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
+
 PROJECT_PKGS    := $(shell go list ./cmd/...)
 TESTPARALLELISM ?= 10
 
@@ -37,7 +39,7 @@ build:: build_package build_plugin
 
 lint:: ensure
 	. venv/*/activate && \
-		python -m black ./lib/pulumi --check
+		python -m black $(BLACK_FLAGS) --check
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
@@ -45,7 +47,7 @@ lint:: ensure
 
 format:: ensure
 	. venv/*/activate && \
-		python -m black ./lib/pulumi
+		python -m black $(BLACK_FLAGS)
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
