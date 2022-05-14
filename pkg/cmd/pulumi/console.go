@@ -66,7 +66,7 @@ func newConsoleCmd() *cobra.Command {
 					}
 					if stack == nil {
 						fmt.Println("No stack is currently selected. " +
-							"Please run `pulumi stack select` to select a stack.")
+							"Run `pulumi stack select` to select a stack.")
 						return nil
 					}
 				}
