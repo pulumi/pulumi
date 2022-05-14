@@ -80,14 +80,6 @@
 # green text) to the console. All the targets provided by this makefile
 # do that by default.
 #
-# The ensure target also provides some default behavior, detecting if
-# there is a Gopkg.toml or package.json file in the current folder and
-# if so calling dep ensure -v or yarn install. This behavior means that
-# projects will not often need to augment the ensure target.
-#
-# Unlike the other leaf targets, ensure will call the ensure target on
-# any sub-projects.
-#
 # Importing common.mk should be the first thing your Makefile does, after
 # optionally setting SUB_PROJECTS, PROJECT_NAME and NODE_MODULE_NAME.
 SHELL       ?= /bin/bash
@@ -138,13 +130,13 @@ core:: build lint install test_fast
 # print a nice banner.
 ifneq ($(PROJECT_NAME),)
 default::
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
-	@echo -e "\033[1;37m$(PROJECT_NAME)\033[1;37m"
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
+	@printf "\033[1;37m$(PROJECT_NAME)\033[1;37m\n"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
 all::
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
-	@echo -e "\033[1;37m$(PROJECT_NAME)\033[1;37m"
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
+	@printf "\033[1;37m$(PROJECT_NAME)\033[1;37m\n"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
 endif
 
 default:: build install lint test_fast
@@ -239,7 +231,7 @@ format::
 		-path "./*/testdata/*" \
 	\) | xargs gofmt -s -w
 
-# Defines the target `ensure.%` where `%` is an executable to check for. For
+# Defines the target `%.ensure` where `%` is an executable to check for. For
 # example, the target `ensure.foo` will check that `foo` is available on the
 # user's path.
 %.ensure:
