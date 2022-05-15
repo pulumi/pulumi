@@ -254,22 +254,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 				typ = &schema.OptionalType{ElementType: typ}
 			}
 
-			t := b.schemaTypeToType(typ)
-			if prop.ConstValue != nil {
-				var value cty.Value
-				switch v := prop.ConstValue.(type) {
-				case bool:
-					value = cty.BoolVal(v)
-				case float64:
-					value = cty.NumberFloatVal(v)
-				case string:
-					value = cty.StringVal(v)
-				default:
-					contract.Failf("unexpected constant type %T", v)
-				}
-				t = model.NewConstType(t, value)
-			}
-			properties[prop.Name] = t
+			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
 		}
 		return objType
 	case *schema.TokenType:
@@ -301,6 +286,23 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			return model.NewUnionTypeAnnotated(types, src)
 		}
 		return model.NewUnionType(types...)
+	case *schema.ResourceType:
+		if t, ok := b.schemaTypes[src]; ok {
+			return t
+		}
+
+		properties := map[string]model.Type{}
+		objType := model.NewObjectType(properties, src)
+		b.schemaTypes[src] = objType
+		for _, prop := range src.Resource.Properties {
+			typ := prop.Type
+			if !prop.IsRequired() {
+				typ = &schema.OptionalType{ElementType: typ}
+			}
+
+			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
+		}
+		return objType
 	default:
 		switch src {
 		case schema.BoolType:
@@ -323,6 +325,26 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			return model.NoneType
 		}
 	}
+}
+
+func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property) model.Type {
+	t := b.schemaTypeToType(typ)
+	if prop.ConstValue != nil {
+		var value cty.Value
+		switch v := prop.ConstValue.(type) {
+		case bool:
+			value = cty.BoolVal(v)
+		case float64:
+			value = cty.NumberFloatVal(v)
+		case string:
+			value = cty.StringVal(v)
+		default:
+			contract.Failf("unexpected constant type %T", v)
+		}
+		t = model.NewConstType(t, value)
+	}
+
+	return t
 }
 
 var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)

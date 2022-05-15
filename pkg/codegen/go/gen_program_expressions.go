@@ -936,7 +936,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	} else {
 		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
-		if !strings.HasPrefix(retType, "pulumi.") {
+		if !strings.Contains(retType, ".") {
 			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
 		}
 	}
