@@ -16,3 +16,6 @@
 
 - [codegen/python] Fix importing of enum types from other packages.
   [#9579](https://github.com/pulumi/pulumi/pull/9579)
+
+- [cli] Fix panic in `pulumi console` when no stack is selected.
+  [#9594](https://github.com/pulumi/pulumi/pull/9594)
