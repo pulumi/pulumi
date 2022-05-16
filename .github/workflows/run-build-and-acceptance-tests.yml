@@ -208,9 +208,10 @@ jobs:
     secrets:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
 
-  debug-publish-checksums:
-    name: Temporary task to debug publish checksum mismatch
+  publish-binaries:
+    name: Publish Binaries
     runs-on: macos-latest
+    # needs: [lint, language-sdk-lint, build, test-linux, test-windows, test-macos]
     needs: [build]
     strategy:
       matrix:
@@ -249,10 +250,19 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.6.0
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set PreRelease Version
         run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser to verify tarball checksums
@@ -284,3 +294,11 @@ jobs:
           sort goreleaser/*-checksums.txt
           echo "Checking that tested and released checksums are identical:"
           diff <(sort goreleaser/*-checksums.txt) $C
+      # - name: Download pulumi-language-*
+      #   run: |
+      #     ./scripts/get-language-providers.sh
+      # - name: Run GoReleaser to actually release
+      #   uses: goreleaser/goreleaser-action@v2
+      #   with:
+      #     version: latest
+      #     args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate
