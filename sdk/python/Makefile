@@ -18,11 +18,13 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
 
-ensure::
+ensure:: $(PYTHON).ensure .ensure.phony
+.ensure.phony:
 	$(PYTHON) -m venv venv
 	. venv/*/activate && python -m pip install wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
+	@touch .ensure.phony
 
 build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
