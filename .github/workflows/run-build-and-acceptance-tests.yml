@@ -169,7 +169,12 @@ jobs:
     name: Build
     uses: pulumi/pulumi/.github/workflows/build.yml@master
     with:
+      # Cross-compiling from ubuntu-latest is faster but the artifact
+      # checksums will not match what publish-binaries expects.
+      default-build-platform: macos-latest
       enable-coverage: true
+      goreleaser-config: '.goreleaser.prerelease.yml'
+      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
 
   test-linux:
     name: Test Linux
@@ -201,3 +206,79 @@ jobs:
       platform: windows-latest
     secrets:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+
+  debug-publish-checksums:
+    name: Temporary task to debug publish checksum mismatch
+    runs-on: macos-latest
+    needs: [build]
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+    steps:
+      # This step rebuilds binaries to publish and validates that
+      # their checksums match the checksums of the tested binaries;
+      # since the tested binaries were build with coverage support we
+      # need to match it here for checksums to match.
+      - name: Enable code coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set PreRelease Version
+        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Run GoReleaser to verify tarball checksums
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate --skip-publish --skip-announce
+      - name: Download pulumi-windows-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-checksums
+          path: artifacts/checksums/windows
+      - name: Download pulumi-linux-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-checksums
+          path: artifacts/checksums/linux
+      - name: Download pulumi-darwin-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-checksums
+          path: artifacts/checksums/darwin
+      - name: Verify checksums
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums.txt
+          echo "Tested tarballs with the following checksums:"
+          cat artifacts/checksums/*/* | sort | tee $C
+          echo "Released tarballs with the following checksums:"
+          sort goreleaser/*-checksums.txt
+          echo "Checking that tested and released checksums are identical:"
+          diff <(sort goreleaser/*-checksums.txt) $C
