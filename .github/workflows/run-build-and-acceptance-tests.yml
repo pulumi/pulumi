@@ -152,6 +152,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
       - name: Ensure
         run: |
           make ensure
@@ -251,6 +252,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
       - name: Set PreRelease Version
         run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser to verify tarball checksums
