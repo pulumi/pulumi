@@ -240,8 +240,9 @@ type property struct {
 	DeprecationMessage string
 	Link               string
 
-	IsRequired bool
-	IsInput    bool
+	IsRequired         bool
+	IsInput            bool
+	IsReplaceOnChanges bool
 }
 
 // enum represents an enum.
@@ -1111,6 +1112,10 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired(),
 			IsInput:            input,
+			// We indicate that a property will replace if either we
+			// a) will force the replace at the engine level
+			// a) are told that the provider will require a replace
+			IsReplaceOnChanges: prop.ReplaceOnChanges || prop.WillReplaceOnChanges,
 			Link:               "#" + propID,
 			Types:              propTypes,
 		})
