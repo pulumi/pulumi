@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,9 @@
 package filestate
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -162,12 +158,12 @@ func (b *localBackend) getCheckpoint(stackName tokens.Name) (*apitype.Checkpoint
 	if err != nil {
 		return nil, err
 	}
-	bytes, err = maybeInflateBytes(bytes)
-	if err != nil {
-		return nil, err
+	m := encoding.JSON
+	if encoding.IsCompressed(bytes) {
+		m = encoding.Gzip(m)
 	}
 
-	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
 }
 
 func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
@@ -180,6 +176,15 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
+	if b.gzip {
+		if filepath.Ext(file) != encoding.GZIPExt {
+			file = file + ".gz"
+		}
+		m = encoding.Gzip(m)
+	} else {
+		file = strings.TrimSuffix(file, ".gz")
+	}
+
 	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
 		return "", fmt.Errorf("serializaing checkpoint: %w", err)
@@ -188,17 +193,6 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	if err != nil {
 		return "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
-	if b.gzip {
-		if filepath.Ext(file) != ".gz" {
-			file = file + ".gz"
-		}
-		byts, err = deflateBytes(byts)
-		if err != nil {
-			return "", fmt.Errorf("An IO error occurred while compressing the checkpoint: %w", err)
-		}
-	} else {
-		file = strings.TrimSuffix(file, ".gz")
-	}
 
 	// Back up the existing file if it already exists. Don't delete the original, the following WriteAll will
 	// atomically replace it anyway and various other bits of the system depend on being able to find the
@@ -206,9 +200,12 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	// context).
 	filePlain := strings.TrimSuffix(file, ".gz")
 	fileGzip := filePlain + ".gz"
-	bckPlain := backupTarget(b.bucket, filePlain, true)
-	bckGzip := backupTarget(b.bucket, fileGzip, true)
-	bck := fmt.Sprintf("[%s, %s]", bckPlain, bckGzip)
+	var bck string
+	if b.gzip {
+		bck = backupTarget(b.bucket, fileGzip, true)
+	} else {
+		bck = backupTarget(b.bucket, filePlain, true)
+	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -316,10 +313,6 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 	if err != nil {
 		return err
 	}
-	byts, err = maybeInflateBytes(byts)
-	if err != nil {
-		return err
-	}
 
 	// Get the backup directory.
 	backupDir := b.backupDirectory(name)
@@ -327,11 +320,14 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
-	if ext == ".gz" {
-		// store .json.gz in ext
-		ext = filepath.Ext(strings.TrimSuffix(stackFile, ext)) + ".gz"
-	}
 	base := strings.TrimSuffix(stackFile, ext)
+	if ext2 := filepath.Ext(base); ext2 != "" && ext == encoding.GZIPExt {
+		// base: stack-name.json, ext: .gz
+		// ->
+		// base: stack-name, ext: .json.gz
+		ext = ext2 + ext
+		base = strings.TrimSuffix(base, ext2)
+	}
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
 	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
 }
@@ -429,11 +425,11 @@ func (b *localBackend) getHistory(name tokens.Name, pageSize int, page int) ([]b
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
-		b, err = maybeInflateBytes(b)
-		if err != nil {
-			return nil, err
+		m := encoding.JSON
+		if encoding.IsCompressed(b) {
+			m = encoding.Gzip(m)
 		}
-		err = json.Unmarshal(b, &update)
+		err = m.Unmarshal(b, &update)
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
@@ -488,70 +484,25 @@ func (b *localBackend) addToHistory(name tokens.Name, update backend.UpdateInfo)
 
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
-	// Add extra extension to file (like ".gz")
-	fileExtraExt := ""
+
+	m, ext := encoding.JSON, "json"
+	if b.gzip {
+		m = encoding.Gzip(m)
+		ext += ".gz"
+	}
 
 	// Save the history file.
-	byts, err := json.MarshalIndent(&update, "", "    ")
+	byts, err := m.Marshal(&update)
 	if err != nil {
 		return err
 	}
-	if b.gzip {
-		fileExtraExt = ".gz"
-		byts, err = deflateBytes(byts)
-		if err != nil {
-			return err
-		}
-	}
 
-	historyFile := fmt.Sprintf("%s.history.json%s", pathPrefix, fileExtraExt)
+	historyFile := fmt.Sprintf("%s.history.%s", pathPrefix, ext)
 	if err = b.bucket.WriteAll(context.TODO(), historyFile, byts, nil); err != nil {
 		return err
 	}
 
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
-	checkpointFile := fmt.Sprintf("%s.checkpoint.json%s", pathPrefix, fileExtraExt)
+	checkpointFile := fmt.Sprintf("%s.checkpoint.%s", pathPrefix, ext)
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
-}
-
-// friendly wrapper for inflateBytes
-func maybeInflateBytes(data []byte) ([]byte, error) {
-	if data[0] != 31 || data[1] != 139 {
-		// not gzip (doesn't have magic bytes), don't do anything
-		return data, nil
-	}
-	return inflateBytes(data)
-}
-
-// return plain data from gziped data
-func inflateBytes(data []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(data)
-	reader, err := gzip.NewReader(buf)
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-	inflated, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	if err := reader.Close(); err != nil {
-		return nil, err
-	}
-	return inflated, nil
-}
-
-// return gziped data from plain data
-func deflateBytes(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	writer := gzip.NewWriter(&buf)
-	defer writer.Close()
-	_, err := writer.Write(data)
-	if err != nil {
-		return nil, err
-	}
-	if err := writer.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }

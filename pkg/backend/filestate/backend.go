@@ -59,7 +59,7 @@ import (
 )
 
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
-//  to enable gzip compression when using the filestate backend.
+// to enable gzip compression when using the filestate backend.
 const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -848,8 +848,8 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
 		// But accept gzip compression
-		if ext == ".gz" {
-			stackfn = strings.TrimSuffix(stackfn, ".gz")
+		if ext == encoding.GZIPExt {
+			stackfn = strings.TrimSuffix(stackfn, encoding.GZIPExt)
 			ext = filepath.Ext(stackfn)
 		}
 
