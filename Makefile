@@ -23,15 +23,16 @@ TESTPARALLELISM ?= 10
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 
-ensure::
-	$(call STEP_MESSAGE)
-	@echo "Check for pulumictl"; [ -e "$(shell which pulumictl)" ]
-
+ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
+.ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
 	cd pkg && go mod download
 	cd tests && go mod download
+	@touch .ensure.phony
 
-build-proto::
+build-proto: sdk/proto/go/*.pb.go
+sdk/proto/go/%.pb.go: $(wildcard sdk/proto/*.proto)
+	$(call STEP_MESSAGE)
 	cd sdk/proto && ./generate.sh
 
 .PHONY: generate
@@ -40,10 +41,10 @@ generate::
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
 ifeq ($(PULUMI_TEST_COVERAGE_PATH),)
-build::
+build:: build-proto go.ensure
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-install::
+install:: .ensure.phony go.ensure
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 else
 build:: build_cover ensure_cover
@@ -76,13 +77,15 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_pkg lint_sdk lint_tests
-lint:: lint_pkg lint_sdk lint_tests
-lint_pkg:
+lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
+lint_pkg: lint_deps
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_sdk:
+lint_sdk: lint_deps
 	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_tests:
+lint_tests: lint_deps
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint_deps:
+	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
@@ -135,7 +138,6 @@ test_integration_subpkgs:
 	@cd tests && $(GO_TEST) $(TESTS_PKGS)
 
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
-test_integration::
 
 tidy::
 	./scripts/tidy.sh
@@ -151,8 +153,8 @@ validate_codecov_yaml::
 name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
 # Here we take the second word, just the version
 version=$(word 2,$(subst !, ,$@))
-schema-%:
-	@echo "Ensuring $@ => ${name}, ${version}"
+schema-%: curl.ensure jq.ensure
+	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
 	@[ -f pkg/codegen/testing/test/testdata/${name}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
@@ -163,9 +165,9 @@ schema-%:
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
 		fi
-get_schemas: schema-aws!4.26.0			\
-			 schema-azure-native!1.29.0	\
-			 schema-azure!4.18.0		\
-			 schema-kubernetes!3.7.2	\
-			 schema-random!4.2.0	\
+get_schemas: schema-aws!4.26.0          \
+			 schema-azure-native!1.29.0 \
+			 schema-azure!4.18.0        \
+			 schema-kubernetes!3.7.2    \
+			 schema-random!4.2.0        \
 			 schema-eks!0.37.1
