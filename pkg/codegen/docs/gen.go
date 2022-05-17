@@ -1112,9 +1112,9 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired(),
 			IsInput:            input,
-			// We indicate that a property will replace if either we
-			// a) will force the replace at the engine level
-			// a) are told that the provider will require a replace
+			// We indicate that a property will replace if either
+			// a) we will force the replace at the engine level
+			// b) we are told that the provider will require a replace
 			IsReplaceOnChanges: prop.ReplaceOnChanges || prop.WillReplaceOnChanges,
 			Link:               "#" + propID,
 			Types:              propTypes,
