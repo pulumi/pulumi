@@ -270,7 +270,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_csharp" style="color: inherit; text-decoration: inherit;">Bone</a>
@@ -293,7 +293,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_go" style="color: inherit; text-decoration: inherit;">Bone</a>
@@ -316,7 +316,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_java" style="color: inherit; text-decoration: inherit;">bone</a>
@@ -339,7 +339,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_nodejs" style="color: inherit; text-decoration: inherit;">bone</a>
@@ -362,7 +362,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">str</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_python" style="color: inherit; text-decoration: inherit;">bone</a>
@@ -385,7 +385,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+</dd><dt class="property- property-replacement"
             title="">
         <span id="bone_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bone_yaml" style="color: inherit; text-decoration: inherit;">bone</a>

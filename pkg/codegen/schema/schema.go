@@ -352,8 +352,10 @@ type Property struct {
 	Secret bool
 	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
 	ReplaceOnChanges bool
-
-	Plain bool
+	// WillReplaceOnChanges indicates that the provider will replace the resource when
+	// this property is changed. This property is used exclusively for docs.
+	WillReplaceOnChanges bool
+	Plain                bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -1356,6 +1358,9 @@ type PropertySpec struct {
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
 	ReplaceOnChanges bool `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// WillReplaceOnChanges indicates that the provider will replace the resource when
+	// this property is changed. This property is used exclusively for docs.
+	WillReplaceOnChanges bool `json:"willReplaceOnChanges,omitempty" yaml:"willReplaceOnChanges,omitempty"`
 }
 
 // ObjectTypeSpec is the serializable form of an object type.
