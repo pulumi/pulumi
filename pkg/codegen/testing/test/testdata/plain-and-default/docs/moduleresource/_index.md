@@ -16,14 +16,19 @@ no_edit_this_page: true
 
 
 ## Create a ModuleResource Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -45,17 +50,42 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewModuleResource</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">ModuleResource</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">foobar:ModuleResource</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -77,9 +107,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -101,9 +133,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -131,9 +165,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -155,19 +191,47 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">ModuleResourceArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
 
 ## ModuleResource Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The ModuleResource resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The ModuleResource resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="plain_required_bool_csharp">
@@ -176,7 +240,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_number_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>number</a>
@@ -184,7 +248,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_string_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>string</a>
@@ -192,7 +256,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_bool_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>bool</a>
@@ -200,7 +264,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_enum_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
@@ -208,7 +272,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_number_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
@@ -216,7 +280,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_string_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>string</a>
@@ -224,7 +288,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_bool_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>bool</a>
@@ -232,7 +296,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_enum_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
@@ -240,7 +304,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_number_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>number</a>
@@ -248,7 +312,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_string_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>string</a>
@@ -256,7 +320,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_bool_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>bool</a>
@@ -264,7 +328,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_number_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>number</a>
@@ -272,7 +336,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_string_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_csharp" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>string</a>
@@ -280,10 +344,12 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="plain_required_bool_go">
@@ -292,7 +358,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_number_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>number</a>
@@ -300,7 +366,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_string_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>required_<wbr>string</a>
@@ -308,7 +374,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_bool_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>bool</a>
@@ -316,7 +382,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_enum_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
@@ -324,7 +390,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_number_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
@@ -332,7 +398,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_string_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>string</a>
@@ -340,7 +406,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_bool_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>bool</a>
@@ -348,7 +414,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_enum_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
@@ -356,7 +422,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_number_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>number</a>
@@ -364,7 +430,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_string_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>string</a>
@@ -372,7 +438,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_bool_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>bool</a>
@@ -380,7 +446,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_number_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>number</a>
@@ -388,7 +454,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_string_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_go" style="color: inherit; text-decoration: inherit;">Plain_<wbr>optional_<wbr>string</a>
@@ -396,10 +462,130 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="plain_required_bool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="plain_required_number_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="plain_required_string_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_bool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_java" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_enum_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_java" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_number_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_java" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_string_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_java" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_bool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_number_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_string_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_bool_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_number_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_string_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_java" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="plain_required_bool_nodejs">
@@ -408,7 +594,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_number_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
@@ -416,7 +602,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_string_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
@@ -424,7 +610,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_bool_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
@@ -432,7 +618,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_enum_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
@@ -440,7 +626,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_number_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
@@ -448,7 +634,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_string_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
@@ -456,7 +642,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_bool_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
@@ -464,7 +650,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_enum_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
@@ -472,7 +658,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_number_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
@@ -480,7 +666,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_string_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
@@ -488,7 +674,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_bool_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
@@ -496,7 +682,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_number_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
@@ -504,7 +690,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_string_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_nodejs" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
@@ -512,10 +698,12 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="plain_required_bool_python">
@@ -524,7 +712,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_number_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
@@ -532,7 +720,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="plain_required_string_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
@@ -540,7 +728,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_bool_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_python" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
@@ -548,7 +736,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_enum_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_python" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
@@ -556,7 +744,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_number_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_python" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
@@ -564,7 +752,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_string_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_python" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
@@ -572,7 +760,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_bool_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
@@ -580,7 +768,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_enum_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
@@ -588,7 +776,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_number_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
@@ -596,7 +784,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="optional_string_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
@@ -604,7 +792,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_bool_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
@@ -612,7 +800,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_number_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
@@ -620,7 +808,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="plain_optional_string_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
@@ -628,8 +816,127 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="plain_required_bool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_bool_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="plain_required_number_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_number_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="plain_required_string_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_required_string_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>required_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_bool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_bool_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_enum_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_enum_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">4 | 6 | 8</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_number_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_number_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="required_string_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_string_yaml" style="color: inherit; text-decoration: inherit;">required_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_bool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">4 | 6 | 8</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_number_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_string_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_bool_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_bool_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>bool</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_number_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_number_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>number</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_optional_string_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plain_optional_string_yaml" style="color: inherit; text-decoration: inherit;">plain_<wbr>optional_<wbr>string</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -638,7 +945,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -647,10 +955,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -659,10 +970,28 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -671,10 +1000,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -683,8 +1015,25 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -698,33 +1047,59 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 <h4 id="enumthing">Enum<wbr>Thing</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Four</dt>
     <dd>4</dd><dt>Six</dt>
     <dd>6</dd><dt>Eight</dt>
     <dd>8</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Enum<wbr>Thing<wbr>Four</dt>
     <dd>4</dd><dt>Enum<wbr>Thing<wbr>Six</dt>
     <dd>6</dd><dt>Enum<wbr>Thing<wbr>Eight</dt>
     <dd>8</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Four</dt>
     <dd>4</dd><dt>Six</dt>
     <dd>6</dd><dt>Eight</dt>
     <dd>8</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Four</dt>
+    <dd>4</dd><dt>Six</dt>
+    <dd>6</dd><dt>Eight</dt>
+    <dd>8</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>FOUR</dt>
     <dd>4</dd><dt>SIX</dt>
     <dd>6</dd><dt>EIGHT</dt>
     <dd>8</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>'\x04'</dt>
+    <dd>4</dd><dt>'\x06'</dt>
+    <dd>6</dd><dt>'\b'</dt>
+    <dd>8</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

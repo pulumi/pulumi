@@ -143,13 +143,61 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 // GenForExpression generates code for a ForExpression.
-func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /*TODO*/ }
+func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
+	g.genNYI(w, "For expression")
+}
+
+func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
+	return func(member *schema.Enum) {
+		// We know the enum value at the call site, so we can directly stamp in a
+		// valid enum instance. We don't need to convert.
+		enumName := tokenToName(to.Token)
+		memberTag := member.Name
+		if memberTag == "" {
+			memberTag = member.Value.(string)
+		}
+		memberTag, err := makeSafeEnumName(memberTag, enumName)
+		contract.AssertNoErrorf(err, "Enum is invalid")
+		namespace := tokenToModule(to.Token)
+		g.Fgenf(w, "%s.%s", namespace, memberTag)
+	}
+}
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	//nolint:goconst
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
-		switch arg := expr.Args[0].(type) {
+		from := expr.Args[0]
+		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
+		output, isOutput := to.(*model.OutputType)
+		if isOutput {
+			to = output.ElementType
+		}
+		switch to := to.(type) {
+		case *model.EnumType:
+			var underlyingType string
+			switch {
+			case to.Type.Equals(model.StringType):
+				underlyingType = "string"
+			default:
+				panic(fmt.Sprintf(
+					"Unsafe enum conversions from type %s not implemented yet: %s => %s",
+					from.Type(), from, to))
+			}
+			enumTag := fmt.Sprintf("%s.%s",
+				tokenToModule(to.Token), tokenToName(to.Token))
+			if isOutput {
+				g.Fgenf(w,
+					"%.v.ApplyT(func(x *%[3]s) %[2]s { return %[2]s(*x) }).(%[2]sOutput)",
+					from, enumTag, underlyingType)
+				return
+			}
+			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+				g.Fgenf(w, "%s(%v)", enumTag, from)
+			})
+			return
+		}
+		switch arg := from.(type) {
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
 		case *model.ObjectConsExpression:
@@ -183,8 +231,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "pulumi.NewRemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgenf(w, "pulumi.NewAssetArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "pulumi.NewStringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "pulumi.NewRemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])

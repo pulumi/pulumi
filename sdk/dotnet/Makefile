@@ -4,7 +4,7 @@ LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-do
 PROJECT_PKGS    := $(shell go list ./cmd...)
 PROJECT_ROOT    := $(realpath ../..)
 
-DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
+DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language dotnet))
 
 TESTPARALLELISM ?= 10
 
@@ -14,9 +14,11 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= install
 
-ensure::
+ensure:: dotnet.ensure .ensure.phony
+.ensure.phony: dotnet.sln **/*.csproj
 	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
 	dotnet restore dotnet.sln
+	@touch .ensure.phony
 
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 TEST_COVERAGE_ARGS := -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)

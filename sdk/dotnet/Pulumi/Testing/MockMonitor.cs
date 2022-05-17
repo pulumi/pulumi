@@ -30,7 +30,7 @@ namespace Pulumi.Testing
             return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
         }
 
-        public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
+        public async Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request)
         {
             var args = ToDictionary(request.Args);
 
@@ -47,7 +47,7 @@ namespace Pulumi.Testing
                 }
                 return new InvokeResponse { Return = await SerializeAsync(registeredResource).ConfigureAwait(false) };
             }
-            
+
             var result = await _mocks.CallAsync(new MockCallArgs
                 {
                     Token = request.Tok,

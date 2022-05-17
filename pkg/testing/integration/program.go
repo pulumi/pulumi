@@ -55,10 +55,14 @@ import (
 	user "github.com/tweekmonster/luser"
 )
 
-const PythonRuntime = "python"
-const NodeJSRuntime = "nodejs"
-const GoRuntime = "go"
-const DotNetRuntime = "dotnet"
+const (
+	PythonRuntime = "python"
+	NodeJSRuntime = "nodejs"
+	GoRuntime     = "go"
+	DotNetRuntime = "dotnet"
+	YAMLRuntime   = "yaml"
+	JavaRuntime   = "java"
+)
 
 const windowsOS = "windows"
 
@@ -689,19 +693,19 @@ func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *Program
 
 // ProgramTester contains state associated with running a single test pass.
 type ProgramTester struct {
-	t            *testing.T          // the Go tester for this run.
-	opts         *ProgramTestOptions // options that control this test run.
-	bin          string              // the `pulumi` binary we are using.
-	yarnBin      string              // the `yarn` binary we are using.
-	goBin        string              // the `go` binary we are using.
-	pythonBin    string              // the `python` binary we are using.
-	pipenvBin    string              // The `pipenv` binary we are using.
-	dotNetBin    string              // the `dotnet` binary we are using.
-	eventLog     string              // The path to the event log for this test.
-	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
-	tmpdir       string              // the temporary directory we use for our test environment
-	projdir      string              // the project directory we use for this run
-	TestFinished bool                // whether or not the test if finished
+	t              *testing.T          // the Go tester for this run.
+	opts           *ProgramTestOptions // options that control this test run.
+	bin            string              // the `pulumi` binary we are using.
+	yarnBin        string              // the `yarn` binary we are using.
+	goBin          string              // the `go` binary we are using.
+	pythonBin      string              // the `python` binary we are using.
+	pipenvBin      string              // The `pipenv` binary we are using.
+	dotNetBin      string              // the `dotnet` binary we are using.
+	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
+	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
+	tmpdir         string              // the temporary directory we use for our test environment
+	projdir        string              // the project directory we use for this run
+	TestFinished   bool                // whether or not the test if finished
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -716,10 +720,10 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipEmptyPreviewUpdate = true
 	}
 	return &ProgramTester{
-		t:            t,
-		opts:         opts,
-		eventLog:     filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
-		maxStepTries: maxStepTries,
+		t:              t,
+		opts:           opts,
+		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		maxStepTries:   maxStepTries,
 	}
 }
 
@@ -1320,7 +1324,7 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	expectNopUpdate bool) error {
 
 	preview := []string{"preview", "--non-interactive"}
-	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.eventLog}
+	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.updateEventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
@@ -1580,22 +1584,9 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 		}
 	}
 
-	// Read the event log.
-	eventsFile, err := os.Open(pt.eventLog)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("expected to be able to open event log file %s: %w", pt.eventLog, err)
-	}
-	defer contract.IgnoreClose(eventsFile)
-	decoder, events := json.NewDecoder(eventsFile), []apitype.EngineEvent{}
-	for {
-		var event apitype.EngineEvent
-		if err = decoder.Decode(&event); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return fmt.Errorf("decoding engine event: %w", err)
-		}
-		events = append(events, event)
+	events, err := pt.readUpdateEventLog()
+	if err != nil {
+		return err
 	}
 
 	// Populate stack info object with all of this data to pass to the validation function
@@ -1611,6 +1602,35 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	extraRuntimeValidation(pt.t, stackInfo)
 	pt.t.Log("Extra runtime validation complete.")
 	return nil
+}
+
+func (pt *ProgramTester) readUpdateEventLog() ([]apitype.EngineEvent, error) {
+	events := []apitype.EngineEvent{}
+	eventsFile, err := os.Open(pt.updateEventLog)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return events, nil
+		}
+		return events, fmt.Errorf("expected to be able to open event log file %s: %w",
+			pt.updateEventLog, err)
+	}
+
+	defer contract.IgnoreClose(eventsFile)
+
+	decoder := json.NewDecoder(eventsFile)
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return events, fmt.Errorf("failed decoding engine event from log file %s: %w",
+				pt.updateEventLog, err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
 }
 
 // copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
@@ -2110,6 +2130,16 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
+	// YAML doesn't need any system setup, and should auto-install required plugins
+	return nil
+}
+
+func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
+	// Java doesn't need any system setup, and should auto-install required plugins
+	return nil
+}
+
 func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
@@ -2121,6 +2151,10 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return pt.prepareGoProject(projinfo)
 	case DotNetRuntime:
 		return pt.prepareDotNetProject(projinfo)
+	case YAMLRuntime:
+		return pt.prepareYAMLProject(projinfo)
+	case JavaRuntime:
+		return pt.prepareJavaProject(projinfo)
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}

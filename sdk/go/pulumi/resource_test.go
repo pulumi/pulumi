@@ -193,6 +193,72 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, false, opts.DeleteBeforeReplace)
 }
 
+func TestResourceOptionComposite(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []ResourceOption
+		want  *resourceOptions
+	}{
+		{
+			name:  "no options",
+			input: []ResourceOption{},
+			want:  &resourceOptions{},
+		},
+		{
+			name: "single option",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "multiple conflicting options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: false,
+			},
+		},
+		{
+			name: "bouncing options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "different options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				Protect(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+				Protect:             true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			opts := merge(Composite(tt.input...))
+			assert.Equal(t, tt.want, opts)
+		})
+	}
+}
+
 func TestResourceOptionMergingImport(t *testing.T) {
 	t.Parallel()
 
@@ -549,13 +615,13 @@ func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
 }
 
 func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 	return i.inner.Invoke(ctx, in, opts...)
 }
 
 func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
 	return i.inner.StreamInvoke(ctx, in, opts...)
 }

@@ -878,7 +878,7 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 func currentUser(t *testing.T) string {
 	b, err := currentBackend(display.Options{})
 	assert.NoError(t, err)
-	currentUser, err := b.CurrentUser()
+	currentUser, _, err := b.CurrentUser()
 	assert.NoError(t, err)
 	return currentUser
 }

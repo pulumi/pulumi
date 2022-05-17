@@ -468,3 +468,9 @@ Pulumi.Automation.StackDeployment.Json.get -> System.Text.Json.JsonElement
 static Pulumi.Automation.StackDeployment.FromJsonString(string jsonString) -> Pulumi.Automation.StackDeployment
 Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
 Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.PreviewOptions.Plan.get -> string
+Pulumi.Automation.PreviewOptions.Plan.set -> void
+Pulumi.Automation.UpOptions.Plan.get -> string
+Pulumi.Automation.UpOptions.Plan.set -> void
+Pulumi.Automation.UpdateOptions.Color.get -> string
+Pulumi.Automation.UpdateOptions.Color.set -> void

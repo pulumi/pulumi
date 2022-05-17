@@ -196,19 +196,28 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 			// We didn't get any new dependencies, so no need to merge.
 			return
 		}
-		depSet := make(map[Resource]struct{})
-		for _, d := range o.deps {
-			depSet[d] = struct{}{}
-		}
-		for _, d := range deps {
-			depSet[d] = struct{}{}
-		}
-		mergedDeps := make([]Resource, 0, len(depSet))
-		for d := range depSet {
-			mergedDeps = append(mergedDeps, d)
-		}
-		o.deps = mergedDeps
+		o.deps = mergeDependencies(o.deps, deps)
 	}
+}
+
+func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
+	if theirs == nil {
+		return ours
+	} else if ours == nil {
+		return theirs
+	}
+	depSet := make(map[Resource]struct{})
+	for _, d := range ours {
+		depSet[d] = struct{}{}
+	}
+	for _, d := range theirs {
+		depSet[d] = struct{}{}
+	}
+	mergedDeps := make([]Resource, 0, len(depSet))
+	for d := range depSet {
+		mergedDeps = append(mergedDeps, d)
+	}
+	return mergedDeps
 }
 
 func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Resource) {
@@ -247,11 +256,13 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		ov, ok := o.value.(Output)
-		if !ok {
+		if ov, ok := o.value.(Output); ok {
+			deps := o.deps
+			o = ov.getState()
+			o.deps = mergeDependencies(o.deps, deps)
+		} else {
 			return o.value, true, o.secret, o.deps, nil
 		}
-		o = ov.getState()
 	}
 }
 
@@ -450,8 +461,12 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(fn.Type().Out(0)); ok {
+	applierReturnType := fn.Type().Out(0)
+
+	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
+	} else if applierReturnType.Implements(outputType) {
+		resultType = applierReturnType
 	}
 
 	result := newOutput(o.join, resultType, o.dependencies()...)
@@ -472,9 +487,13 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 			result.getState().reject(results[1].Interface().(error))
 			return
 		}
-
+		var fulfilledDeps []Resource
+		fulfilledDeps = append(fulfilledDeps, deps...)
+		if resultOutput, ok := results[0].Interface().(Output); ok {
+			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
+		}
 		// Fulfill the result.
-		result.getState().fulfillValue(results[0], true, secret, deps, nil)
+		result.getState().fulfillValue(results[0], true, secret, fulfilledDeps, nil)
 	}()
 	return result
 }
@@ -502,6 +521,14 @@ func UnsecretWithContext(ctx context.Context, input Output) Output {
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecret(input interface{}) Output {
 	return ToSecretWithContext(context.Background(), input)
+}
+
+// Creates an unknown output. This is a low level API and should not be used in programs as this
+// will cause "pulumi up" to fail if called and used during a non-dryrun deployment.
+func UnsafeUnknownOutput(deps []Resource) Output {
+	output, _, _ := NewOutput()
+	output.getState().resolve(nil, false, false, deps)
+	return output
 }
 
 // ToSecretWithContext wraps the input in an Output marked as secret
@@ -573,10 +600,6 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[
 		}
 		// Check for an actual Resource.
 		if v.Type().Implements(resourceType) {
-			if v.CanInterface() {
-				resource := v.Convert(resourceType).Interface().(Resource)
-				deps[resource] = struct{}{}
-			}
 			return
 		}
 
@@ -635,6 +658,28 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 	return toOutputMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})[0].Interface().(Output), true
 }
 
+// awaitInputs recursively discovers the Inputs in a value, awaits them, and sets resolved to the result of the await.
+// It is essentially an attempt to port the logic in the NodeJS SDK's `pulumi.output` function, which takes a value and
+// returns its fully-resolved value. The fully-resolved value `W` of some value `V` has the same shape as `V`, but with
+// all outputs recursively replaced with their resolved values. Unforunately, the way Outputs are represented in Go
+// combined with Go's strong typing and relatively simplistic type system make this challenging.
+//
+// The logic to do this is pretty arcane, and very special-casey when it comes to finding Inputs, converting them to
+// Outputs, and awaiting their values. Roughly speaking:
+//
+// 1. If we cannot set resolved--e.g. because it was derived from an unexported field--we do nothing
+// 2. If the value is an Input:
+//     a. If the value is `nil`, do nothing. The value is already fully-resolved. `resolved` is not set.
+//     b. Otherwise, convert the Input to an appropriately-typed Output by calling the corresponding `ToOutput` method.
+//        The desired type is determined based on the type of the destination, and the conversion method is determined
+//        from the name of the desired type. If no conversion method is available, we will attempt to assign the Input
+//        itself, and will panic if that assignment is not well-typed.
+//     c. Replace the value to await with the resolved value of the input.
+// 3. Depending on the kind of the value:
+//     a. If the value is a Resource, stop.
+//     b. If the value is a primitive, stop.
+//     c. If the value is a slice, array, struct, or map, recur on its contents.
+//
 func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []Resource, error) {
 	contract.Assert(v.IsValid())
 
@@ -717,7 +762,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr {
+			if v.Kind() == reflect.Ptr && !v.Type().Implements(resourceType) {
 				v = v.Elem()
 				valueType = valueType.Elem()
 				if resolved.Type() != anyType {
@@ -735,6 +780,11 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	}
 
 	contract.Assertf(valueType.AssignableTo(resolved.Type()), "%s not assignable to %s", valueType.String(), resolved.Type().String())
+
+	if v.Type().Implements(resourceType) {
+		resolved.Set(v)
+		return true, false, nil, nil
+	}
 
 	// If the resolved type is an interface, make an appropriate destination from the value's type.
 	if resolved.Kind() == reflect.Interface {

@@ -34,9 +34,7 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string                           // the URL to the cloud containing this stack.
 	OrgName() string                            // the organization that owns this stack.
-	ConsoleURL() (string, error)                // the URL to view the stack's information on Pulumi.com.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
 	StackIdentifier() client.StackIdentifier
 }
@@ -60,7 +58,7 @@ func (c cloudBackendReference) String() string {
 				return string(c.name)
 			}
 		} else {
-			currentUser, userErr := c.b.CurrentUser()
+			currentUser, _, userErr := c.b.CurrentUser()
 			if userErr == nil && c.owner == currentUser {
 				return string(c.name)
 			}
@@ -79,8 +77,6 @@ func (c cloudBackendReference) Name() tokens.Name {
 type cloudStack struct {
 	// ref is the stack's unique name.
 	ref cloudBackendReference
-	// cloudURL is the URl to the cloud containing this stack.
-	cloudURL string
 	// orgName is the organization that owns this stack.
 	orgName string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
@@ -102,7 +98,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			name:    tokens.Name(apistack.StackName.String()),
 			b:       b,
 		},
-		cloudURL:         b.CloudURL(),
 		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,
 		snapshot:         nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
@@ -112,7 +107,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 }
 func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
-func (s *cloudStack) CloudURL() string                           { return s.cloudURL }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
@@ -185,10 +179,6 @@ func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDepl
 
 func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(ctx, s, deployment)
-}
-
-func (s *cloudStack) ConsoleURL() (string, error) {
-	return s.b.StackConsoleURL(s.ref)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping

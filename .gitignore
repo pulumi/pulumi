@@ -36,6 +36,7 @@ pkg/codegen/testing/test/testdata/*-pp/*/go.sum
 pkg/codegen/testing/test/testdata/*-pp/*/Program.cs
 pkg/codegen/testing/test/testdata/*-pp/*/package.json
 pkg/codegen/testing/test/testdata/*-pp/*/go.sum
+pkg/codegen/testing/test/testdata/*-pp/*/tsconfig.json
 
 # By default, we don't check in yarn.lock files
 **/yarn.lock
@@ -63,5 +64,9 @@ pulumi-analyzer-policy-python.cmd
 artifacts/
 goreleaser-downloads/
 goreleaser-prebuilt/
+goreleaser-lang/
 
 __pycache__
+
+# File targets for make
+*.phony

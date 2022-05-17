@@ -157,7 +157,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
@@ -193,16 +193,16 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Install gotestsum
-        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: gotestyourself/gotestsum
           tag: v1.7.0
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7

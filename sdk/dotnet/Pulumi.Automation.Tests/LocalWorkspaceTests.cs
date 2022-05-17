@@ -1549,7 +1549,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("invalid", true, false)]
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
-            var testMinVersion = SemVersion.Parse("2.21.1");
+            var testMinVersion = new SemVersion(2, 21, 1);
 
             if (errorExpected)
             {
@@ -2029,6 +2029,40 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
                 await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task TestUpdatePlans()
+        {
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = workingDir
+            });
+            var stackName = $"{RandomStackName()}";
+
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            try
+            {
+                var planFile = System.IO.Path.GetTempFileName();
+
+                await stack.PreviewAsync(new PreviewOptions {
+                    Plan = planFile,
+                });
+
+                var planFileStream = System.IO.File.OpenRead(planFile);
+                Assert.NotEqual(0, planFileStream.Length);
+
+                await stack.UpAsync(new UpOptions {
+                    Plan = planFile,
+                });
+
+                await stack.DestroyAsync();
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
             }
         }
 

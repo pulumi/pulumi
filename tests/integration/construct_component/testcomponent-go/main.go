@@ -233,6 +233,10 @@ func (p *testcomponentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (
 	}, nil
 }
 
+func (p *testcomponentProvider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
+}
+
 func (p *testcomponentProvider) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	return &pulumirpc.GetSchemaResponse{}, nil

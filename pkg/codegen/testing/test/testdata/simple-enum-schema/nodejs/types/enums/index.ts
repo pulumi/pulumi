@@ -25,6 +25,7 @@ export const CloudAuditOptionsLogName = {
      * What if triple quotes """ are used in the description
      */
     Synthetic: "SYNTHETIC",
+    CloudAuditOptionsLogName_NO_NAME: "_NO_NAME",
 } as const;
 
 /**

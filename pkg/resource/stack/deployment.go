@@ -244,7 +244,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		}
 
 		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
-		cache, err := config.BulkDecrypt(d, ciphertexts)
+		cache, err := d.BulkDecrypt(ciphertexts)
 		if err != nil {
 			return nil, err
 		}

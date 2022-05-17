@@ -275,7 +275,7 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
 			return phrase, false, nil
 		}
-		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phraseFile != "" {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
@@ -321,5 +321,10 @@ func (ec *errorCrypter) EncryptValue(_ string) (string, error) {
 
 func (ec *errorCrypter) DecryptValue(_ string) (string, error) {
 	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
+		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
+}
+
+func (ec *errorCrypter) BulkDecrypt(_ []string) (map[string]string, error) {
+	return nil, errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }

@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
-VERSION 		 := $(shell cd ../../ && pulumictl get version --language javascript)
+VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language javascript))
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 PROJECT_ROOT     := $(realpath ../..)
@@ -17,8 +17,10 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-ensure::
-	yarn
+ensure:: yarn.ensure node.ensure .ensure.phony
+.ensure.phony: package.json
+	yarn install
+	@touch .ensure.phony
 
 lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .

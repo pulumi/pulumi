@@ -21,6 +21,11 @@ namespace Pulumi.Automation
         public PulumiFn? Program { get; set; }
 
         /// <summary>
+        /// Plan specifies the path to an update plan to use for the update.
+        /// </summary>
+        public string? Plan {get; set; }
+
+        /// <summary>
         /// A custom logger instance that will be used for the action. Note that it will only be used
         /// if <see cref="Program"/> is also provided.
         /// </summary>

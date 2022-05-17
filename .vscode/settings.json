@@ -6,6 +6,7 @@
         "build.directoryFilters": [
             "-sdk/dotnet/Pulumi.Automation.Tests/bin",
             "-sdk/nodejs/bin",
+            "-sdk/nodejs/tests",
             "-sdk/python/env"
         ],
         // Experimental but seems to work and means we don't need a vscode instance per go.mod file.

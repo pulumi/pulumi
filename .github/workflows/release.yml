@@ -2,6 +2,7 @@ on:
   push:
     tags:
       - v*.*.*
+      - '!v*.*.*-**'
     paths-ignore:
       - "CHANGELOG.md"
       - "CHANGELOG_PENDING.md"
@@ -27,7 +28,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -43,7 +44,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -56,7 +57,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -72,7 +73,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -88,7 +89,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -104,7 +105,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -120,7 +121,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -163,7 +164,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -184,7 +185,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Fetch Tags
@@ -238,11 +239,11 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: t0yv0/goreleaser-filter
       - name: Download pulumi-linux-x64
@@ -324,20 +325,20 @@ jobs:
           sort goreleaser/*-checksums.txt
           echo "Checking that tested and release checksums are identical:"
           diff <(sort goreleaser/*-checksums.txt) $C
+      - name: Download pulumi-language-*
+        run: |
+          ./scripts/get-language-providers.sh
       - name: Run GoReleaser to actually release
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
-      - name: Verify checksums again
-        run: |
-          C=artifacts/checksums/pulumi-tested-checksums-2.txt
-          echo "Tested tarballs with the following checksums:"
-          cat artifacts/checksums/*/* | sort | tee $C
-          echo "Released tarballs with the following checksums:"
-          sort goreleaser/*-checksums.txt
-          echo "Checking that tested and released checksums are identical:"
-          diff <(sort goreleaser/*-checksums.txt) $C
+      - uses: actions/upload-artifact@v3
+        with:
+          name: goreleaser-artifacts
+          path: |
+            goreleaser/pulumi-*.zip
+            goreleaser/pulumi-*.tar.gz
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
     container: golangci/golangci-lint:v1.44
@@ -354,6 +355,12 @@ jobs:
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
   language-sdk-lint:
     name: Lint Language SDKs
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+        python-version: [3.9.x]
+        dotnet-version: [3.1.x]
+        node-version: [14.x]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -379,7 +386,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -417,7 +424,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Ensure
@@ -475,7 +482,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Checkout Repo

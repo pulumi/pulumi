@@ -2,14 +2,16 @@
 
 {{- range $lang, $enums := . }}
 
-{{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
+<div>
+<pulumi-choosable type="language" values="{{ print $lang }}">
 <dl class="tabular">
 {{- range . -}}
     <dt>{{- htmlSafe .DisplayName -}}</dt>
-    <dd>{{- htmlSafe .Value }}{{- if .Comment }}{{ print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" }}{{ end -}}{{- if .DeprecationMessage }}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- htmlSafe .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}</dd>
+    <dd>{{- htmlSafe .Value }}{{- if .Comment }}{{- markdownify .Comment -}}{{ end -}}{{- if .DeprecationMessage }}<p class="property-message">Deprecated: {{- markdownify .DeprecationMessage -}}</p>{{- end -}}</dd>
 {{- end -}}
 </dl>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 {{- end }}
 

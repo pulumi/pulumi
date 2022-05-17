@@ -282,7 +282,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:               tok,
 		Args:              rpcArgs,
 		Provider:          providerRef,
@@ -314,6 +314,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 			KeepResources: true,
 		}),
 	)
+
 	if err != nil {
 		return err
 	}
@@ -699,7 +700,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:  "pulumi:pulumi:getResource",
 		Args: rpcArgs,
 	})
@@ -882,6 +883,7 @@ func (ctx *Context) RegisterRemoteComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
+	rawOutputs        Output
 	outputs           map[string]Output
 	providers         map[string]ProviderResource
 	provider          ProviderResource
@@ -1030,14 +1032,14 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation) *resourceState {
 
-	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
+	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
 	// ought to.
-	resource := reflect.ValueOf(resourceV)
-	typ := resource.Type()
+	res := reflect.ValueOf(resourceV)
+	typ := res.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
-	resource, typ = resource.Elem(), typ.Elem()
+	res, typ = res.Elem(), typ.Elem()
 
 	var rs *ResourceState
 	var crs *CustomResourceState
@@ -1060,7 +1062,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// map the Output to its property name so we can resolve it later.
 	state := &resourceState{outputs: map[string]Output{}}
 	for i := 0; i < typ.NumField(); i++ {
-		fieldV := resource.Field(i)
+		fieldV := res.Field(i)
 		if !fieldV.CanSet() {
 			continue
 		}
@@ -1101,6 +1103,9 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["id"] = crs.id
 	}
 
+	rawOutputState := ctx.newOutputState(anyType, resourceV)
+	rawOutputs := AnyOutput{rawOutputState}
+
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
 		contract.Assert(rs != nil)
@@ -1110,6 +1115,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
+		state.rawOutputs = rawOutputs
+		rs.rawOutputs = rawOutputs
 		state.pluginDownloadURL = pluginDownloadURL
 		rs.pluginDownloadURL = pluginDownloadURL
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
@@ -1152,8 +1159,11 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		for _, output := range state.outputs {
 			output.getState().reject(err)
 		}
+		state.rawOutputs.getState().reject(err)
 		return
 	}
+
+	state.rawOutputs.getState().resolve(outprops, true, false, nil)
 
 	outprops["urn"] = resource.NewStringProperty(urn)
 	if id != "" || !dryrun {

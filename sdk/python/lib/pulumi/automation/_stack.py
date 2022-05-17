@@ -209,6 +209,7 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
+        plan: Optional[str] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -226,6 +227,7 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param plan: Plan specifies the path to an update plan to use for the update.
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -234,6 +236,10 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["up", "--yes", "--skip-preview"]
         args.extend(extra_args)
+
+        if plan is not None:
+            args.extend("--plan")
+            args.extend(plan)
 
         kind = ExecKind.LOCAL.value
         on_exit = None
@@ -302,6 +308,7 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
+        plan: Optional[str] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -319,6 +326,7 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param plan: Plan specifies the path where the update plan should be saved.
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -327,6 +335,10 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
         args.extend(extra_args)
+
+        if plan is not None:
+            args.extend("--save-plan")
+            args.extend(plan)
 
         kind = ExecKind.LOCAL.value
         on_exit = None

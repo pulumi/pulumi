@@ -272,7 +272,7 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 	// Uncompress the policy pack.
 	err = archive.ExtractTGZ(tgz, tempDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to extract tarball: %w", err)
 	}
 
 	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)

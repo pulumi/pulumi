@@ -113,6 +113,7 @@ func StoreAccount(key string, account Account, current bool) error {
 type Account struct {
 	AccessToken     string    `json:"accessToken,omitempty"`     // The access token for this account.
 	Username        string    `json:"username,omitempty"`        // The username for this account.
+	Organizations   []string  `json:"organizations,omitempty"`   // The organizations for this account.
 	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
 }
 

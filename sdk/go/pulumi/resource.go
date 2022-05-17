@@ -40,6 +40,7 @@ type ResourceState struct {
 
 	urn URNOutput `pulumi:"urn"`
 
+	rawOutputs        Output
 	children          resourceSet
 	providers         map[string]ProviderResource
 	provider          ProviderResource
@@ -58,6 +59,15 @@ func (s *ResourceState) URN() URNOutput {
 
 func (s *ResourceState) GetProvider(token string) ProviderResource {
 	return s.providers[getPackage(token)]
+}
+
+// This is an internal method and future versions of the sdk may not support this API.
+//
+// InternalGetRawOutputs obtains the full PropertyMap returned during resource registration,
+// allowing a caller of RegisterResource to obtain directly information about the outputs and their
+// known and secret attributes.
+func InternalGetRawOutputs(res *ResourceState) Output {
+	return res.rawOutputs
 }
 
 func (s *ResourceState) getChildren() []Resource {
@@ -376,6 +386,15 @@ func Aliases(o []Alias) ResourceOption {
 func DeleteBeforeReplace(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DeleteBeforeReplace = o
+	})
+}
+
+// Composite is a resource option that contains other resource options.
+func Composite(opts ...ResourceOption) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		for _, o := range opts {
+			o.applyResourceOption(ro)
+		}
 	})
 }
 

@@ -34,7 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
 
@@ -221,6 +221,7 @@ func NewPulumiCmd() *cobra.Command {
 	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
 	// to true.
 	cmd.AddCommand(newQueryCmd())
+	cmd.AddCommand(newConvertCmd())
 
 	// We have a set of options that are useful for developers of pulumi that are hidden unless PULUMI_DEBUG_COMMANDS is
 	// set to true.
@@ -229,6 +230,8 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newViewTraceCmd())
 	cmd.AddCommand(newConvertTraceCmd())
+
+	cmd.AddCommand(newReplayEventsCmd())
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")

@@ -36,12 +36,8 @@ type Encrypter interface {
 // Decrypter decrypts encrypted ciphertext to its plaintext representation.
 type Decrypter interface {
 	DecryptValue(ciphertext string) (string, error)
-}
 
-// BulkDecrypter is a Decrypter that also supports bulk decryption of secrets.
-type BulkDecrypter interface {
-	Decrypter
-
+	// BulkDecrypt supports bulk decryption of secrets.
 	BulkDecrypt(ciphertexts []string) (map[string]string, error)
 }
 
@@ -59,6 +55,10 @@ var NopEncrypter Encrypter = nopCrypter{}
 
 func (nopCrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
+}
+
+func (nopCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(NopDecrypter, ciphertexts)
 }
 
 func (nopCrypter) EncryptValue(plaintext string) (string, error) {
@@ -91,6 +91,10 @@ func (t *trackingDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return v, nil
 }
 
+func (t *trackingDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(t, ciphertexts)
+}
+
 func (t *trackingDecrypter) SecureValues() []string {
 	return t.secureValues
 }
@@ -115,6 +119,10 @@ func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
 	return "[secret]", nil
 }
 
+func (b blindingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(b, ciphertexts)
+}
+
 // NewPanicCrypter returns a new config crypter that will panic if used.
 func NewPanicCrypter() Crypter {
 	return &panicCrypter{}
@@ -128,6 +136,10 @@ func (p panicCrypter) EncryptValue(_ string) (string, error) {
 
 func (p panicCrypter) DecryptValue(_ string) (string, error) {
 	panic("attempt to decrypt value")
+}
+
+func (p panicCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	panic("attempt to bulk decrypt values")
 }
 
 // NewSymmetricCrypter creates a crypter that encrypts and decrypts values using AES-256-GCM.  The nonce is stored with
@@ -182,6 +194,10 @@ func (s symmetricCrypter) DecryptValue(value string) (string, error) {
 	return decryptAES256GCM(enc, s.key, nonce)
 }
 
+func (s symmetricCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(s, ciphertexts)
+}
+
 // encryptAES256GCGM returns the ciphertext and the generated nonce
 func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
@@ -234,15 +250,16 @@ func (c prefixCrypter) EncryptValue(plaintext string) (string, error) {
 	return c.prefix + plaintext, nil
 }
 
-// BulkDecrypt decrypts a list of ciphertexts. If decrypter implements BulkDecrypter, then its BulkDecrypt method will
-// be called. Otherwise, each ciphertext is decrypted individually. The returned map maps from ciphertext to plaintext.
-func BulkDecrypt(decrypter Decrypter, ciphertexts []string) (map[string]string, error) {
+func (c prefixCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(c, ciphertexts)
+}
+
+// DefaultBulkDecrypt decrypts a list of ciphertexts. Each ciphertext is decrypted individually. The returned
+// map maps from ciphertext to plaintext. This should only be used by implementers of Decrypter to implement
+// their BulkDecrypt method in cases where they can't do more efficient than just individual decryptions.
+func DefaultBulkDecrypt(decrypter Decrypter, ciphertexts []string) (map[string]string, error) {
 	if len(ciphertexts) == 0 {
 		return nil, nil
-	}
-
-	if bulk, ok := decrypter.(BulkDecrypter); ok {
-		return bulk.BulkDecrypt(ciphertexts)
 	}
 
 	secretMap := map[string]string{}

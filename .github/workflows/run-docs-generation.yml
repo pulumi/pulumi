@@ -58,7 +58,7 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: pulumi/pulumictl
       - name: Check out source code
@@ -131,8 +131,8 @@ jobs:
           title: Preview resource docs changes for pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
-
             By default, this PR contains regenerated docs for AWS and Kubernetes only.
+            After review, this PR should be manually closed.
           # Assign the draft PR to the author of the current PR.
           assignees: ${{ github.event.pull_request.user.login }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}

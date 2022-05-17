@@ -379,7 +379,7 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
 	output, err := runPythonCommand(virtualenv, cwd, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "calling `python %s`", strings.Join(args, " "))
 	}
 
 	// Parse the JSON output; on some systems pip -v verbose mode
@@ -799,4 +799,30 @@ func validateVersion(virtualEnvPath string) {
 			" Check %s for more details\n", parsed.Major,
 			parsed.Minor, eolPythonVersionIssue)
 	}
+}
+
+func (host *pythonLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	if err := python.InstallDependenciesWithWriters(
+		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+		return err
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -18,7 +18,6 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"sort"
@@ -27,7 +26,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -434,10 +433,14 @@ func (display *ProgressDisplay) refreshColumns(
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
-	if display.isTerminal {
-		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
-	} else {
-		display.writeSimpleMessage(msg)
+	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
+	// asserts in later display functions if we try to show it
+	if msg != "" {
+		if display.isTerminal {
+			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+		} else {
+			display.writeSimpleMessage(msg)
+		}
 	}
 }
 
@@ -898,7 +901,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := engine.GetResourceOutputsPropertiesString(
+	props := getResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
@@ -914,7 +917,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 	display.writeSimpleMessage(msg)
 }
 
@@ -1443,9 +1446,4 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return ""
 	}
 	return op.ColorProgress() + getDescription() + colors.Reset
-}
-
-func writeString(b io.StringWriter, s string) {
-	_, err := b.WriteString(s)
-	contract.IgnoreError(err)
 }

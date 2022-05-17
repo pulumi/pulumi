@@ -286,3 +286,75 @@ func convertLiteralToString(from model.Expression) (string, bool) {
 	}
 	return "", false
 }
+
+// lowerConversion performs the main logic of LowerConversion. nil, false is
+// returned if there is no conversion (safe or unsafe) between `from` and `to`.
+// This can occur when a loosely typed program is converted, or if an other
+// rewrite violated the type system.
+func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
+	switch to := to.(type) {
+	case *model.UnionType:
+		// Assignment: it just works
+		for _, to := range to.ElementTypes {
+			if to.AssignableFrom(from.Type()) {
+				return to, true
+			}
+		}
+		conversions := make([]model.ConversionKind, len(to.ElementTypes))
+		for i, to := range to.ElementTypes {
+			conversions[i] = to.ConversionFrom(from.Type())
+			if conversions[i] == model.SafeConversion {
+				// We found a safe conversion, and we will use it. We don't need
+				// to search for more conversions.
+				return to, true
+			}
+		}
+
+		// Unsafe conversions:
+		for i, to := range to.ElementTypes {
+			if conversions[i] == model.UnsafeConversion {
+				return to, true
+			}
+		}
+		return nil, false
+	default:
+		return to, true
+	}
+}
+
+// LowerConversion lowers a conversion for a specific value, such that
+// converting `from` to a value of the returned type will produce valid code.
+// The algorithm prioritizes safe conversions over unsafe conversions. If no
+// conversion can be found, nil, false is returned.
+//
+// This is useful because it cuts out conversion steps which the caller doesn't
+// need to worry about. For example:
+// Given inputs
+//
+//   from = string("foo") # a constant string with value "foo"
+//   to = union(enum(string: "foo", "bar"), input(enum(string: "foo", "bar")), none)
+//
+// We would receive output type:
+//
+//   enum(string: "foo", "bar")
+//
+// since the caller can convert string("foo") to the enum directly, and does not
+// need to consider the union.
+//
+// For another example consider inputs:
+//
+//   from = var(string) # A variable of type string
+//   to = union(enum(string: "foo", "bar"), string)
+//
+// We would return type:
+//
+//   string
+//
+// since var(string) can be safely assigned to string, but unsafely assigned to
+// enum(string: "foo", "bar").
+func LowerConversion(from model.Expression, to model.Type) model.Type {
+	if t, ok := lowerConversion(from, to); ok {
+		return t
+	}
+	return to
+}

@@ -54,6 +54,28 @@ function deserialize_pulumirpc_GetRequiredPluginsResponse(buffer_arg) {
   return language_pb.GetRequiredPluginsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_InstallDependenciesRequest(arg) {
+  if (!(arg instanceof language_pb.InstallDependenciesRequest)) {
+    throw new Error('Expected argument of type pulumirpc.InstallDependenciesRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_InstallDependenciesRequest(buffer_arg) {
+  return language_pb.InstallDependenciesRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_InstallDependenciesResponse(arg) {
+  if (!(arg instanceof language_pb.InstallDependenciesResponse)) {
+    throw new Error('Expected argument of type pulumirpc.InstallDependenciesResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_InstallDependenciesResponse(buffer_arg) {
+  return language_pb.InstallDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -126,6 +148,18 @@ getPluginInfo: {
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
     responseDeserialize: deserialize_pulumirpc_PluginInfo,
+  },
+  // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+installDependencies: {
+    path: '/pulumirpc.LanguageRuntime/InstallDependencies',
+    requestStream: false,
+    responseStream: true,
+    requestType: language_pb.InstallDependenciesRequest,
+    responseType: language_pb.InstallDependenciesResponse,
+    requestSerialize: serialize_pulumirpc_InstallDependenciesRequest,
+    requestDeserialize: deserialize_pulumirpc_InstallDependenciesRequest,
+    responseSerialize: serialize_pulumirpc_InstallDependenciesResponse,
+    responseDeserialize: deserialize_pulumirpc_InstallDependenciesResponse,
   },
 };
 
