@@ -19,3 +19,5 @@
 
 - [cli] Fix panic in `pulumi console` when no stack is selected.
   [#9594](https://github.com/pulumi/pulumi/pull/9594)
+
+- [sdk/python] Fixed bug in automation API that invoked Pulumi with malformed arguments.
