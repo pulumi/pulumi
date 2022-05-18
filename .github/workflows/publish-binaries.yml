@@ -80,9 +80,15 @@ jobs:
         with:
           name: pulumi-windows-x64
           path: goreleaser-downloads
+      - name: Inspect goreleaser-downloads
+        run: |
+          find goreleaser-downloads
       - name: Unpack goreleaser-downloads
-        run: ./scripts/unpack.sh
-
+        run: |
+          ./scripts/unpack.sh
+      - name: Inspect goreleaser-prebuilt
+        run: |
+          find goreleaser-prebuilt
       # Section 3: dry-run goreleaser to verify checksums
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
