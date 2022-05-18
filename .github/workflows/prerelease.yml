@@ -100,8 +100,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     needs: [lint, build, test-linux, test-macos, test-windows]
-    # uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
-    uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@t0yv0/fix-publish-binaries
+    uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
     with:
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
