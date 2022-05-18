@@ -3,28 +3,8 @@ name: Pubilshes CLI binaries.
 on:
   workflow_call:
     inputs:
-      go-version:
-        description: 'Version of the Go toolchain for the build'
-        default: '1.17.x'
-        required: false
-        type: string
-      python-version:
-        description: 'Version of the Python toolchain for the build'
-        default: '3.9.x'
-        required: false
-        type: string
-      node-version:
-        description: 'Version of the Node toolchain for the build'
-        default: '14.x'
-        required: false
-        type: string
-      dotnet-version:
-        description: 'Version of the .NET toolchain for the build'
-        default: '3.1.x'
-        required: false
-        type: string
       goreleaser-config:
-        description: 'Config file for goreleaser'
+        description: 'Config file for goreleaser; must match the goreleaser-config build.yml was called with'
         default: '.goreleaser.prerelease.yml'
         required: false
         type: string
@@ -33,15 +13,9 @@ on:
         default: '-p 3 --snapshot --skip-validate'
         required: false
         type: string
-      enable-coverage:
-        description: 'Builds executables with coverage analysis enabled'
-        default: false
-        required: false
-        type: boolean
-      default-build-platform:
-        description: 'Default platform to cross-compile on'
-        default: 'ubuntu-latest'
-        required: false
+      goreleaser-build-flags:
+        description: 'The goreleaser-flags arg that build.yml was called with'
+        required: true
         type: string
     secrets: {}
 
