@@ -214,6 +214,7 @@ jobs:
       goreleaser-config: '.goreleaser.yml'
       goreleaser-build-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
       goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md'
+    secrets: inherit
 
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44

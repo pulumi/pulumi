@@ -106,6 +106,7 @@ jobs:
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
       goreleaser-flags: '-p 3 --skip-validate'
+    secrets: inherit
 
   #  examples_smoke_test:
   #    name: Trigger Examples Smoke Test

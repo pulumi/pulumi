@@ -105,6 +105,7 @@ jobs:
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
       goreleaser-flags: '-p 3'
+    secrets: inherit
 
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
