@@ -107,7 +107,6 @@ type Backend interface {
 
 	CloudURL() string
 
-	GetCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error)
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
@@ -1328,11 +1327,6 @@ var (
 // do this cleaning on our end.
 func cleanProjectName(projectName string) string {
 	return projectNameCleanRegexp.ReplaceAllString(projectName, "-")
-}
-
-// getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
-func (b *cloudBackend) GetCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	return b.getCloudStackIdentifier(stackRef)
 }
 
 // getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
