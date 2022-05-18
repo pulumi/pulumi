@@ -9,6 +9,10 @@
 - [cli] Updated gocloud.dev to 0.24.0, which adds support for using AWS SDK v2. It enables users to pass an AWS profile to the `awskms` secrets provider url (i.e. `awskms://alias/pulumi?awssdk=v2&region=eu-west-1&profile=aws-prod`)
   [#9590](https://github.com/pulumi/pulumi/pull/9590)
 
+- [cli/backend] Add gzip compression to filestate backend. Compression can be enabled via `PULUMI_SELF_MANAGED_STATE_GZIP=true`.
+  [#7153](https://github.com/pulumi/pulumi/pull/7153)
+  [#9610](https://github.com/pulumi/pulumi/pull/9610)
+
 ### Bug Fixes
 
 - [cli] The PULUMI_CONFIG_PASSPHRASE environment variables can be empty, this is treated different to being unset.
@@ -19,6 +23,3 @@
 
 - [cli] Fix panic in `pulumi console` when no stack is selected.
   [#9594](https://github.com/pulumi/pulumi/pull/9594)
-
-- [cli/backend] Add gzip compression to filestate backend. Compression can be enabled via `PULUMI_SELF_MANAGED_STATE_GZIP=true`.
-  [#7153](https://github.com/pulumi/pulumi/pull/7153)
