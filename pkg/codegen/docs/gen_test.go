@@ -60,11 +60,13 @@ func initTestPackageSpec(t *testing.T) {
 		"python": schema.RawMessage(`{"mapCase":false}`),
 	}
 	testPackageSpec = schema.PackageSpec{
-		Name:        providerPackage,
-		Version:     "0.0.1",
-		Description: "A fake provider package used for testing.",
-		Meta: &schema.MetadataSpec{
-			ModuleFormat: "(.*)(?:/[^/]*)",
+		PackageInfoSpec: schema.PackageInfoSpec{
+			Name:        providerPackage,
+			Version:     "0.0.1",
+			Description: "A fake provider package used for testing.",
+			Meta: &schema.MetadataSpec{
+				ModuleFormat: "(.*)(?:/[^/]*)",
+			},
 		},
 		Types: map[string]schema.ComplexTypeSpec{
 			// Package-level types.

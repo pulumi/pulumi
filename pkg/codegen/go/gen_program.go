@@ -429,7 +429,7 @@ func (g *generator) collectConvertImports(
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
-	for _, p := range program.Packages() {
+	for _, p := range program.PackageReferences() {
 		if p.Name() == pkg {
 			if ver := p.Version(); ver != nil && ver.Major > 1 {
 				return fmt.Sprintf("/v%d", ver.Major), nil
@@ -907,7 +907,7 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 //
 // TODO: naming decisions should really be encoded statically so that they can be decided locally.
 func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
-	refs := program.Packages()
+	refs := program.PackageReferences()
 	defs := make([]*schema.Package, len(refs))
 	for i, ref := range refs {
 		def, err := ref.Definition()

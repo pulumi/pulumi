@@ -364,7 +364,7 @@ func (p *PartialPackage) Definition() (*Package, error) {
 }
 
 // Snapshot returns a definition for the package that contains only the members that have been accessed thus far. If
-// Defintion has been called, the returned definition will include all of the package's members. It is safe to call
+// Definition has been called, the returned definition will include all of the package's members. It is safe to call
 // Snapshot multiple times.
 func (p *PartialPackage) Snapshot() (*Package, error) {
 	if p.def != nil {

@@ -102,7 +102,21 @@ func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Dia
 }
 
 // Packages returns the list of package referenced used by this program.
-func (p *Program) Packages() []schema.PackageReference {
+func (p *Program) Packages() []*schema.Package {
+	refs := p.PackageReferences()
+	defs := make([]*schema.Package, len(refs))
+	for i, ref := range refs {
+		def, err := ref.Definition()
+		if err != nil {
+			panic(fmt.Errorf("loading package definition: %w", err))
+		}
+		defs[i] = def
+	}
+	return defs
+}
+
+// PackageReferences returns the list of package referenced used by this program.
+func (p *Program) PackageReferences() []schema.PackageReference {
 	keys := make([]string, 0, len(p.binder.referencedPackages))
 	for k := range p.binder.referencedPackages {
 		keys = append(keys, k)

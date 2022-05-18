@@ -838,7 +838,9 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (
 	return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
 }
 
-func (t *types) bindTypeSpec(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
+func (t *types) bindTypeSpec(path string, spec TypeSpec,
+	inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
+
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
@@ -1291,8 +1293,8 @@ func (t *types) bindResourceDef(token string) (res *Resource, diags hcl.Diagnost
 		t.resourceDefs[token] = res
 		diags, err = t.bindProvider(res)
 	} else {
-		spec, ok, err := t.spec.GetResourceSpec(token)
-		if err != nil || !ok {
+		spec, ok, specErr := t.spec.GetResourceSpec(token)
+		if specErr != nil || !ok {
 			return nil, nil, err
 		}
 		t.resourceDefs[token] = res
