@@ -175,7 +175,6 @@ jobs:
     name: Publish Binaries
     # uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
     uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@t0yv0/publish-binaries-debug
-    runs-on: ubuntu-latest
     needs: build
     with:
       goreleaser-config: '.goreleaser.prerelease.yml'
