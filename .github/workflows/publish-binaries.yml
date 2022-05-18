@@ -89,6 +89,7 @@ jobs:
       - name: Inspect goreleaser-prebuilt
         run: |
           find goreleaser-prebuilt
+
       # Section 3: dry-run goreleaser to verify checksums
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
