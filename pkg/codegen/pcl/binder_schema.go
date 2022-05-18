@@ -55,8 +55,6 @@ func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string,
 func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
 	contract.Assert(ps != nil)
 
-	// TODO: aliases?
-
 	schemaToken, ok := ps.resourceTokenMap[token]
 	if !ok {
 		token = canonicalizeToken(token, ps.schema)
