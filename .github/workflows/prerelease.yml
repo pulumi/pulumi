@@ -96,139 +96,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           make -C sdk/${{ matrix.language}} publish
+
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
     needs: [lint, build, test-linux, test-macos, test-windows]
-    strategy:
-      matrix:
-        go-version: [1.17.x]
-    steps:
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go-version }}
-          check-latest: true
-      - id: go-cache-paths
-        run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-      - name: Go Cache
-        uses: actions/cache@v2
-        id: go-cache
-        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
-        with:
-          path: |
-              ${{ steps.go-cache-paths.outputs.go-build }}
-              ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Fetch Tags
-        run: |
-          git fetch --quiet --prune --unshallow --tags
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
-        with:
-          repo: t0yv0/goreleaser-filter
-      - name: Download pulumi-linux-x64
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-linux-x64
-          path: goreleaser-downloads
-      - name: Download pulumi-linux-arm64
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-linux-arm64
-          path: goreleaser-downloads
-      - name: Download pulumi-darwin-x64
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-x64
-          path: goreleaser-downloads
-      - name: Download pulumi-darwin-arm64
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-arm64
-          path: goreleaser-downloads
-      - name: Download pulumi-windows-x64
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-windows-x64
-          path: goreleaser-downloads
-      - name: Inspect goreleaser-downloads
-        run: |
-          find goreleaser-downloads
-      - name: Unpack goreleaser-downloads
-        run: |
-          ./scripts/unpack.sh
-      - name: Inspect goreleaser-prebuilt
-        run: |
-          find goreleaser-prebuilt
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-region: us-east-2
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          role-duration-seconds: 3600
-          role-external-id: upload-pulumi-release
-          role-session-name: pulumi@githubActions
-          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      - name: Set PreRelease Version
-        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Download pulumi-windows-checksums
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-windows-checksums
-          path: artifacts/checksums/windows
-      - name: Download pulumi-linux-checksums
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-linux-checksums
-          path: artifacts/checksums/linux
-      - name: Download pulumi-darwin-checksums
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-checksums
-          path: artifacts/checksums/darwin
-      - name: Filter goreleaser config for pre-release check
-        run: |
-          cat .goreleaser.prerelease.yml | goreleaser-filter -no-blobs > /tmp/.goreleaser.current.yml
-      - name: Run GoReleaser to verify tarball checksums
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: -p 3 -f /tmp/.goreleaser.current.yml --skip-publish --skip-announce --skip-validate --rm-dist --release-notes=CHANGELOG_PENDING.md
-      - name: Verify checksums
-        run: |
-          C=artifacts/checksums/pulumi-tested-checksums.txt
-          echo "Tested tarballs with the following checksums:"
-          cat artifacts/checksums/*/* | sort | tee $C
-          echo "Released tarballs with the following checksums:"
-          sort goreleaser/*-checksums.txt
-          echo "Checking that tested and released checksums are identical:"
-          diff <(sort goreleaser/*-checksums.txt) $C
-      - name: Download pulumi-language-*
-        run: |
-          ./scripts/get-language-providers.sh
-      - name: Run GoReleaser to actually release
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: -p 3 -f .goreleaser.prerelease.yml --rm-dist
-      - uses: actions/upload-artifact@v3
-        with:
-          name: goreleaser-artifacts
-          path: |
-            goreleaser/pulumi-*.zip
-            goreleaser/pulumi-*.tar.gz
+    # uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
+    uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@t0yv0/fix-publish-binaries
+    with:
+      goreleaser-config: '.goreleaser.prerelease.yml'
+      goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
+      goreleaser-flags: '-p 3'
+
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
     container: golangci/golangci-lint:v1.44
