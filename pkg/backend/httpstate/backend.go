@@ -737,14 +737,13 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
+	if !currentProjectMatchesWorkspace(stackID) {
+		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	}
+
 	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, fmt.Errorf("error determining initial tags: %w", err)
-	}
-
-	if !currentProjectMatchesWorkspace(stackID) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml."+
-			"if this is intentional re-run this command outside of a Pulumi project directory", stackID.Project)
 	}
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
@@ -918,6 +917,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
+	}
+	if !currentProjectMatchesWorkspace(stackID) {
+		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
+			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
