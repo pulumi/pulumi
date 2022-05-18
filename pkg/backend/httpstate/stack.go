@@ -39,14 +39,14 @@ type Stack interface {
 	StackIdentifier() client.StackIdentifier
 }
 
-type CloudBackendReference struct {
+type cloudBackendReference struct {
 	name    tokens.Name
 	project string
 	owner   string
 	b       *cloudBackend
 }
 
-func (c CloudBackendReference) String() string {
+func (c cloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
 
@@ -69,22 +69,18 @@ func (c CloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c CloudBackendReference) Name() tokens.Name {
+func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
-func (c CloudBackendReference) Project() string {
-	return c.project
-}
-
-func (c CloudBackendReference) Owner() string {
+func (c cloudBackendReference) Owner() string {
 	return c.owner
 }
 
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
-	ref CloudBackendReference
+	ref cloudBackendReference
 	// orgName is the organization that owns this stack.
 	orgName string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
@@ -100,7 +96,7 @@ type cloudStack struct {
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
-		ref: CloudBackendReference{
+		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
 			project: apistack.ProjectName,
 			name:    tokens.Name(apistack.StackName.String()),
@@ -113,14 +109,18 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		b:                b,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+func (s *cloudStack) Project() (*workspace.Project, error) {
+	return &workspace.Project{
+		Name: tokens.PackageName(s.ref.project),
+	}, nil
+}
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
-
 	si, err := s.b.getCloudStackIdentifier(s.ref)
 	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
 	return si
@@ -199,7 +199,7 @@ type cloudStackSummary struct {
 func (css cloudStackSummary) Name() backend.StackReference {
 	contract.Assert(css.summary.ProjectName != "")
 
-	return CloudBackendReference{
+	return cloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: css.summary.ProjectName,
 		name:    tokens.Name(css.summary.StackName),
