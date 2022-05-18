@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -52,6 +53,7 @@ func newStack(ref backend.StackReference, path string, snapshot *deploy.Snapshot
 }
 
 func (s *localStack) Ref() backend.StackReference                            { return s.ref }
+func (s *localStack) Project() (*workspace.Project, error)                   { return &workspace.Project{}, nil }
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
 func (s *localStack) Path() string                                           { return s.path }

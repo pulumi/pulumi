@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 //
@@ -339,6 +340,7 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 
 type MockStack struct {
 	RefF      func() StackReference
+	ProjectF  func() (*workspace.Project, error)
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
 	TagsF     func() map[apitype.StackTagName]string
@@ -364,6 +366,13 @@ var _ Stack = (*MockStack)(nil)
 func (ms *MockStack) Ref() StackReference {
 	if ms.RefF != nil {
 		return ms.RefF()
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) Project() (*workspace.Project, error) {
+	if ms.ProjectF != nil {
+		return ms.ProjectF()
 	}
 	panic("not implemented")
 }

@@ -570,7 +570,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 
-	return CloudBackendReference{
+	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
 		name:    tokens.Name(qualifiedName.Name),
@@ -1337,7 +1337,7 @@ func (b *cloudBackend) GetCloudStackIdentifier(stackRef backend.StackReference) 
 
 // getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
 func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	cloudBackendStackRef, ok := stackRef.(CloudBackendReference)
+	cloudBackendStackRef, ok := stackRef.(cloudBackendReference)
 	if !ok {
 		return client.StackIdentifier{}, errors.New("bad stack reference type")
 	}

@@ -23,11 +23,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -40,14 +38,12 @@ func readProjectStackRef(stack string, s backend.Stack) (*workspace.Project, str
 		return proj, root, err
 	}
 
-	cloudBackendStackRef, ok := s.Ref().(httpstate.CloudBackendReference)
-	if !ok {
-		return nil, "", errors.New("destroying stacks by reference is currently only supported on pulumi service backends")
-	}
+	proj, err = s.Project()
+	if err != nil {
+		return nil, "", err
 
-	return &workspace.Project{
-		Name: tokens.PackageName(cloudBackendStackRef.Project()),
-	}, "", nil
+	}
+	return proj, "", nil
 }
 
 func newDestroyCmd() *cobra.Command {
