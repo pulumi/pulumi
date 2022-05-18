@@ -39,14 +39,14 @@ type Stack interface {
 	StackIdentifier() client.StackIdentifier
 }
 
-type cloudBackendReference struct {
+type CloudBackendReference struct {
 	name    tokens.Name
 	project string
 	owner   string
 	b       *cloudBackend
 }
 
-func (c cloudBackendReference) String() string {
+func (c CloudBackendReference) String() string {
 	// If the project names match, we can elide them.
 	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
 
@@ -69,14 +69,22 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c cloudBackendReference) Name() tokens.Name {
+func (c CloudBackendReference) Name() tokens.Name {
 	return c.name
+}
+
+func (c CloudBackendReference) Project() string {
+	return c.project
+}
+
+func (c CloudBackendReference) Owner() string {
+	return c.owner
 }
 
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
-	ref cloudBackendReference
+	ref CloudBackendReference
 	// orgName is the organization that owns this stack.
 	orgName string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
@@ -92,7 +100,7 @@ type cloudStack struct {
 func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
-		ref: cloudBackendReference{
+		ref: CloudBackendReference{
 			owner:   apistack.OrgName,
 			project: apistack.ProjectName,
 			name:    tokens.Name(apistack.StackName.String()),
@@ -191,7 +199,7 @@ type cloudStackSummary struct {
 func (css cloudStackSummary) Name() backend.StackReference {
 	contract.Assert(css.summary.ProjectName != "")
 
-	return cloudBackendReference{
+	return CloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: css.summary.ProjectName,
 		name:    tokens.Name(css.summary.StackName),
