@@ -27,9 +27,18 @@ import * as semver from "semver";
 /** @internal */
 export const isNodeAtLeastV11 = semver.gte(process.version, "11.0.0");
 
-const session = isNodeAtLeastV11
-    ? createInspectorSessionAsync()
-    : Promise.resolve<import("inspector").Session>(<any>undefined);
+let session: Promise<import("inspector").Session | undefined> | undefined = undefined;
+
+function getSession() {
+    if (session !== undefined) {
+        return session;
+    }
+    if (!isNodeAtLeastV11) {
+        return Promise.resolve(undefined);
+    }
+    session = createInspectorSessionAsync();
+    return session;
+}
 
 const scriptIdToUrlMap = new Map<string, string>();
 
@@ -64,7 +73,7 @@ export async function getSessionAsync() {
         throw new Error("Should not call getSessionAsync unless on Node11 or above.");
     }
 
-    return session;
+    return getSession();
 }
 
 /**
@@ -73,7 +82,7 @@ export async function getSessionAsync() {
  * @internal
  */
 export async function isInitializedAsync() {
-    await session;
+    await getSession();
 }
 
 /**

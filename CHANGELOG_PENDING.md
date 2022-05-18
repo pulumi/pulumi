@@ -13,6 +13,9 @@
   [#7153](https://github.com/pulumi/pulumi/pull/7153)
   [#9610](https://github.com/pulumi/pulumi/pull/9610)
 
+- [sdk/nodejs] Lazy load V8 inspector session to remove module import side-effect.
+  [#9375](https://github.com/pulumi/pulumi/issues/9375)
+
 ### Bug Fixes
 
 - [cli] The PULUMI_CONFIG_PASSPHRASE environment variables can be empty, this is treated different to being unset.
@@ -23,3 +26,6 @@
 
 - [cli] Fix panic in `pulumi console` when no stack is selected.
   [#9594](https://github.com/pulumi/pulumi/pull/9594)
+
+- [auto/python] - Fix text color argument being ignored during stack operations.
+  [#9615](https://github.com/pulumi/pulumi/pull/9615)
