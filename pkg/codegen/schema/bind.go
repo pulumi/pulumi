@@ -718,7 +718,7 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 	// If this is a reference to an external sch
 	referencesExternalSchema := ref.Package != t.pkg.Name || !versionEquals(ref.Version, t.pkg.Version)
 	if referencesExternalSchema {
-		pkg, err := t.loader.LoadPackage(ref.Package, ref.Version)
+		pkg, err := t.loader.LoadPackageReference(ref.Package, ref.Version)
 		if err != nil {
 			return nil, nil, fmt.Errorf("resolving package %v: %w", ref.URL, err)
 		}

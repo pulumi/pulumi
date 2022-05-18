@@ -18,7 +18,8 @@ import (
 )
 
 type Loader interface {
-	LoadPackage(pkg string, version *semver.Version) (PackageReference, error)
+	LoadPackage(pkg string, version *semver.Version) (*Package, error)
+	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 }
 
 type pluginLoader struct {
@@ -126,7 +127,15 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 	return nil
 }
 
-func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (PackageReference, error) {
+func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return ref.Definition()
+}
+
+func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	key := pkg + "@"
 	if version != nil {
 		key += version.String()

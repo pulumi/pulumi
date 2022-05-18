@@ -100,7 +100,7 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 	}
 
 	version := (*semver.Version)(nil)
-	pkg, err := loader.LoadPackage(name, version)
+	pkg, err := loader.LoadPackageReference(name, version)
 	if err != nil {
 		return nil, err
 	}

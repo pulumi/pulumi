@@ -189,7 +189,3 @@ require (
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 )
-
-replace github.com/pulumi/pulumi-java/pkg => ../../pulumi-java/pkg
-
-replace github.com/pulumi/pulumi-yaml => ../../pulumi-yaml
