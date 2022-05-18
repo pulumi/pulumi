@@ -11,55 +11,121 @@ import (
 	"github.com/segmentio/encoding/json"
 )
 
+// A PackageReference represents a references Pulumi Package. Applications that do not need access to the entire
+// definition of a Pulumi Package should use PackageReference rather than Package, as the former uses memory more
+// efficiently than the latter by binding package members on-demand.
 type PackageReference interface {
+	// Name returns the package name.
 	Name() string
+	// Version returns the package version.
 	Version() *semver.Version
 
+	// Types returns the package's types.
 	Types() PackageTypes
+	// Config returns the package's configuration variables, if any.
 	Config() ([]*Property, error)
+	// Provider returns the package's provider.
 	Provider() (*Resource, error)
+	// Resources returns the package's resources.
 	Resources() PackageResources
+	// Functions returns the package's functions.
 	Functions() PackageFunctions
 
+	// TokenToModule extracts a package member's module name from its token.
 	TokenToModule(token string) string
 
+	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
 }
 
+// PackageTypes provides random and sequential access to a package's types.
 type PackageTypes interface {
+	// Range returns a range iterator for the package's types. Call Next to
+	// advance the iterator, and Token/Type to access each entry. Type definitions
+	// are loaded on demand. Iteration order is undefined.
+	//
+	// Example:
+	//
+	//     for it := pkg.Types().Range(); it.Next(); {
+	//         token := it.Token()
+	//         typ, err := it.Type()
+	//         ...
+	//     }
+	//
 	Range() TypesIter
+
+	// Get finds and loads the type with the given token. If the type is not found,
+	// this function returns (nil, false, nil).
 	Get(token string) (Type, bool, error)
 }
 
+// TypesIter is an iterator for ranging over a package's types. See PackageTypes.Range.
 type TypesIter interface {
 	Token() string
 	Type() (Type, error)
 	Next() bool
 }
 
+// PackageResources provides random and sequential access to a package's resources.
 type PackageResources interface {
+	// Range returns a range iterator for the package's resources. Call Next to
+	// advance the iterator, and Token/Resource to access each entry. Resource definitions
+	// are loaded on demand. Iteration order is undefined.
+	//
+	// Example:
+	//
+	//     for it := pkg.Resources().Range(); it.Next(); {
+	//         token := it.Token()
+	//         res, err := it.Resource()
+	//         ...
+	//     }
+	//
 	Range() ResourcesIter
+
+	// Get finds and loads the resource with the given token. If the resource is not found,
+	// this function returns (nil, false, nil).
 	Get(token string) (*Resource, bool, error)
-	GetType(token string) (Type, bool, error)
+
+	// GetType loads the *ResourceType that corresponds to a given resource definition.
+	GetType(token string) (*ResourceType, bool, error)
 }
 
+// ResourcesIter is an iterator for ranging over a package's resources. See PackageResources.Range.
 type ResourcesIter interface {
 	Token() string
 	Resource() (*Resource, error)
 	Next() bool
 }
 
+// PackageFunctions provides random and sequential access to a package's functions.
 type PackageFunctions interface {
+	// Range returns a range iterator for the package's functions. Call Next to
+	// advance the iterator, and Token/Function to access each entry. Function definitions
+	// are loaded on demand. Iteration order is undefined.
+	//
+	// Example:
+	//
+	//     for it := pkg.Functions().Range(); it.Next(); {
+	//         token := it.Token()
+	//         fn, err := it.Function()
+	//         ...
+	//     }
+	//
 	Range() FunctionsIter
+
+	// Get finds and loads the function with the given token. If the function is not found,
+	// this function returns (nil, false, nil).
 	Get(token string) (*Function, bool, error)
 }
 
+// FunctionsIter is an iterator for ranging over a package's functions. See PackageFunctions.Range.
 type FunctionsIter interface {
 	Token() string
 	Function() (*Function, error)
 	Next() bool
 }
 
+// packageDefRef is an implementation of PackageReference backed by a *Package.
 type packageDefRef struct {
 	pkg *Package
 }
@@ -154,7 +220,7 @@ func (p packageDefResources) Get(token string) (*Resource, bool, error) {
 	return def, ok, nil
 }
 
-func (p packageDefResources) GetType(token string) (Type, bool, error) {
+func (p packageDefResources) GetType(token string) (*ResourceType, bool, error) {
 	typ, ok := p.GetResourceType(token)
 	return typ, ok, nil
 }
@@ -214,6 +280,9 @@ func (i *packageDefFunctionsIter) Next() bool {
 	return true
 }
 
+// PartialPackage is an implementation of PackageReference that loads and binds package members on demand. A
+// PartialPackage is backed by a PartialPackageSpec, which leaves package members in their JSON-encoded form until
+// they are required. PartialPackages are created using ImportPartialSpec.
 type PartialPackage struct {
 	spec      *PartialPackageSpec
 	languages map[string]Language
@@ -473,7 +542,7 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	return res, res != nil, nil
 }
 
-func (p partialPackageResources) GetType(token string) (Type, bool, error) {
+func (p partialPackageResources) GetType(token string) (*ResourceType, bool, error) {
 	typ, diags, err := p.types.bindResourceTypeDef(token)
 	if err != nil {
 		return nil, false, err
