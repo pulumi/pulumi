@@ -107,6 +107,7 @@ type Backend interface {
 
 	CloudURL() string
 
+	GetCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error)
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
@@ -569,7 +570,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 
-	return cloudBackendReference{
+	return CloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
 		name:    tokens.Name(qualifiedName.Name),
@@ -712,6 +713,22 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
+// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
+// if the project name in Pulumi.yaml is anything other than "bar".
+func currentProjectMatchesWorkspace(stack client.StackIdentifier) bool {
+	projPath, err := workspace.DetectProjectPath()
+	if err != nil {
+		return false
+	}
+
+	proj, err := workspace.LoadProject(projPath)
+	if err != nil {
+		return false
+	}
+
+	return proj.Name.String() != stack.Project
+}
+
 func (b *cloudBackend) CreateStack(
 	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
 	backend.Stack, error) {
@@ -725,11 +742,9 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("error determining initial tags: %w", err)
 	}
 
-	// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
-	// if the project name in Pulumi.yaml is anything other than "bar".
-	projNameTag, ok := tags[apitype.ProjectNameTag]
-	if ok && stackID.Project != projNameTag {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	if !currentProjectMatchesWorkspace(stackID) {
+		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml."+
+			"if this is intentional re-run this command outside of a Pulumi project directory", stackID.Project)
 	}
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
@@ -1313,8 +1328,13 @@ func cleanProjectName(projectName string) string {
 }
 
 // getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
+func (b *cloudBackend) GetCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
+	return b.getCloudStackIdentifier(stackRef)
+}
+
+// getCloudStackIdentifier converts a backend.StackReference to a client.StackIdentifier for the same logical stack
 func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) (client.StackIdentifier, error) {
-	cloudBackendStackRef, ok := stackRef.(cloudBackendReference)
+	cloudBackendStackRef, ok := stackRef.(CloudBackendReference)
 	if !ok {
 		return client.StackIdentifier{}, errors.New("bad stack reference type")
 	}

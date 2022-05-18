@@ -23,13 +23,32 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func readProjectStackRef(stack string, s backend.Stack) (*workspace.Project, string, error) {
+	proj, root, err := readProject()
+	if stack == "" {
+		return proj, root, err
+	}
+
+	cloudBackendStackRef, ok := s.Ref().(httpstate.CloudBackendReference)
+	if !ok {
+		return nil, "", errors.New("destroying stacks by reference is currently only supported on pulumi service backends")
+	}
+
+	return &workspace.Project{
+		Name: tokens.PackageName(cloudBackendStackRef.Project()),
+	}, "", nil
+}
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
@@ -124,7 +143,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			proj, root, err := readProject()
+			proj, root, err := readProjectStackRef(stack, s)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -135,12 +154,12 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			sm, err := getStackSecretsManager(s)
-			if err != nil {
+			if err != nil && stack == "" {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
-			if err != nil {
+			if err != nil && stack == "" {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
