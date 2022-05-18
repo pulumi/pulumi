@@ -170,6 +170,8 @@ jobs:
     uses: pulumi/pulumi/.github/workflows/build.yml@master
     with:
       enable-coverage: true
+      goreleaser-config: '.goreleaser.prerelease.yml'
+      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
 
   test-linux:
     name: Test Linux

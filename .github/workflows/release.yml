@@ -208,7 +208,6 @@ jobs:
 
   publish-binaries:
     name: Publish Binaries
-    runs-on: macos-latest
     needs: [lint, build, test-linux, test-macos, test-windows]
     # uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
     uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@t0yv0/fix-publish-binaries
