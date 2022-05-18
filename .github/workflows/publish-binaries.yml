@@ -25,9 +25,6 @@ on:
       AWS_UPLOAD_ROLE_ARN:
         description: "AWS role for publishing binaries to S3"
         required: true
-      GITHUB_TOKEN:
-        description: "Token to use for GitHub API"
-        required: true
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
