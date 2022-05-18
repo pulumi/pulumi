@@ -744,12 +744,14 @@ github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084/go.mod h1:TjEm7z
 github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
-github.com/pulumi/pulumi-java/pkg v0.1.0 h1:NsbaTKH6edcEfGcsu3RHxEB5zq29+FXV5D79CPTZPBU=
 github.com/pulumi/pulumi-java/pkg v0.1.0/go.mod h1:Dw5klQSJCD6hHaHN4BcCoOW+KjC6NafdBtDsy6sY6uc=
+github.com/pulumi/pulumi-java/pkg v0.2.0 h1:/aV/3c5MhXNkUu/aW6dtbYDbODFVqVQiGjVkLnl5KYo=
+github.com/pulumi/pulumi-java/pkg v0.2.0/go.mod h1:LUz8JGS7Lxn2EnPkxFhB6Rap0CwZyHTHmwLQ16NFIhc=
 github.com/pulumi/pulumi-yaml v0.3.0 h1:I7aW6Qm/1EsYDJJDJ0DLrLvpOlpmjbAgTnYo8pZlUcs=
 github.com/pulumi/pulumi-yaml v0.3.0/go.mod h1:6pQ0QcQqLYbq+i5vYjir/gDnpCvTkKcHqB5+mt0d3So=
 github.com/pulumi/pulumi/pkg/v3 v3.26.0/go.mod h1:L9E+MXe05AbrSmX1GjX3jIrVNpE2RrauKEjME+BNzi4=
 github.com/pulumi/pulumi/pkg/v3 v3.31.1-0.20220429232336-81582c4dcb93/go.mod h1:bO/BHZJoG2Mm8C3dxP414vLPvjxFfsetPE3Ep7Ffgro=
+github.com/pulumi/pulumi/pkg/v3 v3.32.1/go.mod h1:TNPDg+H4Mzy5ldOJNpkzqPYTuYH8ehorPFtnQd3pRUU=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=
