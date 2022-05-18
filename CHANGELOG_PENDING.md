@@ -22,4 +22,4 @@
 
 
 - [auto/python] - Fix text color argument being ignored during stack     operations.
-  [#XXXX](https://github.com/pulumi/pulumi/pull/)
+  [#9615](https://github.com/pulumi/pulumi/pull/9615)
