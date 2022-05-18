@@ -9,6 +9,8 @@
 - [cli] Updated gocloud.dev to 0.24.0, which adds support for using AWS SDK v2. It enables users to pass an AWS profile to the `awskms` secrets provider url (i.e. `awskms://alias/pulumi?awssdk=v2&region=eu-west-1&profile=aws-prod`)
   [#9590](https://github.com/pulumi/pulumi/pull/9590)
 
+- [sdk/nodejs] Lazy load V8 inspector session to remove module import side-effect [#9375](https://github.com/pulumi/pulumi/issues/9375)
+
 ### Bug Fixes
 
 - [cli] The PULUMI_CONFIG_PASSPHRASE environment variables can be empty, this is treated different to being unset.
