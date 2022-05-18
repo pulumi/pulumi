@@ -73,10 +73,6 @@ func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
-func (c cloudBackendReference) Owner() string {
-	return c.owner
-}
-
 // cloudStack is a cloud stack descriptor.
 type cloudStack struct {
 	// ref is the stack's unique name.
@@ -109,16 +105,17 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		b:                b,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference { return s.ref }
+func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Backend() backend.Backend                   { return s.b }
+func (s *cloudStack) OrgName() string                            { return s.orgName }
+func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
+func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
+
 func (s *cloudStack) Project() (*workspace.Project, error) {
 	return &workspace.Project{
 		Name: tokens.PackageName(s.ref.project),
 	}, nil
 }
-func (s *cloudStack) Backend() backend.Backend                   { return s.b }
-func (s *cloudStack) OrgName() string                            { return s.orgName }
-func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
-func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	si, err := s.b.getCloudStackIdentifier(s.ref)

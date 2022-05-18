@@ -150,12 +150,12 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			sm, err := getStackSecretsManager(s)
-			if err != nil && stack == "" {
+			if err != nil {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
-			if err != nil && stack == "" {
+			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
