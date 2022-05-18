@@ -106,7 +106,11 @@ jobs:
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
       goreleaser-flags: '-p 3 --skip-validate'
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_UPLOAD_ROLE_ARN: ${{ secrets.UPLOAD_ROLE_ARN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   #  examples_smoke_test:
   #    name: Trigger Examples Smoke Test

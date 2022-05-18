@@ -15,7 +15,19 @@ on:
         description: 'The goreleaser-flags arg that build.yml was called with'
         required: true
         type: string
-    secrets: {}
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: "AWS key ID for publishing binaries to S3"
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: "AWS secret access key for publishing binaries to S3"
+        required: true
+      AWS_UPLOAD_ROLE_ARN:
+        description: "AWS role for publishing binaries to S3"
+        required: true
+      GITHUB_TOKEN:
+        description: "Token to use for GitHub API"
+        required: true
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
