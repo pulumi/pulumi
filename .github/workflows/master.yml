@@ -102,7 +102,7 @@ jobs:
     name: Publish Binaries
     # uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
     uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@t0yv0/fix-publish-binaries
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [lint, language-sdk-lint, build, test-linux, test-windows, test-macos]
     with:
       goreleaser-config: '.goreleaser.prerelease.yml'

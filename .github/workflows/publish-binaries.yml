@@ -133,7 +133,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -p 3 -f ${{ inputs.goreleaser-config }} ${{ inputs.goreleaser-flags}}
+          args: -p 3 -f ${{ inputs.goreleaser-config }} ${{ inputs.goreleaser-flags }} --rm-dist
       - uses: actions/upload-artifact@v3
         with:
           name: goreleaser-artifacts
