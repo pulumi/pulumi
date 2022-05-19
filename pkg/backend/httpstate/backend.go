@@ -712,10 +712,11 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
-// Confirm the stack identity doesn't contradict the environment.
-// e.g. stack init foo/bar/baz shouldn't work
-// if the project name in Pulumi.yaml is anything other than "bar".
-// if the CWD is not a Pulumi project, it doesn't contradict.
+// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
+// if the CWD is not in a Pulumi project,
+//     does not contradict
+// if the project name in Pulumi.yaml is "foo".
+//     a stack with a name of foo/bar/foo should not work.
 func currentProjectContradictsWorkspace(stack client.StackIdentifier) bool {
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
