@@ -175,8 +175,9 @@ func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {
 }
 
 // IsCompressed returns if data is zip compressed.
-func IsCompressed(data []byte) bool {
-	return data[0] == 31 && data[1] == 139
+func IsCompressed(buf []byte) bool {
+	// Taken from compress/gzip/gunzip.go
+	return len(buf) >= 3 && buf[0] == 31 && buf[1] == 139 && buf[2] == 8
 }
 
 func Gzip(m Marshaler) Marshaler {
