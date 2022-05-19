@@ -1,7 +1,7 @@
 CHANGELOG
 =========
 
-## 3.33.0 (2022-05-19)
+## 3.33.1 (2022-05-19)
 
 ### Improvements
 
@@ -30,6 +30,11 @@ CHANGELOG
 
 - [auto/python] - Fix text color argument being ignored during stack     operations.
   [#9615](https://github.com/pulumi/pulumi/pull/9615)
+
+
+## 3.33.0 (2022-05-19)
+
+Replaced by 3.33.1 during release process.
 
 ## 3.32.1 (2022-05-05)
 
