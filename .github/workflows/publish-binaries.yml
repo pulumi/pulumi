@@ -44,14 +44,17 @@ jobs:
       - name: Fetch Tags
         run: git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: t0yv0/goreleaser-filter
-
+          tag: v0.3.0
+          cache: enable
       # Section 1: configure
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1

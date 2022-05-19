@@ -28,9 +28,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl dispatch -r pulumi/templates -c trigger-cron $(pulumictl get version --language generic -o)
@@ -44,9 +46,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: pulumictl dispatch -r pulumi/templates -c update-templates $(pulumictl get version --language generic -o)
   examples_smoke_test:
@@ -57,9 +61,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl dispatch -r pulumi/examples -c smoke-test-cli $(pulumictl get version --language generic -o)
@@ -73,9 +79,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl create choco-deploy $(pulumictl get version --language generic -o)
@@ -89,9 +97,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl winget-deploy
@@ -105,9 +115,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl create cli-docs-build $(pulumictl get version --language generic -o)
@@ -121,9 +133,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Repository Dispatch
         run: |
           pulumictl create homebrew-bump $(pulumictl get version --language generic -o) ${{ github.sha }}
@@ -185,9 +199,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -305,9 +321,11 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Ensure
         run: |
           make ensure
@@ -363,9 +381,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags

@@ -55,9 +55,11 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.0
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Check out source code
         uses: actions/checkout@v2
         with:
