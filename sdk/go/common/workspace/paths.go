@@ -85,6 +85,12 @@ func DetectProjectPath() (string, error) {
 	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return "", err
+
+	}
+	if path == "" {
+		return "", fmt.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so", dir)
 	}
 
 	return path, nil
@@ -125,17 +131,9 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
-	path, err := fsutil.WalkUp(path, isProject, func(s string) bool {
+	return fsutil.WalkUp(path, isProject, func(s string) bool {
 		return true
 	})
-	if err != nil {
-		return "", err
-	}
-
-	if path == "" {
-		return "", fmt.Errorf("working directory is not in a pulumi project")
-	}
-	return path, nil
 }
 
 // DetectPolicyPackPathFrom locates the closest Pulumi policy project from the given path,
