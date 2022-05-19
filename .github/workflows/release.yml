@@ -208,7 +208,7 @@ jobs:
 
   publish-binaries:
     name: Publish Binaries
-    needs: [lint, build, test-linux, test-macos, test-windows]
+    needs: [lint, build]
     uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
     with:
       goreleaser-config: '.goreleaser.yml'
@@ -218,6 +218,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_UPLOAD_ROLE_ARN: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      INPUT_GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
 
   lint:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
@@ -329,33 +330,33 @@ jobs:
       enable-coverage: false
       goreleaser-config: '.goreleaser.yml'
       goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
-  test-linux:
-    name: Test Linux
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: ubuntu-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-  test-macos:
-    name: Test MacOS
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: macos-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-  test-windows:
-    name: Test Windows
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: windows-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-linux:
+  #   name: Test Linux
+  #   needs: build
+  #   uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+  #   with:
+  #     enable-coverage: false
+  #     platform: ubuntu-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-macos:
+  #   name: Test MacOS
+  #   needs: build
+  #   uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+  #   with:
+  #     enable-coverage: false
+  #     platform: macos-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-windows:
+  #   name: Test Windows
+  #   needs: build
+  #   uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+  #   with:
+  #     enable-coverage: false
+  #     platform: windows-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   dispatch-docker-containers-release-build:
     name: Dispatch Docker containers release build
     needs: [publish-binaries, publish-sdks]
