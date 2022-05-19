@@ -915,7 +915,12 @@ func looksLikeSecret(k config.Key, v string) bool {
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
 	cfg, err := backend.GetLatestConfiguration(commandContext(), stack)
 	if err != nil {
-		return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
+		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
+		workspaceStack, err := loadProjectStack(stack)
+		if err != nil {
+			return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
+		}
+		cfg = workspaceStack.Config
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
