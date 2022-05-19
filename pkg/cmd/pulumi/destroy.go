@@ -33,12 +33,11 @@ import (
 )
 
 func readProjectStackRef(stack string, s backend.Stack) (*workspace.Project, string, error) {
-	proj, root, err := readProject()
 	if stack == "" {
-		return proj, root, err
+		return readProject()
 	}
 
-	proj, err = s.Project()
+	proj, err := s.Project()
 	if err != nil {
 		return nil, "", err
 
@@ -153,7 +152,6 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
