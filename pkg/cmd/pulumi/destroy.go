@@ -166,16 +166,6 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			sm, err := getStackSecretsManager(s)
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
-			}
-
-			cfg, err := getStackConfiguration(s, sm)
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
-			}
-
 			snap, err := s.Snapshot(commandContext())
 			if err != nil {
 				return result.FromError(err)
@@ -189,6 +179,13 @@ func newDestroyCmd() *cobra.Command {
 					fmt.Printf("There were no resources matching the wildcards provided.\n")
 				}
 				return nil
+			}
+
+			sm := snap.SecretsManager
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
