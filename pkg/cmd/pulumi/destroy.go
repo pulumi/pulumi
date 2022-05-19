@@ -29,21 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-func readProjectStackRef(stack string, s backend.Stack) (*workspace.Project, string, error) {
-	if stack == "" {
-		return readProject()
-	}
-
-	proj, err := s.Project()
-	if err != nil {
-		return nil, "", err
-
-	}
-	return proj, "", nil
-}
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
@@ -138,9 +124,18 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-			proj, root, err := readProjectStackRef(stack, s)
+
+			root := ""
+			proj, err := s.Project()
 			if err != nil {
 				return result.FromError(err)
+			}
+
+			if stack == "" {
+				proj, root, err = readProject()
+				if err != nil {
+					return result.FromError(err)
+				}
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)
