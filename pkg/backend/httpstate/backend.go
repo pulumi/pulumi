@@ -720,6 +720,10 @@ func currentProjectMatchesWorkspace(stack client.StackIdentifier) bool {
 		return false
 	}
 
+	if projPath == "" {
+		return false
+	}
+
 	proj, err := workspace.LoadProject(projPath)
 	if err != nil {
 		return false
@@ -736,7 +740,8 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	if !currentProjectMatchesWorkspace(stackID) {
+	_, err = workspace.DetectProjectPath()
+	if err == nil && !currentProjectMatchesWorkspace(stackID) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
@@ -917,9 +922,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	if !currentProjectMatchesWorkspace(stackID) {
+	projName, err := workspace.DetectProjectPath()
+	if err == nil && !currentProjectMatchesWorkspace(stackID) {
 		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
-			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+			"provided project name %q doesn't match Pulumi.yaml", stackID.Project, projName)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
