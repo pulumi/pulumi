@@ -19,6 +19,11 @@ import (
 
 type Loader interface {
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
+}
+
+type ReferenceLoader interface {
+	Loader
+
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 }
 
@@ -29,7 +34,7 @@ type pluginLoader struct {
 	entries map[string]PackageReference
 }
 
-func NewPluginLoader(host plugin.Host) Loader {
+func NewPluginLoader(host plugin.Host) ReferenceLoader {
 	return &pluginLoader{
 		host:    host,
 		entries: map[string]PackageReference{},
@@ -193,4 +198,15 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	l.entries[key] = p
 
 	return p, nil
+}
+
+func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
+	if refLoader, ok := loader.(ReferenceLoader); ok {
+		return refLoader.LoadPackageReference(pkg, version)
+	}
+	p, err := loader.LoadPackage(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return p.Reference(), nil
 }

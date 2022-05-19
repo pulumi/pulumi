@@ -38,7 +38,7 @@ var Null = &model.Variable{
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
 func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names NameTable) (*model.Block, error) {
 	// TODO: pull the package version from the resource's provider
-	pkg, err := loader.LoadPackageReference(string(state.Type.Package()), nil)
+	pkg, err := schema.LoadPackageReference(loader, string(state.Type.Package()), nil)
 	if err != nil {
 		return nil, err
 	}

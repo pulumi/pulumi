@@ -896,6 +896,10 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 	return t, ok
 }
 
+func (pkg *Package) Reference() PackageReference {
+	return packageDefRef{pkg: pkg}
+}
+
 func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	version := ""
 	if pkg.Version != nil {
