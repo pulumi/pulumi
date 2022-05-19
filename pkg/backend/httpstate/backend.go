@@ -712,9 +712,11 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
-// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
+// Confirm the stack identity doesn't contradict the environment.
+// e.g. stack init foo/bar/baz shouldn't work
 // if the project name in Pulumi.yaml is anything other than "bar".
-func currentProjectMatchesWorkspace(stack client.StackIdentifier) bool {
+// if the CWD is not a Pulumi project, it doesn't contradict.
+func currentProjectContradictsWorkspace(stack client.StackIdentifier) bool {
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
 		return false
@@ -740,8 +742,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	_, err = workspace.DetectProjectPath()
-	if err == nil && !currentProjectMatchesWorkspace(stackID) {
+	if currentProjectContradictsWorkspace(stackID) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
@@ -922,10 +923,9 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	projName, err := workspace.DetectProjectPath()
-	if err == nil && !currentProjectMatchesWorkspace(stackID) {
+	if currentProjectContradictsWorkspace(stackID) {
 		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
-			"provided project name %q doesn't match Pulumi.yaml", stackID.Project, projName)
+			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
