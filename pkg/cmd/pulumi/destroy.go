@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -46,22 +45,6 @@ func readProjectStackRef(stack string, s backend.Stack) (*workspace.Project, str
 	}
 	return proj, "", nil
 }
-
-func newPanicSecretsManager() (m *panicSecretsManager) {
-	return &panicSecretsManager{
-		crypter: config.NewPanicCrypter(),
-	}
-}
-
-type panicSecretsManager struct {
-	crypter config.Crypter
-}
-
-func (m *panicSecretsManager) Type() string                         { return "" }
-func (m *panicSecretsManager) State() interface{}                   { return nil }
-func (m *panicSecretsManager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
-func (m *panicSecretsManager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
-func (m *panicSecretsManager) EncryptedKey() []byte                 { return []byte{} }
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
@@ -170,6 +153,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
+
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
@@ -181,9 +165,7 @@ func newDestroyCmd() *cobra.Command {
 				return nil
 			}
 
-			sm := snap.SecretsManager
-
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(s, snap.SecretsManager)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
@@ -233,7 +215,7 @@ func newDestroyCmd() *cobra.Command {
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
-				SecretsManager:     sm,
+				SecretsManager:     snap.SecretsManager,
 				Scopes:             cancellationScopes,
 			})
 			if res == nil && protectedCount > 0 && !jsonDisplay {
