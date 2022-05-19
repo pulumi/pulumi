@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -50,16 +49,6 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	ps, err := loadProjectStack(s)
 	if err != nil {
-		switch s := s.(type) {
-		case filestate.Stack:
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
-		case httpstate.Stack:
-			client := s.Backend().(httpstate.Backend).Client()
-			id := s.StackIdentifier()
-
-			return service.NewServiceSecretsManager(client, id)
-		}
 		return nil, err
 	}
 
