@@ -12,8 +12,8 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.33.0
-	github.com/pulumi/pulumi/sdk/v3 v3.33.0
+	github.com/pulumi/pulumi/pkg/v3 v3.33.1
+	github.com/pulumi/pulumi/sdk/v3 v3.33.1
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.45.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
