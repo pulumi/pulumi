@@ -1,0 +1,22 @@
+on:
+  pull_request:
+
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-rate-limits:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check our rate limits using GH Token
+      run: |
+        gh api rate_limit
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Check our rate limits using Pulumi Bot Token
+      run: |
+        gh api rate_limit
+      env:
+        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
