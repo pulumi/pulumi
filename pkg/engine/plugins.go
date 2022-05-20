@@ -203,7 +203,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	}
 
-	logging.V(7).Infof("installPlugin(%s, %s): successfully installed", plugin.Name, plugin.Version)
+	logging.V(7).Infof("installPlugin(%s, %s): installed", plugin.Name, plugin.Version)
 	return nil
 }
 
