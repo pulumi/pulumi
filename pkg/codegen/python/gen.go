@@ -1010,6 +1010,9 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		fmt.Fprintf(w, ", %s=None", PyName(prop.Name))
 	}
 	fmt.Fprintf(w, "):\n")
+	if len(obj.Properties) == 0 {
+		fmt.Fprintf(w, "        pass")
+	}
 	for _, prop := range obj.Properties {
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
@@ -1049,9 +1052,11 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	fmt.Fprintf(w, "    def __await__(self):\n")
 	fmt.Fprintf(w, "        if False:\n")
 	fmt.Fprintf(w, "            yield self\n")
-	fmt.Fprintf(w, "        return %s(\n", baseName)
+	fmt.Fprintf(w, "        return %s(", baseName)
 	for i, prop := range obj.Properties {
-		if i > 0 {
+		if i == 0 {
+			fmt.Fprintf(w, "\n")
+		} else {
 			fmt.Fprintf(w, ",\n")
 		}
 		pname := PyName(prop.Name)
@@ -1726,17 +1731,18 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// And copy the results to an object, if there are indeed any expected returns.
 	if fun.Outputs != nil {
-		fmt.Fprintf(w, "    return %s(\n", retTypeName)
+		fmt.Fprintf(w, "    return %s(", retTypeName)
 		for i, ret := range rets {
-			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
-			// object has a get property that masks the underlying dict subclass's get method.
-			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
-			if i == len(rets)-1 {
-				fmt.Fprintf(w, ")\n")
+			if i == 0 {
+				fmt.Fprintf(w, "\n")
 			} else {
 				fmt.Fprintf(w, ",\n")
 			}
+			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
+			// object has a get property that masks the underlying dict subclass's get method.
+			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
 		}
+		fmt.Fprintf(w, ")\n")
 	}
 
 	mod.genFunctionOutputVersion(w, fun)

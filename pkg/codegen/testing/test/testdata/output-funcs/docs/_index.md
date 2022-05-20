@@ -22,6 +22,7 @@ no_edit_this_page: true
     <li><a href="funcwithconstinput" title="FuncWithConstInput"><span class="api-symbol api-symbol--function"></span>FuncWithConstInput</a></li>
     <li><a href="funcwithdefaultvalue" title="FuncWithDefaultValue"><span class="api-symbol api-symbol--function"></span>FuncWithDefaultValue</a></li>
     <li><a href="funcwithdictparam" title="FuncWithDictParam"><span class="api-symbol api-symbol--function"></span>FuncWithDictParam</a></li>
+    <li><a href="funcwithemptyoutputs" title="FuncWithEmptyOutputs"><span class="api-symbol api-symbol--function"></span>FuncWithEmptyOutputs</a></li>
     <li><a href="funcwithlistparam" title="FuncWithListParam"><span class="api-symbol api-symbol--function"></span>FuncWithListParam</a></li>
     <li><a href="getbastionshareablelink" title="GetBastionShareableLink"><span class="api-symbol api-symbol--function"></span>GetBastionShareableLink</a></li>
     <li><a href="getclientconfig" title="GetClientConfig"><span class="api-symbol api-symbol--function"></span>GetClientConfig</a></li>
