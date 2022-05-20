@@ -76,9 +76,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -196,9 +198,11 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Ensure
         run: |
           make ensure
@@ -254,9 +258,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
