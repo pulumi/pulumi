@@ -220,10 +220,11 @@ jobs:
           tag: v0.0.31
           cache: enable
       - name: Install gotestsum
-        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: gotestyourself/gotestsum
           tag: v1.8.1
+          cache: enable
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
