@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import * from "fs";
+import * as fs from "fs";
 
 // Create a bucket and expose a website index document
 const siteBucket = new aws.s3.Bucket("siteBucket", {website: {
