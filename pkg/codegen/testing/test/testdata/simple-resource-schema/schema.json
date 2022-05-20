@@ -121,7 +121,8 @@
       "inputProperties": {
         "bar": {
           "type": "string",
-          "secret": true
+          "secret": true,
+          "willReplaceOnChanges": true
         }
       },
       "type": "object"

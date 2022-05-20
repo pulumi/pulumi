@@ -848,16 +848,17 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		}
 
 		p := &Property{
-			Name:               name,
-			Comment:            spec.Description,
-			Type:               t.newOptionalType(typ),
-			ConstValue:         cv,
-			DefaultValue:       dv,
-			DeprecationMessage: spec.DeprecationMessage,
-			Language:           language,
-			Secret:             spec.Secret,
-			ReplaceOnChanges:   spec.ReplaceOnChanges,
-			Plain:              spec.Plain,
+			Name:                 name,
+			Comment:              spec.Description,
+			Type:                 t.newOptionalType(typ),
+			ConstValue:           cv,
+			DefaultValue:         dv,
+			DeprecationMessage:   spec.DeprecationMessage,
+			Language:             language,
+			Secret:               spec.Secret,
+			ReplaceOnChanges:     spec.ReplaceOnChanges,
+			WillReplaceOnChanges: spec.WillReplaceOnChanges,
+			Plain:                spec.Plain,
 		}
 
 		propertyMap[name], result = p, append(result, p)

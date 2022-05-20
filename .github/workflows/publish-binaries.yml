@@ -1,0 +1,161 @@
+name: Releases prebuilt CLI binaries
+
+on:
+  workflow_call:
+    inputs:
+      goreleaser-config:
+        description: 'Config file for goreleaser; must match the goreleaser-config build.yml was called with'
+        required: true
+        type: string
+      goreleaser-flags:
+        description: 'Command-line flags to pass to goreleaser'
+        required: true
+        type: string
+      goreleaser-build-flags:
+        description: 'The goreleaser-flags arg that build.yml was called with'
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: "AWS key ID for publishing binaries to S3"
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: "AWS secret access key for publishing binaries to S3"
+        required: true
+      AWS_UPLOAD_ROLE_ARN:
+        description: "AWS role for publishing binaries to S3"
+        required: true
+      INPUT_GITHUB_TOKEN:
+        description: "Input GITHUB_TOKEN environment variable"
+        required: true
+
+env:
+  GITHUB_TOKEN: ${{ secrets.INPUT_GITHUB_TOKEN }}
+
+jobs:
+  publish-binaries:
+    name: Publish Binaries
+    runs-on: macos-latest
+    steps:
+
+      # Section 0: checkout repo and install dependencies
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        with:
+          repo: t0yv0/goreleaser-filter
+
+      # Section 1: configure
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Configure Release Version
+        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+
+      # Section 2: download prebuilt binaries made by build.yml
+      - name: Download pulumi-linux-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-linux-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-windows-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64
+          path: goreleaser-downloads
+      - name: Inspect goreleaser-downloads
+        run: |
+          find goreleaser-downloads
+      - name: Unpack goreleaser-downloads
+        run: |
+          ./scripts/unpack.sh
+      - name: Inspect goreleaser-prebuilt
+        run: |
+          find goreleaser-prebuilt
+
+      # Section 3: dry-run goreleaser to verify checksums
+      - name: Download pulumi-windows-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-checksums
+          path: artifacts/checksums/windows
+      - name: Download pulumi-linux-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-checksums
+          path: artifacts/checksums/linux
+      - name: Download pulumi-darwin-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-checksums
+          path: artifacts/checksums/darwin
+      - name: Filter goreleaser config for the dry-run
+        run: |
+          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs > /tmp/.goreleaser.current.yml
+      - name: Dry-run GoReleaser to verify tarball checksums
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f /tmp/.goreleaser.current.yml ${{ inputs.goreleaser-build-flags }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: goreleaser-dryrun-artifacts
+          path: |
+            goreleaser/pulumi-*.zip
+            goreleaser/pulumi-*.tar.gz
+      - name: Verify checksums
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums.txt
+          echo "Tested tarballs with the following checksums:"
+          cat artifacts/checksums/*/* | sort | tee $C
+          echo "Released tarballs with the following checksums:"
+          sort goreleaser/*-checksums.txt
+          echo "Checking that tested and released checksums are identical:"
+          diff <(sort goreleaser/*-checksums.txt) $C
+
+      # Section 4: release with goreleaser
+      - name: Download pulumi-language-*
+        # NOTE: this must come after the dry-run currently as
+        # build.yml does not include these providers in the checksums.
+        run: |
+          ./scripts/get-language-providers.sh
+      - name: Run GoReleaser to actually release
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f ${{ inputs.goreleaser-config }} ${{ inputs.goreleaser-flags }} --rm-dist
+      - uses: actions/upload-artifact@v3
+        with:
+          name: goreleaser-artifacts
+          path: |
+            goreleaser/pulumi-*.zip
+            goreleaser/pulumi-*.tar.gz
