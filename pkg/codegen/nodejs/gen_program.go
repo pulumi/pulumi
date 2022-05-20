@@ -303,11 +303,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			continue
 		}
 		as := makeValidIdentifier(path.Base(pkg))
-		if as != pkg || pkg == "crypto" {
-			imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
-		} else {
-			imports = append(imports, fmt.Sprintf("import * from \"%v\";", pkg))
-		}
+		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
 	sort.Strings(imports)
 
