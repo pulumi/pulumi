@@ -545,11 +545,12 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName s
 			sizeJSON = jsonStackInfo.Size()
 		}
 
+		// We need to make sure that an out of date state file doesn't exist
+		assert.Equal(t, gzip, e.PathExists(pathStackGzip), "gzip stack file ")
+		assert.Equal(t, !gzip, e.PathExists(pathStack), "Raw json stack file")
 		if gzip {
-			assert.True(t, e.PathExists(pathStackGzip), "gzip stack file ")
 			assert.True(t, e.PathExists(pathStackBakGzip), "gzip backup")
 		} else {
-			assert.True(t, e.PathExists(pathStack), "Raw json stack file")
 			assert.True(t, e.PathExists(pathStackBak), "raw backup")
 		}
 		if sizeGzip != -1 && sizeJSON != -1 {

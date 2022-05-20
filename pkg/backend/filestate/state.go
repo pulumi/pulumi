@@ -200,11 +200,15 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	// context).
 	filePlain := strings.TrimSuffix(file, ".gz")
 	fileGzip := filePlain + ".gz"
+	// We need to make sure that an out of date state file doesn't exist so we
+	// only keep the file of the type we are working with.
+	bckGzip := backupTarget(b.bucket, fileGzip, b.gzip)
+	bckPlain := backupTarget(b.bucket, filePlain, !b.gzip)
 	var bck string
 	if b.gzip {
-		bck = backupTarget(b.bucket, fileGzip, true)
+		bck = bckGzip
 	} else {
-		bck = backupTarget(b.bucket, filePlain, true)
+		bck = bckPlain
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
