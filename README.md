@@ -2,6 +2,8 @@
     <img src="https://www.pulumi.com/images/logo/logo-on-white-box.svg?" width="350">
 </a>
 
+[Deliberately broken](https://www.pulumi.com/something/that/isnt/there)
+
 [![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=slack-badge)
 ![GitHub Discussions](https://img.shields.io/github/discussions/pulumi/pulumi)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
