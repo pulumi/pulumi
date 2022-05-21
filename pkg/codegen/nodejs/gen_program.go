@@ -158,6 +158,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			"@types/node": "^14"
 		},
 		"dependencies": {
+			"typescript": "^4.0.0",
 			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
 	// For each package add a dependency line
 	packages := program.Packages()
