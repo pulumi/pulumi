@@ -163,7 +163,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// For each package add a dependency line
 	packages := program.Packages()
 	for _, p := range packages {
-		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return err
 		}
 

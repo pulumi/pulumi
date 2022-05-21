@@ -93,7 +93,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// For each package add a PackageReference line
 	packages := program.Packages()
 	for _, p := range packages {
-		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
 		}
 
