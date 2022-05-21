@@ -61,6 +61,14 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		err = os.RemoveAll(filepath.Join(dir, "obj"))
 		assert.NoError(t, err, "Failed to remove obj result")
 	}()
+	TypeCheck(t, path, dependencies, pulumiSDKPath)
+}
+
+func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+	var err error
+	dir := filepath.Dir(path)
+
+	ex, err := executable.FindExecutable("dotnet")
 	err = integration.RunCommand(t, "dotnet build",
 		[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to build dotnet project")
