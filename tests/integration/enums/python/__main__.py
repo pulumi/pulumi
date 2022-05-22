@@ -14,9 +14,15 @@ class Farm(str, Enum):
     PLANTS_R_US = "Plants'R'Us"
     PULUMI_PLANTERS_INC = "Pulumi Planters Inc."
 
+
+current_id = 0
+
+
 class PlantProvider(ResourceProvider):
     def create(self, inputs):
-        return CreateResult("plant", inputs)
+        global current_id
+        current_id += 1
+        return CreateResult(str(current_id), inputs)
 
 
 class Tree(Resource):
