@@ -912,22 +912,20 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	spec = &PackageSpec{
-		PackageInfoSpec: PackageInfoSpec{
-			Name:              pkg.Name,
-			Version:           version,
-			Description:       pkg.Description,
-			Keywords:          pkg.Keywords,
-			Homepage:          pkg.Homepage,
-			License:           pkg.License,
-			Attribution:       pkg.Attribution,
-			Repository:        pkg.Repository,
-			LogoURL:           pkg.LogoURL,
-			PluginDownloadURL: pkg.PluginDownloadURL,
-			Meta:              metadata,
-		},
-		Types:     map[string]ComplexTypeSpec{},
-		Resources: map[string]ResourceSpec{},
-		Functions: map[string]FunctionSpec{},
+		Name:              pkg.Name,
+		Version:           version,
+		Description:       pkg.Description,
+		Keywords:          pkg.Keywords,
+		Homepage:          pkg.Homepage,
+		License:           pkg.License,
+		Attribution:       pkg.Attribution,
+		Repository:        pkg.Repository,
+		LogoURL:           pkg.LogoURL,
+		PluginDownloadURL: pkg.PluginDownloadURL,
+		Meta:              metadata,
+		Types:             map[string]ComplexTypeSpec{},
+		Resources:         map[string]ResourceSpec{},
+		Functions:         map[string]FunctionSpec{},
 	}
 
 	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
@@ -1559,7 +1557,45 @@ type PackageInfoSpec struct {
 
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
-	PackageInfoSpec `yaml:",inline"`
+	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
+	Name string `json:"name" yaml:"name"`
+	// DisplayName is the human-friendly name of the package.
+	DisplayName string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
+	// Version is the version of the package. The version must be valid semver.
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// Description is the description of the package.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Keywords is the list of keywords that are associated with the package, if any.
+	// Some reserved keywords can be specified as well that help with categorizing the
+	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
+	// reserved keywords at this time, where `<name>` can be one of:
+	// `cloud`, `database`, `infrastructure`, `monitoring`, `network`, `utility`, `vcs`
+	// and `<type>` is either `native` or `component`. If the package is a bridged Terraform
+	// provider, then don't include the `kind/` label.
+	Keywords []string `json:"keywords,omitempty" yaml:"keywords,omitempty"`
+	// Homepage is the package's homepage.
+	Homepage string `json:"homepage,omitempty" yaml:"homepage,omitempty"`
+	// License indicates which license is used for the package's contents.
+	License string `json:"license,omitempty" yaml:"license,omitempty"`
+	// Attribution allows freeform text attribution of derived work, if needed.
+	Attribution string `json:"attribution,omitempty" yaml:"attribution,omitempty"`
+	// Repository is the URL at which the source for the package can be found.
+	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
+	// LogoURL is the URL for the package's logo, if any.
+	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
+	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// Publisher is the name of the person or organization that authored and published the package.
+	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
+
+	// Meta contains information for the importer about this package.
+	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
+
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+
+	// Language specifies additional language-specific data about the package.
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
@@ -1572,6 +1608,26 @@ type PackageSpec struct {
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
 	Functions map[string]FunctionSpec `json:"functions,omitempty" yaml:"functions,omitempty"`
+}
+
+func (p *PackageSpec) Info() PackageInfoSpec {
+	return PackageInfoSpec{
+		Name:                p.Name,
+		DisplayName:         p.DisplayName,
+		Version:             p.Version,
+		Description:         p.Description,
+		Keywords:            p.Keywords,
+		Homepage:            p.Homepage,
+		License:             p.License,
+		Attribution:         p.Attribution,
+		Repository:          p.Repository,
+		LogoURL:             p.LogoURL,
+		PluginDownloadURL:   p.PluginDownloadURL,
+		Publisher:           p.Publisher,
+		Meta:                p.Meta,
+		AllowedPackageNames: p.AllowedPackageNames,
+		Language:            p.Language,
+	}
 }
 
 // PartialPackageSpec is a serializable description of a Pulumi package that defers the deserialization of most package

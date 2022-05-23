@@ -605,7 +605,7 @@ func TestValidateTypeToken(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec := &PackageSpec{PackageInfoSpec: PackageInfoSpec{Name: "example"}}
+			spec := &PackageSpec{Name: "example"}
 			allowed := map[string]bool{"example": true}
 			for _, e := range c.allowedExtras {
 				allowed[e] = true

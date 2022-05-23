@@ -24,13 +24,11 @@ import (
 )
 
 var testPackageSpec = schema.PackageSpec{
-	PackageInfoSpec: schema.PackageInfoSpec{
-		Name:        "aws",
-		Version:     "0.0.1",
-		Description: "A fake provider package used for testing.",
-		Meta: &schema.MetadataSpec{
-			ModuleFormat: "(.*)(?:/[^/]*)",
-		},
+	Name:        "aws",
+	Version:     "0.0.1",
+	Description: "A fake provider package used for testing.",
+	Meta: &schema.MetadataSpec{
+		ModuleFormat: "(.*)(?:/[^/]*)",
 	},
 	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {

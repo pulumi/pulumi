@@ -142,7 +142,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		diags = diags.Extend(validationDiags)
 	}
 
-	types, pkgDiags, err := newBinder(spec.PackageInfoSpec, packageSpecSource{&spec}, loader)
+	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader)
 	if err != nil {
 		return nil, nil, err
 	}

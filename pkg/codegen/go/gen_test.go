@@ -234,19 +234,15 @@ func TestTokenToType(t *testing.T) {
 
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
-		PackageInfoSpec: schema.PackageInfoSpec{
-			Name: "aws",
-			Meta: &schema.MetadataSpec{
-				ModuleFormat: "(.*)(?:/[^/]*)",
-			},
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
 	}
 
 	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
 	googleNativeSpec := schema.PackageSpec{
-		PackageInfoSpec: schema.PackageInfoSpec{
-			Name: "google-native",
-		},
+		Name: "google-native",
 	}
 
 	tests := []struct {
@@ -302,19 +298,15 @@ func TestTokenToResource(t *testing.T) {
 
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
-		PackageInfoSpec: schema.PackageInfoSpec{
-			Name: "aws",
-			Meta: &schema.MetadataSpec{
-				ModuleFormat: "(.*)(?:/[^/]*)",
-			},
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
 	}
 
 	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
 	googleNativeSpec := schema.PackageSpec{
-		PackageInfoSpec: schema.PackageInfoSpec{
-			Name: "google-native",
-		},
+		Name: "google-native",
 	}
 
 	tests := []struct {
