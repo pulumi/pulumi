@@ -69,6 +69,8 @@ func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumi
 	dir := filepath.Dir(path)
 
 	ex, err := executable.FindExecutable("dotnet")
+	require.NoError(t, err)
+
 	err = integration.RunCommand(t, "dotnet build",
 		[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to build dotnet project")
