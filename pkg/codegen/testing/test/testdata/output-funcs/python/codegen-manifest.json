@@ -8,6 +8,7 @@
     "pulumi_mypkg/func_with_const_input.py",
     "pulumi_mypkg/func_with_default_value.py",
     "pulumi_mypkg/func_with_dict_param.py",
+    "pulumi_mypkg/func_with_empty_outputs.py",
     "pulumi_mypkg/func_with_list_param.py",
     "pulumi_mypkg/get_bastion_shareable_link.py",
     "pulumi_mypkg/get_client_config.py",

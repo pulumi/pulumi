@@ -213,6 +213,7 @@ func TestProgramCodegen(
 
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
 		t.Run(tt.Description, func(t *testing.T) {
@@ -281,7 +282,7 @@ func TestProgramCodegen(
 			} else {
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
-			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
+			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
 				extraPulumiPackages := codegen.NewStringSet()
 				for _, n := range program.Nodes {
 					if r, isResource := n.(*pcl.Resource); isResource {

@@ -29,67 +29,43 @@ import (
 )
 
 type packageSchema struct {
-	schema    *schema.Package
-	resources map[string]*schema.Resource
-	functions map[string]*schema.Function
+	schema schema.PackageReference
 
-	resourceAliases map[string]string
+	// These maps map from canonical tokens to actual tokens.
+	resourceTokenMap map[string]string
+	functionTokenMap map[string]string
 }
 
-func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool) {
+func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
 	contract.Assert(ps != nil)
-	r, ok := ps.functions[token]
-	if ok {
-		return r, token, true
-	}
-	canon := canonicalizeToken(token, ps.schema)
-	r, ok = ps.functions[canon]
-	if ok {
-		return r, canon, true
-	}
-	return nil, "", false
-}
 
-func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool) {
-	contract.Assert(ps != nil)
-	r, ok := ps.resources[token]
-	if ok {
-		return r, token, true
-	}
-	canon := canonicalizeToken(token, ps.schema)
-	r, ok = ps.resources[canon]
-	if ok {
-		return r, canon, true
-	}
-
-	// Handle aliases
-	if ps.resourceAliases == nil {
-		m := map[string]string{}
-		for v, r := range ps.resources {
-			for _, k := range r.Aliases {
-				if k.Type != nil {
-					_, ok := m[*k.Type]
-					contract.Assertf(!ok, "found duplicate key '%s', which makes this process non-deterministic", *k.Type)
-					m[*k.Type] = v
-				}
-			}
+	schemaToken, ok := ps.functionTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.functionTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
 		}
-		ps.resourceAliases = m
-	}
-	actual, ok := ps.resourceAliases[token]
-	if ok {
-		r, ok = ps.resources[actual]
-		contract.Assert(ok)
-		return r, actual, true
-	}
-	actual, ok = ps.resourceAliases[canon]
-	if ok {
-		r, ok = ps.resources[actual]
-		contract.Assert(ok)
-		return r, actual, true
 	}
 
-	return nil, "", false
+	fn, ok, err := ps.schema.Functions().Get(schemaToken)
+	return fn, token, ok, err
+}
+
+func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
+	contract.Assert(ps != nil)
+
+	schemaToken, ok := ps.resourceTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.resourceTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
+		}
+	}
+
+	res, ok, err := ps.schema.Resources().Get(schemaToken)
+	return res, token, ok, err
 }
 
 type PackageCache struct {
@@ -122,24 +98,24 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 	}
 
 	version := (*semver.Version)(nil)
-	pkg, err := loader.LoadPackage(name, version)
+	pkg, err := schema.LoadPackageReference(loader, name, version)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := map[string]*schema.Resource{}
-	for _, r := range pkg.Resources {
-		resources[canonicalizeToken(r.Token, pkg)] = r
+	resourceTokenMap := map[string]string{}
+	for it := pkg.Resources().Range(); it.Next(); {
+		resourceTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
-	functions := map[string]*schema.Function{}
-	for _, f := range pkg.Functions {
-		functions[canonicalizeToken(f.Token, pkg)] = f
+	functionTokenMap := map[string]string{}
+	for it := pkg.Functions().Range(); it.Next(); {
+		functionTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
 
 	schema := &packageSchema{
-		schema:    pkg,
-		resources: resources,
-		functions: functions,
+		schema:           pkg,
+		resourceTokenMap: resourceTokenMap,
+		functionTokenMap: functionTokenMap,
 	}
 
 	c.m.Lock()
@@ -154,9 +130,9 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
-func canonicalizeToken(tok string, pkg *schema.Package) string {
+func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkg.Name, pkg.TokenToModule(tok), member)
+	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.

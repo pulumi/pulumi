@@ -9,6 +9,7 @@ from .func_with_all_optional_inputs import *
 from .func_with_const_input import *
 from .func_with_default_value import *
 from .func_with_dict_param import *
+from .func_with_empty_outputs import *
 from .func_with_list_param import *
 from .get_bastion_shareable_link import *
 from .get_client_config import *
