@@ -59,7 +59,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Creating a list to store and later print helper methods if they turn out to be needed
 	preambleHelperMethods := codegen.NewStringSet()
 
-	for _, p := range program.Packages() {
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return nil, nil, err
 		}
@@ -160,7 +164,10 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		"dependencies": {
 			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
 	// For each package add a dependency line
-	packages := program.Packages()
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err

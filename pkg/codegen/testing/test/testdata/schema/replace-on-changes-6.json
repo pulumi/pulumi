@@ -5,7 +5,7 @@
     "example::Child": {
       "properties": {
         "parent": {
-          "$ref": "#/resources/example::Person"
+          "$ref": "#/types/example::Person"
         },
         "happy": {
           "type": "boolean"
@@ -18,7 +18,7 @@
       "type": "object",
       "properties": {
         "parent": {
-          "$ref": "#/resources/example::Person"
+          "$ref": "#/types/example::Person"
         },
         "alive": {
           "type": "boolean"
