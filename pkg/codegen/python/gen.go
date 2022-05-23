@@ -1054,13 +1054,11 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	fmt.Fprintf(w, "            yield self\n")
 	fmt.Fprintf(w, "        return %s(", baseName)
 	for i, prop := range obj.Properties {
-		if i == 0 {
-			fmt.Fprintf(w, "\n")
-		} else {
-			fmt.Fprintf(w, ",\n")
+		if i > 0 {
+			fmt.Fprintf(w, ",")
 		}
 		pname := PyName(prop.Name)
-		fmt.Fprintf(w, "            %s=self.%s", pname, pname)
+		fmt.Fprintf(w, "\n            %s=self.%s", pname, pname)
 	}
 	fmt.Fprintf(w, ")\n")
 
@@ -1733,14 +1731,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "    return %s(", retTypeName)
 		for i, ret := range rets {
-			if i == 0 {
-				fmt.Fprintf(w, "\n")
-			} else {
-				fmt.Fprintf(w, ",\n")
+			if i > 0 {
+				fmt.Fprintf(w, ",")
 			}
 			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
 			// object has a get property that masks the underlying dict subclass's get method.
-			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
+			fmt.Fprintf(w, "\n        %[1]s=__ret__.%[1]s", PyName(ret.Name))
 		}
 		fmt.Fprintf(w, ")\n")
 	}
