@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as minimist from "minimist";
-import * as path from "path";
-
 import * as grpc from "@grpc/grpc-js";
 
 import { Provider } from "./provider";
@@ -23,10 +20,8 @@ import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
-import { version } from "../version";
 import { parseArgs } from "./internals";
 
-const requireFromString = require("require-from-string");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");

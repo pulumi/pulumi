@@ -13,12 +13,9 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import * as fs from "fs";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
-import * as asset from "../asset";
-import { Config } from "../config";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
