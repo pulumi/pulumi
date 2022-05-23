@@ -361,9 +361,7 @@ export async function main(args: string[]) {
     if (args.length === 0) {
         console.error("fatal: Missing <engine> address");
         process.exit(-1);
-        return;
     }
-    const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({

@@ -305,7 +305,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             const rpcDeps = resp.getReturndependenciesMap();
             if (rpcDeps) {
                 const urns = new Set<string>();
-                for (const [k, returnDeps] of rpcDeps.entries()) {
+                for (const [, returnDeps] of rpcDeps.entries()) {
                     for (const urn of returnDeps.getUrnsList()) {
                         urns.add(urn);
                     }

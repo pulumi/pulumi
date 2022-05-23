@@ -658,7 +658,7 @@ export async function main(provider: Provider, args: string[]) {
  * otherwise return an instance of DependencyProviderResource.
  */
 function createProviderResource(ref: string): resource.ProviderResource {
-    const [urn, _] = resource.parseResourceReference(ref);
+    const [urn] = resource.parseResourceReference(ref);
     const urnParts = urn.split("::");
     const qualifiedType = urnParts[2];
     const urnName = urnParts[3];
