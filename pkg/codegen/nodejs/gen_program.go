@@ -162,6 +162,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			"@types/node": "^14"
 		},
 		"dependencies": {
+			"typescript": "^4.0.0",
 			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
 	// For each package add a dependency line
 	packages, err := program.PackageSnapshots()
@@ -169,7 +170,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
-		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return err
 		}
 
