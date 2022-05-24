@@ -14,9 +14,11 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= install
 
-ensure::
+ensure:: dotnet.ensure .ensure.phony
+.ensure.phony: dotnet.sln **/*.csproj
 	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
 	dotnet restore dotnet.sln
+	@touch .ensure.phony
 
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 TEST_COVERAGE_ARGS := -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)

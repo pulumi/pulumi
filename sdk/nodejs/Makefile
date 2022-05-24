@@ -17,8 +17,10 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-ensure::
-	yarn
+ensure:: yarn.ensure node.ensure .ensure.phony
+.ensure.phony: package.json
+	yarn install
+	@touch .ensure.phony
 
 lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .

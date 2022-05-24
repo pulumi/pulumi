@@ -4,6 +4,7 @@
     "FuncWithConstInput.cs",
     "FuncWithDefaultValue.cs",
     "FuncWithDictParam.cs",
+    "FuncWithEmptyOutputs.cs",
     "FuncWithListParam.cs",
     "GetBastionShareableLink.cs",
     "GetClientConfig.cs",

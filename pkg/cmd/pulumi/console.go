@@ -64,6 +64,11 @@ func newConsoleCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
+					if stack == nil {
+						fmt.Println("No stack is currently selected. " +
+							"Run `pulumi stack select` to select a stack.")
+						return nil
+					}
 				}
 
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this

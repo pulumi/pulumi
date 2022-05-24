@@ -36,4 +36,5 @@ var (
 	Random      = NewProviderLoader("random")
 	Kubernetes  = NewProviderLoader("kubernetes")
 	Other       = NewProviderLoader("other")
+	Synthetic   = NewProviderLoader("synthetic")
 )

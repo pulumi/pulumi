@@ -99,7 +99,7 @@ func </span>GetAmiIdsOutput<span class="p">(</span><span class="nx">ctx</span><s
 
 
 <div>
-<pulumi-choosable type="language" values="java">
+<pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
 <span class="k">&nbsp;&nbsp;Function:</span> mypkg:getAmiIds
 <span class="k">&nbsp;&nbsp;Arguments:</span>

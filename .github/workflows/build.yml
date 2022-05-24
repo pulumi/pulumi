@@ -77,13 +77,17 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: t0yv0/goreleaser-filter
+          tag: v0.3.0
+          cache: enable
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -146,9 +150,11 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v3
         with:
@@ -187,9 +193,11 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Set up Node ${{ inputs.node-version }}
         uses: actions/setup-node@v2
         with:
@@ -237,9 +245,11 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Set up DotNet ${{ inputs.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
