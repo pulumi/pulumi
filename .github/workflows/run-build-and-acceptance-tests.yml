@@ -174,7 +174,6 @@ jobs:
   build:
     name: Build
     uses: ./.github/workflows/build.yml
-    needs: versions
     with:
       enable-coverage: true
 
