@@ -278,7 +278,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_csharp" style="color: inherit; text-decoration: inherit;">Replace</a>
@@ -309,7 +309,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_go" style="color: inherit; text-decoration: inherit;">Replace</a>
@@ -340,7 +340,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_java" style="color: inherit; text-decoration: inherit;">replace</a>
@@ -371,7 +371,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_nodejs" style="color: inherit; text-decoration: inherit;">replace</a>
@@ -402,7 +402,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_python" style="color: inherit; text-decoration: inherit;">replace</a>
@@ -433,7 +433,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Property Map</a></span>
     </dt>
-    <dd></dd><dt class="property-"
+    <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="replace_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_yaml" style="color: inherit; text-decoration: inherit;">replace</a>

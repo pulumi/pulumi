@@ -307,6 +307,21 @@
         },
         "type": "object"
       }
+    },
+    "mypkg::funcWithEmptyOutputs": {
+      "description": "n/a",
+      "inputs": {
+          "properties": {
+              "name": {
+                  "type": "string",
+                  "description": "The Name of the FeatureGroup."
+              }
+          },
+          "required": [
+              "name"
+          ]
+      },
+      "outputs": {}
     }
   },
   "types": {

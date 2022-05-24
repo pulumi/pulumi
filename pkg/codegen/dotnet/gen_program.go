@@ -66,7 +66,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	compatibilities := make(map[string]string)
 	tokenToModules := make(map[string]func(x string) string)
 	functionArgs := make(map[string]string)
-	for _, p := range program.Packages() {
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
 			return make(map[string][]byte), nil, err
 		}
@@ -158,7 +162,10 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 `)
 
 	// For each package add a PackageReference line
-	packages := program.Packages()
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
 	for _, p := range packages {
 		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
 

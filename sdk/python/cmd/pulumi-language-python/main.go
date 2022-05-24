@@ -379,7 +379,7 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
 	output, err := runPythonCommand(virtualenv, cwd, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "calling `python %s`", strings.Join(args, " "))
 	}
 
 	// Parse the JSON output; on some systems pip -v verbose mode

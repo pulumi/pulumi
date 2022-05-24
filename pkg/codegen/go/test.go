@@ -14,7 +14,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func Check(t *testing.T, path string, _ codegen.StringSet, pulumiSDKPath string) {
+func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -41,6 +41,14 @@ func Check(t *testing.T, path string, _ codegen.StringSet, pulumiSDKPath string)
 			dir, &integration.ProgramTestOptions{})
 		require.NoError(t, err)
 	}
+	TypeCheck(t, path, deps, pulumiSDKPath)
+}
+
+func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	dir := filepath.Dir(path)
+	ex, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
 	err = integration.RunCommand(t, "go tidy after replace",
 		[]string{ex, "mod", "tidy"},
 		dir, &integration.ProgramTestOptions{})

@@ -7,6 +7,8 @@ PROJECT_ROOT     := $(realpath ../..)
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
+BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
+
 PROJECT_PKGS    := $(shell go list ./cmd/...)
 TESTPARALLELISM ?= 10
 
@@ -16,11 +18,13 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
 
-ensure::
+ensure:: $(PYTHON).ensure .ensure.phony
+.ensure.phony:
 	$(PYTHON) -m venv venv
 	. venv/*/activate && python -m pip install wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
+	@touch .ensure.phony
 
 build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
@@ -37,7 +41,7 @@ build:: build_package build_plugin
 
 lint:: ensure
 	. venv/*/activate && \
-		python -m black ./lib/pulumi --check
+		python -m black $(BLACK_FLAGS) --check
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
@@ -45,7 +49,7 @@ lint:: ensure
 
 format:: ensure
 	. venv/*/activate && \
-		python -m black ./lib/pulumi
+		python -m black $(BLACK_FLAGS)
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
