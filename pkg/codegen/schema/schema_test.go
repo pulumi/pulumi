@@ -648,7 +648,9 @@ func TestTypeString(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.output, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, c.output, c.input.String())
 		})
 	}
