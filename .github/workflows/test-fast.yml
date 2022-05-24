@@ -234,6 +234,7 @@ jobs:
           find artifacts/go
           mkdir -p bin
           mv artifacts/go/pulumi*/* $PWD/bin/
+          chmod a+x $PWD/bin/*
           echo "Checking contents of $PWD/bin"
           find $PWD/bin
       - name: Add ./bin to PATH
