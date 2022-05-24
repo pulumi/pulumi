@@ -1,15 +1,5 @@
 #!/bin/bash
 
-pushd sdk
-go mod tidy
-go mod download
-popd
-
-pushd pkg
-go mod tidy
-go mod download
-popd
-
 COMMIT_TIME=$(git log -n1 --pretty='format:%cd' --date=format:'%Y%m%d%H%M')
 
 install_file () {
