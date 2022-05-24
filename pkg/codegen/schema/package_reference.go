@@ -514,7 +514,15 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		resourceTypes[token] = typ
 	}
 
-	pkg := *p.types.pkg
+	// NOTE: these writes are very much not concurrency-safe. There is a data race on each write to a slice-typed field
+	// because slices are multi-word values. Unfortunately, fixing this is rather involved. The simplest solution--
+	// returning a copy of p.types.pkg--breaks pacakge membership tests that use pointer equality (e.g. if the result
+	// of Snapshot() is in a variable named `pkg`, `pkg.Resources[0].Package == pkg` will evaluate to `false`). It is
+	// likely that we will need to make a breaking change in order to fix this.
+	//
+	// There is also a race between the call to ImportLanguages and readers of the Language property on the various
+	// types.
+	pkg := p.types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
@@ -528,7 +536,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		return nil, err
 	}
 
-	return &pkg, nil
+	return pkg, nil
 }
 
 type partialPackageTypes struct {
