@@ -657,6 +657,8 @@ func TestTypeString(t *testing.T) {
 }
 
 func TestPackageIdentity(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		nameA    string
 		versionA string
