@@ -23,6 +23,10 @@ on:
         default: '3.1.x'
         required: false
         type: string
+      goreleaser-flags:
+        description: 'Extra command-line flags to pass to goreleaser'
+        required: true
+        type: string
       enable-coverage:
         description: 'Builds executables with coverage analysis enabled'
         default: false
@@ -101,7 +105,7 @@ jobs:
         with:
           version: latest
           distribution: goreleaser-pro
-          args: build -f .goreleaser.build.${{ matrix.os }}.yml
+          args: build -f .goreleaser.build.${{ matrix.os }}.yml ${{ inputs.goreleaser-flags }}
       - name: Upload pulumi-${{ matrix.os }}
         uses: actions/upload-artifact@v2
         with:

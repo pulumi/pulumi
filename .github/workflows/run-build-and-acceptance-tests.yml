@@ -176,6 +176,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       enable-coverage: true
+      goreleaser-flags: -p 3 --skip-validate
 
   test-linux:
     name: Test Linux
