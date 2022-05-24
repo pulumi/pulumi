@@ -14,5 +14,8 @@
 - [sdk/python] Fix spurious diffs causing an "update" on resources created by dynamic providers.
   [#9656](https://github.com/pulumi/pulumi/pull/9656)
 
+- [codegen/nodejs] Emit the "package.json".pulumi.server as "server" correctly. Previously, "pluginDownloadURL" was emitted but never read.
+  [#9662](https://github.com/pulumi/pulumi/pull/9662)
+
 - [cli] Engine now correctly tracks that resource reads have unique URNs.
   [#9516](https://github.com/pulumi/pulumi/pull/9516)
