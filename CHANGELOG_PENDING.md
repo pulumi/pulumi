@@ -13,3 +13,6 @@
 
 - [sdk/python] Fix spurious diffs causing an "update" on resources created by dynamic providers.
   [#9656](https://github.com/pulumi/pulumi/pull/9656)
+
+- [cli] Engine now correctly tracks that resource reads have unique URNs.
+  [#9516](https://github.com/pulumi/pulumi/pull/9516)
