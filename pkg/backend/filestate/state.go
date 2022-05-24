@@ -464,9 +464,16 @@ func (b *localBackend) renameHistory(oldName tokens.Name, newName tokens.Name) e
 		fileName := objectName(file)
 		oldBlob := path.Join(oldHistory, fileName)
 
-		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json, we need to change
-		// the stack name part but retain the other parts.
-		newFileName := string(newName) + fileName[strings.LastIndex(fileName, "-"):]
+		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz], we need to change
+		// the stack name part but retain the other parts. If we find files that don't match this format
+		// ignore them.
+		dashIndex := strings.LastIndex(fileName, "-")
+		if dashIndex == -1 || (fileName[:dashIndex] != oldName.String()) {
+			// No dash or the string up to the dash isn't the old name
+			continue
+		}
+
+		newFileName := string(newName) + fileName[dashIndex:]
 		newBlob := path.Join(newHistory, newFileName)
 
 		if err := b.bucket.Copy(context.TODO(), newBlob, oldBlob, nil); err != nil {
