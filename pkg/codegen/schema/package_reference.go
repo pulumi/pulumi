@@ -484,16 +484,18 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	provider := p.types.resourceDefs["pulumi:providers:"+p.spec.Name]
 
 	resources := make([]*Resource, 0, len(p.types.resourceDefs))
-	for _, res := range p.types.resourceDefs {
-		resources = append(resources, res)
+	resourceDefs := make(map[string]*Resource, len(p.types.resourceDefs))
+	for token, res := range p.types.resourceDefs {
+		resources, resourceDefs[token] = append(resources, res), res
 	}
 	sort.Slice(resources, func(i, j int) bool {
 		return resources[i].Token < resources[j].Token
 	})
 
 	functions := make([]*Function, 0, len(p.types.functionDefs))
-	for _, fn := range p.types.functionDefs {
-		functions = append(functions, fn)
+	functionDefs := make(map[string]*Function, len(p.types.functionDefs))
+	for token, fn := range p.types.functionDefs {
+		functions, functionDefs[token] = append(functions, fn), fn
 	}
 	sort.Slice(functions, func(i, j int) bool {
 		return functions[i].Token < functions[j].Token
@@ -503,21 +505,30 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	contract.Assert(err == nil)
 	contract.Assert(len(diags) == 0)
 
-	pkg := p.types.pkg
+	typeDefs := make(map[string]Type, len(p.types.typeDefs))
+	for token, typ := range p.types.typeDefs {
+		typeDefs[token] = typ
+	}
+	resourceTypes := make(map[string]*ResourceType, len(p.types.resources))
+	for token, typ := range p.types.resources {
+		resourceTypes[token] = typ
+	}
+
+	pkg := *p.types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.resourceTable = p.types.resourceDefs
-	pkg.functionTable = p.types.functionDefs
-	pkg.typeTable = p.types.typeDefs
-	pkg.resourceTypeTable = p.types.resources
+	pkg.resourceTable = resourceDefs
+	pkg.functionTable = functionDefs
+	pkg.typeTable = typeDefs
+	pkg.resourceTypeTable = resourceTypes
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err
 	}
 
-	return pkg, nil
+	return &pkg, nil
 }
 
 type partialPackageTypes struct {
