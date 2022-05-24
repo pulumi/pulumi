@@ -675,6 +675,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     target = kwargs.get("target")
     target_dependents = kwargs.get("target_dependents")
     parallel = kwargs.get("parallel")
+    color = kwargs.get("color")
 
     if message:
         extra_args.extend(["--message", message])
@@ -692,6 +693,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.append("--target-dependents")
     if parallel:
         extra_args.extend(["--parallel", str(parallel)])
+    if color:
+        extra_args.extend(["--color", color])
     return extra_args
 
 

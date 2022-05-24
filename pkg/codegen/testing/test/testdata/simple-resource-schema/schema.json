@@ -1,7 +1,6 @@
 {
   "version": "1.2.3",
   "name": "example",
-  "pluginDownloadURL": "example.com",
   "allowedPackageNames": ["foo", "bar"],
   "pluginDownloadURL": "example.com/download",
   "types": {
@@ -121,7 +120,8 @@
       "inputProperties": {
         "bar": {
           "type": "string",
-          "secret": true
+          "secret": true,
+          "willReplaceOnChanges": true
         }
       },
       "type": "object"

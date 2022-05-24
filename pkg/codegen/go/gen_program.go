@@ -58,7 +58,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	for _, pkg := range program.Packages() {
+	packageDefs, err := programPackageDefs(program)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, pkg := range packageDefs {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
@@ -151,7 +155,10 @@ require (
 `)
 
 	// For each package add a PackageReference line
-	packages := program.Packages()
+	packages, err := programPackageDefs(program)
+	if err != nil {
+		return err
+	}
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err
@@ -422,10 +429,10 @@ func (g *generator) collectConvertImports(
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
-	for _, p := range program.Packages() {
-		if p.Name == pkg {
-			if p.Version != nil && p.Version.Major > 1 {
-				return fmt.Sprintf("/v%d", p.Version.Major), nil
+	for _, p := range program.PackageReferences() {
+		if p.Name() == pkg {
+			if ver := p.Version(); ver != nil && ver.Major > 1 {
+				return fmt.Sprintf("/v%d", ver.Major), nil
 			}
 			return "", nil
 		}
@@ -894,4 +901,20 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 		return alias
 	}
 	return mod
+}
+
+// Go needs complete package definitions in order to properly resolve names.
+//
+// TODO: naming decisions should really be encoded statically so that they can be decided locally.
+func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
+	refs := program.PackageReferences()
+	defs := make([]*schema.Package, len(refs))
+	for i, ref := range refs {
+		def, err := ref.Definition()
+		if err != nil {
+			return nil, err
+		}
+		defs[i] = def
+	}
+	return defs, nil
 }

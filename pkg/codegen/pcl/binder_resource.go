@@ -67,16 +67,22 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	var inputProperties, properties []*schema.Property
 	if !isProvider {
 		var res *schema.Resource
-		if r, tk, ok := pkgSchema.LookupResource(token); ok {
+		if r, tk, ok, err := pkgSchema.LookupResource(token); err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		} else if !ok {
+			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
+		} else {
 			res = r
 			token = tk
-		} else {
-			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
 		node.Schema = res
 		inputProperties, properties = res.InputProperties, res.Properties
 	} else {
-		inputProperties, properties = pkgSchema.schema.Config, pkgSchema.schema.Config
+		config, err := pkgSchema.schema.Config()
+		if err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		}
+		inputProperties, properties = config, config
 	}
 	node.Token = token
 

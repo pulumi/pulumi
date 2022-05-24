@@ -214,19 +214,23 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Install gotestsum
-        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: gotestyourself/gotestsum
-          tag: v1.7.0
+          tag: v1.8.1
+          cache: enable
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.5.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
+          cache: enable
       - name: Download Pulumi Go Binaries (linux-x64)
         if: ${{ inputs.platform == 'ubuntu-latest' }}
         uses: actions/download-artifact@v2

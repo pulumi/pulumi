@@ -91,9 +91,12 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
 
 	// For each package add a PackageReference line
-	packages := program.Packages()
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
 	for _, p := range packages {
-		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
 		}
 
@@ -126,7 +129,11 @@ venv/`)
 
 func newGenerator(program *pcl.Program) (*generator, error) {
 	// Import Python-specific schema info.
-	for _, p := range program.Packages() {
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}

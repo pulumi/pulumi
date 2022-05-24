@@ -28,7 +28,12 @@ case "$1" in
         ARGS=( "$@" )
         BUILDDIR=${ARGS[${#ARGS[@]}-1]}
         OUTPUT=${ARGS[${#ARGS[@]}-2]}
+
         PREBUILT="${OUTPUT/goreleaser/goreleaser-prebuilt}"
+
+        # Since at least goreleaser 1.8.3 binaries are named
+        # amd64_v1/... but prebuilt to `amd64/...`.
+        PREBUILT="${PREBUILT/amd64_v1/amd64}"
 
         MODE=coverage
 

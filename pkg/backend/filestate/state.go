@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package filestate
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -159,20 +158,33 @@ func (b *localBackend) getCheckpoint(stackName tokens.Name) (*apitype.Checkpoint
 	if err != nil {
 		return nil, err
 	}
+	m := encoding.JSON
+	if encoding.IsCompressed(bytes) {
+		m = encoding.Gzip(m)
+	}
 
-	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
 }
 
 func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file := b.stackPath(name)
-	m, ext := encoding.Detect(file)
+	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
 	if m == nil {
 		return "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
+	if b.gzip {
+		if filepath.Ext(file) != encoding.GZIPExt {
+			file = file + ".gz"
+		}
+		m = encoding.Gzip(m)
+	} else {
+		file = strings.TrimSuffix(file, ".gz")
+	}
+
 	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
 		return "", fmt.Errorf("serializaing checkpoint: %w", err)
@@ -186,7 +198,18 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	// atomically replace it anyway and various other bits of the system depend on being able to find the
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
-	bck := backupTarget(b.bucket, file, true)
+	filePlain := strings.TrimSuffix(file, ".gz")
+	fileGzip := filePlain + ".gz"
+	// We need to make sure that an out of date state file doesn't exist so we
+	// only keep the file of the type we are working with.
+	bckGzip := backupTarget(b.bucket, fileGzip, b.gzip)
+	bckPlain := backupTarget(b.bucket, filePlain, !b.gzip)
+	var bck string
+	if b.gzip {
+		bck = bckGzip
+	} else {
+		bck = bckPlain
+	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -302,6 +325,13 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
+	if ext2 := filepath.Ext(base); ext2 != "" && ext == encoding.GZIPExt {
+		// base: stack-name.json, ext: .gz
+		// ->
+		// base: stack-name, ext: .json.gz
+		ext = ext2 + ext
+		base = strings.TrimSuffix(base, ext2)
+	}
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
 	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
 }
@@ -309,9 +339,24 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 func (b *localBackend) stackPath(stack tokens.Name) string {
 	path := filepath.Join(b.StateDir(), workspace.StackDir)
 	if stack != "" {
-		path = filepath.Join(path, fsutil.NamePath(stack)+".json")
+		allObjs, err := listBucket(b.bucket, path)
+		path = filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+		if err == nil {
+			gzipedPath := path + ".gz"
+			var plainObj *blob.ListObject
+			for _, obj := range allObjs {
+				// plainObj will always come out first since allObjs is sorted by Key
+				if obj.Key == path {
+					plainObj = obj
+				} else if obj.Key == gzipedPath {
+					if plainObj != nil && plainObj.ModTime.After(obj.ModTime) {
+						return path
+					}
+					return gzipedPath
+				}
+			}
+		}
 	}
-
 	return path
 }
 
@@ -352,7 +397,8 @@ func (b *localBackend) getHistory(name tokens.Name, pageSize int, page int) ([]b
 		filepath := file.Key
 
 		// ignore checkpoints
-		if !strings.HasSuffix(filepath, ".history.json") {
+		if !strings.HasSuffix(filepath, ".history.json") &&
+			!strings.HasSuffix(filepath, ".history.json.gz") {
 			continue
 		}
 
@@ -383,7 +429,11 @@ func (b *localBackend) getHistory(name tokens.Name, pageSize int, page int) ([]b
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
-		err = json.Unmarshal(b, &update)
+		m := encoding.JSON
+		if encoding.IsCompressed(b) {
+			m = encoding.Gzip(m)
+		}
+		err = m.Unmarshal(b, &update)
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
@@ -439,18 +489,24 @@ func (b *localBackend) addToHistory(name tokens.Name, update backend.UpdateInfo)
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
 
+	m, ext := encoding.JSON, "json"
+	if b.gzip {
+		m = encoding.Gzip(m)
+		ext += ".gz"
+	}
+
 	// Save the history file.
-	byts, err := json.MarshalIndent(&update, "", "    ")
+	byts, err := m.Marshal(&update)
 	if err != nil {
 		return err
 	}
 
-	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
+	historyFile := fmt.Sprintf("%s.history.%s", pathPrefix, ext)
 	if err = b.bucket.WriteAll(context.TODO(), historyFile, byts, nil); err != nil {
 		return err
 	}
 
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
-	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
+	checkpointFile := fmt.Sprintf("%s.checkpoint.%s", pathPrefix, ext)
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
 }
