@@ -223,12 +223,8 @@ jobs:
     needs: versions
     uses: ./.github/workflows/build.yml
     with:
-      # Cross-compiling from ubuntu-latest is faster but the artifact
-      # checksums will not match what publish-binaries expects.
-      default-build-platform: macos-latest
       enable-coverage: false
-      goreleaser-config: '.goreleaser.prerelease.yml'
-      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
+      goreleaser-flags: -p 3
   test-linux:
     name: Test Linux
     needs: build
