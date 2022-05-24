@@ -799,11 +799,10 @@ async def _add_dependency(
 
     from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
-    if isinstance(res, ComponentResource):
+    if isinstance(res, ComponentResource) and not res._remote:
         for child in res._childResources:
             await _add_dependency(deps, child, from_resource)
-        if not res._remote:
-            return
+        return
 
     no_cycles = declare_dependency(from_resource, res) if from_resource else True
     if no_cycles:
