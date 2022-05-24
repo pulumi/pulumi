@@ -246,7 +246,7 @@ jobs:
   test-linux:
     name: Test Linux
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test.yml@master
+    uses: ./.github/workflows/test.yml
     with:
       enable-coverage: true
       platform: ubuntu-latest
@@ -255,7 +255,7 @@ jobs:
   test-macos:
     name: Test MacOS
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: ./.github/workflows/test-fast.yml
     with:
       enable-coverage: true
       platform: macos-latest
@@ -264,7 +264,7 @@ jobs:
   test-windows:
     name: Test Windows
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: ./.github/workflows/test-fast.yml
     with:
       enable-coverage: true
       platform: windows-latest
