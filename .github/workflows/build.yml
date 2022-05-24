@@ -23,26 +23,11 @@ on:
         default: '3.1.x'
         required: false
         type: string
-      goreleaser-config:
-        description: 'Config file for goreleaser'
-        default: '.goreleaser.prerelease.yml'
-        required: false
-        type: string
-      goreleaser-flags:
-        description: 'Command-line flags to pass to goreleaser'
-        default: '-p 3 --snapshot --skip-validate'
-        required: false
-        type: string
       enable-coverage:
         description: 'Builds executables with coverage analysis enabled'
         default: false
         required: false
         type: boolean
-      default-build-platform:
-        description: 'Default platform to cross-compile on'
-        default: 'ubuntu-latest'
-        required: false
-        type: string
     secrets: {}
 
 env:
@@ -55,9 +40,9 @@ jobs:
         include:
           - platform: macos-latest
             os: darwin
-          - platform: ${{ inputs.default-build-platform }}
+          - platform: ubuntu-latest
             os: linux
-          - platform: ${{ inputs.default-build-platform }}
+          - platform: ubuntu-latest
             os: windows
       fail-fast: false
 
@@ -105,7 +90,7 @@ jobs:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          key: go-cache/build.yml/${{ matrix.os }}/${{ hashFiles('*/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Download versions.txt
@@ -119,29 +104,18 @@ jobs:
           rm -rf versions
       - name: Filter goreleaser config by OS
         run: |
-          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
+          cat .goreleaser.build.yml | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
       - name: Run GoReleaser to build Go Pulumi binaries
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f /tmp/.goreleaser.current.yml ${{ inputs.goreleaser-flags }}
-      - name: Upload pulumi-${{ matrix.os }}-arm64
+          distribution: goreleaser-pro
+          args: build -f /tmp/.goreleaser.current.yml
+      - name: Upload pulumi-${{ matrix.os }}
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-${{ matrix.os }}-arm64
-            path: goreleaser/pulumi*-${{ matrix.os }}-arm64*
-            retention-days: 2
-      - name: Upload pulumi-${{ matrix.os }}-x64
-        uses: actions/upload-artifact@v2
-        with:
-            name: pulumi-${{ matrix.os }}-x64
-            path: goreleaser/pulumi*-${{ matrix.os }}-x64*
-            retention-days: 2
-      - name: Upload pulumi-${{ matrix.os }}-checksums
-        uses: actions/upload-artifact@v2
-        with:
-            name: pulumi-${{ matrix.os }}-checksums
-            path: goreleaser/pulumi*-checksums.txt
+            name: pulumi-${{ matrix.os }}
+            path: goreleaser
             retention-days: 2
 
   build_python_sdk:

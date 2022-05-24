@@ -1,0 +1,153 @@
+dist: goreleaser
+
+project_name: pulumi
+
+before:
+  hooks:
+    - ./scripts/prep-for-goreleaser.sh
+
+release:
+  disable: true
+
+changelog:
+  skip: true
+
+builds:
+# Windows builds
+- id: pulumi-windows
+  binary: pulumi
+  gobinary: ../scripts/go-wrapper.sh
+  dir: pkg
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./cmd/pulumi
+- id: pulumi-language-nodejs-windows
+  binary: pulumi-language-nodejs
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./nodejs/cmd/pulumi-language-nodejs
+- id: pulumi-language-python-windows
+  binary: pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./python/cmd/pulumi-language-python
+- id: pulumi-language-dotnet-windows
+  binary: pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./dotnet/cmd/pulumi-language-dotnet
+- id: pulumi-language-go-windows
+  binary: pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./go/pulumi-language-go
+# UNIX builds
+- id: pulumi-unix
+  binary: pulumi
+  gobinary: ../scripts/go-wrapper.sh
+  dir: pkg
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./cmd/pulumi
+- id: pulumi-language-nodejs-unix
+  binary: pulumi-language-nodejs
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./nodejs/cmd/pulumi-language-nodejs
+- id: pulumi-language-python-unix
+  binary: pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./python/cmd/pulumi-language-python
+- id: pulumi-language-dotnet-unix
+  binary: pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./dotnet/cmd/pulumi-language-dotnet
+- id: pulumi-language-go-unix
+  binary: pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./go/pulumi-language-go
+
+snapshot:
+  name_template: "{{ .Version }}-SNAPSHOT"
+
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
