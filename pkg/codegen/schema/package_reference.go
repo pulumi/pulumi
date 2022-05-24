@@ -516,7 +516,7 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 
 	// NOTE: these writes are very much not concurrency-safe. There is a data race on each write to a slice-typed field
 	// because slices are multi-word values. Unfortunately, fixing this is rather involved. The simplest solution--
-	// returning a copy of p.types.pkg--breaks pacakge membership tests that use pointer equality (e.g. if the result
+	// returning a copy of p.types.pkg--breaks package membership tests that use pointer equality (e.g. if the result
 	// of Snapshot() is in a variable named `pkg`, `pkg.Resources[0].Package == pkg` will evaluate to `false`). It is
 	// likely that we will need to make a breaking change in order to fix this.
 	//
