@@ -5,6 +5,7 @@ go.mod
 */python/tests
 */python/venv
 */python/*.egg-info
+*/python/.pytest_cache
 */python/requirements.txt
 */dotnet/Tests
 */nodejs/tests

@@ -913,14 +913,16 @@ func looksLikeSecret(k config.Key, v string) bool {
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+	var cfg config.Map
 	workspaceStack, err := loadProjectStack(stack)
-	cfg := workspaceStack.Config
 	if err != nil {
-		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
+		// if project is unavailable, fallback to get the project's configuration from the backend
 		cfg, err = backend.GetLatestConfiguration(commandContext(), stack)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
 		}
+	} else {
+		cfg = workspaceStack.Config
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return

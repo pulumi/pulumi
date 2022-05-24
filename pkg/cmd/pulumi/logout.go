@@ -74,6 +74,7 @@ func newLogoutCmd() *cobra.Command {
 			var be backend.Backend
 			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
+				fmt.Printf("Logged out of %s\n", cloudURL)
 				return workspace.DeleteAccount(cloudURL)
 			}
 
@@ -88,6 +89,7 @@ func newLogoutCmd() *cobra.Command {
 			} else {
 				logoutErr = be.Logout()
 			}
+			fmt.Printf("Logged out of %s\n", be.URL())
 			return logoutErr
 		}),
 	}

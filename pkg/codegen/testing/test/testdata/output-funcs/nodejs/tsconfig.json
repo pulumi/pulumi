@@ -17,6 +17,7 @@
         "funcWithConstInput.ts",
         "funcWithDefaultValue.ts",
         "funcWithDictParam.ts",
+        "funcWithEmptyOutputs.ts",
         "funcWithListParam.ts",
         "getBastionShareableLink.ts",
         "getClientConfig.ts",

@@ -70,11 +70,13 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	}
 
 	var fn *schema.Function
-	if f, tk, ok := pkgSchema.LookupFunction(token); ok {
+	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+	} else if !ok {
+		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
+	} else {
 		fn = f
 		lit.Value = cty.StringVal(tk)
-	} else {
-		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
 	if len(args) < 2 {

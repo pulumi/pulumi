@@ -54,6 +54,12 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
 	require.NoError(t, err)
 
+	TypeCheck(t, path, dependencies, linkLocal)
+}
+
+func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {
+	dir := filepath.Dir(path)
+
 	typeCheckGeneratedPackage(t, dir, linkLocal)
 }
 

@@ -124,7 +124,6 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
-
 			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
