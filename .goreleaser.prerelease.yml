@@ -1,10 +1,11 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
 dist: goreleaser
+
 project_name: pulumi
+
 before:
   hooks:
     - ./scripts/prep-for-goreleaser.sh
+
 blobs:
 - bucket: get.pulumi.com
   folder: releases/sdk/
@@ -13,10 +14,13 @@ blobs:
     - pulumi-windows
   provider: s3
   region: us-west-2
+
 release:
   disable: true
+
 changelog:
   skip: true
+
 builds:
 # Windows builds
 - id: pulumi-windows
@@ -151,7 +155,6 @@ builds:
   mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./go/pulumi-language-go
 
-
 archives:
 - id: pulumi-unix
   wrap_in_directory: pulumi
@@ -196,7 +199,9 @@ archives:
       dst: '.'
       strip_parent: true
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
+
 checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
