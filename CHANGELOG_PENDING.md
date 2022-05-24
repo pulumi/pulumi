@@ -13,3 +13,6 @@
 
 - [sdk/python] Fix spurious diffs causing an "update" on resources created by dynamic providers.
   [#9656](https://github.com/pulumi/pulumi/pull/9656)
+
+- [sdk/python] Do not depend on the children of remote component resources.
+  [#9665](https://github.com/pulumi/pulumi/pull/9665)
