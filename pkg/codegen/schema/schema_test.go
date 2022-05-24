@@ -619,3 +619,39 @@ func TestValidateTypeToken(t *testing.T) {
 		})
 	}
 }
+
+func TestTypeString(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input  Type
+		output string
+	}{
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+					NumberType,
+				},
+			},
+			output: "Union<string, number>",
+		},
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+				},
+				DefaultType: NumberType,
+			},
+			output: "Union<string, default=number>",
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.output, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.output, c.input.String())
+		})
+	}
+}
