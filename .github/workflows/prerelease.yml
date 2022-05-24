@@ -104,9 +104,8 @@ jobs:
     needs: [lint, build, test-linux, test-macos, test-windows, versions]
     uses: ./.github/workflows/publish-binaries.yml
     with:
-      goreleaser-config: '.goreleaser.prerelease.yml'
-      goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
-      goreleaser-flags: '-p 3'
+      goreleaser-config: .goreleaser.prerelease.yml
+      goreleaser-flags: -p 3
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
