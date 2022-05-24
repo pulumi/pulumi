@@ -67,12 +67,6 @@ jobs:
           repo: pulumi/pulumictl
           tag: v0.0.31
           cache: enable
-      - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        with:
-          repo: t0yv0/goreleaser-filter
-          tag: v0.3.0
-          cache: enable
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -102,15 +96,12 @@ jobs:
         run: |
           cat versions/versions.txt | tee $GITHUB_ENV
           rm -rf versions
-      - name: Filter goreleaser config by OS
-        run: |
-          cat .goreleaser.build.yml | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
       - name: Run GoReleaser to build Go Pulumi binaries
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           distribution: goreleaser-pro
-          args: build -f /tmp/.goreleaser.current.yml
+          args: build -f .goreleaser.build.${{ matrix.os }}.yml
       - name: Upload pulumi-${{ matrix.os }}
         uses: actions/upload-artifact@v2
         with:
