@@ -249,21 +249,12 @@ jobs:
         with:
           name: pulumi-windows-x64
           path: artifacts/go
-      - name: Install Pulumi Go Binaries (non-windows)
-        if: ${{ inputs.platform != 'windows-latest' }}
+      - name: Install Pulumi Go Binaries
         run: |
-          mkdir -p pulumi-bin
-          tar -xf artifacts/go/*.tar.gz -C pulumi-bin
+          echo "Checking contents of artifacts/go"
+          find artifacts/go
           mkdir -p bin
-          mv pulumi-bin/pulumi/* bin/
-          rm -rf pulumi-bin
-      - name: Install Pulumi Go Binaries (windows)
-        if: ${{ inputs.platform == 'windows-latest' }}
-        run: |
-          mkdir -p $PWD/bin
-          unzip -d $PWD/bin artifacts/go/*.zip
-          mv $PWD/bin/pulumi/bin/* $PWD/bin
-          rm -rf $PWD/bin/pulumi
+          mv artifacts/go/pulumi*/* $PWD/bin/
           echo "Checking contents of $PWD/bin"
           find $PWD/bin
       - name: Add ./bin to PATH

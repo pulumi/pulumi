@@ -106,11 +106,17 @@ jobs:
           version: latest
           distribution: goreleaser-pro
           args: build -f .goreleaser.build.${{ matrix.os }}.yml ${{ inputs.goreleaser-flags }}
-      - name: Upload pulumi-${{ matrix.os }}
+      - name: Upload pulumi-${{ matrix.os }}-arm64
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-${{ matrix.os }}
-            path: goreleaser
+            name: pulumi-${{ matrix.os }}-arm64
+            path: goreleaser/*arm64*/*
+            retention-days: 2
+      - name: Upload pulumi-${{ matrix.os }}-x64
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-${{ matrix.os }}-x64
+            path: goreleaser/*amd64*/*
             retention-days: 2
 
   build_python_sdk:
