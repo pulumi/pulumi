@@ -125,17 +125,9 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			root := ""
-			proj, err := s.Project()
+			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
-			}
-
-			if stack == "" {
-				proj, root, err = readProject()
-				if err != nil {
-					return result.FromError(err)
-				}
 			}
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)

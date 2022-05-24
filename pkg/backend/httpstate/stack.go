@@ -111,12 +111,6 @@ func (s *cloudStack) OrgName() string                            { return s.orgN
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
-func (s *cloudStack) Project() (*workspace.Project, error) {
-	return &workspace.Project{
-		Name: tokens.PackageName(s.ref.project),
-	}, nil
-}
-
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	si, err := s.b.getCloudStackIdentifier(s.ref)
 	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.

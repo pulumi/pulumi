@@ -34,7 +34,6 @@ import (
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
-	Project() (*workspace.Project, error)                   // this stack's identity.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
 	Tags() map[apitype.StackTagName]string                  // the stack's existing tags.
