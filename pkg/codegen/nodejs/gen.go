@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/tstypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -2090,26 +2091,19 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) err
 }
 
 type npmPackage struct {
-	Name             string            `json:"name"`
-	Version          string            `json:"version"`
-	Description      string            `json:"description,omitempty"`
-	Keywords         []string          `json:"keywords,omitempty"`
-	Homepage         string            `json:"homepage,omitempty"`
-	Repository       string            `json:"repository,omitempty"`
-	License          string            `json:"license,omitempty"`
-	Scripts          map[string]string `json:"scripts,omitempty"`
-	Dependencies     map[string]string `json:"dependencies,omitempty"`
-	DevDependencies  map[string]string `json:"devDependencies,omitempty"`
-	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
-	Resolutions      map[string]string `json:"resolutions,omitempty"`
-	Pulumi           npmPulumiManifest `json:"pulumi,omitempty"`
-}
-
-type npmPulumiManifest struct {
-	Name              string `json:"name,omitempty"`
-	Version           string `json:"version,omitempty"`
-	Resource          bool   `json:"resource,omitempty"`
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
+	Name             string                  `json:"name"`
+	Version          string                  `json:"version"`
+	Description      string                  `json:"description,omitempty"`
+	Keywords         []string                `json:"keywords,omitempty"`
+	Homepage         string                  `json:"homepage,omitempty"`
+	Repository       string                  `json:"repository,omitempty"`
+	License          string                  `json:"license,omitempty"`
+	Scripts          map[string]string       `json:"scripts,omitempty"`
+	Dependencies     map[string]string       `json:"dependencies,omitempty"`
+	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
+	PeerDependencies map[string]string       `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string       `json:"resolutions,omitempty"`
+	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -2155,11 +2149,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
 		},
 		DevDependencies: devDependencies,
-		Pulumi: npmPulumiManifest{
-			Resource:          true,
-			PluginDownloadURL: pkg.PluginDownloadURL,
-			Name:              info.PluginName,
-			Version:           pluginVersion,
+		Pulumi: plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     info.PluginName,
+			Version:  pluginVersion,
 		},
 	}
 

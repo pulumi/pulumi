@@ -28,6 +28,11 @@ func TestDuplicateURN(t *testing.T) {
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.Error(t, err)
+
+		// Reads use the same URN namespace as register so make sure this also errors
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "")
+		assert.Error(t, err)
+
 		return nil
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)

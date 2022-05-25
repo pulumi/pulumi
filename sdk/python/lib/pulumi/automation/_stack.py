@@ -238,8 +238,8 @@ class Stack:
         args.extend(extra_args)
 
         if plan is not None:
-            args.extend("--plan")
-            args.extend(plan)
+            args.append("--plan")
+            args.append(plan)
 
         kind = ExecKind.LOCAL.value
         on_exit = None
@@ -337,8 +337,8 @@ class Stack:
         args.extend(extra_args)
 
         if plan is not None:
-            args.extend("--save-plan")
-            args.extend(plan)
+            args.append("--save-plan")
+            args.append(plan)
 
         kind = ExecKind.LOCAL.value
         on_exit = None
