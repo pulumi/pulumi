@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -324,4 +325,73 @@ func TestRemoveMakesBackups(t *testing.T) {
 	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
 	assert.NoError(t, err)
 	assert.True(t, backupFileExists)
+}
+
+func TestRenameWorks(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Create a new stack
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Fake up some history
+	err = lb.addToHistory("a", backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	assert.NoError(t, err)
+	// And pollute the history folder
+	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory("a"), "randomfile.txt"), []byte{0, 13}, nil)
+	assert.NoError(t, err)
+
+	// Rename the stack
+	bStackRef, err := b.RenameStack(ctx, aStack, "b")
+	assert.NoError(t, err)
+	assert.Equal(t, "b", bStackRef.String())
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Rename again
+	bStack, err := b.GetStack(ctx, bStackRef)
+	assert.NoError(t, err)
+	cStackRef, err := b.RenameStack(ctx, bStack, "c")
+	assert.NoError(t, err)
+	assert.Equal(t, "c", cStackRef.String())
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(cStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Check we can still get the history
+	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
+	assert.NoError(t, err)
+	assert.Len(t, history, 1)
+	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
