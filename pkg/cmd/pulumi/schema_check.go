@@ -60,7 +60,7 @@ func newSchemaCheckCommand() *cobra.Command {
 			}
 
 			var pkgSpec schema.PackageSpec
-			if ext := filepath.Ext(file); ext == ".yaml" || ext == ".yml" {
+			if ext := filepath.Ext(file); ext == ".yaml" || ext == YMLExt {
 				err = yaml.Unmarshal(schemaBytes, &pkgSpec)
 			} else {
 				err = json.Unmarshal(schemaBytes, &pkgSpec)
