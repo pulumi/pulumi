@@ -2136,7 +2136,11 @@ type ResourceProviderClient interface {
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
-	// Cancel signals the provider to abort all outstanding resource operations.
+	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+	// to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
 	Cancel(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
@@ -2365,7 +2369,11 @@ type ResourceProviderServer interface {
 	Delete(context.Context, *DeleteRequest) (*empty.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
-	// Cancel signals the provider to abort all outstanding resource operations.
+	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+	// to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
 	Cancel(context.Context, *empty.Empty) (*empty.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
