@@ -141,10 +141,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
-	key := pkg + "@"
-	if version != nil {
-		key += version.String()
-	}
+	key := packageIdentity(pkg, version)
 
 	if p, ok := l.getPackage(key); ok {
 		return p, nil
