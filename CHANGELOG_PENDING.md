@@ -6,6 +6,9 @@
 - [cli] The engine will now default resource parent to the root stack if it exists.
   [#9481](https://github.com/pulumi/pulumi/pull/9481)
 
+- [engine] Reduce memory usage in convert and yaml programs by caching of package schemas.
+  [#9684](https://github.com/pulumi/pulumi/issues/9684)
+
 ### Bug Fixes
 
 - [sdk/go] Correctly parse nested git projects in GitLab.

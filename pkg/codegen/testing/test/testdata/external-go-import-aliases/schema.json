@@ -17,16 +17,16 @@
           "$ref": "/aws/v4.36.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
         },
         "resourceLocalInsteadOfRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/resources/google-native:iam/v1:Key"
+          "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:iam/v1:Key"
         },
         "typeLocalInsteadOfRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/types/google-native:iam/v1:AuditConfig"
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam/v1:AuditConfig"
         },
         "resourceRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/resources/google-native:dns/v1:Policy"
+          "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:dns/v1:Policy"
         },
         "typeRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/types/google-native:dns/v1:DnsKeySpec"
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:dns/v1:DnsKeySpec"
         }
       },
       "requiredInputs": [
@@ -53,16 +53,16 @@
           "$ref": "/aws/v4.36.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
         },
         "resourceLocalInsteadOfRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/resources/google-native:iam/v1:Key"
+          "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:iam/v1:Key"
         },
         "typeLocalInsteadOfRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/types/google-native:iam/v1:AuditConfigResponse"
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam/v1:AuditConfigResponse"
         },
         "resourceRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/resources/google-native:dns/v1:Policy"
+          "$ref": "/google-native/v0.18.2/schema.json#/resources/google-native:dns/v1:Policy"
         },
         "typeRemoteAlias": {
-          "$ref": "/google-native/v0.13.0/schema.json#/types/google-native:dns/v1:DnsKeySpecResponse"
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:dns/v1:DnsKeySpecResponse"
         }
       },
       "required": [
