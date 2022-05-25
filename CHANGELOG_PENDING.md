@@ -10,7 +10,7 @@
   [#9375](https://github.com/pulumi/pulumi/issues/9375)
 
 - [nodejs] No longer roundtrips requests for the stack URN via the engine.
-  [#9559](https://github.com/pulumi/pulumi/pull/9559)
+  [#9680](https://github.com/pulumi/pulumi/pull/9680)
 
 ### Bug Fixes
 
