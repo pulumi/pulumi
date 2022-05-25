@@ -83,14 +83,13 @@ jobs:
       - name: Go Cache
         uses: actions/cache@v2
         id: go-cache
-        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
         with:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
           key: go-cache/build.yml/${{ matrix.os }}/${{ hashFiles('*/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-
+            go-cache/build.yml/${{ matrix.os }}/
       - name: Download versions.txt
         uses: actions/download-artifact@v2
         with:
@@ -263,12 +262,3 @@ jobs:
         with:
             name: pulumi-nuget-packages
             path: sdk/dotnet/nupkgs/*.nupkg
-
-# Note [Windows Go Cache]
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# Due to an issue in the actions/cache provider, caching is extremely slow on Windows, see:
-# https://github.com/actions/cache/issues/442. Extracting a ~400MiB cache may take up to 4m31s to
-# complete, which defeats the purpose of the cache. Example:
-#
-# https://github.com/pulumi/pulumi/runs/5396976132?check_suite_focus=true#step:9:25
