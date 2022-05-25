@@ -87,9 +87,9 @@ jobs:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: go-cache/build.yml/${{ matrix.os }}/${{ hashFiles('*/go.sum') }}
+          key: build.yml/go/${{ matrix.os }}/${{ hashFiles('*/go.sum') }}
           restore-keys: |
-            go-cache/build.yml/${{ matrix.os }}/
+            build.yml/go/${{ matrix.os }}/
       - name: Download versions.txt
         uses: actions/download-artifact@v2
         with:
