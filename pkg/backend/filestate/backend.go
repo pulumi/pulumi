@@ -439,7 +439,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file, false)
 
-	// And rename the histoy folder as well.
+	// And rename the history folder as well.
 	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}

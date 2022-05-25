@@ -28,3 +28,6 @@
 
 - [sdk/python] Fixed bug in automation API that invoked Pulumi with malformed arguments.
   [#9607](https://github.com/pulumi/pulumi/pull/9607)
+
+- [cli/backend] Fix a panic in the filestate backend when renaming history files.
+  [#9673](https://github.com/pulumi/pulumi/pull/9673)
