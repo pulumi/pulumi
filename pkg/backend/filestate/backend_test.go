@@ -355,7 +355,8 @@ func TestRenameWorks(t *testing.T) {
 	assert.True(t, stackFileExists)
 
 	// Fake up some history
-	lb.addToHistory("a", backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	err = lb.addToHistory("a", backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	assert.NoError(t, err)
 	// And pollute the history folder
 	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory("a"), "randomfile.txt"), []byte{0, 13}, nil)
 	assert.NoError(t, err)
