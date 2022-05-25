@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -195,16 +195,14 @@ type UnionType struct {
 }
 
 func (t *UnionType) String() string {
-	elements := make([]string, len(t.ElementTypes)+1)
+	elements := make([]string, len(t.ElementTypes))
 	for i, e := range t.ElementTypes {
 		elements[i] = e.String()
 	}
 
-	def := "default="
 	if t.DefaultType != nil {
-		def += t.DefaultType.String()
+		elements = append(elements, "default="+t.DefaultType.String())
 	}
-	elements[len(elements)-1] = def
 
 	return fmt.Sprintf("Union<%v>", strings.Join(elements, ", "))
 }
@@ -838,6 +836,24 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	}
 
 	return nil
+}
+
+func packageIdentity(name string, version *semver.Version) string {
+	// The package's identity is its name and version (if any) separated buy a ':'. The ':' character is not allowed
+	// in package names and so is safe to use as a separator.
+	id := name + ":"
+	if version != nil {
+		return id + version.String()
+	}
+	return id
+}
+
+func (pkg *Package) Identity() string {
+	return packageIdentity(pkg.Name, pkg.Version)
+}
+
+func (pkg *Package) Equals(other *Package) bool {
+	return pkg == other || pkg.Identity() == other.Identity()
 }
 
 var defaultModuleFormat = regexp.MustCompile("(.*)")
