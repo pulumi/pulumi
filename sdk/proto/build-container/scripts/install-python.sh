@@ -17,7 +17,7 @@ ensureSet "${TWINE_VERSION}" "TWINE_VERSION" || exit 1
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y "python${PYTHON_VERSION}" python3-pip
+apt-get install -y "python${PYTHON_VERSION}" python3-pip python3-dev
 update-alternatives --install /usr/bin/python3 python3 "/usr/bin/python${PYTHON_VERSION}" 1
 python3 --version
 
