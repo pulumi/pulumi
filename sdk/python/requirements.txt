@@ -1,6 +1,6 @@
 # Packages needed by the library.
 # Keep this list in sync with setup.py.
-protobuf>=3.6.0,<<3.21.0
+protobuf>=3.6.0,<3.21.0
 grpcio>=1.33.2
 dill>=0.3.0
 six>=1.12.0
