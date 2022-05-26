@@ -228,6 +228,10 @@ jobs:
         with:
           name: pulumi-windows-x64
           path: artifacts/go
+      - name: Install pulumi-language-python-exec
+        run: |
+          mkdir -p bin
+          cp sdk/python/cmd/pulumi-language-python-exec bin/
       - name: Install Pulumi Go Binaries
         run: |
           echo "Checking contents of artifacts/go"
