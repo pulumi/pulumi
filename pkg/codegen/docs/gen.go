@@ -616,11 +616,9 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 
 	// Name and DisplayName should be html-escaped to avoid throwing off rendering for template types in languages like
 	// csharp, Java etc. If word-breaks need to be inserted, then the type string should be html-escaped first.
+	displayName = html.EscapeString(displayName)
 	if insertWordBreaks {
-		displayName = html.EscapeString(displayName)
 		displayName = wbr(displayName)
-	} else {
-		displayName = html.EscapeString(displayName)
 	}
 
 	return propertyType{
