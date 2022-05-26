@@ -11,7 +11,6 @@ source "${SCRIPT_ROOT}/utils.sh"
 ensureSet "${PROTOC_VERSION}" "PROTOC_VERSION" || exit 1
 ensureSet "${PROTOC_SHA256}" "PROTOC_SHA256" || exit 1
 ensureSet "${PROTOC_GEN_GO_VERSION}" "PROTOC_GEN_GO_VERSION" || exit 1
-ensureSet "${PROTOC_GEN_GO_GRPC_VERSION}" "PROTOC_GEN_GO_GRPC_VERSION" || exit 1
 ensureSet "${NODEJS_GRPC_VERSION}" "NODEJS_GRPC_VERSION" || exit 1
 ensureSet "${NODEJS_GRPC_TOOLS_VERSION}" "NODEJS_GRPC_TOOLS_VERSION" || exit 1
 ensureSet "${PYTHON_GRPCIO_VERSION}" "PYTHON_GRPCIO_VERSION" || exit 1
@@ -31,8 +30,12 @@ rm -rf /tmp/protoc
 rm -rf /tmp/protoc.zip
 
 # Install protoc-gen-go
-go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOC_GEN_GO_VERSION}
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${PROTOC_GEN_GO_GRPC_VERSION}
+pushd /tmp
+git clone https://github.com/golang/protobuf -b "v${PROTOC_GEN_GO_VERSION}" --single-branch --depth 1
+pushd /tmp/protobuf
+GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/golang/protobuf/protoc-gen-go
+popd
+rm -rf /tmp/protobuf
 
 # Install Node gRPC Tools
 npm install --unsafe-perm -g "grpc@${NODEJS_GRPC_VERSION}" "grpc-tools@${NODEJS_GRPC_TOOLS_VERSION}"

@@ -399,7 +399,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 		Kind:    "resource",
 	}
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", &result)
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
 	return &result, nil
 }
 

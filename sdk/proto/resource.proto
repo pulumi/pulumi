@@ -20,8 +20,6 @@ import "provider.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/proto/go/pulumirpc";
-
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}

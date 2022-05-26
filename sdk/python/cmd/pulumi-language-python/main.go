@@ -466,7 +466,7 @@ func determinePluginDependency(
 		Server:  server,
 	}
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", &result)
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
 	return &result, nil
 }
 
