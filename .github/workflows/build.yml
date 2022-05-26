@@ -117,9 +117,9 @@ jobs:
           version: latest
           distribution: goreleaser-pro
           args: build -f .goreleaser.build.yml --single-target ${{ inputs.goreleaser-flags }}
-          env:
-            GOOS: ${{ matrix.os }}
-            GOARCH: ${{ matrix.arch }}
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
       - name: Upload ${{ matrix.artifactName }}
         uses: actions/upload-artifact@v2
         with:
