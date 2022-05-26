@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -28,7 +29,11 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi-java/pkg/codegen/java"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	golang "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -72,23 +77,49 @@ func newSchemaGenCommand() *cobra.Command {
 				return err
 			}
 
-			var files map[string][]byte
 			runtime := proj.Runtime.Name()
+			var (
+				generatePackage func(string, *schema.Package, map[string][]byte) (map[string][]byte, error)
+				after           func(map[string][]byte)
+			)
 			switch runtime {
 			case "nodejs":
-				files, err = nodejs.GeneratePackage("pulumi", pkg, nil)
+				generatePackage = nodejs.GeneratePackage
+				after = func(m map[string][]byte) {
+					if pkg.Version != nil {
+						pkgJSON := "package.json"
+						b, ok := m[pkgJSON]
+						contract.Assert(ok)
+						m[pkgJSON] = []byte(strings.ReplaceAll(string(b), "${VERSION}", pkg.Version.String()))
+					}
+				}
+			case "dotnet":
+				generatePackage = dotnet.GeneratePackage
+			case "python":
+				generatePackage = python.GeneratePackage
+			case "go":
+				generatePackage = func(tool string, pkg *schema.Package, _ map[string][]byte) (map[string][]byte, error) {
+					return golang.GeneratePackage(tool, pkg)
+				}
+			case "java":
+				generatePackage = java.GeneratePackage
 			default:
 				return fmt.Errorf("unable to generate an SDK for the '%s' runtime", runtime)
 			}
+
+			files, err := generatePackage("pulumi", pkg, nil)
 			if err != nil {
 				return fmt.Errorf("unable to generate SDK: %w", err)
+			}
+			if after != nil {
+				after(files)
 			}
 
 			if pkg.Name == "" {
 				return fmt.Errorf("package has no name")
 			}
 
-			return writeFiles(filepath.Join(".", "pulumi_sdks", pkg.Name), files)
+			return writeFiles(filepath.Join(".", "pulumi-sdks", pkg.Name), files)
 		}),
 	}
 	cmd.PersistentFlags().String("version", "", "The plugin version to use")

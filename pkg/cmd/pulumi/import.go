@@ -461,7 +461,7 @@ func newImportCmd() *cobra.Command {
 				programGenerator = gogen.GenerateProgram
 			case "nodejs":
 				programGenerator = nodejs.GenerateProgram
-			case "python":
+			case "python": //nolint:goconst
 				programGenerator = python.GenerateProgram
 			case "java":
 				programGenerator = javagen.GenerateProgram
