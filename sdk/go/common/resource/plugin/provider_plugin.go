@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
+	"unsafe"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -212,7 +214,11 @@ func (p *provider) GetSchema(version int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []byte(resp.GetSchema()), nil
+
+	schema := resp.GetSchema()
+	stringHeader := (*reflect.StringHeader)(unsafe.Pointer(&schema))
+	slice := unsafe.Slice((*byte)(unsafe.Pointer(stringHeader.Data)), stringHeader.Len)
+	return slice, nil
 }
 
 // CheckConfig validates the configuration for this resource provider.
