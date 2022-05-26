@@ -34,8 +34,8 @@ CHANGELOG
 - [cli/backend] Fix a panic in the filestate backend when renaming history files.
   [#9673](https://github.com/pulumi/pulumi/pull/9673)
 
-- [sdk/python] Pin protobuf library to <4.
-  [#9696](https://github.com/pulumi/pulumi/pull/9696)
+- [sdk/proto] Update version of protoc used to generate protobufs.
+  [#9700](https://github.com/pulumi/pulumi/pull/9700)
 
 ## 3.33.1 (2022-05-19)
 
