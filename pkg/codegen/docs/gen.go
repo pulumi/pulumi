@@ -614,7 +614,6 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	// If word-breaks need to be inserted, then the type string should be html-encoded first in order to avoid confusing
 	// the Hugo rendering where the word-break tags are inserted. This is required for languages with template types.
 	if insertWordBreaks {
-		displayName = html.EscapeString(displayName)
 		displayName = wbr(displayName)
 	}
 
@@ -622,8 +621,8 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	langTypeString = cleanOptionalIdentifier(langTypeString, lang)
 
 	return propertyType{
-		Name:        langTypeString,
-		DisplayName: displayName,
+		Name:        html.EscapeString(langTypeString),
+		DisplayName: html.EscapeString(displayName),
 		Link:        href,
 	}
 }
