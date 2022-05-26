@@ -83,7 +83,7 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     TEMP_DIR="/tmp/python-build" && \
     echo -e "\tPython temp dir: $TEMP_DIR" && \
     mkdir -p "$TEMP_DIR" && \
-    protoc -I./ --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" *.proto && \
+    python3 -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" *.proto && \
     sed -i "s/^import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$TEMP_DIR"/*.py && \
     cp "$TEMP_DIR"/*.py "$PY_PULUMIRPC"'
 
