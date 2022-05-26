@@ -237,7 +237,7 @@ func installPlugins(
 		return nil, nil, err
 	}
 
-	allPlugins := languagePlugins.Union(snapshotPlugins)
+	allPlugins := languagePlugins.Union(snapshotPlugins).Deduplicate()
 
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//

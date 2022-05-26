@@ -56,6 +56,33 @@ func (p pluginSet) Union(other pluginSet) pluginSet {
 	return newSet
 }
 
+// Removes less specific entries.
+//
+// For example, the plugin aws would be removed if there was an already existing plugin
+// aws-5.4.0.
+func (p pluginSet) Deduplicate() pluginSet {
+	existing := map[string]workspace.PluginInfo{}
+	newSet := newPluginSet()
+	add := func(p workspace.PluginInfo) {
+		prev, ok := existing[p.Name]
+		if ok && p.Version == nil && p.PluginDownloadURL == "" {
+			// no new information
+			return
+		}
+
+		if prev.Version == nil && prev.PluginDownloadURL == "" {
+			// New plugin is more specific then the old one
+			delete(newSet, prev.String())
+		}
+		newSet.Add(p)
+		existing[p.Name] = p
+	}
+	for _, value := range p {
+		add(value)
+	}
+	return newSet
+}
+
 // Values returns a slice of all of the plugins contained within this set.
 func (p pluginSet) Values() []workspace.PluginInfo {
 	var plugins []workspace.PluginInfo
