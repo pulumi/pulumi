@@ -71,30 +71,25 @@ jobs:
           rm -rf versions
 
       # Section 2: download prebuilt binaries
-      - name: Download pulumi-linux-x64
-        uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2
         with:
-          name: pulumi-linux-x64
+          name: pulumi-Linux-X64
           path: goreleaser-linux
-      - name: Download pulumi-linux-arm64
-        uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2
         with:
-          name: pulumi-linux-arm64
+          name: pulumi-Linux-ARM64
           path: goreleaser-linux
-      - name: Download pulumi-darwin-x64
-        uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2
         with:
-          name: pulumi-darwin-x64
+          name: pulumi-macOS-X64
           path: goreleaser-darwin
-      - name: Download pulumi-darwin-arm64
-        uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2
         with:
-          name: pulumi-darwin-arm64
+          name: pulumi-macOS-ARM64
           path: goreleaser-darwin
-      - name: Download pulumi-windows-x64
-        uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v2
         with:
-          name: pulumi-windows-x64
+          name: pulumi-Windows-X64
           path: goreleaser-windows
       - name: Download pulumi-language-*
         run: |

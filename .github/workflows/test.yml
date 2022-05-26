@@ -231,23 +231,10 @@ jobs:
           repo: t0yv0/goteststats
           tag: v0.0.7
           cache: enable
-      - name: Download Pulumi Go Binaries (linux-x64)
-        if: ${{ inputs.platform == 'ubuntu-latest' }}
+      - name: Download pulumi-${{ env.RUNNER_OS }}-${{ env.RUNNER_ARCH }}
         uses: actions/download-artifact@v2
         with:
-          name: pulumi-linux-x64
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (darwin-x64)
-        if: ${{ inputs.platform == 'macos-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-x64
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (windows-x64)
-        if: ${{ inputs.platform == 'windows-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-windows-x64
+          name: pulumi-${{ env.RUNNER_OS }}-${{ env.RUNNER_ARCH }}
           path: artifacts/go
       - name: Install pulumi-language-python-exec
         run: |
