@@ -231,10 +231,10 @@ jobs:
           repo: t0yv0/goteststats
           tag: v0.0.7
           cache: enable
-      - name: Download pulumi-${{ env.RUNNER_OS }}-${{ env.RUNNER_ARCH }}
+      - name: Download pulumi-${{ runner.os }}-${{ runner.arch }}
         uses: actions/download-artifact@v2
         with:
-          name: pulumi-${{ env.RUNNER_OS }}-${{ env.RUNNER_ARCH }}
+          name: pulumi-${{ runner.os }}-${{ runner.arch }}
           path: artifacts/go
       - name: Install pulumi-language-python-exec
         run: |
