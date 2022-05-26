@@ -31,3 +31,6 @@
 
 - [cli/backend] Fix a panic in the filestate backend when renaming history files.
   [#9673](https://github.com/pulumi/pulumi/pull/9673)
+  
+- [sdk/python] Added upperbound version pin to `protobuf` (<4.21.0).
+  [#9695](https://github.com/pulumi/pulumi/pull/9695)
