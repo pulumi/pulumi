@@ -32,5 +32,8 @@
 - [cli/backend] Fix a panic in the filestate backend when renaming history files.
   [#9673](https://github.com/pulumi/pulumi/pull/9673)
 
+- [sdk/python] Pin protobuf library to <4.
+  [#9696](https://github.com/pulumi/pulumi/pull/9696)
+
 - [sdk/proto] Inline dockerfile used to generate protobuf code.
   [#9700](https://github.com/pulumi/pulumi/pull/9700)
