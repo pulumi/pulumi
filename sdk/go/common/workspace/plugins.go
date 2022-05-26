@@ -1234,6 +1234,10 @@ func ReadCloserProgressBar(
 		return closer
 	}
 
+	if !cmdutil.Interactive() {
+		return closer
+	}
+
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
 	bar.Output = os.Stderr

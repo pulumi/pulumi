@@ -215,7 +215,11 @@ class ResourceProviderServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def Cancel(self, request, context):
-    """Cancel signals the provider to abort all outstanding resource operations.
+    """Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+    Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+    creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+    to the host to decide how long to wait after Cancel is called before (e.g.)
+    hard-closing any gRPC connection.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')

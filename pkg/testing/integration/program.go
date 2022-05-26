@@ -1323,7 +1323,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
-	preview := []string{"preview", "--non-interactive"}
+	preview := []string{"preview", "--non-interactive", "--diff"}
 	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.updateEventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")

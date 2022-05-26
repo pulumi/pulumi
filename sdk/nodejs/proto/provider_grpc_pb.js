@@ -465,7 +465,11 @@ construct: {
     responseSerialize: serialize_pulumirpc_ConstructResponse,
     responseDeserialize: deserialize_pulumirpc_ConstructResponse,
   },
-  // Cancel signals the provider to abort all outstanding resource operations.
+  // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+// to the host to decide how long to wait after Cancel is called before (e.g.)
+// hard-closing any gRPC connection.
 cancel: {
     path: '/pulumirpc.ResourceProvider/Cancel',
     requestStream: false,
