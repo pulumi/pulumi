@@ -32,5 +32,5 @@
 - [cli/backend] Fix a panic in the filestate backend when renaming history files.
   [#9673](https://github.com/pulumi/pulumi/pull/9673)
 
-- [sdk/proto] Update version of protoc used to generate protobufs.
+- [sdk/proto] Inline dockerfile used to generate protobuf code.
   [#9700](https://github.com/pulumi/pulumi/pull/9700)
