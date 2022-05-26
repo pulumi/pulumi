@@ -18,6 +18,8 @@ import "google/protobuf/empty.proto";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/sdk/proto/go/pulumirpc";
+
 // Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
 // to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
 // that can't store their own global state.

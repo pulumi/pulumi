@@ -17,8 +17,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='errors.proto',
   package='pulumirpc',
   syntax='proto3',
-  serialized_options=None,
-  serialized_pb=b'\n\x0c\x65rrors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\tb\x06proto3'
+  serialized_options=b'Z/github.com/pulumi/pulumi/sdk/proto/go/pulumirpc',
+  serialized_pb=b'\n\x0c\x65rrors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\tB1Z/github.com/pulumi/pulumi/sdk/proto/go/pulumirpcb\x06proto3'
 )
 
 
@@ -72,4 +72,5 @@ ErrorCause = _reflection.GeneratedProtocolMessageType('ErrorCause', (_message.Me
 _sym_db.RegisterMessage(ErrorCause)
 
 
+DESCRIPTOR._options = None
 # @@protoc_insertion_point(module_scope)

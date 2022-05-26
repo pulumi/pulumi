@@ -17,8 +17,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='plugin.proto',
   package='pulumirpc',
   syntax='proto3',
-  serialized_options=None,
-  serialized_pb=b'\n\x0cplugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tb\x06proto3'
+  serialized_options=b'Z/github.com/pulumi/pulumi/sdk/proto/go/pulumirpc',
+  serialized_pb=b'\n\x0cplugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tB1Z/github.com/pulumi/pulumi/sdk/proto/go/pulumirpcb\x06proto3'
 )
 
 
@@ -164,4 +164,5 @@ PluginAttach = _reflection.GeneratedProtocolMessageType('PluginAttach', (_messag
 _sym_db.RegisterMessage(PluginAttach)
 
 
+DESCRIPTOR._options = None
 # @@protoc_insertion_point(module_scope)

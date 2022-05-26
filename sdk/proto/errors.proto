@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/sdk/proto/go/pulumirpc";
+
 message ErrorCause {
     string message = 1;
     string stackTrace = 2;

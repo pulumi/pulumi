@@ -43,17 +43,18 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
     TWINE_VERSION=3.1.1 \
     /build-scripts/install-python.sh
 
+# Set various required environment variables
+ENV GOPATH=/go \
+    PATH=/go/bin:/root/.pulumi/bin:/usr/local/go/bin:/root/.yarn/bin/:$PATH
+
 # Install Protocol Buffers compiler and various GRPC generators
 COPY /scripts/install-protobuf-tools.sh /build-scripts/
 RUN PROTOC_VERSION=21.0 \
     PROTOC_SHA256=a2a92003da7b8c0c08aab530a3c1967d377c2777723482adb9d2eb38c87a9d5f \
-    PROTOC_GEN_GO_VERSION=1.5.2 \
+    PROTOC_GEN_GO_VERSION=1.28.0 \
+    PROTOC_GEN_GO_GRPC_VERSION=1.2.0 \
     NODEJS_GRPC_VERSION=1.24.2 \
-    NODEJS_GRPC_TOOLS_VERSION=1.8.1 \
+    NODEJS_GRPC_TOOLS_VERSION=1.11.2 \
     PYTHON_GRPCIO_VERSION=1.27.2 \
     PYTHON_GRPCIO_TOOLS_VERSION=1.27.2 \
     /build-scripts/install-protobuf-tools.sh
-
-# Set various required environment variables
-ENV GOPATH=/go \
-    PATH=/go/bin:/root/.pulumi/bin:/usr/local/go/bin:/root/.yarn/bin/:$PATH
