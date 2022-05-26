@@ -199,7 +199,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_java" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List<Bastion<wbr>Shareable<wbr>Link></a></span>
+        <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -298,7 +298,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_yaml" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List<Property Map></a></span>
+        <span class="property-type"><a href="#bastionshareablelink">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>

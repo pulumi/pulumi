@@ -435,7 +435,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<Object></span>
+        <span class="property-type">List&lt;Object&gt;</span>
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
@@ -507,7 +507,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<Property Map | Property Map | Property Map | Property Map></span>
+        <span class="property-type">List&lt;Property Map | Property Map | Property Map | Property Map&gt;</span>
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
@@ -926,7 +926,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_java" style="color: inherit; text-decoration: inherit;">variables</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisvariableresponse">List<Ssis<wbr>Variable<wbr>Response></a></span>
+        <span class="property-type"><a href="#ssisvariableresponse">List&lt;Ssis<wbr>Variable<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
@@ -1079,7 +1079,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_yaml" style="color: inherit; text-decoration: inherit;">variables</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisvariableresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#ssisvariableresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
@@ -1474,7 +1474,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisparameterresponse">List<Ssis<wbr>Parameter<wbr>Response></a></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Parameters in package</p>
 </dd><dt class="property-optional"
@@ -1681,7 +1681,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisparameterresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Parameters in package</p>
 </dd><dt class="property-optional"
@@ -2553,7 +2553,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List<Ssis<wbr>Environment<wbr>Reference<wbr>Response></a></span>
+        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Ssis<wbr>Environment<wbr>Reference<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Environment reference in project</p>
 </dd><dt class="property-optional"
@@ -2589,7 +2589,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisparameterresponse">List<Ssis<wbr>Parameter<wbr>Response></a></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Parameters in project</p>
 </dd><dt class="property-optional"
@@ -2760,7 +2760,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Environment reference in project</p>
 </dd><dt class="property-optional"
@@ -2796,7 +2796,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#ssisparameterresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Parameters in project</p>
 </dd><dt class="property-optional"
