@@ -611,14 +611,10 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		displayName = mod.cleanTypeString(t, langTypeString, lang, modName, characteristics.input)
 	}
 
-	// If word-breaks need to be inserted, then the type string
-	// should be html-encoded first if the language is C# in order
-	// to avoid confusing the Hugo rendering where the word-break
-	// tags are inserted.
+	// If word-breaks need to be inserted, then the type string should be html-encoded first in order to avoid confusing
+	// the Hugo rendering where the word-break tags are inserted. This is required for languages with template types.
 	if insertWordBreaks {
-		if lang == "csharp" {
-			displayName = html.EscapeString(displayName)
-		}
+		displayName = html.EscapeString(displayName)
 		displayName = wbr(displayName)
 	}
 
