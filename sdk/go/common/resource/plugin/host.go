@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"os"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -149,6 +150,7 @@ type defaultHost struct {
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
 	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
+	pluginMutex             sync.Mutex                       // a mutex that must be taken around modifying the plugins list.
 	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
 	languageLoadRequests    chan pluginLoadRequest           // a channel used to satisfy language load requests.
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
@@ -171,6 +173,12 @@ type languagePlugin struct {
 type resourcePlugin struct {
 	Plugin Provider
 	Info   workspace.PluginInfo
+}
+
+func (host *defaultHost) appendPlugin(plugin workspace.PluginInfo) {
+	host.pluginMutex.Lock()
+	host.plugins = append(host.plugins, plugin)
+	host.pluginMutex.Unlock()
 }
 
 func (host *defaultHost) ServerAddr() string {
@@ -218,7 +226,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 			}
 
 			// Memoize the result.
-			host.plugins = append(host.plugins, info)
+			host.appendPlugin(info)
 			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
 		}
 
@@ -247,7 +255,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 			}
 
 			// Memoize the result.
-			host.plugins = append(host.plugins, info)
+			host.appendPlugin(info)
 			host.analyzerPlugins[name] = &analyzerPlugin{Plugin: plug, Info: info}
 		}
 
@@ -301,7 +309,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			_, alreadyReported := host.reportedResourcePlugins[key]
 			if !alreadyReported {
 				host.reportedResourcePlugins[key] = struct{}{}
-				host.plugins = append(host.plugins, info)
+				host.appendPlugin(info)
 			}
 			host.resourcePlugins[plug] = &resourcePlugin{Plugin: plug, Info: info}
 		}
@@ -332,7 +340,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 			}
 
 			// Memoize the result.
-			host.plugins = append(host.plugins, info)
+			host.appendPlugin(info)
 			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
 		}
 
@@ -345,7 +353,12 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 }
 
 func (host *defaultHost) ListPlugins() []workspace.PluginInfo {
-	return host.plugins
+	host.pluginMutex.Lock()
+	defer host.pluginMutex.Unlock()
+	// plugins may get mutated in parallel so return a safe copy here
+	pluginsClone := make([]workspace.PluginInfo, len(host.plugins))
+	copy(pluginsClone, host.plugins)
+	return pluginsClone
 }
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
@@ -386,7 +399,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(func() (interface{}, error) {
+	_, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
 		var result error
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.SignalCancellation(); err != nil {
@@ -401,7 +414,7 @@ func (host *defaultHost) SignalCancellation() error {
 
 func (host *defaultHost) CloseProvider(provider Provider) error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := host.loadPlugin(func() (interface{}, error) {
+	_, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
 		if err := provider.Close(); err != nil {
 			return nil, err
 		}
