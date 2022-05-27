@@ -65,15 +65,25 @@ func (p pluginSet) Deduplicate() pluginSet {
 	newSet := newPluginSet()
 	add := func(p workspace.PluginInfo) {
 		prev, ok := existing[p.Name]
-		if ok && p.Version == nil && p.PluginDownloadURL == "" {
-			// no new information
-			return
+		if ok {
+			// If either `pluginDownloadURL`, `Version` or both are set we consider the
+			// plugin fully specified and keep it. It is ok to keep `pkg v1.2.3` `pkg
+			// v2.3.4` and `pkg example.com` in a single set. What we don't want to do is
+			// keep `pkg` in that same set since there are more specific versions used. In
+			// general, there will be a `pky vX.Y.Y` in the plugin set because the user
+			// depended on a language package `pulumi-pkg` with version `x.y.z`.
+
+			if p.Version == nil && p.PluginDownloadURL == "" {
+				// no new information
+				return
+			}
+
+			if prev.Version == nil && prev.PluginDownloadURL == "" {
+				// New plugin is more specific then the old one
+				delete(newSet, prev.String())
+			}
 		}
 
-		if prev.Version == nil && prev.PluginDownloadURL == "" {
-			// New plugin is more specific then the old one
-			delete(newSet, prev.String())
-		}
 		newSet.Add(p)
 		existing[p.Name] = p
 	}
