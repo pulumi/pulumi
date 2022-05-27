@@ -44,6 +44,7 @@ const (
 	Jenkins       SystemName = "Jenkins"
 	MagnumCI      SystemName = "Magnum CI"
 	Semaphore     SystemName = "Semaphore"
+	Spacelift     SystemName = "Spacelift"
 	TaskCluster   SystemName = "TaskCluster"
 	TeamCity      SystemName = "TeamCity"
 	Travis        SystemName = "Travis CI"
