@@ -4,8 +4,7 @@ FROM ubuntu:bionic
 # This image was copied from https://github.com/pulumi/pulumi-build-container
 # It can probably be simplifed as it is now purely used to generate the protobuf files
 
-LABEL description="Pulumi Build Container"
-LABEL maintainer="james@jen20.com"
+LABEL description="Pulumi Protobuf Build Container"
 
 RUN rm -f /etc/apt/apt.conf.d/docker-clean
 
