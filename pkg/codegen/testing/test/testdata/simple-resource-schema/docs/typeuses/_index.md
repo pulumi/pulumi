@@ -706,7 +706,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configs_java" style="color: inherit; text-decoration: inherit;">configs</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmap">List<Config<wbr>Map></a></span>
+        <span class="property-type"><a href="#configmap">List&lt;Config<wbr>Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -722,7 +722,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#others_java" style="color: inherit; text-decoration: inherit;">others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">List<List<Some<wbr>Other<wbr>Object>></a></span>
+        <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
     <dd><p>List of lists of other objects</p>
 </dd><dt class="property-optional"
@@ -731,7 +731,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_java" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,List<Some<wbr>Other<wbr>Object>></span>
+        <span class="property-type">Map&lt;String,List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
     <dd><p>Mapping from string to list of some other object</p>
 </dd></dl>
@@ -850,7 +850,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configs_yaml" style="color: inherit; text-decoration: inherit;">configs</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmap">List<Property Map></a></span>
+        <span class="property-type"><a href="#configmap">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -866,7 +866,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#others_yaml" style="color: inherit; text-decoration: inherit;">others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">List<List<Property Map>></a></span>
+        <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Property Map&gt;&gt;</a></span>
     </dt>
     <dd><p>List of lists of other objects</p>
 </dd><dt class="property-optional"
@@ -875,7 +875,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_yaml" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<List<Property Map>></span>
+        <span class="property-type">Map&lt;List&lt;Property Map&gt;&gt;</span>
     </dt>
     <dd><p>Mapping from string to list of some other object</p>
 </dd></dl>

@@ -925,7 +925,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#compositeindexes_java" style="color: inherit; text-decoration: inherit;">composite<wbr>Indexes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#compositepathresponse">List<List<Composite<wbr>Path<wbr>Response>></a></span>
+        <span class="property-type"><a href="#compositepathresponse">List&lt;List&lt;Composite<wbr>Path<wbr>Response&gt;&gt;</a></span>
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>
@@ -970,7 +970,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#compositeindexes_yaml" style="color: inherit; text-decoration: inherit;">composite<wbr>Indexes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#compositepathresponse">List<List<Property Map>></a></span>
+        <span class="property-type"><a href="#compositepathresponse">List&lt;List&lt;Property Map&gt;&gt;</a></span>
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>

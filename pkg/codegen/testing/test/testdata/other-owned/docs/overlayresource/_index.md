@@ -336,7 +336,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">"SOME_ENUM_VALUE"</a></span>
+        <span class="property-type"><a href="#enumoverlay">&#34;SOME_ENUM_VALUE&#34;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

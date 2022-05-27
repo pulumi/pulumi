@@ -236,7 +236,7 @@ options to narrow down the list AWS returns.</p>
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>List of AMI owners to limit search. At least 1 value must be specified. Valid values: an AWS account ID, <code>self</code> (the current account), or an AWS owner alias (e.g. <code>amazon</code>, <code>aws-marketplace</code>, <code>microsoft</code>).</p>
 </dd><dt class="property-optional"
@@ -245,7 +245,7 @@ options to narrow down the list AWS returns.</p>
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Limit search to users with <em>explicit</em> launch
 permission on  the image. Valid items are the numeric account ID or <code>self</code>.</p>
@@ -255,7 +255,7 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List<Get<wbr>Ami<wbr>Ids<wbr>Filter></a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -410,7 +410,7 @@ options to narrow down the list AWS returns.</p>
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>List of AMI owners to limit search. At least 1 value must be specified. Valid values: an AWS account ID, <code>self</code> (the current account), or an AWS owner alias (e.g. <code>amazon</code>, <code>aws-marketplace</code>, <code>microsoft</code>).</p>
 </dd><dt class="property-optional"
@@ -419,7 +419,7 @@ options to narrow down the list AWS returns.</p>
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Limit search to users with <em>explicit</em> launch
 permission on  the image. Valid items are the numeric account ID or <code>self</code>.</p>
@@ -429,7 +429,7 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List<Property Map></a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -612,7 +612,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_java" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -620,7 +620,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -628,7 +628,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -636,7 +636,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List<Get<wbr>Ami<wbr>Ids<wbr>Filter></a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -801,7 +801,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_yaml" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -809,7 +809,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -817,7 +817,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -825,7 +825,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List<Property Map></a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -917,7 +917,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_java" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -983,7 +983,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_yaml" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -17,6 +17,9 @@
 - [sdk/python] Fix spurious diffs causing an "update" on resources created by dynamic providers.
   [#9656](https://github.com/pulumi/pulumi/pull/9656)
 
+- [sdk/python] Do not depend on the children of remote component resources.
+  [#9665](https://github.com/pulumi/pulumi/pull/9665)
+
 - [codegen/nodejs] Emit the "package.json".pulumi.server as "server" correctly. Previously, "pluginDownloadURL" was emitted but never read.
   [#9662](https://github.com/pulumi/pulumi/pull/9662)
 
@@ -31,3 +34,9 @@
 
 - [cli/backend] Fix a panic in the filestate backend when renaming history files.
   [#9673](https://github.com/pulumi/pulumi/pull/9673)
+
+- [sdk/python] Pin protobuf library to <4.
+  [#9696](https://github.com/pulumi/pulumi/pull/9696)
+
+- [sdk/proto] Inline dockerfile used to generate protobuf code.
+  [#9700](https://github.com/pulumi/pulumi/pull/9700)
