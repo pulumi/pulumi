@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,8 +49,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -946,4 +948,21 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 			}
 		}
 	}
+}
+
+// Creates a simple plugin host that writes to the terminal.
+func defaultPluginHost() (plugin.Host, error) {
+	var cfg plugin.ConfigSource
+	pwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+		Color: colors.Never,
+	})
+	context, err := plugin.NewContext(sink, sink, nil, cfg, pwd, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	return plugin.NewDefaultHost(context, nil, nil, false)
 }
