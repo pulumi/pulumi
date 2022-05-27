@@ -1010,11 +1010,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
 			}
 			providers.SetProviderVersion(props, &version)
-		} else if prov, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]; ok && prov.Version != nil {
-			providers.SetProviderVersion(props, prov.Version)
 		}
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
+		}
+
+		// Make sure that an explicit provider which doesn't specify its plugin gets the
+		// same plugin as the default provider for the package.
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+			if defaultProvider.Version != nil {
+				providers.SetProviderVersion(props, defaultProvider.Version)
+			}
+			if defaultProvider.PluginDownloadURL != "" {
+				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+			}
 		}
 	}
 
