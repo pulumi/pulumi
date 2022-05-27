@@ -39,6 +39,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepopulate-cache:
+    name: Install ${{ matrix.repository }}
+    strategy:
+      matrix:
+        repository: [ pulumi/pulumictl, gotestyourself/gotestsum, t0yv0/goteststats, t0yv0/goreleaser-filter ]
+        tag: [ v0.0.31, v1.8.1, v0.0.7, v0.3.0 ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ${{ matrix.repository }}
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: ${{ matrix.repository }}
+          tag: ${{ matrix.tag }}
+          cache: enable
 
   comment-notification:
     # We only care about adding the result to the PR if it's a repository_dispatch event
@@ -63,6 +77,7 @@ jobs:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
     container: golangci/golangci-lint:v1.44
     name: Lint ${{ matrix.directory }}
+    needs: prepopulate-cache
     strategy:
       matrix:
         directory: [ sdk, pkg, tests ]
@@ -78,6 +93,7 @@ jobs:
 
   sdk-lint:
     name: Lint SDKs
+    needs: prepopulate-cache
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -169,6 +185,7 @@ jobs:
 
   build:
     name: Build
+    needs: prepopulate-cache
     uses: pulumi/pulumi/.github/workflows/build.yml@master
     with:
       enable-coverage: true
