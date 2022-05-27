@@ -35,5 +35,8 @@
 - [sdk/python] Pin protobuf library to <4.
   [#9696](https://github.com/pulumi/pulumi/pull/9696)
   
+- [sdk/proto] Inline dockerfile used to generate protobuf code.
+  [#9700](https://github.com/pulumi/pulumi/pull/9700)
+  
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
   [#9683](https://github.com/pulumi/pulumi/pull/9683)
