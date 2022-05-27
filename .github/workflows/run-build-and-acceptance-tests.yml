@@ -46,6 +46,17 @@ jobs:
         repository: [ { repo: pulumi/pulumictl, tag: v0.0.31 }, { repo: gotestyourself/gotestsum, tag: v1.8.1 }, { repo: t0yv0/goteststats, tag: v0.0.7 }, { repo: t0yv0/goreleaser-filter, tag: v0.3.0 } ]
     runs-on: ubuntu-latest
     steps:
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Install ${{ matrix.repository.repo }}
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
