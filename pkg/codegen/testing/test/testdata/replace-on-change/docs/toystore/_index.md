@@ -386,7 +386,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stuff_java" style="color: inherit; text-decoration: inherit;">stuff</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Toy></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
@@ -394,7 +394,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wanted_java" style="color: inherit; text-decoration: inherit;">wanted</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Toy></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -527,7 +527,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stuff_yaml" style="color: inherit; text-decoration: inherit;">stuff</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Property Map></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
@@ -535,7 +535,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wanted_yaml" style="color: inherit; text-decoration: inherit;">wanted</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Property Map></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

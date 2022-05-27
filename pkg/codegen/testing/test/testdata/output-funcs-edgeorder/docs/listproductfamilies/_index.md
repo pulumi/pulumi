@@ -201,7 +201,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,List<Filterable<wbr>Property>></span>
+        <span class="property-type">Map&lt;String,List&lt;Filterable<wbr>Property&gt;&gt;</span>
     </dt>
     <dd><p>Dictionary of filterable properties on product family.</p>
 </dd><dt class="property-optional"
@@ -327,7 +327,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<List<Property Map>></span>
+        <span class="property-type">Map&lt;List&lt;Property Map&gt;&gt;</span>
     </dt>
     <dd><p>Dictionary of filterable properties on product family.</p>
 </dd><dt class="property-optional"
@@ -426,7 +426,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productfamilyresponse">List<Product<wbr>Family<wbr>Response></a></span>
+        <span class="property-type"><a href="#productfamilyresponse">List&lt;Product<wbr>Family<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of product families.</p>
 </dd><dt class="property-"
@@ -498,7 +498,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productfamilyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#productfamilyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of product families.</p>
 </dd><dt class="property-"
@@ -1209,7 +1209,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Filterable<wbr>Property<wbr>Response></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -1227,7 +1227,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Image<wbr>Information<wbr>Response></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -1236,7 +1236,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_java" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List<Specification<wbr>Response></a></span>
+        <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1470,7 +1470,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -1488,7 +1488,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -1497,7 +1497,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_yaml" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#specificationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1573,7 +1573,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List<Billing<wbr>Meter<wbr>Details<wbr>Response></a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1645,7 +1645,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1748,7 +1748,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_java" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List<Customer<wbr>Subscription<wbr>Registered<wbr>Features></a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1847,7 +1847,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_yaml" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List<Property Map></a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -2134,7 +2134,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_java" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Attributes for the product system.</p>
 </dd><dt class="property-required"
@@ -2152,7 +2152,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_java" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Keywords for the product system.</p>
 </dd><dt class="property-required"
@@ -2161,7 +2161,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_java" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List<Link<wbr>Response></a></span>
+        <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
@@ -2314,7 +2314,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_yaml" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Attributes for the product system.</p>
 </dd><dt class="property-required"
@@ -2332,7 +2332,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_yaml" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Keywords for the product system.</p>
 </dd><dt class="property-required"
@@ -2341,7 +2341,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_yaml" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#linkresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
@@ -2844,7 +2844,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Values to be filtered.</p>
 </dd><dt class="property-required"
@@ -2916,7 +2916,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Values to be filtered.</p>
 </dd><dt class="property-required"
@@ -2925,7 +2925,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#supportedfiltertypes">"Ship<wbr>To<wbr>Countries" | "Double<wbr>Encryption<wbr>Status"</a></span>
+        <span class="property-type">String | <a href="#supportedfiltertypes">&#34;Ship<wbr>To<wbr>Countries&#34; | &#34;Double<wbr>Encryption<wbr>Status&#34;</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2992,7 +2992,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Values to be filtered.</p>
 </dd><dt class="property-required"
@@ -3064,7 +3064,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd><p>Values to be filtered.</p>
 </dd><dt class="property-required"
@@ -4038,7 +4038,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Filterable<wbr>Property<wbr>Response></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -4056,7 +4056,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Image<wbr>Information<wbr>Response></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -4065,7 +4065,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_java" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productlineresponse">List<Product<wbr>Line<wbr>Response></a></span>
+        <span class="property-type"><a href="#productlineresponse">List&lt;Product<wbr>Line<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
@@ -4272,7 +4272,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -4290,7 +4290,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -4299,7 +4299,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productlineresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#productlineresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
@@ -4510,7 +4510,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Filterable<wbr>Property<wbr>Response></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -4528,7 +4528,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Image<wbr>Information<wbr>Response></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -4537,7 +4537,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_java" style="color: inherit; text-decoration: inherit;">products</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productresponse">List<Product<wbr>Response></a></span>
+        <span class="property-type"><a href="#productresponse">List&lt;Product<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
@@ -4744,7 +4744,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -4762,7 +4762,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
@@ -4771,7 +4771,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_yaml" style="color: inherit; text-decoration: inherit;">products</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#productresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
@@ -4955,7 +4955,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_java" style="color: inherit; text-decoration: inherit;">configurations</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List<Configuration<wbr>Response></a></span>
+        <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of configurations for the product</p>
 </dd><dt class="property-required"
@@ -4991,7 +4991,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Filterable<wbr>Property<wbr>Response></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -5009,7 +5009,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Image<wbr>Information<wbr>Response></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>
@@ -5189,7 +5189,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_yaml" style="color: inherit; text-decoration: inherit;">configurations</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#configurationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of configurations for the product</p>
 </dd><dt class="property-required"
@@ -5225,7 +5225,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
@@ -5243,7 +5243,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>

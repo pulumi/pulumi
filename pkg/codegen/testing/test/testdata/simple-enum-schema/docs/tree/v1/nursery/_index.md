@@ -274,7 +274,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_java" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">List<Rubber<wbr>Tree<wbr>Variety></a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
@@ -283,7 +283,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_java" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Tree<wbr>Size></span>
+        <span class="property-type">Map&lt;String,Tree<wbr>Size&gt;</span>
     </dt>
     <dd><p>The sizes of trees available</p>
 </dd></dl>
@@ -346,7 +346,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_yaml" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">List<"Burgundy" | "Ruby" | "Tineke"></a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;&gt;</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
@@ -355,7 +355,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_yaml" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<"small" | "medium" | "large"></span>
+        <span class="property-type">Map&lt;&#34;small&#34; | &#34;medium&#34; | &#34;large&#34;&gt;</span>
     </dt>
     <dd><p>The sizes of trees available</p>
 </dd></dl>
