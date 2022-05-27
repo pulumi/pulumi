@@ -34,3 +34,6 @@
 
 - [sdk/python] Pin protobuf library to <4.
   [#9696](https://github.com/pulumi/pulumi/pull/9696)
+
+- [sdk/proto] Inline dockerfile used to generate protobuf code.
+  [#9700](https://github.com/pulumi/pulumi/pull/9700)
