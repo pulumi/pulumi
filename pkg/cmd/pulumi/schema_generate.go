@@ -119,18 +119,19 @@ func newSchemaGenCommand() *cobra.Command {
 					}
 				}
 				return nil
-			} else {
-				generatePackage, after, err := generateSDK(runtime, pkg.Version)
-				if err != nil {
-					return fmt.Errorf("unable to generate SDK: %w", err)
-				}
-				files, err := callGen(generatePackage, after)
-				if err != nil {
-					return fmt.Errorf("unable to generate SDK: %w", err)
-				}
-
-				return writeFiles(filepath.Join(out, pkg.Name), files)
 			}
+
+			// A specific runtime was specified
+			generatePackage, after, err := generateSDK(runtime, pkg.Version)
+			if err != nil {
+				return fmt.Errorf("unable to generate SDK: %w", err)
+			}
+			files, err := callGen(generatePackage, after)
+			if err != nil {
+				return fmt.Errorf("unable to generate SDK: %w", err)
+			}
+
+			return writeFiles(filepath.Join(out, pkg.Name), files)
 		}),
 	}
 	cmd.PersistentFlags().String("version", "", "The plugin version to use")
