@@ -108,9 +108,15 @@ jobs:
           key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Compute current version to inform GoReleaser
+      - name: Download versions.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: versions.txt
+          path: versions
+      - name: Setup versioning env vars
         run: |
-          echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+          cat versions/versions.txt | tee $GITHUB_ENV
+          rm -rf versions
       - name: Filter goreleaser config by OS
         run: |
           cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
@@ -161,9 +167,15 @@ jobs:
           python-version: ${{ inputs.python-version }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
-      - name: Compute current version to inform wheel build
+      - name: Download versions.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: versions.txt
+          path: versions
+      - name: Setup versioning env vars
         run: |
-          echo "PYPI_VERSION=$(pulumictl get version --language python)" >> $GITHUB_ENV
+          cat versions/versions.txt | tee $GITHUB_ENV
+          rm -rf versions
       - name: Build Pulumi Python SDK wheel
         run: |
             # TODO unify with sdk/python/Makefile once that does not use pipenv
@@ -254,9 +266,15 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
-      - name: Compute current version to inform the NuGet package build
+      - name: Download versions.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: versions.txt
+          path: versions
+      - name: Setup versioning env vars
         run: |
-          echo "DOTNET_VERSION=$(pulumictl get version --language dotnet)" >> $GITHUB_ENV
+          cat versions/versions.txt | tee $GITHUB_ENV
+          rm -rf versions
       - name: Build the .NET SDK package
         run: |
           cd sdk/dotnet

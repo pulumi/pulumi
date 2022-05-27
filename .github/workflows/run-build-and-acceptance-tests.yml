@@ -183,10 +183,16 @@ jobs:
         run: |
           cd sdk/dotnet && make lint
 
+  versions:
+    name: Versions
+    uses: ./.github/workflows/versions.yml
+
   build:
     name: Build
-    needs: prepopulate-cache
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    needs:
+      - prepopulate-cache
+      - versions
+    uses: ./.github/workflows/build.yml
     with:
       enable-coverage: true
 
