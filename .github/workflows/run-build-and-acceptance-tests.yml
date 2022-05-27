@@ -45,15 +45,7 @@ jobs:
       matrix:
         #repository: [ pulumi/pulumictl, gotestyourself/gotestsum, t0yv0/goteststats, t0yv0/goreleaser-filter ]
         #tag: [ v0.0.31, v1.8.1, v0.0.7, v0.3.0 ]
-        repository: 
-          - repo: pulumi/pulumictl
-          - tag: v0.0.31
-          - repo: gotestyourself/gotestsum
-          - tag: v1.8.1
-          - repo: t0yv0/goteststats
-          - tag: v0.0.7
-          - repo: t0yv0/goreleaser-filter
-          - tag: v0.3.0
+        repository: [ { repo: pulumi/pulumictl, tag: v0.0.31 }, { repo: gotestyourself/gotestsum, tag: v1.8.1 }, { repo: t0yv0/goteststats, tag: v0.0.7 }, { repo: t0yv0/goreleaser-filter, tag: v0.3.0 } ]
     runs-on: ubuntu-latest
     steps:
       - name: Install ${{ matrix.repository.repo }}
