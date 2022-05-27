@@ -346,7 +346,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List<Object<wbr>Meta<wbr>Args></a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -354,7 +354,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Object<wbr>Meta<wbr>Args></span>
+        <span class="property-type">Map&lt;String,Object<wbr>Meta<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -370,7 +370,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List<Object<wbr>Meta<wbr>Args></a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -378,7 +378,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Object<wbr>Meta<wbr>Args></span>
+        <span class="property-type">Map&lt;String,Object<wbr>Meta<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -508,7 +508,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List<Property Map></a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -516,7 +516,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<Property Map></span>
+        <span class="property-type">Map&lt;Property Map&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -532,7 +532,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List<Property Map></a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -540,7 +540,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<Property Map></span>
+        <span class="property-type">Map&lt;Property Map&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -664,7 +664,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_java" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Storage<wbr>Class></span>
+        <span class="property-type">Map&lt;String,Storage<wbr>Class&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -781,7 +781,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_yaml" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<kubernetes:storage.k8s.io/v1:Storage<wbr>Class></span>
+        <span class="property-type">Map&lt;kubernetes:storage.k8s.io/v1:Storage<wbr>Class&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
