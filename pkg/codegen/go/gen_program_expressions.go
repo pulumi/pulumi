@@ -626,24 +626,50 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	if len(expr.Parts) == 1 {
 		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.genLiteralValueExpression(w, lit, destType)
-			return
-		}
-	} else {
-		argTypeName := g.argumentTypeName(expr, destType, false)
-		isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
-		if isPulumiType {
-			g.Fgenf(w, "%s(", argTypeName)
-			defer g.Fgenf(w, ")")
 		}
 
-		fmtMaker := make([]string, len(expr.Parts)+1)
-		fmtStr := strings.Join(fmtMaker, "%v")
-		g.Fgenf(w, "fmt.Sprintf(\"%s\"", fmtStr)
-		for _, v := range expr.Parts {
-			g.Fgenf(w, ", %.v", v)
-		}
-		g.Fgenf(w, ")")
+		// If we have a template expression that doesn't start with a string, it indicates
+		// an invalid *pcl.Program. Instead of crashing, we continue.
+		return
 	}
+	argTypeName := g.argumentTypeName(expr, destType, false)
+	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
+	if isPulumiType {
+		g.Fgenf(w, "%s(", argTypeName)
+		defer g.Fgenf(w, ")")
+	}
+
+	var fmtStr strings.Builder
+	args := new(bytes.Buffer)
+	canBeRaw := true
+	for _, v := range expr.Parts {
+		if lit, ok := v.(*model.LiteralValueExpression); ok && lit.Value.Type().Equals(cty.String) {
+			str := lit.Value.AsString()
+			// We don't want to accidentally embed a formatting directive in our
+			// formatting string.
+			if !strings.ContainsRune(str, '%') {
+				if canBeRaw && strings.ContainsRune(str, '`') {
+					canBeRaw = false
+				}
+				// Build the formatting string
+				fmtStr.WriteString(str)
+				continue
+			}
+		}
+		// v cannot be directly inserted into the formatting string, so put it in the
+		// argument list.
+		fmtStr.WriteString("%v")
+		g.Fgenf(args, ", %.v", v)
+	}
+	g.Fgenf(w, "fmt.Sprintf(")
+	str := fmtStr.String()
+	if canBeRaw && len(str) > 50 && strings.Count(str, "\n") > 5 {
+		fmt.Fprintf(w, "`%s`", str)
+	} else {
+		g.genStringLiteral(w, fmtStr.String())
+	}
+	args.WriteTo(w)
+	g.Fgenf(w, ")")
 }
 
 // GenTemplateJoinExpression generates code for a TemplateJoinExpression.
