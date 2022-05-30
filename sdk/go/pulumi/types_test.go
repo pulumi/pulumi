@@ -911,5 +911,5 @@ func TestApplyTOutputJoin(t *testing.T) {
 
 	assertResult(t, out3, 5, true, true, r3)
 	assertResult(t, out31, 2, true, true, r3, r1)
-	assertResult(t, out312, nil, false, false, r3, r1, r2) /* out2 is unknown, hiding the output */
+	assertResult(t, out312, nil, false, true, r3, r1, r2) /* out2 is unknown, hiding the output */
 }

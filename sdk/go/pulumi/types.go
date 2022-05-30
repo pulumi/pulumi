@@ -255,11 +255,11 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		o.mutex.Unlock()
 
 		deps = mergeDependencies(deps, o.deps)
-		if !o.known || o.err != nil {
-			return nil, false, false, deps, o.err
-		}
 		known = known && o.known
 		secret = secret || o.secret
+		if !o.known || o.err != nil {
+			return nil, known, secret, deps, o.err
+		}
 
 		// If the result is an Output, await it in turn.
 		//
