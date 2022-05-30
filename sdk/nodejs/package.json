@@ -17,7 +17,6 @@
         "js-yaml": "^3.14.0",
         "minimist": "^1.2.6",
         "normalize-package-data": "^2.4.0",
-        "protobufjs": "^6.8.6",
         "read-package-tree": "^5.3.1",
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
@@ -52,7 +51,10 @@
         "node": ">=8.13.0 || >=10.10.0"
     },
     "mocha": {
-        "require": ["ts-node/register", "source-map-support/register"]
+        "require": [
+            "ts-node/register",
+            "source-map-support/register"
+        ]
     },
     "//": [
         "NOTE: @types/node is pinned due to grpc/grpc-node#2002"

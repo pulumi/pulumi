@@ -14,7 +14,7 @@
 
 import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { Inputs, Output, output, secret } from "../output";
+import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
 import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
 
