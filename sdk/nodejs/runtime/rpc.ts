@@ -381,7 +381,7 @@ export async function serializeProperty(
                 dependentResources.add(resource);
             }
 
-            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources);
+            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources, new Set<Resource>());
 
             const obj: any = {
                 [specialSigKey]: specialOutputValueSig,
