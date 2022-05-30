@@ -49,7 +49,6 @@ import {
 import {
     excessiveDebugOutput,
     getMonitor,
-    getProject,
     getRootResource,
     getStack,
     isDryRun,
@@ -60,7 +59,6 @@ import {
 } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const providerproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
