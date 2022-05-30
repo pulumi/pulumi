@@ -201,13 +201,15 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 }
 
 func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
-	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
-	if theirs == nil {
-		return append(mergedDeps, ours...)
-	} else if ours == nil {
-		return append(mergedDeps, theirs...)
+	if len(ours) == 0 && len(theirs) == 0 {
+		return nil
+	} else if len(theirs) == 0 {
+		return append(make([]Resource, 0, len(ours)), ours...)
+	} else if len(ours) == 0 {
+		return append(make([]Resource, 0, len(ours)), theirs...)
 	}
 	depSet := make(map[Resource]struct{})
+	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
 	for _, d := range ours {
 		depSet[d] = struct{}{}
 	}
