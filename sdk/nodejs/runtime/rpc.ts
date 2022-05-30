@@ -16,15 +16,13 @@ import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource, URN } from "../resource";
-import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
+import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
+import { debuggablePromise, errorString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsOutputValues, monitorSupportsResourceReferences,
     monitorSupportsSecrets } from "./settings";
 import { getAllTransitivelyReferencedResourceURNs } from "./resource";
 
 import * as semver from "semver";
-
-const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>;
 
@@ -383,7 +381,7 @@ export async function serializeProperty(
                 dependentResources.add(resource);
             }
 
-            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources);
+            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources, new Set<Resource>());
 
             const obj: any = {
                 [specialSigKey]: specialOutputValueSig,

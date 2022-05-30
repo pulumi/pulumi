@@ -167,9 +167,14 @@ jobs:
         run: |
           cd sdk/dotnet && make lint
 
+  versions:
+    name: Versions
+    uses: ./.github/workflows/versions.yml
+
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    uses: ./.github/workflows/build.yml
+    needs: versions
     with:
       enable-coverage: true
 

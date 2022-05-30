@@ -101,8 +101,8 @@ jobs:
 
   publish-binaries:
     name: Publish Binaries
-    needs: [lint, build, test-linux, test-macos, test-windows]
-    uses: pulumi/pulumi/.github/workflows/publish-binaries.yml@master
+    needs: [lint, build, test-linux, test-macos, test-windows, versions]
+    uses: ./.github/workflows/publish-binaries.yml
     with:
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
@@ -215,9 +215,13 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
+  versions:
+    name: Versions
+    uses: ./.github/workflows/versions.yml
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    needs: versions
+    uses: ./.github/workflows/build.yml
     with:
       # Cross-compiling from ubuntu-latest is faster but the artifact
       # checksums will not match what publish-binaries expects.
@@ -254,7 +258,7 @@ jobs:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   dispatch-docker-containers-ci-build:
     name: Dispatch Docker containers CI build
-    needs: [publish-binaries, publish-sdks]
+    needs: [publish-binaries, publish-sdks, versions]
     runs-on: ubuntu-latest
     steps:
       - name: Install pulumictl
@@ -268,5 +272,14 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
+      - name: Download versions.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: versions.txt
+          path: versions
+      - name: Setup versioning env vars
+        run: |
+          cat versions/versions.txt | tee $GITHUB_ENV
+          rm -rf versions
       - name: Dispatch event
-        run: pulumictl dispatch -r pulumi/pulumi-docker-containers -c ci-build $(pulumictl get version --language generic -o)
+        run: pulumictl dispatch -r pulumi/pulumi-docker-containers -c ci-build $GENERIC_VERSION
