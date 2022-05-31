@@ -186,8 +186,10 @@ func TestPluginSetDeduplicate(t *testing.T) {
 		}),
 	}}
 
-	for _, c := range cases {
+	for _, c := range cases { //nolint:parallelTest
+		c := c
 		t.Run(fmt.Sprintf("%s", c.input), func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, c.expected, c.input.Deduplicate())
 		})
 	}
