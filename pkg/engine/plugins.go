@@ -103,8 +103,12 @@ func (p pluginSet) Values() []workspace.PluginInfo {
 }
 
 // newPluginSet creates a new empty pluginSet.
-func newPluginSet() pluginSet {
-	return make(map[string]workspace.PluginInfo)
+func newPluginSet(plugins ...workspace.PluginInfo) pluginSet {
+	var s pluginSet = make(map[string]workspace.PluginInfo, len(plugins))
+	for _, p := range plugins {
+		s.Add(p)
+	}
+	return s
 }
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to

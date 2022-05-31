@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -138,4 +139,56 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	awsVer := aws.Version
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.0", awsVer.String())
+}
+
+func TestPluginSetDeduplicate(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		input    pluginSet
+		expected pluginSet
+	}{{
+		input: newPluginSet(workspace.PluginInfo{
+			Name:    "foo",
+			Version: &semver.Version{Major: 1},
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+		expected: newPluginSet(workspace.PluginInfo{
+			Name:    "foo",
+			Version: &semver.Version{Major: 1},
+		}),
+	}, {
+		input: newPluginSet(workspace.PluginInfo{
+			Name:    "bar",
+			Version: &semver.Version{Minor: 3},
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			PluginDownloadURL: "example.com/bar",
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			Version:           &semver.Version{Patch: 3},
+			PluginDownloadURL: "example.com",
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+		expected: newPluginSet(workspace.PluginInfo{
+			Name:    "bar",
+			Version: &semver.Version{Minor: 3},
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			PluginDownloadURL: "example.com/bar",
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			Version:           &semver.Version{Patch: 3},
+			PluginDownloadURL: "example.com",
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+	}}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("%s", c.input), func(t *testing.T) {
+			assert.Equal(t, c.expected, c.input.Deduplicate())
+		})
+	}
 }
