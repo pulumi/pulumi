@@ -120,6 +120,13 @@ var detectors = map[SystemName]system{
 		Name:            Semaphore,
 		EnvVarsToDetect: []string{"SEMAPHORE"},
 	},
+	Spacelift: baseCI{
+		Name: Spacelift,
+		EnvVarsToDetect: []string{
+			"SPACELIFT_MAX_REQUESTS_BURST", "TF_VAR_spacelift_run_trigger", "SPACELIFT_STORE_HOOKS_ENV_VARS",
+			"TF_VAR_spacelift_commit_branch", "SPACELIFT_WORKER_TRACING_ENABLED",
+		},
+	},
 	TaskCluster: baseCI{
 		Name:            TaskCluster,
 		EnvVarsToDetect: []string{"TASK_ID", "RUN_ID"},

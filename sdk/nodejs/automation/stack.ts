@@ -816,8 +816,6 @@ const execKind = {
 
 type StackInitMode = "create" | "select" | "createOrSelect";
 
-const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));
-
 const createLogFile = (command: string) => {
     const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), `automation-logs-${command}-`));
     const logFile = upath.joinSafe(logDir, "eventlog.txt");

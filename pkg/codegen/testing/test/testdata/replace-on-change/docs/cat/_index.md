@@ -386,7 +386,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_java" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Toy></span>
+        <span class="property-type">Map&lt;String,Toy&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -394,7 +394,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_java" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Toy></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
@@ -551,7 +551,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_yaml" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<Property Map></span>
+        <span class="property-type">Map&lt;Property Map&gt;</span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
@@ -559,7 +559,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_yaml" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List<Property Map></a></span>
+        <span class="property-type"><a href="#toy">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">

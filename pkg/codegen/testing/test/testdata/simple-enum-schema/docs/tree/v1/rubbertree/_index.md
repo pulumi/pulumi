@@ -467,7 +467,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">"Burgundy" | "Ruby" | "Tineke"</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -483,7 +483,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_yaml" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">"Pulumi Planters Inc." | "Plants'R'Us"</a> | String</span>
+        <span class="property-type"><a href="#farm">&#34;Pulumi Planters Inc.&#34; | &#34;Plants&#39;R&#39;Us&#34;</a> | String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -491,7 +491,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_yaml" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#treesize">"small" | "medium" | "large"</a></span>
+        <span class="property-type"><a href="#treesize">&#34;small&#34; | &#34;medium&#34; | &#34;large&#34;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -859,7 +859,7 @@ The following state arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_yaml" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">"Pulumi Planters Inc." | "Plants'R'Us"</a> | String</span>
+        <span class="property-type"><a href="#farm">&#34;Pulumi Planters Inc.&#34; | &#34;Plants&#39;R&#39;Us&#34;</a> | String</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -1092,7 +1092,7 @@ The following state arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_yaml" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containercolor">"red" | "blue" | "yellow"</a> | String</span>
+        <span class="property-type"><a href="#containercolor">&#34;red&#34; | &#34;blue&#34; | &#34;yellow&#34;</a> | String</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

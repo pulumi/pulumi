@@ -7,11 +7,11 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	math "math"
 )
 
@@ -171,7 +171,7 @@ func (m *GetSchemaResponse) GetSchema() string {
 
 type ConfigureRequest struct {
 	Variables            map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Args                 *_struct.Struct   `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	Args                 *structpb.Struct  `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
 	AcceptSecrets        bool              `protobuf:"varint,3,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
 	AcceptResources      bool              `protobuf:"varint,4,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
@@ -211,7 +211,7 @@ func (m *ConfigureRequest) GetVariables() map[string]string {
 	return nil
 }
 
-func (m *ConfigureRequest) GetArgs() *_struct.Struct {
+func (m *ConfigureRequest) GetArgs() *structpb.Struct {
 	if m != nil {
 		return m.Args
 	}
@@ -383,11 +383,11 @@ func (m *ConfigureErrorMissingKeys_MissingKey) GetDescription() string {
 }
 
 type InvokeRequest struct {
-	Tok                  string          `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
-	Args                 *_struct.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Tok                  string           `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
+	Args                 *structpb.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *InvokeRequest) Reset()         { *m = InvokeRequest{} }
@@ -422,7 +422,7 @@ func (m *InvokeRequest) GetTok() string {
 	return ""
 }
 
-func (m *InvokeRequest) GetArgs() *_struct.Struct {
+func (m *InvokeRequest) GetArgs() *structpb.Struct {
 	if m != nil {
 		return m.Args
 	}
@@ -430,11 +430,11 @@ func (m *InvokeRequest) GetArgs() *_struct.Struct {
 }
 
 type InvokeResponse struct {
-	Return               *_struct.Struct `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`
-	Failures             []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Return               *structpb.Struct `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`
+	Failures             []*CheckFailure  `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *InvokeResponse) Reset()         { *m = InvokeResponse{} }
@@ -462,7 +462,7 @@ func (m *InvokeResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_InvokeResponse proto.InternalMessageInfo
 
-func (m *InvokeResponse) GetReturn() *_struct.Struct {
+func (m *InvokeResponse) GetReturn() *structpb.Struct {
 	if m != nil {
 		return m.Return
 	}
@@ -478,7 +478,7 @@ func (m *InvokeResponse) GetFailures() []*CheckFailure {
 
 type CallRequest struct {
 	Tok                  string                                       `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
-	Args                 *_struct.Struct                              `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	Args                 *structpb.Struct                             `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
 	ArgDependencies      map[string]*CallRequest_ArgumentDependencies `protobuf:"bytes,3,rep,name=argDependencies,proto3" json:"argDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	Provider             string                                       `protobuf:"bytes,4,opt,name=provider,proto3" json:"provider,omitempty"`
 	Version              string                                       `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
@@ -527,7 +527,7 @@ func (m *CallRequest) GetTok() string {
 	return ""
 }
 
-func (m *CallRequest) GetArgs() *_struct.Struct {
+func (m *CallRequest) GetArgs() *structpb.Struct {
 	if m != nil {
 		return m.Args
 	}
@@ -652,7 +652,7 @@ func (m *CallRequest_ArgumentDependencies) GetUrns() []string {
 }
 
 type CallResponse struct {
-	Return               *_struct.Struct                             `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`
+	Return               *structpb.Struct                            `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`
 	ReturnDependencies   map[string]*CallResponse_ReturnDependencies `protobuf:"bytes,2,rep,name=returnDependencies,proto3" json:"returnDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	Failures             []*CheckFailure                             `protobuf:"bytes,3,rep,name=failures,proto3" json:"failures,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                                    `json:"-"`
@@ -685,7 +685,7 @@ func (m *CallResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CallResponse proto.InternalMessageInfo
 
-func (m *CallResponse) GetReturn() *_struct.Struct {
+func (m *CallResponse) GetReturn() *structpb.Struct {
 	if m != nil {
 		return m.Return
 	}
@@ -747,13 +747,13 @@ func (m *CallResponse_ReturnDependencies) GetUrns() []string {
 }
 
 type CheckRequest struct {
-	Urn                  string          `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	Olds                 *_struct.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
-	News                 *_struct.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
-	SequenceNumber       int32           `protobuf:"varint,4,opt,name=sequenceNumber,proto3" json:"sequenceNumber,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Urn                  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Olds                 *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
+	News                 *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
+	SequenceNumber       int32            `protobuf:"varint,4,opt,name=sequenceNumber,proto3" json:"sequenceNumber,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *CheckRequest) Reset()         { *m = CheckRequest{} }
@@ -788,14 +788,14 @@ func (m *CheckRequest) GetUrn() string {
 	return ""
 }
 
-func (m *CheckRequest) GetOlds() *_struct.Struct {
+func (m *CheckRequest) GetOlds() *structpb.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *CheckRequest) GetNews() *_struct.Struct {
+func (m *CheckRequest) GetNews() *structpb.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -810,11 +810,11 @@ func (m *CheckRequest) GetSequenceNumber() int32 {
 }
 
 type CheckResponse struct {
-	Inputs               *_struct.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
-	Failures             []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Inputs               *structpb.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Failures             []*CheckFailure  `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *CheckResponse) Reset()         { *m = CheckResponse{} }
@@ -842,7 +842,7 @@ func (m *CheckResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CheckResponse proto.InternalMessageInfo
 
-func (m *CheckResponse) GetInputs() *_struct.Struct {
+func (m *CheckResponse) GetInputs() *structpb.Struct {
 	if m != nil {
 		return m.Inputs
 	}
@@ -904,14 +904,14 @@ func (m *CheckFailure) GetReason() string {
 }
 
 type DiffRequest struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Urn                  string          `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
-	Olds                 *_struct.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
-	News                 *_struct.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
-	IgnoreChanges        []string        `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Urn                  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Olds                 *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	News                 *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	IgnoreChanges        []string         `protobuf:"bytes,5,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *DiffRequest) Reset()         { *m = DiffRequest{} }
@@ -953,14 +953,14 @@ func (m *DiffRequest) GetUrn() string {
 	return ""
 }
 
-func (m *DiffRequest) GetOlds() *_struct.Struct {
+func (m *DiffRequest) GetOlds() *structpb.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *DiffRequest) GetNews() *_struct.Struct {
+func (m *DiffRequest) GetNews() *structpb.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -1139,13 +1139,13 @@ func (m *DiffResponse) GetHasDetailedDiff() bool {
 }
 
 type CreateRequest struct {
-	Urn                  string          `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	Timeout              float64         `protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
-	Preview              bool            `protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Urn                  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Timeout              float64          `protobuf:"fixed64,3,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Preview              bool             `protobuf:"varint,4,opt,name=preview,proto3" json:"preview,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *CreateRequest) Reset()         { *m = CreateRequest{} }
@@ -1180,7 +1180,7 @@ func (m *CreateRequest) GetUrn() string {
 	return ""
 }
 
-func (m *CreateRequest) GetProperties() *_struct.Struct {
+func (m *CreateRequest) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1202,11 +1202,11 @@ func (m *CreateRequest) GetPreview() bool {
 }
 
 type CreateResponse struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *CreateResponse) Reset()         { *m = CreateResponse{} }
@@ -1241,7 +1241,7 @@ func (m *CreateResponse) GetId() string {
 	return ""
 }
 
-func (m *CreateResponse) GetProperties() *_struct.Struct {
+func (m *CreateResponse) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1249,13 +1249,13 @@ func (m *CreateResponse) GetProperties() *_struct.Struct {
 }
 
 type ReadRequest struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Urn                  string          `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
-	Inputs               *_struct.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Urn                  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	Inputs               *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ReadRequest) Reset()         { *m = ReadRequest{} }
@@ -1297,14 +1297,14 @@ func (m *ReadRequest) GetUrn() string {
 	return ""
 }
 
-func (m *ReadRequest) GetProperties() *_struct.Struct {
+func (m *ReadRequest) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
 	return nil
 }
 
-func (m *ReadRequest) GetInputs() *_struct.Struct {
+func (m *ReadRequest) GetInputs() *structpb.Struct {
 	if m != nil {
 		return m.Inputs
 	}
@@ -1312,12 +1312,12 @@ func (m *ReadRequest) GetInputs() *_struct.Struct {
 }
 
 type ReadResponse struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	Inputs               *_struct.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Inputs               *structpb.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ReadResponse) Reset()         { *m = ReadResponse{} }
@@ -1352,14 +1352,14 @@ func (m *ReadResponse) GetId() string {
 	return ""
 }
 
-func (m *ReadResponse) GetProperties() *_struct.Struct {
+func (m *ReadResponse) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
 	return nil
 }
 
-func (m *ReadResponse) GetInputs() *_struct.Struct {
+func (m *ReadResponse) GetInputs() *structpb.Struct {
 	if m != nil {
 		return m.Inputs
 	}
@@ -1367,16 +1367,16 @@ func (m *ReadResponse) GetInputs() *_struct.Struct {
 }
 
 type UpdateRequest struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Urn                  string          `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
-	Olds                 *_struct.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
-	News                 *_struct.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
-	Timeout              float64         `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`
-	IgnoreChanges        []string        `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
-	Preview              bool            `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Urn                  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Olds                 *structpb.Struct `protobuf:"bytes,3,opt,name=olds,proto3" json:"olds,omitempty"`
+	News                 *structpb.Struct `protobuf:"bytes,4,opt,name=news,proto3" json:"news,omitempty"`
+	Timeout              float64          `protobuf:"fixed64,5,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	IgnoreChanges        []string         `protobuf:"bytes,6,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`
+	Preview              bool             `protobuf:"varint,7,opt,name=preview,proto3" json:"preview,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *UpdateRequest) Reset()         { *m = UpdateRequest{} }
@@ -1418,14 +1418,14 @@ func (m *UpdateRequest) GetUrn() string {
 	return ""
 }
 
-func (m *UpdateRequest) GetOlds() *_struct.Struct {
+func (m *UpdateRequest) GetOlds() *structpb.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *UpdateRequest) GetNews() *_struct.Struct {
+func (m *UpdateRequest) GetNews() *structpb.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -1454,10 +1454,10 @@ func (m *UpdateRequest) GetPreview() bool {
 }
 
 type UpdateResponse struct {
-	Properties           *_struct.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Properties           *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *UpdateResponse) Reset()         { *m = UpdateResponse{} }
@@ -1485,7 +1485,7 @@ func (m *UpdateResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_UpdateResponse proto.InternalMessageInfo
 
-func (m *UpdateResponse) GetProperties() *_struct.Struct {
+func (m *UpdateResponse) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1493,13 +1493,13 @@ func (m *UpdateResponse) GetProperties() *_struct.Struct {
 }
 
 type DeleteRequest struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Urn                  string          `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
-	Timeout              float64         `protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Urn                  string           `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,3,opt,name=properties,proto3" json:"properties,omitempty"`
+	Timeout              float64          `protobuf:"fixed64,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *DeleteRequest) Reset()         { *m = DeleteRequest{} }
@@ -1541,7 +1541,7 @@ func (m *DeleteRequest) GetUrn() string {
 	return ""
 }
 
-func (m *DeleteRequest) GetProperties() *_struct.Struct {
+func (m *DeleteRequest) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1565,7 +1565,7 @@ type ConstructRequest struct {
 	Type                 string                                            `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
 	Name                 string                                            `protobuf:"bytes,8,opt,name=name,proto3" json:"name,omitempty"`
 	Parent               string                                            `protobuf:"bytes,9,opt,name=parent,proto3" json:"parent,omitempty"`
-	Inputs               *_struct.Struct                                   `protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	Inputs               *structpb.Struct                                  `protobuf:"bytes,10,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	InputDependencies    map[string]*ConstructRequest_PropertyDependencies `protobuf:"bytes,11,rep,name=inputDependencies,proto3" json:"inputDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	Protect              bool                                              `protobuf:"varint,12,opt,name=protect,proto3" json:"protect,omitempty"`
 	Providers            map[string]string                                 `protobuf:"bytes,13,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
@@ -1665,7 +1665,7 @@ func (m *ConstructRequest) GetParent() string {
 	return ""
 }
 
-func (m *ConstructRequest) GetInputs() *_struct.Struct {
+func (m *ConstructRequest) GetInputs() *structpb.Struct {
 	if m != nil {
 		return m.Inputs
 	}
@@ -1756,7 +1756,7 @@ func (m *ConstructRequest_PropertyDependencies) GetUrns() []string {
 
 type ConstructResponse struct {
 	Urn                  string                                             `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	State                *_struct.Struct                                    `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	State                *structpb.Struct                                   `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
 	StateDependencies    map[string]*ConstructResponse_PropertyDependencies `protobuf:"bytes,3,rep,name=stateDependencies,proto3" json:"stateDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}                                           `json:"-"`
 	XXX_unrecognized     []byte                                             `json:"-"`
@@ -1795,7 +1795,7 @@ func (m *ConstructResponse) GetUrn() string {
 	return ""
 }
 
-func (m *ConstructResponse) GetState() *_struct.Struct {
+func (m *ConstructResponse) GetState() *structpb.Struct {
 	if m != nil {
 		return m.State
 	}
@@ -1854,13 +1854,13 @@ func (m *ConstructResponse_PropertyDependencies) GetUrns() []string {
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a
 // resource was created successfully, but failed to initialize.
 type ErrorResourceInitFailed struct {
-	Id                   string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	Reasons              []string        `protobuf:"bytes,3,rep,name=reasons,proto3" json:"reasons,omitempty"`
-	Inputs               *_struct.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Id                   string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Reasons              []string         `protobuf:"bytes,3,rep,name=reasons,proto3" json:"reasons,omitempty"`
+	Inputs               *structpb.Struct `protobuf:"bytes,4,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ErrorResourceInitFailed) Reset()         { *m = ErrorResourceInitFailed{} }
@@ -1895,7 +1895,7 @@ func (m *ErrorResourceInitFailed) GetId() string {
 	return ""
 }
 
-func (m *ErrorResourceInitFailed) GetProperties() *_struct.Struct {
+func (m *ErrorResourceInitFailed) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1909,7 +1909,7 @@ func (m *ErrorResourceInitFailed) GetReasons() []string {
 	return nil
 }
 
-func (m *ErrorResourceInitFailed) GetInputs() *_struct.Struct {
+func (m *ErrorResourceInitFailed) GetInputs() *structpb.Struct {
 	if m != nil {
 		return m.Inputs
 	}
@@ -2133,15 +2133,19 @@ type ResourceProviderClient interface {
 	// Update updates an existing resource with new values.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
-	// Cancel signals the provider to abort all outstanding resource operations.
-	Cancel(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
+	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+	// to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
+	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
+	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
-	Attach(ctx context.Context, in *PluginAttach, opts ...grpc.CallOption) (*empty.Empty, error)
+	Attach(ctx context.Context, in *PluginAttach, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resourceProviderClient struct {
@@ -2283,8 +2287,8 @@ func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, 
 	return out, nil
 }
 
-func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2301,8 +2305,8 @@ func (c *resourceProviderClient) Construct(ctx context.Context, in *ConstructReq
 	return out, nil
 }
 
-func (c *resourceProviderClient) Cancel(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *resourceProviderClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Cancel", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2310,7 +2314,7 @@ func (c *resourceProviderClient) Cancel(ctx context.Context, in *empty.Empty, op
 	return out, nil
 }
 
-func (c *resourceProviderClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
+func (c *resourceProviderClient) GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetPluginInfo", in, out, opts...)
 	if err != nil {
@@ -2319,8 +2323,8 @@ func (c *resourceProviderClient) GetPluginInfo(ctx context.Context, in *empty.Em
 	return out, nil
 }
 
-func (c *resourceProviderClient) Attach(ctx context.Context, in *PluginAttach, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *resourceProviderClient) Attach(ctx context.Context, in *PluginAttach, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/Attach", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -2362,15 +2366,19 @@ type ResourceProviderServer interface {
 	// Update updates an existing resource with new values.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(context.Context, *DeleteRequest) (*empty.Empty, error)
+	Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error)
 	// Construct creates a new instance of the provided component resource and returns its state.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
-	// Cancel signals the provider to abort all outstanding resource operations.
-	Cancel(context.Context, *empty.Empty) (*empty.Empty, error)
+	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+	// to the host to decide how long to wait after Cancel is called before (e.g.)
+	// hard-closing any gRPC connection.
+	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
+	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
-	Attach(context.Context, *PluginAttach) (*empty.Empty, error)
+	Attach(context.Context, *PluginAttach) (*emptypb.Empty, error)
 }
 
 // UnimplementedResourceProviderServer can be embedded to have forward compatible implementations.
@@ -2413,19 +2421,19 @@ func (*UnimplementedResourceProviderServer) Read(ctx context.Context, req *ReadR
 func (*UnimplementedResourceProviderServer) Update(ctx context.Context, req *UpdateRequest) (*UpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
-func (*UnimplementedResourceProviderServer) Delete(ctx context.Context, req *DeleteRequest) (*empty.Empty, error) {
+func (*UnimplementedResourceProviderServer) Delete(ctx context.Context, req *DeleteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (*UnimplementedResourceProviderServer) Construct(ctx context.Context, req *ConstructRequest) (*ConstructResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Construct not implemented")
 }
-func (*UnimplementedResourceProviderServer) Cancel(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+func (*UnimplementedResourceProviderServer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
-func (*UnimplementedResourceProviderServer) GetPluginInfo(ctx context.Context, req *empty.Empty) (*PluginInfo, error) {
+func (*UnimplementedResourceProviderServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
-func (*UnimplementedResourceProviderServer) Attach(ctx context.Context, req *PluginAttach) (*empty.Empty, error) {
+func (*UnimplementedResourceProviderServer) Attach(ctx context.Context, req *PluginAttach) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attach not implemented")
 }
 
@@ -2689,7 +2697,7 @@ func _ResourceProvider_Construct_Handler(srv interface{}, ctx context.Context, d
 }
 
 func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2701,13 +2709,13 @@ func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/pulumirpc.ResourceProvider/Cancel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).Cancel(ctx, req.(*empty.Empty))
+		return srv.(ResourceProviderServer).Cancel(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ResourceProvider_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2719,7 +2727,7 @@ func _ResourceProvider_GetPluginInfo_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/pulumirpc.ResourceProvider/GetPluginInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceProviderServer).GetPluginInfo(ctx, req.(*empty.Empty))
+		return srv.(ResourceProviderServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

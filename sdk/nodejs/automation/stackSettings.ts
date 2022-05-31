@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as yaml from "js-yaml";
-
 /**
  * A description of the Stack's configuration and encryption metadata.
  */

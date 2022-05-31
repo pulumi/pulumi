@@ -43,18 +43,13 @@ jobs:
         uses: actions/checkout@v2
       - name: Fetch Tags
         run: git fetch --quiet --prune --unshallow --tags
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.31
-          cache: enable
       - name: Install goreleaser-filter
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: t0yv0/goreleaser-filter
           tag: v0.3.0
           cache: enable
+
       # Section 1: configure
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -66,8 +61,15 @@ jobs:
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      - name: Configure Release Version
-        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Download versions.txt
+        uses: actions/download-artifact@v2
+        with:
+          name: versions.txt
+          path: versions
+      - name: Setup versioning env vars
+        run: |
+          cat versions/versions.txt | tee $GITHUB_ENV
+          rm -rf versions
 
       # Section 2: download prebuilt binaries made by build.yml
       - name: Download pulumi-linux-x64
