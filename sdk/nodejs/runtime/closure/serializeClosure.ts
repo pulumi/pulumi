@@ -461,13 +461,11 @@ function serializeJavaScriptText(
             // Walk the names of the array properties directly. This ensures we work efficiently
             // with sparse arrays.  i.e. if the array has length 1k, but only has one value in it
             // set, we can just set htat value, instead of setting 999 undefineds.
-            let length = 0;
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
                     const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);
                     environmentText += `${envVar}${
                         isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
-                    length++;
                 }
             }
         }

@@ -7,11 +7,11 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	math "math"
 )
 
@@ -57,7 +57,7 @@ func (EnforcementLevel) EnumDescriptor() ([]byte, []int) {
 
 type AnalyzeRequest struct {
 	Type                 string                    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Properties           *_struct.Struct           `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties           *structpb.Struct          `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	Urn                  string                    `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
 	Name                 string                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Options              *AnalyzerResourceOptions  `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`
@@ -99,7 +99,7 @@ func (m *AnalyzeRequest) GetType() string {
 	return ""
 }
 
-func (m *AnalyzeRequest) GetProperties() *_struct.Struct {
+func (m *AnalyzeRequest) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -139,7 +139,7 @@ func (m *AnalyzeRequest) GetProvider() *AnalyzerProviderResource {
 // service definition for more information.
 type AnalyzerResource struct {
 	Type                 string                                   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Properties           *_struct.Struct                          `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties           *structpb.Struct                         `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	Urn                  string                                   `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
 	Name                 string                                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Options              *AnalyzerResourceOptions                 `protobuf:"bytes,5,opt,name=options,proto3" json:"options,omitempty"`
@@ -184,7 +184,7 @@ func (m *AnalyzerResource) GetType() string {
 	return ""
 }
 
-func (m *AnalyzerResource) GetProperties() *_struct.Struct {
+func (m *AnalyzerResource) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -388,13 +388,13 @@ func (m *AnalyzerResourceOptions_CustomTimeouts) GetDelete() float64 {
 
 // AnalyzerProviderResource provides information about a resource's provider.
 type AnalyzerProviderResource struct {
-	Type                 string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	Urn                  string          `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
-	Name                 string          `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Type                 string           `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Urn                  string           `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
+	Name                 string           `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *AnalyzerProviderResource) Reset()         { *m = AnalyzerProviderResource{} }
@@ -429,7 +429,7 @@ func (m *AnalyzerProviderResource) GetType() string {
 	return ""
 }
 
-func (m *AnalyzerProviderResource) GetProperties() *_struct.Struct {
+func (m *AnalyzerProviderResource) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -825,11 +825,11 @@ func (m *PolicyInfo) GetConfigSchema() *PolicyConfigSchema {
 
 // PolicyConfigSchema provides the schema for a policy's configuration.
 type PolicyConfigSchema struct {
-	Properties           *_struct.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
-	Required             []string        `protobuf:"bytes,2,rep,name=required,proto3" json:"required,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Properties           *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
+	Required             []string         `protobuf:"bytes,2,rep,name=required,proto3" json:"required,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *PolicyConfigSchema) Reset()         { *m = PolicyConfigSchema{} }
@@ -857,7 +857,7 @@ func (m *PolicyConfigSchema) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_PolicyConfigSchema proto.InternalMessageInfo
 
-func (m *PolicyConfigSchema) GetProperties() *_struct.Struct {
+func (m *PolicyConfigSchema) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -874,7 +874,7 @@ func (m *PolicyConfigSchema) GetRequired() []string {
 // PolicyConfig provides configuration for a policy.
 type PolicyConfig struct {
 	EnforcementLevel     EnforcementLevel `protobuf:"varint,1,opt,name=enforcementLevel,proto3,enum=pulumirpc.EnforcementLevel" json:"enforcementLevel,omitempty"`
-	Properties           *_struct.Struct  `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
 	XXX_unrecognized     []byte           `json:"-"`
 	XXX_sizecache        int32            `json:"-"`
@@ -912,7 +912,7 @@ func (m *PolicyConfig) GetEnforcementLevel() EnforcementLevel {
 	return EnforcementLevel_ADVISORY
 }
 
-func (m *PolicyConfig) GetProperties() *_struct.Struct {
+func (m *PolicyConfig) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -1077,11 +1077,11 @@ type AnalyzerClient interface {
 	// have taken place.
 	AnalyzeStack(ctx context.Context, in *AnalyzeStackRequest, opts ...grpc.CallOption) (*AnalyzeResponse, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-	GetAnalyzerInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error)
+	GetAnalyzerInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
+	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
-	Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type analyzerClient struct {
@@ -1110,7 +1110,7 @@ func (c *analyzerClient) AnalyzeStack(ctx context.Context, in *AnalyzeStackReque
 	return out, nil
 }
 
-func (c *analyzerClient) GetAnalyzerInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error) {
+func (c *analyzerClient) GetAnalyzerInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AnalyzerInfo, error) {
 	out := new(AnalyzerInfo)
 	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/GetAnalyzerInfo", in, out, opts...)
 	if err != nil {
@@ -1119,7 +1119,7 @@ func (c *analyzerClient) GetAnalyzerInfo(ctx context.Context, in *empty.Empty, o
 	return out, nil
 }
 
-func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
+func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
 	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/GetPluginInfo", in, out, opts...)
 	if err != nil {
@@ -1128,8 +1128,8 @@ func (c *analyzerClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opt
 	return out, nil
 }
 
-func (c *analyzerClient) Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *analyzerClient) Configure(ctx context.Context, in *ConfigureAnalyzerRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.Analyzer/Configure", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1147,11 +1147,11 @@ type AnalyzerServer interface {
 	// have taken place.
 	AnalyzeStack(context.Context, *AnalyzeStackRequest) (*AnalyzeResponse, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
-	GetAnalyzerInfo(context.Context, *empty.Empty) (*AnalyzerInfo, error)
+	GetAnalyzerInfo(context.Context, *emptypb.Empty) (*AnalyzerInfo, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
+	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// Configure configures the analyzer, passing configuration properties for each policy.
-	Configure(context.Context, *ConfigureAnalyzerRequest) (*empty.Empty, error)
+	Configure(context.Context, *ConfigureAnalyzerRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedAnalyzerServer can be embedded to have forward compatible implementations.
@@ -1164,13 +1164,13 @@ func (*UnimplementedAnalyzerServer) Analyze(ctx context.Context, req *AnalyzeReq
 func (*UnimplementedAnalyzerServer) AnalyzeStack(ctx context.Context, req *AnalyzeStackRequest) (*AnalyzeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeStack not implemented")
 }
-func (*UnimplementedAnalyzerServer) GetAnalyzerInfo(ctx context.Context, req *empty.Empty) (*AnalyzerInfo, error) {
+func (*UnimplementedAnalyzerServer) GetAnalyzerInfo(ctx context.Context, req *emptypb.Empty) (*AnalyzerInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAnalyzerInfo not implemented")
 }
-func (*UnimplementedAnalyzerServer) GetPluginInfo(ctx context.Context, req *empty.Empty) (*PluginInfo, error) {
+func (*UnimplementedAnalyzerServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
-func (*UnimplementedAnalyzerServer) Configure(ctx context.Context, req *ConfigureAnalyzerRequest) (*empty.Empty, error) {
+func (*UnimplementedAnalyzerServer) Configure(ctx context.Context, req *ConfigureAnalyzerRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Configure not implemented")
 }
 
@@ -1215,7 +1215,7 @@ func _Analyzer_AnalyzeStack_Handler(srv interface{}, ctx context.Context, dec fu
 }
 
 func _Analyzer_GetAnalyzerInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1227,13 +1227,13 @@ func _Analyzer_GetAnalyzerInfo_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/pulumirpc.Analyzer/GetAnalyzerInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AnalyzerServer).GetAnalyzerInfo(ctx, req.(*empty.Empty))
+		return srv.(AnalyzerServer).GetAnalyzerInfo(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Analyzer_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1245,7 +1245,7 @@ func _Analyzer_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/pulumirpc.Analyzer/GetPluginInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AnalyzerServer).GetPluginInfo(ctx, req.(*empty.Empty))
+		return srv.(AnalyzerServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

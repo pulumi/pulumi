@@ -20,10 +20,8 @@ import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
-const provproto = require("../proto/provider_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;

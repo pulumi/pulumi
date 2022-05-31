@@ -48,8 +48,8 @@ ENV GOPATH=/go \
 
 # Install Protocol Buffers compiler and various GRPC generators
 COPY /scripts/install-protobuf-tools.sh /build-scripts/
-RUN PROTOC_VERSION=3.11.4 \
-    PROTOC_SHA256=6d0f18cd84b918c7b3edd0203e75569e0c8caecb1367bbbe409b45e28514f5be \
+RUN PROTOC_VERSION=3.20.1 \
+    PROTOC_SHA256=3a0e900f9556fbcac4c3a913a00d07680f0fdf6b990a341462d822247b265562 \
     PROTOC_GEN_GO_VERSION=1.3.3 \
     NODEJS_GRPC_VERSION=1.24.2 \
     NODEJS_GRPC_TOOLS_VERSION=1.8.1 \
