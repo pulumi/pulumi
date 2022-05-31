@@ -143,7 +143,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 
 var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
 
-type getSchemaNotImplemented struct{ err error }
+type getSchemaNotImplemented struct{}
 
 func (f getSchemaNotImplemented) Error() string {
 	return fmt.Sprintf("it looks like GetSchema is not implemented")
