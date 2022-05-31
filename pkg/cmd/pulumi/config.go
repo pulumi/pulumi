@@ -919,7 +919,8 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 		// if project is unavailable, fallback to get the project's configuration from the backend
 		cfg, err = backend.GetLatestConfiguration(commandContext(), stack)
 		if err != nil {
-			return backend.StackConfiguration{}, fmt.Errorf("stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
+			return backend.StackConfiguration{}, fmt.Errorf(
+				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
 		}
 	} else {
 		cfg = workspaceStack.Config
