@@ -52,6 +52,8 @@ const (
 	langNodejs = "nodejs"
 	langDotnet = "dotnet"
 	langGo     = "go"
+	langJava   = "java"
+	langYAML   = "yaml"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -807,19 +809,24 @@ func getProgramDependenciesAbout(proj *workspace.Project, root string,
 		return getGoProgramDependencies(transitive)
 	case langDotnet:
 		return getDotNetProgramDependencies(proj, transitive)
+	case langYAML:
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("Unknown Language: %s", language)
 	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencieAbout) string {
+	if len(deps) == 0 {
+		return "No dependencies found\n"
+	}
 	rows := make([]cmdutil.TableRow, len(deps))
 	for i, v := range deps {
 		rows[i] = cmdutil.TableRow{
 			Columns: []string{v.Name, v.Version},
 		}
 	}
-	return cmdutil.Table{
+	return "Dependencies:\n" + cmdutil.Table{
 		Headers: []string{"NAME", "VERSION"},
 		Rows:    rows,
 	}.String()
@@ -927,6 +934,8 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 			return projectRuntimeAbout{}, fmt.Errorf("Failed to get dotnet version: %w", err)
 		}
 		version = "v" + string(out)
+	case langYAML:
+		return projectRuntimeAbout{Language: language}, nil
 	default:
 		return projectRuntimeAbout{}, fmt.Errorf("Unknown Language: %s: %w", language, err)
 	}
@@ -939,8 +948,19 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	return fmt.Sprintf("This project is written in %s (%s %s)\n",
-		runtime.Language, runtime.Executable, runtime.Version)
+	var params []string
+	if r := runtime.Executable; r != "" {
+		params = append(params, r)
+	}
+	if v := runtime.Version; v != "" {
+		params = append(params, v)
+	}
+	paramString := ""
+	if len(paramString) > 0 {
+		paramString = fmt.Sprintf("(%s)", strings.Join(params, " "))
+	}
+	return fmt.Sprintf("This project is written in %s%s\n",
+		runtime.Language, paramString)
 }
 
 // This is necessary because dotnet invokes build during the call to
