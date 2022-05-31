@@ -890,15 +890,22 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have
 	// to hard code here.
 	language := proj.Runtime.Name()
+	errCouldNotFind := func(err error) (projectRuntimeAbout, error) {
+		return projectRuntimeAbout{}, fmt.Errorf("could not find %s executable: %w", language, err)
+	}
+	errCouldNotGet := func(err error) (projectRuntimeAbout, error) {
+		return projectRuntimeAbout{}, fmt.Errorf("failed to get %s version: %w", language, err)
+	}
+
 	switch language {
 	case langNodejs:
 		ex, err = executable.FindExecutable("node")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find node executable: %w", err)
+			return errCouldNotFind(err)
 		}
 		cmd := exec.Command(ex, "--version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get node version: %w", err)
+			return errCouldNotGet(err)
 		}
 		version = string(out)
 	case langPython:
@@ -911,31 +918,41 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 			return projectRuntimeAbout{}, err
 		}
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get python version: %w", err)
+			return errCouldNotGet(err)
 		}
 		version = "v" + strings.TrimPrefix(string(out), "Python ")
 	case langGo:
 		ex, err = executable.FindExecutable("go")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find python executable: %w", err)
+			return errCouldNotFind(err)
 		}
 		cmd := exec.Command(ex, "version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get go version: %w", err)
+			return errCouldNotGet(err)
 		}
 		version = "v" + strings.TrimPrefix(string(out), "go version go")
 	case langDotnet:
 		ex, err = executable.FindExecutable("dotnet")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find dotnet executable: %w", err)
+			return errCouldNotFind(err)
 		}
 		cmd := exec.Command(ex, "--version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get dotnet version: %w", err)
+			return errCouldNotGet(err)
 		}
 		version = "v" + string(out)
 	case langYAML:
 		return projectRuntimeAbout{Language: language}, nil
+	case langJava:
+		ex, err = executable.FindExecutable("javac")
+		if err != nil {
+			return errCouldNotFind(err)
+		}
+		cmd := exec.Command(ex, "--version")
+		if out, err = cmd.Output(); err != nil {
+			return errCouldNotGet(err)
+		}
+		version = strings.TrimPrefix(string(out), "javac ")
 	default:
 		return projectRuntimeAbout{}, fmt.Errorf("Unknown Language: %s: %w", language, err)
 	}
@@ -956,8 +973,8 @@ func (runtime projectRuntimeAbout) String() string {
 		params = append(params, v)
 	}
 	paramString := ""
-	if len(paramString) > 0 {
-		paramString = fmt.Sprintf("(%s)", strings.Join(params, " "))
+	if len(params) > 0 {
+		paramString = fmt.Sprintf(" (%s)", strings.Join(params, " "))
 	}
 	return fmt.Sprintf("This project is written in %s%s\n",
 		runtime.Language, paramString)
