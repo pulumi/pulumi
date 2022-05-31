@@ -1211,14 +1211,19 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 	if pt.projdir != "" {
 		// Destroy and remove the stack.
 		pt.t.Log("Destroying stack")
-		destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
+		destroy := []string{"destroy",
+			"--non-interactive",
+			"--yes",
+			"--skip-preview",
+			"-s", pt.opts.GetStackName().String(),
+		}
 		if pt.opts.GetDebugUpdates() {
 			destroy = append(destroy, "-d")
 		}
 		if pt.opts.JSONOutput {
 			destroy = append(destroy, "--json")
 		}
-		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
+		if err := pt.runPulumiCommand("pulumi-destroy", destroy, "/", false); err != nil {
 			return err
 		}
 
@@ -1228,7 +1233,7 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 
 		if !pt.opts.SkipStackRemoval {
-			return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, pt.projdir, false)
+			return pt.runPulumiCommand("pulumi-stack-rm", []string{"stack", "rm", "--yes"}, "/", false)
 		}
 	}
 	return nil
