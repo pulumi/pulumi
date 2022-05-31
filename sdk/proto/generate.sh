@@ -13,11 +13,11 @@
 set -o errexit
 set -o pipefail
 
-PULUMI_BUILD_CONTAINER_VERSION=v0.2.0
+PULUMI_BUILD_CONTAINER_VERSION=v0.3.0
 
-# First pull the image for the Pulumi Build Container
-echo "* Pulling Pulumi Build Container:"
-docker pull "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+# First build the image for the Pulumi Build Container
+echo "* Building Pulumi Build Container:"
+docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 DOCKER_RUN="docker run -it --rm -w /local -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 PROTOC="$DOCKER_RUN protoc"

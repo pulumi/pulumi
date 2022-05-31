@@ -647,7 +647,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<Random<wbr>Pet></span>
+        <span class="property-type">List&lt;Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -655,7 +655,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamemap_java" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Random<wbr>Pet></span>
+        <span class="property-type">Map&lt;String,Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -679,7 +679,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_java" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<Random<wbr>Pet></span>
+        <span class="property-type">List&lt;Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -687,7 +687,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namemap_java" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,Random<wbr>Pet></span>
+        <span class="property-type">Map&lt;String,Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -833,7 +833,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<random:Random<wbr>Pet></span>
+        <span class="property-type">List&lt;random:Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -841,7 +841,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamemap_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<random:Random<wbr>Pet></span>
+        <span class="property-type">Map&lt;random:Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -865,7 +865,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<random:Random<wbr>Pet></span>
+        <span class="property-type">List&lt;random:Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -873,7 +873,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namemap_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<random:Random<wbr>Pet></span>
+        <span class="property-type">Map&lt;random:Random<wbr>Pet&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

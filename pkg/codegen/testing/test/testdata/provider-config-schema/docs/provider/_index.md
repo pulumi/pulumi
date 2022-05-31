@@ -300,7 +300,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_yaml" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#color">"blue" | "red"</a></span>
+        <span class="property-type">String | <a href="#color">&#34;blue&#34; | &#34;red&#34;</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>

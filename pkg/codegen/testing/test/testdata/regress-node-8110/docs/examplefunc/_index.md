@@ -123,7 +123,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_java" style="color: inherit; text-decoration: inherit;">enums</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<Either<String,My<wbr>Enum>></span>
+        <span class="property-type">List&lt;Either&lt;String,My<wbr>Enum&gt;&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -165,7 +165,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_yaml" style="color: inherit; text-decoration: inherit;">enums</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String | "one" | "two"></span>
+        <span class="property-type">List&lt;String | &#34;one&#34; | &#34;two&#34;&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

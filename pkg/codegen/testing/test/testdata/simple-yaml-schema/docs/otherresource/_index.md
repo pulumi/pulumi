@@ -270,7 +270,7 @@ The OtherResource resource accepts the following [input](/docs/intro/concepts/in
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -336,7 +336,7 @@ The OtherResource resource accepts the following [input](/docs/intro/concepts/in
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List<String></span>
+        <span class="property-type">List&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

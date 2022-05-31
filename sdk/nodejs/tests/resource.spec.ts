@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { Output, all, concat, interpolate, output } from "../output";
+import { all } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 import { allAliases, createUrn, ComponentResource, CustomResourceOptions, DependencyProviderResource } from "../resource";
