@@ -668,7 +668,8 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	} else {
 		g.genStringLiteral(w, fmtStr.String())
 	}
-	args.WriteTo(w)
+	_, err := args.WriteTo(w)
+	contract.AssertNoError(err)
 	g.Fgenf(w, ")")
 }
 
