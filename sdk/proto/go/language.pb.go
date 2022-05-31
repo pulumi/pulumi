@@ -7,10 +7,10 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	math "math"
 )
 
@@ -455,7 +455,7 @@ type LanguageRuntimeClient interface {
 	// Run executes a program and returns its result.
 	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
+	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error)
 }
@@ -486,7 +486,7 @@ func (c *languageRuntimeClient) Run(ctx context.Context, in *RunRequest, opts ..
 	return out, nil
 }
 
-func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
+func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error) {
 	out := new(PluginInfo)
 	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GetPluginInfo", in, out, opts...)
 	if err != nil {
@@ -534,7 +534,7 @@ type LanguageRuntimeServer interface {
 	// Run executes a program and returns its result.
 	Run(context.Context, *RunRequest) (*RunResponse, error)
 	// GetPluginInfo returns generic information about this plugin, like its version.
-	GetPluginInfo(context.Context, *empty.Empty) (*PluginInfo, error)
+	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error
 }
@@ -549,7 +549,7 @@ func (*UnimplementedLanguageRuntimeServer) GetRequiredPlugins(ctx context.Contex
 func (*UnimplementedLanguageRuntimeServer) Run(ctx context.Context, req *RunRequest) (*RunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
 }
-func (*UnimplementedLanguageRuntimeServer) GetPluginInfo(ctx context.Context, req *empty.Empty) (*PluginInfo, error) {
+func (*UnimplementedLanguageRuntimeServer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
 func (*UnimplementedLanguageRuntimeServer) InstallDependencies(req *InstallDependenciesRequest, srv LanguageRuntime_InstallDependenciesServer) error {
@@ -597,7 +597,7 @@ func _LanguageRuntime_Run_Handler(srv interface{}, ctx context.Context, dec func
 }
 
 func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -609,7 +609,7 @@ func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context
 		FullMethod: "/pulumirpc.LanguageRuntime/GetPluginInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, req.(*empty.Empty))
+		return srv.(LanguageRuntimeServer).GetPluginInfo(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
