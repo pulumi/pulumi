@@ -884,7 +884,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
-// nolint: unused,deadcode
+//nolint:paralleltest // uses parallel programtest
 func TestDestroyStackRef(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
