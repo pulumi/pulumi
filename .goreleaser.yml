@@ -23,7 +23,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-unix_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi
+    path: goreleaser-{{ .Os }}/pulumi_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-windows
   binary: pulumi
@@ -32,7 +32,7 @@ builds:
   goarch: ['amd64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-windows_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi.exe
+    path: goreleaser-{{ .Os }}/pulumi_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi.exe
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-go-unix
   binary: pulumi-language-go
@@ -41,7 +41,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-go-unix_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go
+    path: goreleaser-{{ .Os }}/pulumi-language-go_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-go-windows
   binary: pulumi-language-go
@@ -50,7 +50,7 @@ builds:
   goarch: ['amd64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-go-windows_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go.exe
+    path: goreleaser-{{ .Os }}/pulumi-language-go_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go.exe
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-nodejs-unix
   binary: pulumi-language-nodejs
@@ -59,7 +59,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-nodejs-unix_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs
+    path: goreleaser-{{ .Os }}/pulumi-language-nodejs_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-nodejs-windows
   binary: pulumi-language-nodejs
@@ -68,7 +68,7 @@ builds:
   goarch: ['amd64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-nodejs-windows_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs.exe
+    path: goreleaser-{{ .Os }}/pulumi-language-nodejs_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs.exe
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-python-unix
   binary: pulumi-language-python
@@ -77,7 +77,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-python-unix_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python
+    path: goreleaser-{{ .Os }}/pulumi-language-python_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-python-windows
   binary: pulumi-language-python
@@ -86,7 +86,7 @@ builds:
   goarch: ['amd64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-python-windows_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python.exe
+    path: goreleaser-{{ .Os }}/pulumi-language-python_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python.exe
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-dotnet-unix
   binary: pulumi-language-dotnet
@@ -95,7 +95,7 @@ builds:
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-dotnet-unix_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet
+    path: goreleaser-{{ .Os }}/pulumi-language-dotnet_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-dotnet-windows
   binary: pulumi-language-dotnet
@@ -104,7 +104,7 @@ builds:
   goarch: ['amd64']
   goamd64: ['v1']
   prebuilt:
-    path: goreleaser-{{ .Os }}/pulumi-language-dotnet-windows_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet.exe
+    path: goreleaser-{{ .Os }}/pulumi-language-dotnet_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet.exe
   mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-java-unix
   binary: pulumi-language-java
