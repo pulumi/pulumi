@@ -120,8 +120,10 @@ func newLoginCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
-			} else if url := strings.TrimPrefix(strings.TrimPrefix(cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") {
-				return fmt.Errorf("%s is not a valid self-hosted backend, use `pulumi login` without any arguments to log into the Pulumi service backend", cloudURL)
+			} else if url := strings.TrimPrefix(strings.TrimPrefix(
+				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") {
+				return fmt.Errorf("%s is not a valid self-hosted backend, "+
+					"use `pulumi login` without any arguments to log into the Pulumi service backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
 				if err := validateCloudBackendType(cloudURL); err != nil {
