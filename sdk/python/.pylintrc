@@ -88,7 +88,8 @@ disable=raw-checker-failed,
         unused-import,
         unsubscriptable-object,
         line-too-long,
-        too-many-lines
+        too-many-lines,
+        cyclic-import
 
 
 # Enable the message, report, category or checker with the given id(s). You can
