@@ -817,3 +817,99 @@ func TestApplyTOutput(t *testing.T) {
 		assert.Len(t, deps, 4)
 	}
 }
+
+func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKnown, expectedSecret bool, expectedDeps ...CustomResource) {
+	t.Helper()
+	v, known, secret, deps, err := o.getState().await(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, expectedValue, v, "values do not match")
+	assert.Equal(t, expectedKnown, known, "known-ness does not match")
+	assert.Equal(t, expectedSecret, secret, "secret-ness does not match")
+	var depUrns []URN
+	for _, v := range deps {
+		depUrns = append(depUrns, v.URN().value.(URN))
+	}
+	var expectedUrns []URN
+	for _, v := range expectedDeps {
+		expectedUrns = append(expectedUrns, v.URN().value.(URN))
+	}
+	assert.ElementsMatch(t, depUrns, expectedUrns)
+}
+
+// Test that nested Apply operations accumulate state correctly.
+func TestApplyTOutputJoinDeps(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+	rA := newSimpleCustomResource(ctx, URN("urnA"), ID("idA"))
+	rB := newSimpleCustomResource(ctx, URN("urnB"), ID("idB"))
+
+	outA := IntOutput{newOutputState(nil, reflect.TypeOf(0), rA)}
+	outB := IntOutput{newOutputState(nil, reflect.TypeOf(0), rB)}
+
+	applyF := func(outA, outB IntOutput) IntOutput {
+		return outA.ApplyT(func(v int) (IntOutput, error) {
+			return outB, nil
+		}).(IntOutput)
+	}
+
+	outAB := applyF(outA, outB)
+
+	outA.resolve(3, true, false, []Resource{rA})
+	outB.resolve(5, true, false, []Resource{rB})
+
+	assertResult(t, outA, 3, true, false, rA)
+	assertResult(t, outAB, 5, true, false, rA, rB)
+	assertResult(t, outB, 5, true, false, rB)
+
+}
+
+// Test that nested Apply operations accumulate state correctly.
+func TestApplyTOutputJoin(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
+	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
+	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
+
+	out1 := IntOutput{newOutputState(nil, reflect.TypeOf(0), r1)}
+	out2 := IntOutput{newOutputState(nil, reflect.TypeOf(0), r2)}
+	out3 := IntOutput{newOutputState(nil, reflect.TypeOf(0), r3)}
+
+	go func() {
+		out1.resolve(2, true, false, []Resource{r1})
+		out2.resolve(3, false, false, []Resource{r2}) // value set but known => output.value == nil
+		out3.resolve(5, true, true, []Resource{r3})
+	}()
+
+	applyF := func(outA, outB IntOutput) IntOutput {
+		return outA.ApplyT(func(v int) (IntOutput, error) {
+			return outB, nil
+		}).(IntOutput)
+	}
+
+	out12 := applyF(out1, out2)
+	out123 := applyF(out12, out3)
+
+	out23 := applyF(out2, out3)
+	out231 := applyF(out23, out1)
+
+	out31 := applyF(out3, out1)
+	out312 := applyF(out31, out2)
+
+	assertResult(t, out1, 2, true, false, r1)
+	assertResult(t, out12, nil, false, false, r1, r2)
+	assertResult(t, out123, nil, false, false, r1, r2) /* out2 is unknown, hiding out3 */
+
+	/* out2 is unknown, early exit hides all nested outputs */
+	assertResult(t, out2, nil, false, false, r2)
+	assertResult(t, out23, nil, false, false, r2)
+	assertResult(t, out231, nil, false, false, r2)
+
+	assertResult(t, out3, 5, true, true, r3)
+	assertResult(t, out31, 2, true, true, r3, r1)
+	assertResult(t, out312, nil, false, true, r3, r1, r2) /* out2 is unknown, hiding the output */
+}
