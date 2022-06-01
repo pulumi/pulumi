@@ -5,7 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strings"
+	"regexp"
 	"sync"
 	"time"
 
@@ -149,6 +149,17 @@ func (f getSchemaNotImplemented) Error() string {
 	return fmt.Sprintf("it looks like GetSchema is not implemented")
 }
 
+func schemaIsEmpty(schemaBytes []byte) bool {
+	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
+	// returned. That is what we did in the past when we chose not to implement GetSchema.
+	if matched, err := regexp.Match(`\s*\{\s*\}\s*$`, schemaBytes); err != nil || matched {
+		// err != nil if the regexp is invalid, unit tests validate
+		return true
+	}
+
+	return false
+}
+
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	key := packageIdentity(pkg, version)
 
@@ -171,9 +182,7 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	if err != nil {
 		return nil, err
 	}
-	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
-	// returned. That is what we did in the past when we chose not to implement GetSchema.
-	if s := string(schemaBytes); strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(s, "{"), "}")) == "" {
+	if schemaIsEmpty(schemaBytes) {
 		return nil, getSchemaNotImplemented{}
 	}
 
