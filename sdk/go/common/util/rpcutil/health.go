@@ -50,6 +50,7 @@ func Healthcheck(context context.Context, addr string, duration time.Duration, c
 				if err != nil && status.Code(err) != codes.Unimplemented {
 					// Any other err should trigger the cancellation
 					cancel()
+					return
 				}
 				// TODO Should we cancel if the response is HealthCheckResponse_NOT_SERVING?
 
