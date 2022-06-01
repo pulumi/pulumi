@@ -886,20 +886,20 @@ type projectRuntimeAbout struct {
 	other      map[string]string
 }
 
-func (r projectRuntimeAbout) MarshalJSON() ([]byte, error) {
-	m := make(map[string]string, len(r.other)+3)
+func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
+	m := make(map[string]string, len(runtime.other)+3)
 	assignIf := func(k, v string) {
 		if v != "" {
 			m[k] = v
 		}
 	}
-	for k, v := range r.other {
+	for k, v := range runtime.other {
 		assignIf(k, v)
 	}
 
-	assignIf("language", r.Language)
-	assignIf("executable", r.Executable)
-	assignIf("version", r.Version)
+	assignIf("language", runtime.Language)
+	assignIf("executable", runtime.Executable)
+	assignIf("version", runtime.Version)
 	return json.Marshal(m)
 }
 
@@ -974,6 +974,9 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 		}
 		other["java"] = strings.Split(java, "\n")[0]
 		javac, err := getResponse("javac", "--version")
+		if err != nil {
+			javac = "unknown"
+		}
 		other["javac"] = strings.TrimPrefix(javac, "javac ")
 		if maven, err := getResponse("mvn", "--version"); err == nil {
 			// We add this only if there are no errors
