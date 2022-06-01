@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -140,6 +141,14 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	return ref.Definition()
 }
 
+var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
+
+type getSchemaNotImplemented struct{}
+
+func (f getSchemaNotImplemented) Error() string {
+	return fmt.Sprintf("it looks like GetSchema is not implemented")
+}
+
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	key := packageIdentity(pkg, version)
 
@@ -161,6 +170,11 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
 	if err != nil {
 		return nil, err
+	}
+	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
+	// returned. That is what we did in the past when we chose not to implement GetSchema.
+	if s := string(schemaBytes); strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(s, "{"), "}")) == "" {
+		return nil, getSchemaNotImplemented{}
 	}
 
 	var spec PartialPackageSpec
