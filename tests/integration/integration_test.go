@@ -903,7 +903,7 @@ func TestDestroyStackRef(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
-	e.CWD = "/"
+	e.CWD = os.TempDir()
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
 }
 
