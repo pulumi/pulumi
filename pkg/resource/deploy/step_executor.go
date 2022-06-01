@@ -319,6 +319,12 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		for _, k := range newState.AdditionalSecretOutputs {
 			if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 				newState.Outputs[k] = resource.MakeSecret(v)
+			} else if !has {
+				// User asked us to make k a secret, but we don't have a property k. This is probably a
+				// mistake (mostly likely due to casing, eg my_prop vs myProp) but warn the user so they know
+				// the key didn't do anything.
+				msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
+				se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
 			}
 		}
 
