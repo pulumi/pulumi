@@ -7,3 +7,6 @@
 
 - [cli/about] Make `pulumi about` aware of the YAML and Java runtimes.
   [#9745](https://github.com/pulumi/pulumi/pull/9745)
+
+- [cli/engine] Fix a panic deserializing resource plans without goals.
+  [#9749](https://github.com/pulumi/pulumi/pull/9749)

@@ -201,19 +201,21 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 }
 
 func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
-	if theirs == nil {
-		return ours
-	} else if ours == nil {
-		return theirs
+	if len(ours) == 0 && len(theirs) == 0 {
+		return nil
+	} else if len(theirs) == 0 {
+		return append(make([]Resource, 0, len(ours)), ours...)
+	} else if len(ours) == 0 {
+		return append(make([]Resource, 0, len(ours)), theirs...)
 	}
 	depSet := make(map[Resource]struct{})
+	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
 	for _, d := range ours {
 		depSet[d] = struct{}{}
 	}
 	for _, d := range theirs {
 		depSet[d] = struct{}{}
 	}
-	mergedDeps := make([]Resource, 0, len(depSet))
 	for d := range depSet {
 		mergedDeps = append(mergedDeps, d)
 	}
@@ -233,6 +235,10 @@ func (o *OutputState) reject(err error) {
 }
 
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	known := true
+	secret := false
+	var deps []Resource
+
 	for {
 		if o == nil {
 			// If the state is nil, treat its value as resolved and unknown.
@@ -248,8 +254,11 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		}
 		o.mutex.Unlock()
 
+		deps = mergeDependencies(deps, o.deps)
+		known = known && o.known
+		secret = secret || o.secret
 		if !o.known || o.err != nil {
-			return nil, o.known, o.secret, o.deps, o.err
+			return nil, known, secret, deps, o.err
 		}
 
 		// If the result is an Output, await it in turn.
@@ -257,11 +266,9 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
 		if ov, ok := o.value.(Output); ok {
-			deps := o.deps
 			o = ov.getState()
-			o.deps = mergeDependencies(o.deps, deps)
 		} else {
-			return o.value, true, o.secret, o.deps, nil
+			return o.value, true, secret, deps, nil
 		}
 	}
 }
