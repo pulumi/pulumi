@@ -77,7 +77,8 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
+	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc",
+		"--noEmit", "--skipLibCheck", "true", "--skipDefaultLibCheck", "true")
 }
 
 // Returns the nodejs equivalent to the hcl2 package names provided.
