@@ -3,10 +3,12 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
-	"github.com/edsrzf/mmap-go"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
+	"github.com/edsrzf/mmap-go"
 )
 
 func GetSchema(schemaDirectoryPath, providerName string) ([]byte, error) {
@@ -33,8 +35,11 @@ func NewProviderLoader(pkg string) ProviderLoader {
 		// Single instance schema:
 		var schema []byte
 		var err error
+		var m sync.Mutex
 		return &deploytest.Provider{
 			GetSchemaF: func(version int) ([]byte, error) {
+				m.Lock()
+				defer m.Unlock()
 				if schema != nil {
 					return schema, nil
 				}

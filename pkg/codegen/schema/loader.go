@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/edsrzf/mmap-go"
-	"github.com/hashicorp/go-multierror"
 	"github.com/natefinch/atomic"
 
 	"github.com/blang/semver"
@@ -30,7 +29,6 @@ type Loader interface {
 
 type ReferenceLoader interface {
 	Loader
-	io.Closer
 
 	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
 }
@@ -40,8 +38,6 @@ type pluginLoader struct {
 
 	host    plugin.Host
 	entries map[string]PackageReference
-	files   []*os.File
-	mmaps   []mmap.MMap
 
 	cacheOptions pluginLoaderCacheOptions
 }
@@ -177,27 +173,6 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 	return nil
 }
 
-func (l *pluginLoader) Close() error {
-	var result error
-	for _, m := range l.mmaps {
-		if err := m.Unmap(); err != nil {
-			result = multierror.Append(result, err)
-		}
-	}
-
-	for _, f := range l.files {
-		if err := f.Close(); err != nil {
-			result = multierror.Append(result, err)
-		}
-	}
-
-	if err := l.host.Close(); err != nil {
-		result = multierror.Append(result, err)
-	}
-
-	return result
-}
-
 func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
 	ref, err := l.LoadPackageReference(pkg, version)
 	if err != nil {
@@ -328,17 +303,21 @@ func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version
 	return schemaBytes, provider, nil
 }
 
+var mmapedFiles = make(map[string]mmap.MMap)
+
 func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime time.Time) ([]byte, bool) {
 	if l.cacheOptions.disableFileCache {
 		return nil, false
 	}
 
+	if schemaMmap, ok := mmapedFiles[path]; ok {
+		return schemaMmap, true
+	}
+
 	success := false
 	schemaFile, err := os.OpenFile(path, os.O_RDONLY, 0644)
 	defer func() {
-		if success {
-			l.files = append(l.files, schemaFile)
-		} else {
+		if !success {
 			schemaFile.Close()
 		}
 	}()
@@ -370,7 +349,6 @@ func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime
 		return nil, success
 	}
 	success = true
-	l.mmaps = append(l.mmaps, schemaMmap)
 
 	return schemaMmap, success
 }
