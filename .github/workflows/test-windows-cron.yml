@@ -14,7 +14,7 @@ jobs:
     needs: versions
     with:
       enable-coverage: true
-      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
+      goreleaser-flags: -p 3 --skip-validate
   test-windows:
     name: Test Windows
     needs: build
