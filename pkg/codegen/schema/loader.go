@@ -149,15 +149,12 @@ func (f getSchemaNotImplemented) Error() string {
 	return fmt.Sprintf("it looks like GetSchema is not implemented")
 }
 
+var schemaIsEmptyRE = regexp.MustCompile(`\s*\{\s*\}\s*$`)
+
 func schemaIsEmpty(schemaBytes []byte) bool {
 	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
 	// returned. That is what we did in the past when we chose not to implement GetSchema.
-	if matched, err := regexp.Match(`\s*\{\s*\}\s*$`, schemaBytes); err != nil || matched {
-		// err != nil if the regexp is invalid, unit tests validate
-		return true
-	}
-
-	return false
+	return schemaIsEmptyRE.Match(schemaBytes)
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
