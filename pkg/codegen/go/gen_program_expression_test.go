@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -41,6 +42,28 @@ func TestLiteralExpression(t *testing.T) {
 		{hcl2Expr: "0", goCode: "0"},
 		{hcl2Expr: "3.14", goCode: "3.14"},
 		{hcl2Expr: "\"foo\"", goCode: "\"foo\""},
+		{hcl2Expr: `"foo: ${bar}"`, goCode: `fmt.Sprintf("foo: %v", bar)`},
+		{hcl2Expr: `"fizz${bar}buzz"`, goCode: `fmt.Sprintf("fizz%vbuzz", bar)`},
+		{hcl2Expr: `"foo ${bar} %baz"`, goCode: `fmt.Sprintf("foo %v %vbaz", bar, "%")`},
+		{hcl2Expr: strings.ReplaceAll(`"{
+    \"Version\": \"2008-10-17\",
+    \"Statement\": [
+        {
+            ${Sid}: ${newpolicy},
+            ${Effect}: ${Allow},
+            \"Principal\": \"*\",
+         }
+    ]
+}"`, "\n", "\\n"), goCode: "fmt.Sprintf(`" + `{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+            %v: %v,
+            %v: %v,
+            "Principal": "*",
+         }
+    ]
+}` + "`, Sid, newpolicy, Effect, Allow)"},
 	}
 	for _, c := range cases {
 		c := c

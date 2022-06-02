@@ -1167,6 +1167,8 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 		return true
 	case jVersion == nil:
 		return false
+	case iVersion.EQ(*jVersion):
+		return iVersion.String() < jVersion.String()
 	default:
 		return iVersion.LT(*jVersion)
 	}

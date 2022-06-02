@@ -194,3 +194,24 @@ func TestPluginSetDeduplicate(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultProviderPluginsSorting(t *testing.T) {
+	t.Parallel()
+	v1 := semver.MustParse("0.0.1-alpha.10")
+	p1 := workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v1,
+		Kind:    workspace.ResourcePlugin,
+	}
+	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
+	p2 := workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v2,
+		Kind:    workspace.ResourcePlugin,
+	}
+	plugins := newPluginSet(p1, p2)
+	result := computeDefaultProviderPlugins(plugins, plugins)
+	assert.Equal(t, map[tokens.Package]workspace.PluginInfo{
+		"foo": p2,
+	}, result)
+}

@@ -23,26 +23,15 @@ on:
         default: '3.1.x'
         required: false
         type: string
-      goreleaser-config:
-        description: 'Config file for goreleaser'
-        default: '.goreleaser.prerelease.yml'
-        required: false
-        type: string
       goreleaser-flags:
-        description: 'Command-line flags to pass to goreleaser'
-        default: '-p 3 --snapshot --skip-validate'
-        required: false
+        description: 'Extra command-line flags to pass to goreleaser'
+        required: true
         type: string
       enable-coverage:
         description: 'Builds executables with coverage analysis enabled'
         default: false
         required: false
         type: boolean
-      default-build-platform:
-        description: 'Default platform to cross-compile on'
-        default: 'ubuntu-latest'
-        required: false
-        type: string
     secrets: {}
 
 env:
@@ -55,15 +44,27 @@ jobs:
         include:
           - platform: macos-latest
             os: darwin
-          - platform: ${{ inputs.default-build-platform }}
+            arch: amd64
+            artifactName: pulumi-macOS-X64
+          - platform: macos-latest
+            os: darwin
+            arch: arm64
+            artifactName: pulumi-macOS-ARM64
+          - platform: ubuntu-latest
             os: linux
-          - platform: ${{ inputs.default-build-platform }}
+            arch: amd64
+            artifactName: pulumi-Linux-X64
+          - platform: ubuntu-latest
+            os: linux
+            arch: arm64
+            artifactName: pulumi-Linux-ARM64
+          - platform: ubuntu-latest
             os: windows
+            arch: amd64
+            artifactName: pulumi-Windows-X64
       fail-fast: false
-
     name: Build Pulumi Go binaries
     runs-on: ${{ matrix.platform }}
-
     steps:
       - name: Enable code coverage
         run: |
@@ -82,12 +83,6 @@ jobs:
           repo: pulumi/pulumictl
           tag: v0.0.31
           cache: enable
-      - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        with:
-          repo: t0yv0/goreleaser-filter
-          tag: v0.3.0
-          cache: enable
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -100,14 +95,13 @@ jobs:
       - name: Go Cache
         uses: actions/cache@v2
         id: go-cache
-        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
         with:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          key: build.yml/go/${{ matrix.os }}/${{ matrix.arch }}/${{ hashFiles('*/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-
+            build.yml/go/${{ matrix.os }}/${{ matrix.arch }}
       - name: Download versions.txt
         uses: actions/download-artifact@v2
         with:
@@ -117,32 +111,21 @@ jobs:
         run: |
           cat versions/versions.txt | tee $GITHUB_ENV
           rm -rf versions
-      - name: Filter goreleaser config by OS
-        run: |
-          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
       - name: Run GoReleaser to build Go Pulumi binaries
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f /tmp/.goreleaser.current.yml ${{ inputs.goreleaser-flags }}
-      - name: Upload pulumi-${{ matrix.os }}-arm64
+          distribution: goreleaser-pro
+          args: build -f .goreleaser.build.yml --single-target ${{ inputs.goreleaser-flags }}
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+      - name: Upload ${{ matrix.artifactName }}
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-${{ matrix.os }}-arm64
-            path: goreleaser/pulumi*-${{ matrix.os }}-arm64*
-            retention-days: 2
-      - name: Upload pulumi-${{ matrix.os }}-x64
-        uses: actions/upload-artifact@v2
-        with:
-            name: pulumi-${{ matrix.os }}-x64
-            path: goreleaser/pulumi*-${{ matrix.os }}-x64*
-            retention-days: 2
-      - name: Upload pulumi-${{ matrix.os }}-checksums
-        uses: actions/upload-artifact@v2
-        with:
-            name: pulumi-${{ matrix.os }}-checksums
-            path: goreleaser/pulumi*-checksums.txt
-            retention-days: 2
+          name: ${{ matrix.artifactName }}
+          path: goreleaser/*/*
+          retention-days: 2
 
   build_python_sdk:
     name: Build Pulumi Python SDK wheel
@@ -288,12 +271,3 @@ jobs:
         with:
             name: pulumi-nuget-packages
             path: sdk/dotnet/nupkgs/*.nupkg
-
-# Note [Windows Go Cache]
-# ~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# Due to an issue in the actions/cache provider, caching is extremely slow on Windows, see:
-# https://github.com/actions/cache/issues/442. Extracting a ~400MiB cache may take up to 4m31s to
-# complete, which defeats the purpose of the cache. Example:
-#
-# https://github.com/pulumi/pulumi/runs/5396976132?check_suite_focus=true#step:9:25

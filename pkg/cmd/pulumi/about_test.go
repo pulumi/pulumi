@@ -43,7 +43,7 @@ func TestProjectRuntime(t *testing.T) {
 	}
 	out, err = cmd.Output()
 	assert.NoError(t, err, "This should not fail")
-	version := strings.TrimSpace("v" + strings.TrimPrefix(string(out), "Python "))
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	var runtime projectRuntimeAbout
 	runtime, err = getProjectRuntimeAbout(&workspace.Project{

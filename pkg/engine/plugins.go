@@ -314,7 +314,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 			}
 
 			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
-			if p.Version != nil && p.Version.GT(*seenPlugin.Version) {
+			if p.Version != nil && p.Version.GTE(*seenPlugin.Version) {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
 					p, p.Name, seenPlugin.Version)
