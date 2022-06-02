@@ -13,3 +13,6 @@
 
 - [cli/engine] Fix a panic deserializing resource plans without goals.
   [#9749](https://github.com/pulumi/pulumi/pull/9749)
+
+- [cli/engine] Provide a sorting for plugins of equivalent version.
+  [#9761](https://github.com/pulumi/pulumi/pull/9761)
