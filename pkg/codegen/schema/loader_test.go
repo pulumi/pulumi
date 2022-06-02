@@ -7,7 +7,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/stretchr/testify/require"
 )
 
 func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
@@ -17,10 +16,6 @@ func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader 
 	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	contract.AssertNoError(err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
-	b.Cleanup(func() {
-		err := loader.Close()
-		require.NoError(b, err)
-	})
 
 	return loader
 }

@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -233,11 +232,6 @@ func TestGenerateHCL2Definition(t *testing.T) {
 	t.Parallel()
 
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	t.Cleanup(func() {
-		err := loader.Close()
-		require.NoError(t, err)
-	})
-
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {
 		t.Fatal()
