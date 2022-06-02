@@ -141,6 +141,7 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 }
 
 func TestDefaultProviderPluginsSorting(t *testing.T) {
+	t.Parallel()
 	plugins := newPluginSet()
 	v1 := semver.MustParse("0.0.1-alpha.10")
 	plugins.Add(workspace.PluginInfo{
