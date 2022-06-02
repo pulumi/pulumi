@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,43 +25,7 @@ import (
 )
 
 // OpaqueType represents a type that is named by a string.
-type OpaqueType struct {
-	// Name is the type's name.
-	Name string
-	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
-
-	s string
-}
-
-// The set of opaque types, indexed by name.
-var opaqueTypes = map[string]*OpaqueType{}
-
-// GetOpaqueType fetches the opaque type for the given name.
-func GetOpaqueType(name string) (*OpaqueType, bool) {
-	t, ok := opaqueTypes[name]
-	return t, ok
-}
-
-// MustNewOpaqueType creates a new opaque type with the given name.
-func MustNewOpaqueType(name string, annotations ...interface{}) *OpaqueType {
-	t, err := NewOpaqueType(name, annotations...)
-	if err != nil {
-		panic(err)
-	}
-	return t
-}
-
-// NewOpaqueType creates a new opaque type with the given name.
-func NewOpaqueType(name string, annotations ...interface{}) (*OpaqueType, error) {
-	if _, ok := opaqueTypes[name]; ok {
-		return nil, fmt.Errorf("opaque type %s is already defined", name)
-	}
-
-	t := &OpaqueType{Name: name, Annotations: annotations}
-	opaqueTypes[name] = t
-	return t, nil
-}
+type OpaqueType string
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*OpaqueType) SyntaxNode() hclsyntax.Node {
@@ -84,6 +48,9 @@ func (t *OpaqueType) Equals(other Type) bool {
 }
 
 func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
+	if o, ok := other.(*OpaqueType); ok {
+		return *o == *t
+	}
 	return t == other
 }
 
@@ -171,32 +138,34 @@ func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *OpaqueType) String() string {
-	if t.s == "" {
-		switch t {
-		case NumberType:
-			t.s = "number"
-		case IntType:
-			t.s = "int"
-		case BoolType:
-			t.s = "bool"
-		case StringType:
-			t.s = "string"
-		default:
-			if hclsyntax.ValidIdentifier(t.Name) {
-				t.s = t.Name
-			} else {
-				t.s = fmt.Sprintf("type(%s)", t.Name)
-			}
+	switch t {
+	case NumberType:
+		return "number"
+	case IntType:
+		return "int"
+	case BoolType:
+		return "bool"
+	case StringType:
+		return "string"
+	default:
+		if hclsyntax.ValidIdentifier(string(*t)) {
+			return string(*t)
 		}
+
+		return fmt.Sprintf("type(%s)", string(*t))
 	}
-	return t.s
+}
+
+func NewOpaqueType(name string) *OpaqueType {
+	t := OpaqueType(name)
+	return &t
 }
 
 func (t *OpaqueType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-var opaquePrecedence = []*OpaqueType{StringType, NumberType, IntType, BoolType}
+var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType}
 
 func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 	return unify(t, other, func() (Type, ConversionKind) {
