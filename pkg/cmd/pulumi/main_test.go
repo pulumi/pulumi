@@ -20,13 +20,24 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/pflag"
 )
 
 type noTestDeps int
+
+type corpusEntry = struct {
+	Parent     string
+	Path       string
+	Data       []byte
+	Values     []interface{}
+	Generation int
+	IsSeed     bool
+}
 
 func (noTestDeps) ImportPath() string                          { return "" }
 func (noTestDeps) MatchString(pat, str string) (bool, error)   { return false, nil }
@@ -36,6 +47,17 @@ func (noTestDeps) StopCPUProfile()                             {}
 func (noTestDeps) StartTestLog(io.Writer)                      {}
 func (noTestDeps) StopTestLog() error                          { return nil }
 func (noTestDeps) WriteProfileTo(string, io.Writer, int) error { return nil }
+
+// Methods added in go 1.18 for forwards compat:
+func (noTestDeps) CheckCorpus(vals []interface{}, types []reflect.Type) error { return nil }
+func (noTestDeps) CoordinateFuzzing(
+	time.Duration, int64, time.Duration, int64, int, []corpusEntry, []reflect.Type, string, string) error {
+	return nil
+}
+func (noTestDeps) RunFuzzWorker(func(corpusEntry) error) error              { return nil }
+func (noTestDeps) ReadCorpus(string, []reflect.Type) ([]corpusEntry, error) { return nil, nil }
+func (noTestDeps) ResetCoverage()                                           {}
+func (noTestDeps) SnapshotCoverage()                                        {}
 
 // flushProfiles flushes test profiles to disk.
 func flushProfiles() {
@@ -56,7 +78,7 @@ func flushProfiles() {
 	err := flag.CommandLine.Parse(nil)
 	contract.IgnoreError(err)
 
-	m := testing.MainStart(noTestDeps(0), nil, nil, nil)
+	m := MainStart()
 	m.Run()
 }
 
