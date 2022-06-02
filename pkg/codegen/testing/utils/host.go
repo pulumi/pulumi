@@ -28,5 +28,9 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		}),
 		deploytest.NewProviderLoader("other", semver.MustParse("0.1.0"), func() (plugin.Provider, error) {
 			return Other(schemaDirectoryPath)
-		}))
+		}),
+		deploytest.NewProviderLoader("synthetic", semver.MustParse("0.1.0"), func() (plugin.Provider, error) {
+			return Synthetic(schemaDirectoryPath)
+		}),
+	)
 }

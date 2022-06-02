@@ -619,3 +619,130 @@ func TestValidateTypeToken(t *testing.T) {
 		})
 	}
 }
+
+func TestTypeString(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input  Type
+		output string
+	}{
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+					NumberType,
+				},
+			},
+			output: "Union<string, number>",
+		},
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+				},
+				DefaultType: NumberType,
+			},
+			output: "Union<string, default=number>",
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.output, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.output, c.input.String())
+		})
+	}
+}
+
+func TestPackageIdentity(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		nameA    string
+		versionA string
+		nameB    string
+		versionB string
+		equal    bool
+	}{
+		{
+			nameA: "example",
+			nameB: "example",
+			equal: true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+			versionB: "1.0.0",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta",
+			nameB:    "example",
+			versionB: "1.2.3-beta",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta+1234",
+			nameB:    "example",
+			versionB: "1.2.3-beta+1234",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+		},
+		{
+			nameA:    "example",
+			nameB:    "example",
+			versionB: "1.0.0",
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+			versionB: "1.2.3-beta",
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta+1234",
+			nameB:    "example",
+			versionB: "1.2.3-beta+5678",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.nameA, func(t *testing.T) {
+			t.Parallel()
+
+			var verA *semver.Version
+			if c.versionA != "" {
+				v := semver.MustParse(c.versionA)
+				verA = &v
+			}
+
+			var verB *semver.Version
+			if c.versionB != "" {
+				v := semver.MustParse(c.versionB)
+				verB = &v
+			}
+
+			pkgA := &Package{Name: c.nameA, Version: verA}
+			pkgB := &Package{Name: c.nameB, Version: verB}
+			if c.equal {
+				assert.Equal(t, packageIdentity(c.nameA, verA), packageIdentity(c.nameB, verB))
+				assert.Equal(t, pkgA.Identity(), pkgB.Identity())
+				assert.True(t, pkgA.Equals(pkgB))
+			} else {
+				assert.NotEqual(t, packageIdentity(c.nameA, verA), packageIdentity(c.nameB, verB))
+				assert.NotEqual(t, pkgA.Identity(), pkgB.Identity())
+				assert.False(t, pkgA.Equals(pkgB))
+			}
+		})
+	}
+}

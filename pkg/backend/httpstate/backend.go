@@ -712,6 +712,29 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
+// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
+// if the CWD is not in a Pulumi project,
+//     does not contradict
+// if the project name in Pulumi.yaml is "foo".
+//     a stack with a name of foo/bar/foo should not work.
+func currentProjectContradictsWorkspace(stack client.StackIdentifier) bool {
+	projPath, err := workspace.DetectProjectPath()
+	if err != nil {
+		return false
+	}
+
+	if projPath == "" {
+		return false
+	}
+
+	proj, err := workspace.LoadProject(projPath)
+	if err != nil {
+		return false
+	}
+
+	return proj.Name.String() != stack.Project
+}
+
 func (b *cloudBackend) CreateStack(
 	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
 	backend.Stack, error) {
@@ -720,16 +743,13 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
+	if currentProjectContradictsWorkspace(stackID) {
+		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
+	}
+
 	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
 		return nil, fmt.Errorf("error determining initial tags: %w", err)
-	}
-
-	// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
-	// if the project name in Pulumi.yaml is anything other than "bar".
-	projNameTag, ok := tags[apitype.ProjectNameTag]
-	if ok && stackID.Project != projNameTag {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
@@ -903,6 +923,10 @@ func (b *cloudBackend) createAndStartUpdate(
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
+	}
+	if currentProjectContradictsWorkspace(stackID) {
+		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
+			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,

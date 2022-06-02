@@ -5,11 +5,12 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
 	"github.com/blang/semver"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/segmentio/encoding/json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -21,21 +22,27 @@ type Loader interface {
 	LoadPackage(pkg string, version *semver.Version) (*Package, error)
 }
 
+type ReferenceLoader interface {
+	Loader
+
+	LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error)
+}
+
 type pluginLoader struct {
 	m sync.RWMutex
 
 	host    plugin.Host
-	entries map[string]*Package
+	entries map[string]PackageReference
 }
 
-func NewPluginLoader(host plugin.Host) Loader {
+func NewPluginLoader(host plugin.Host) ReferenceLoader {
 	return &pluginLoader{
 		host:    host,
-		entries: map[string]*Package{},
+		entries: map[string]PackageReference{},
 	}
 }
 
-func (l *pluginLoader) getPackage(key string) (*Package, bool) {
+func (l *pluginLoader) getPackage(key string) (PackageReference, bool) {
 	l.m.RLock()
 	defer l.m.RUnlock()
 
@@ -127,10 +134,31 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 }
 
 func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
-	key := pkg + "@"
-	if version != nil {
-		key += version.String()
+	ref, err := l.LoadPackageReference(pkg, version)
+	if err != nil {
+		return nil, err
 	}
+	return ref.Definition()
+}
+
+var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
+
+type getSchemaNotImplemented struct{}
+
+func (f getSchemaNotImplemented) Error() string {
+	return fmt.Sprintf("it looks like GetSchema is not implemented")
+}
+
+var schemaIsEmptyRE = regexp.MustCompile(`\s*\{\s*\}\s*$`)
+
+func schemaIsEmpty(schemaBytes []byte) bool {
+	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
+	// returned. That is what we did in the past when we chose not to implement GetSchema.
+	return schemaIsEmptyRE.Match(schemaBytes)
+}
+
+func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	key := packageIdentity(pkg, version)
 
 	if p, ok := l.getPackage(key); ok {
 		return p, nil
@@ -151,29 +179,31 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	if err != nil {
 		return nil, err
 	}
+	if schemaIsEmpty(schemaBytes) {
+		return nil, getSchemaNotImplemented{}
+	}
 
-	var spec PackageSpec
-	if err := jsoniter.Unmarshal(schemaBytes, &spec); err != nil {
+	var spec PartialPackageSpec
+	if _, err = json.Parse(schemaBytes, &spec, json.ZeroCopy); err != nil {
 		return nil, err
 	}
 
-	p, diags, err := bindSpec(spec, nil, l, false)
-	if err != nil {
-		return nil, err
-	}
-	if diags.HasErrors() {
-		return nil, diags
-	}
-	// Insert a version into the bound schema if the package does not provide one
-	if p.Version == nil {
+	// Insert a version into the spec if the package does not provide one
+	if spec.PackageInfoSpec.Version == "" {
 		if version == nil {
 			providerInfo, err := provider.GetPluginInfo()
 			if err == nil {
 				version = providerInfo.Version
 			}
 		}
+		if version != nil {
+			spec.PackageInfoSpec.Version = version.String()
+		}
+	}
 
-		p.Version = version
+	p, err := importPartialSpec(spec, nil, l)
+	if err != nil {
+		return nil, err
 	}
 
 	l.m.Lock()
@@ -185,4 +215,15 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	l.entries[key] = p
 
 	return p, nil
+}
+
+func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
+	if refLoader, ok := loader.(ReferenceLoader); ok {
+		return refLoader.LoadPackageReference(pkg, version)
+	}
+	p, err := loader.LoadPackage(pkg, version)
+	if err != nil {
+		return nil, err
+	}
+	return p.Reference(), nil
 }

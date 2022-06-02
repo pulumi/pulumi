@@ -9,6 +9,7 @@ export * from "./funcWithAllOptionalInputs";
 export * from "./funcWithConstInput";
 export * from "./funcWithDefaultValue";
 export * from "./funcWithDictParam";
+export * from "./funcWithEmptyOutputs";
 export * from "./funcWithListParam";
 export * from "./getBastionShareableLink";
 export * from "./getClientConfig";

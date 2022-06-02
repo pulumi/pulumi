@@ -58,6 +58,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// PulumiFilestateGzipEnvVar is an env var that must be truthy
+// to enable gzip compression when using the filestate backend.
+const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
+
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -77,6 +81,8 @@ type localBackend struct {
 	mutex  sync.Mutex
 
 	lockID string
+
+	gzip bool
 }
 
 type localBackendReference struct {
@@ -151,12 +157,15 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
+	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
+
 	return &localBackend{
 		d:           d,
 		originalURL: originalURL,
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
 		lockID:      lockID.String(),
+		gzip:        gzipCompression,
 	}, nil
 }
 
@@ -430,7 +439,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file, false)
 
-	// And rename the histoy folder as well.
+	// And rename the history folder as well.
 	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}
@@ -838,6 +847,12 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 		// Skip files without valid extensions (e.g., *.bak files).
 		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
+		// But accept gzip compression
+		if ext == encoding.GZIPExt {
+			stackfn = strings.TrimSuffix(stackfn, encoding.GZIPExt)
+			ext = filepath.Ext(stackfn)
+		}
+
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
 		}

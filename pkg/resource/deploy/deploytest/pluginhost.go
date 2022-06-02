@@ -385,9 +385,6 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 	delete(host.plugins, provider)
 	return nil
 }
-func (host *pluginHost) ListPlugins() []workspace.PluginInfo {
-	return nil
-}
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
 }

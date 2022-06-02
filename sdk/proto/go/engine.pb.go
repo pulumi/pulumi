@@ -7,10 +7,10 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	math "math"
 )
 
@@ -332,7 +332,7 @@ const _ = grpc.SupportPackageIsVersion6
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type EngineClient interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetRootResource gets the URN of the root resource, the resource that should be the root of all
 	// otherwise-unparented resources.
 	GetRootResource(ctx context.Context, in *GetRootResourceRequest, opts ...grpc.CallOption) (*GetRootResourceResponse, error)
@@ -348,8 +348,8 @@ func NewEngineClient(cc grpc.ClientConnInterface) EngineClient {
 	return &engineClient{cc}
 }
 
-func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.Engine/Log", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -378,7 +378,7 @@ func (c *engineClient) SetRootResource(ctx context.Context, in *SetRootResourceR
 // EngineServer is the server API for Engine service.
 type EngineServer interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(context.Context, *LogRequest) (*empty.Empty, error)
+	Log(context.Context, *LogRequest) (*emptypb.Empty, error)
 	// GetRootResource gets the URN of the root resource, the resource that should be the root of all
 	// otherwise-unparented resources.
 	GetRootResource(context.Context, *GetRootResourceRequest) (*GetRootResourceResponse, error)
@@ -390,7 +390,7 @@ type EngineServer interface {
 type UnimplementedEngineServer struct {
 }
 
-func (*UnimplementedEngineServer) Log(ctx context.Context, req *LogRequest) (*empty.Empty, error) {
+func (*UnimplementedEngineServer) Log(ctx context.Context, req *LogRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Log not implemented")
 }
 func (*UnimplementedEngineServer) GetRootResource(ctx context.Context, req *GetRootResourceRequest) (*GetRootResourceResponse, error) {

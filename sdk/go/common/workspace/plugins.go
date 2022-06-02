@@ -1167,6 +1167,8 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 		return true
 	case jVersion == nil:
 		return false
+	case iVersion.EQ(*jVersion):
+		return iVersion.String() < jVersion.String()
 	default:
 		return iVersion.LT(*jVersion)
 	}
@@ -1231,6 +1233,10 @@ func SelectCompatiblePlugin(
 func ReadCloserProgressBar(
 	closer io.ReadCloser, size int64, message string, colorization colors.Colorization) io.ReadCloser {
 	if size == -1 {
+		return closer
+	}
+
+	if !cmdutil.Interactive() {
 		return closer
 	}
 

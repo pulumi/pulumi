@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
@@ -241,7 +242,7 @@ func TestMapCrypter(t *testing.T) {
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-secrets.json")
 	require.NoError(t, err)
 
-	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 
 	var prov mapTestSecretsProvider
