@@ -2,7 +2,7 @@
 
 import * as pulumi from "@pulumi/pulumi";
 import * as dynamic from "@pulumi/pulumi/dynamic";
-import uuidv4 = require("uuid/v4");
+import * as uuid from "uuid";
 
 export class Provider implements dynamic.ResourceProvider {
     public static readonly instance = new Provider();
@@ -35,7 +35,7 @@ export class Provider implements dynamic.ResourceProvider {
 
     public async create(inputs: any): Promise<dynamic.CreateResult> {
         return {
-            id: uuidv4(),
+            id: uuid.v4(),
             outs: inputs,
         };
     }
