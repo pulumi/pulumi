@@ -48,6 +48,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	cmd.AddCommand(newStateDeleteCommand())
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
+	cmd.AddCommand(newStatePendingCommand())
 	return cmd
 }
 
