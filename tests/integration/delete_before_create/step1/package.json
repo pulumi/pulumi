@@ -2,11 +2,11 @@
     "name": "steps",
     "license": "Apache-2.0",
     "devDependencies": {
-        "@types/uuid": "^3.3.2",
+        "@types/uuid": "^8.3.2",
         "typescript": "^3.0.0"
     },
     "dependencies": {
-        "uuid": "^3.3.2"
+        "uuid": "^8.3.2"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"
