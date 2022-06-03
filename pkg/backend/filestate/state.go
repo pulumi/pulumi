@@ -339,8 +339,8 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 func (b *localBackend) stackPath(stack tokens.Name) string {
 	path := filepath.Join(b.StateDir(), workspace.StackDir)
 	if stack != "" {
-		allObjs, err := listBucket(b.bucket, path)
 		path = filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+		allObjs, err := listBucket(b.bucket, path)
 		if err == nil {
 			gzipedPath := path + ".gz"
 			var plainObj *blob.ListObject
