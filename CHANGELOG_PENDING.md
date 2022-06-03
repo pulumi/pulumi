@@ -6,6 +6,9 @@
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9613](https://github.com/pulumi/pulumi/pull/9613)
 
+- [engine] Explicit providers use the same plugin as default providers unless otherwise requested.
+  [#9708](https://github.com/pulumi/pulumi/pull/9708)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
