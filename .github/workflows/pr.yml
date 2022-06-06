@@ -17,6 +17,7 @@ jobs:
             **Note for the maintainer:**  Commands available:
 
             * `/run-acceptance-tests` - used to test run the acceptance tests for the project
+            * `/run-integration-tests` - used to run the full integration tests for the project
             * `/run-codegen` - used to test the Pull Request against downstream codegen
             * `/run-docs-gen` - used to test the Pull Request against documentation generation
             * `/run-containers` - used to test the Pull Request against the containers tests
