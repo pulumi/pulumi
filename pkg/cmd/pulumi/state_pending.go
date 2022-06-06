@@ -176,7 +176,7 @@ If no arguments are supplied, Pulumi will interactively prompt for urns to mark 
 				for _, op := range snap.PendingOperations {
 					if _, ok := chosenURNSet[op.Resource.URN]; ok {
 						if op.Type != resource.OperationTypeCreating {
-							return fmt.Errorf("'%s' is the URN of a pending %s, not a pending create", op.Type)
+							return fmt.Errorf("'%s' is the URN of a pending %s, not a pending create", op.Resource.URN, op.Type)
 						}
 						chosenURNSet[op.Resource.URN] = true
 					}
