@@ -208,7 +208,7 @@ If no arguments are supplied, Pulumi will interactively prompt for urns to mark 
 				}
 				err := survey.AskOne(prompt, &chosen, survey.WithValidator(survey.Required))
 				if err != nil {
-					return err
+					return result.FromError(err)
 				}
 
 				for _, urn := range chosen {
