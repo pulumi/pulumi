@@ -57,18 +57,16 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 		}
 
 		// If we have a host cancel our cancellation context if it fails the healthcheck
-		if host != nil {
-			ctx, cancel := context.WithCancel(context.Background())
-			// map the context Done channel to the rpcutil boolean cancel channel
-			cancelChannel = make(chan bool)
-			go func() {
-				<-ctx.Done()
-				close(cancelChannel)
-			}()
-			err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
-			if err != nil {
-				return fmt.Errorf("could not start health check host RPC server: %w", err)
-			}
+		ctx, cancel := context.WithCancel(context.Background())
+		// map the context Done channel to the rpcutil boolean cancel channel
+		cancelChannel = make(chan bool)
+		go func() {
+			<-ctx.Done()
+			close(cancelChannel)
+		}()
+		err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
+		if err != nil {
+			return fmt.Errorf("could not start health check host RPC server: %w", err)
 		}
 	} else {
 		return errors.New("fatal: could not connect to host RPC; missing argument")
