@@ -1432,6 +1432,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			program := deploytest.NewLanguageRuntime(c.prog, c.plugins...)
 			loaders := []*deploytest.ProviderLoader{}
 			for _, v := range c.versions {
@@ -1442,7 +1443,8 @@ func TestProviderVersionAssignment(t *testing.T) {
 			}
 			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-			update := []TestStep{{Op: Update, Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			update := []TestStep{{Op: Update, Validate: func(
+				project workspace.Project, target deploy.Target, entries JournalEntries,
 				events []Event, res result.Result) result.Result {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
