@@ -150,6 +150,11 @@ func buildVirtualEnv() error {
 }
 
 func pyTestCheck(t *testing.T, codeDir string) {
+	extraDir := filepath.Join(filepath.Dir(codeDir), "python-extras")
+	if _, err := os.Stat(extraDir); os.IsNotExist(err) {
+		// We won't run any tests since no extra tests were included.
+		return
+	}
 	venvDir, err := virtualEnvPath()
 	if err != nil {
 		t.Error(err)

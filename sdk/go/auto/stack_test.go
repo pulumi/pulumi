@@ -62,7 +62,7 @@ func TestGetPermalink(t *testing.T) {
 
 }
 
-func TestUpdatePlnas(t *testing.T) {
+func TestUpdatePlans(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()

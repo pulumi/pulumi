@@ -112,7 +112,6 @@ func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.curr
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
-
 	si, err := s.b.getCloudStackIdentifier(s.ref)
 	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
 	return si
