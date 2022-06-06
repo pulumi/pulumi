@@ -37,7 +37,7 @@ func newStatePendingCommand() *cobra.Command {
 		Short: "Interactively fix pending operations in the stack's state",
 		Long: `Interactively fix pending operations in the stack's state.
 
-Subcommands of this command can be used to cancel or resolve pending creates`,
+Subcommands of this command can be used to cancel or resolve pending creates.`,
 		Args: cmdutil.NoArgs,
 	}
 
@@ -54,9 +54,13 @@ Subcommands of this command can be used to cancel or resolve pending creates`,
 
 func newStatePendingResolveCreate(yes *bool, stack *string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "resolve-create",
+		Use:   "resolve-create [urn] [id]",
 		Short: "Interactively resolve pending create operations",
-		Args:  cmdutil.MaximumNArgs(2),
+		Long: `Interactively resolve pending create operations.
+
+If urn and id are provided, set the ID field of the pending create for urn to id.
+If only urn is provided, promt for the id. If neither are provided both urn and id will be prompted for.`,
+		Args: cmdutil.MaximumNArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes := *yes || skipConfirmations()
 			showPrompt := !yes
@@ -129,72 +133,105 @@ func newStatePendingClearCreate(yes *bool, stack *string) *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "clear-create",
+		Use:   "clear-create [urns...]",
 		Short: "Interactively remove pending operations in the stacks state",
 		Long: `Interactively remove pending operations in the stacks state.
 
-This tells pulumi that the resources don't exist and so pulumi does not need to keep track of them.`,
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+This tells Pulumi that the resources don't exist and so Pulumi does not need to keep track of them.
+This command should only be used after confirming with the relevant provider that the resources do not exist.
+If no arguments are supplied, Pulumi will interactively prompt for urns to mark as cleared.`,
+		Args: cobra.ArbitraryArgs,
+		Run: cmdutil.RunResultFunc(func(_ *cobra.Command, args []string) result.Result {
 
 			yes := *yes || skipConfirmations()
 			showPrompt := !yes
-			var numDeleted int
-			var hasPending bool
-			res := runTotalStateEdit(*stack, false, func(opts display.Options, snap *deploy.Snapshot) error {
+
+			if all && len(args) > 0 {
+				return result.Error("cannot specify both urns to clear and '--all'")
+			}
+
+			// chosenURNSet contains chosen urns. If the associated value is `true` then
+			// the URN is a valid pending create.
+			chosenURNSet := make(map[resource.URN]bool, len(args))
+			var hasInvalidURNs bool
+			for _, arg := range args {
+				urn := resource.URN(arg)
+				if urn.IsValid() {
+					chosenURNSet[urn] = false
+				} else {
+					fmt.Printf("'%s' is not a valid URN\n", arg)
+					hasInvalidURNs = true
+				}
+			}
+
+			if hasInvalidURNs {
+				return result.FromError(fmt.Errorf("cannot clear pending operations: invalid urns given"))
+			}
+
+			var pendingCreateURNs []string
+
+			// Validate that every urn in chosenURNSet is a pending create. We don't ask
+			// permission to mutate because we don't mutate the stack in this lambda.
+			if res := runTotalStateEdit(*stack, false, func(opts display.Options, snap *deploy.Snapshot) error {
 				for _, op := range snap.PendingOperations {
+					if _, ok := chosenURNSet[op.Resource.URN]; ok {
+						if op.Type != resource.OperationTypeCreating {
+							return fmt.Errorf("'%s' is the URN of a pending %s, not a pending create", op.Type)
+						}
+						chosenURNSet[op.Resource.URN] = true
+					}
 					if op.Type == resource.OperationTypeCreating {
-						hasPending = true
-						break
+						pendingCreateURNs = append(pendingCreateURNs, string(op.Resource.URN))
 					}
 				}
 				return nil
-			})
-			if res != nil {
+			}); res != nil {
 				return res
 			}
-			if !hasPending {
+
+			if len(pendingCreateURNs) == 0 {
 				fmt.Printf("No pending creates detected. Other pending operations will be removed by `pulumi refresh`.\n")
 				return nil
 			}
-			res = runTotalStateEdit(*stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+
+			// The '--all' flag was provided, so just add everything
+			if all {
+				for _, urn := range pendingCreateURNs {
+					chosenURNSet[resource.URN(urn)] = true
+				}
+			} else if len(chosenURNSet) == 0 {
+				// The user didn't provide any URNs, so ask them which URNs they want to select.
+				chosen := []string{}
+				prompt := &survey.MultiSelect{
+					Message: "Select pending creates to clear",
+					Options: pendingCreateURNs,
+				}
+				err := survey.AskOne(prompt, &chosen, survey.WithValidator(survey.Required))
+				if err != nil {
+					return err
+				}
+
+				for _, urn := range chosen {
+					chosenURNSet[resource.URN(urn)] = true
+				}
+			}
+
+			// Do the actual edit. At this point chosenURNSet is validated and so all
+			// entries are set to true.
+			var numDeleted int
+			if res := runTotalStateEdit(*stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+				// ops is the set of operations we are not deleting
 				ops := []resource.Operation{}
-				if all {
-					for _, op := range snap.PendingOperations {
-						if op.Type != resource.OperationTypeCreating {
-							ops = append(ops, op)
-						}
-					}
-				} else {
-					resourceList := []string{}
-					for _, op := range snap.PendingOperations {
-						if op.Type == resource.OperationTypeCreating {
-							resourceList = append(resourceList, string(op.Resource.URN))
-						}
-					}
-					chosen := []string{}
-					prompt := &survey.MultiSelect{
-						Message: "Select pending creates to clear",
-						Options: resourceList,
-					}
-					err := survey.AskOne(prompt, &chosen, survey.WithValidator(survey.Required))
-					if err != nil {
-						return err
-					}
-					chosenSet := make(map[string]bool, len(chosen))
-					for _, k := range chosen {
-						chosenSet[k] = true
-					}
-					for _, op := range snap.PendingOperations {
-						if !chosenSet[string(op.Resource.URN)] {
-							ops = append(ops, op)
-						}
+
+				for _, op := range snap.PendingOperations {
+					if !chosenURNSet[op.Resource.URN] {
+						ops = append(ops, op)
 					}
 				}
 				numDeleted = len(snap.PendingOperations) - len(ops)
 				snap.PendingOperations = ops
 				return nil
-			})
-			if res != nil {
+			}); res != nil {
 				return res
 			}
 			fmt.Printf("%d pending creates removed\n", numDeleted)
