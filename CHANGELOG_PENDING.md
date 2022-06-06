@@ -10,6 +10,12 @@
   create operations.
   [#9778](https://github.com/pulumi/pulumi/pull/9778)
 
+- [cli] Plugins will now shut themselves down if they can't contact the engine that started them.
+  [#9735](https://github.com/pulumi/pulumi/pull/9735)
+
+- [cli/engine] The engine will emit a warning of a key given in additional secret outputs doesn't match any of the property keys on the resources.
+  [#9750](https://github.com/pulumi/pulumi/pull/9750)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
