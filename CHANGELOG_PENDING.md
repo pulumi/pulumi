@@ -6,6 +6,10 @@
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9613](https://github.com/pulumi/pulumi/pull/9613)
 
+- [cli] Add `pulumi state pending` command with sub-commands for fixing pending
+  create operations.
+  [#9778](https://github.com/pulumi/pulumi/pull/9778)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
