@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"testing"
@@ -26,19 +25,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
-type noTestDeps int
-
-func (noTestDeps) ImportPath() string                          { return "" }
-func (noTestDeps) MatchString(pat, str string) (bool, error)   { return false, nil }
-func (noTestDeps) SetPanicOnExit0(bool)                        {}
-func (noTestDeps) StartCPUProfile(io.Writer) error             { return nil }
-func (noTestDeps) StopCPUProfile()                             {}
-func (noTestDeps) StartTestLog(io.Writer)                      {}
-func (noTestDeps) StopTestLog() error                          { return nil }
-func (noTestDeps) WriteProfileTo(string, io.Writer, int) error { return nil }
-
 // flushProfiles flushes test profiles to disk.
-func flushProfiles() {
+func flushProfiles(m *testing.M) {
 	// Redirect Stdout/err temporarily so the testing code doesn't output the
 	// regular:
 	//   PASS
@@ -56,7 +44,6 @@ func flushProfiles() {
 	err := flag.CommandLine.Parse(nil)
 	contract.IgnoreError(err)
 
-	m := testing.MainStart(noTestDeps(0), nil, nil, nil)
 	m.Run()
 }
 
@@ -85,7 +72,7 @@ func TestMain(m *testing.M) {
 
 	// Now, execute the Pulumi command and dump coverage data if requested.
 	err := cmd.Execute()
-	flushProfiles()
+	flushProfiles(m)
 
 	if err != nil {
 		_, err = fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
