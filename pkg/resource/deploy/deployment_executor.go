@@ -113,8 +113,8 @@ using 'pulumi refresh' which will refresh the state from the provider you are us
 clear the pending operations if there are any.
 
 Note that 'pulumi refresh' will not clear pending CREATE operations since those could have resulted in resources 
-which are not tracked by pulumi. To mark a pending CREATE operation as successful, use 'pulumi stack pending resolve-create'.
-To mark a pending CREATE operation as failed, use 'pulumi state pending clear-create'.`
+which are not tracked by pulumi. To mark a pending CREATE operation as successful, use 'pulumi stack pending
+resolve-create'. To mark a pending CREATE operation as failed, use 'pulumi state pending clear-create'.`
 
 	warning := "Attempting to deploy or update resources " +
 		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
