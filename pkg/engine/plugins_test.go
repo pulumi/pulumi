@@ -139,3 +139,25 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.0", awsVer.String())
 }
+
+func TestDefaultProviderPluginsSorting(t *testing.T) {
+	t.Parallel()
+	plugins := newPluginSet()
+	v1 := semver.MustParse("0.0.1-alpha.10")
+	plugins.Add(workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v1,
+		Kind:    workspace.ResourcePlugin,
+	})
+	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
+	plugin2 := workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v2,
+		Kind:    workspace.ResourcePlugin,
+	}
+	plugins.Add(plugin2)
+	result := computeDefaultProviderPlugins(plugins, plugins)
+	assert.Equal(t, map[tokens.Package]workspace.PluginInfo{
+		"foo": plugin2,
+	}, result)
+}

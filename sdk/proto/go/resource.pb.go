@@ -7,11 +7,11 @@ import (
 	context "context"
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	empty "github.com/golang/protobuf/ptypes/empty"
-	_struct "github.com/golang/protobuf/ptypes/struct"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	math "math"
 )
 
@@ -108,22 +108,22 @@ func (m *SupportsFeatureResponse) GetHasSupport() bool {
 
 // ReadResourceRequest contains enough information to uniquely qualify and read a resource's state.
 type ReadResourceRequest struct {
-	Id                      string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Type                    string          `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Name                    string          `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Parent                  string          `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`
-	Properties              *_struct.Struct `protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`
-	Dependencies            []string        `protobuf:"bytes,6,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
-	Provider                string          `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
-	Version                 string          `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
-	AcceptSecrets           bool            `protobuf:"varint,9,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
-	AdditionalSecretOutputs []string        `protobuf:"bytes,10,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
-	Aliases                 []string        `protobuf:"bytes,11,rep,name=aliases,proto3" json:"aliases,omitempty"`
-	AcceptResources         bool            `protobuf:"varint,12,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
-	PluginDownloadURL       string          `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
-	XXX_NoUnkeyedLiteral    struct{}        `json:"-"`
-	XXX_unrecognized        []byte          `json:"-"`
-	XXX_sizecache           int32           `json:"-"`
+	Id                      string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type                    string           `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Name                    string           `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Parent                  string           `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`
+	Properties              *structpb.Struct `protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`
+	Dependencies            []string         `protobuf:"bytes,6,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	Provider                string           `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
+	Version                 string           `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
+	AcceptSecrets           bool             `protobuf:"varint,9,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`
+	AdditionalSecretOutputs []string         `protobuf:"bytes,10,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`
+	Aliases                 []string         `protobuf:"bytes,11,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	AcceptResources         bool             `protobuf:"varint,12,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	PluginDownloadURL       string           `protobuf:"bytes,13,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
+	XXX_NoUnkeyedLiteral    struct{}         `json:"-"`
+	XXX_unrecognized        []byte           `json:"-"`
+	XXX_sizecache           int32            `json:"-"`
 }
 
 func (m *ReadResourceRequest) Reset()         { *m = ReadResourceRequest{} }
@@ -179,7 +179,7 @@ func (m *ReadResourceRequest) GetParent() string {
 	return ""
 }
 
-func (m *ReadResourceRequest) GetProperties() *_struct.Struct {
+func (m *ReadResourceRequest) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -244,11 +244,11 @@ func (m *ReadResourceRequest) GetPluginDownloadURL() string {
 
 // ReadResourceResponse contains the result of reading a resource's state.
 type ReadResourceResponse struct {
-	Urn                  string          `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	Properties           *_struct.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Urn                  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Properties           *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ReadResourceResponse) Reset()         { *m = ReadResourceResponse{} }
@@ -283,7 +283,7 @@ func (m *ReadResourceResponse) GetUrn() string {
 	return ""
 }
 
-func (m *ReadResourceResponse) GetProperties() *_struct.Struct {
+func (m *ReadResourceResponse) GetProperties() *structpb.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -296,7 +296,7 @@ type RegisterResourceRequest struct {
 	Name                       string                                                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Parent                     string                                                   `protobuf:"bytes,3,opt,name=parent,proto3" json:"parent,omitempty"`
 	Custom                     bool                                                     `protobuf:"varint,4,opt,name=custom,proto3" json:"custom,omitempty"`
-	Object                     *_struct.Struct                                          `protobuf:"bytes,5,opt,name=object,proto3" json:"object,omitempty"`
+	Object                     *structpb.Struct                                         `protobuf:"bytes,5,opt,name=object,proto3" json:"object,omitempty"`
 	Protect                    bool                                                     `protobuf:"varint,6,opt,name=protect,proto3" json:"protect,omitempty"`
 	Dependencies               []string                                                 `protobuf:"bytes,7,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
 	Provider                   string                                                   `protobuf:"bytes,8,opt,name=provider,proto3" json:"provider,omitempty"`
@@ -375,7 +375,7 @@ func (m *RegisterResourceRequest) GetCustom() bool {
 	return false
 }
 
-func (m *RegisterResourceRequest) GetObject() *_struct.Struct {
+func (m *RegisterResourceRequest) GetObject() *structpb.Struct {
 	if m != nil {
 		return m.Object
 	}
@@ -629,7 +629,7 @@ func (m *RegisterResourceRequest_CustomTimeouts) GetDelete() string {
 type RegisterResourceResponse struct {
 	Urn                  string                                                    `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
 	Id                   string                                                    `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
-	Object               *_struct.Struct                                           `protobuf:"bytes,3,opt,name=object,proto3" json:"object,omitempty"`
+	Object               *structpb.Struct                                          `protobuf:"bytes,3,opt,name=object,proto3" json:"object,omitempty"`
 	Stable               bool                                                      `protobuf:"varint,4,opt,name=stable,proto3" json:"stable,omitempty"`
 	Stables              []string                                                  `protobuf:"bytes,5,rep,name=stables,proto3" json:"stables,omitempty"`
 	PropertyDependencies map[string]*RegisterResourceResponse_PropertyDependencies `protobuf:"bytes,6,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
@@ -677,7 +677,7 @@ func (m *RegisterResourceResponse) GetId() string {
 	return ""
 }
 
-func (m *RegisterResourceResponse) GetObject() *_struct.Struct {
+func (m *RegisterResourceResponse) GetObject() *structpb.Struct {
 	if m != nil {
 		return m.Object
 	}
@@ -751,11 +751,11 @@ func (m *RegisterResourceResponse_PropertyDependencies) GetUrns() []string {
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
 type RegisterResourceOutputsRequest struct {
-	Urn                  string          `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	Outputs              *_struct.Struct `protobuf:"bytes,2,opt,name=outputs,proto3" json:"outputs,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Urn                  string           `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
+	Outputs              *structpb.Struct `protobuf:"bytes,2,opt,name=outputs,proto3" json:"outputs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *RegisterResourceOutputsRequest) Reset()         { *m = RegisterResourceOutputsRequest{} }
@@ -790,7 +790,7 @@ func (m *RegisterResourceOutputsRequest) GetUrn() string {
 	return ""
 }
 
-func (m *RegisterResourceOutputsRequest) GetOutputs() *_struct.Struct {
+func (m *RegisterResourceOutputsRequest) GetOutputs() *structpb.Struct {
 	if m != nil {
 		return m.Outputs
 	}
@@ -798,15 +798,15 @@ func (m *RegisterResourceOutputsRequest) GetOutputs() *_struct.Struct {
 }
 
 type ResourceInvokeRequest struct {
-	Tok                  string          `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
-	Args                 *_struct.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
-	Provider             string          `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
-	Version              string          `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	AcceptResources      bool            `protobuf:"varint,5,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
-	PluginDownloadURL    string          `protobuf:"bytes,6,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	Tok                  string           `protobuf:"bytes,1,opt,name=tok,proto3" json:"tok,omitempty"`
+	Args                 *structpb.Struct `protobuf:"bytes,2,opt,name=args,proto3" json:"args,omitempty"`
+	Provider             string           `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`
+	Version              string           `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	AcceptResources      bool             `protobuf:"varint,5,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`
+	PluginDownloadURL    string           `protobuf:"bytes,6,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *ResourceInvokeRequest) Reset()         { *m = ResourceInvokeRequest{} }
@@ -841,7 +841,7 @@ func (m *ResourceInvokeRequest) GetTok() string {
 	return ""
 }
 
-func (m *ResourceInvokeRequest) GetArgs() *_struct.Struct {
+func (m *ResourceInvokeRequest) GetArgs() *structpb.Struct {
 	if m != nil {
 		return m.Args
 	}
@@ -987,7 +987,7 @@ type ResourceMonitorClient interface {
 	Call(ctx context.Context, in *CallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
-	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*empty.Empty, error)
+	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type resourceMonitorClient struct {
@@ -1075,8 +1075,8 @@ func (c *resourceMonitorClient) RegisterResource(ctx context.Context, in *Regist
 	return out, nil
 }
 
-func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
+func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/RegisterResourceOutputs", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1092,7 +1092,7 @@ type ResourceMonitorServer interface {
 	Call(context.Context, *CallRequest) (*CallResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
-	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*empty.Empty, error)
+	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedResourceMonitorServer can be embedded to have forward compatible implementations.
@@ -1117,7 +1117,7 @@ func (*UnimplementedResourceMonitorServer) ReadResource(ctx context.Context, req
 func (*UnimplementedResourceMonitorServer) RegisterResource(ctx context.Context, req *RegisterResourceRequest) (*RegisterResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResource not implemented")
 }
-func (*UnimplementedResourceMonitorServer) RegisterResourceOutputs(ctx context.Context, req *RegisterResourceOutputsRequest) (*empty.Empty, error) {
+func (*UnimplementedResourceMonitorServer) RegisterResourceOutputs(ctx context.Context, req *RegisterResourceOutputsRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResourceOutputs not implemented")
 }
 
