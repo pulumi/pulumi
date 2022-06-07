@@ -11,9 +11,8 @@ replace (
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.2
-	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.33.2
-	github.com/pulumi/pulumi/sdk/v3 v3.33.2
+	github.com/pulumi/pulumi/pkg/v3 v3.33.3-0.20220601044734-8c3b8ab96f3e
+	github.com/pulumi/pulumi/sdk/v3 v3.33.3-0.20220601044734-8c3b8ab96f3e
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.45.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
@@ -96,6 +95,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -156,5 +156,5 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )
