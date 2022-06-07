@@ -111,12 +111,10 @@ func (ctx *Context) Close() error {
 	return nil
 }
 
-func (ctx *Context) WithBaseContext(c context.Context) *Context {
-	copy := *ctx
-	copy.baseContext = c
-	return &copy
-}
-
+// WithCancelChannel registers a close channel which will close the Context when the
+// channel is closed.
+//
+// WARNING: Calling this function without ever closing `c` will leak go routines.
 func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
 	copy := *ctx
 	go func() {
