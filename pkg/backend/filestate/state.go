@@ -344,7 +344,7 @@ func (b *localBackend) stackPath(stack tokens.Name) string {
 		// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 		// results in a slice.
 		plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
-		gzipedPath := path + ".gz"
+		gzipedPath := plainPath + ".gz"
 
 		bucketIter := b.bucket.List(&blob.ListOptions{
 			Delimiter: "/",
