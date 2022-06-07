@@ -11,6 +11,9 @@
 
 - [cli/engine] The engine will emit a warning of a key given in additional secret outputs doesn't match any of the property keys on the resources.
   [#9750](https://github.com/pulumi/pulumi/pull/9750)
+  
+- [sdk/go] Add `CompositeInvoke` function, like `Composite` but for `InvokeOption`.
+  [#9752](https://github.com/pulumi/pulumi/pull/9752)
 
 ### Bug Fixes
 
