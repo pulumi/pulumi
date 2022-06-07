@@ -27,6 +27,7 @@ import (
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
 	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
+	"google.golang.org/api/cloudkms/v1"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -63,7 +64,7 @@ func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
 
 	switch u.Scheme {
 	case gcpkms.Scheme:
-		credentials, err := authhelpers.ResolveGoogleCredentials(ctx)
+		credentials, err := authhelpers.ResolveGoogleCredentials(ctx, cloudkms.CloudkmsScope)
 		if err != nil {
 			return nil, errors.Wrap(err, "missing google credentials")
 		}
