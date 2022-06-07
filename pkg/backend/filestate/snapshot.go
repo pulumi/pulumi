@@ -15,15 +15,15 @@
 package filestate
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
 // to disk on the local machine.
 type localSnapshotPersister struct {
-	name    tokens.QName
+	name    tokens.Name
 	backend *localBackend
 	sm      secrets.Manager
 }
@@ -38,6 +38,6 @@ func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 }
 
-func (b *localBackend) newSnapshotPersister(stackName tokens.QName, sm secrets.Manager) *localSnapshotPersister {
+func (b *localBackend) newSnapshotPersister(stackName tokens.Name, sm secrets.Manager) *localSnapshotPersister {
 	return &localSnapshotPersister{name: stackName, backend: b, sm: sm}
 }

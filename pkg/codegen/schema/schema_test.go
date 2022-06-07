@@ -21,6 +21,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -29,7 +31,7 @@ import (
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
@@ -42,6 +44,8 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 }
 
 func TestImportSpec(t *testing.T) {
+	t.Parallel()
+
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes.json")
 
@@ -106,8 +110,13 @@ var enumTests = []struct {
 }
 
 func TestEnums(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range enumTests {
+		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			pkg, err := ImportSpec(pkgSpec, nil)
@@ -118,6 +127,7 @@ func TestEnums(t *testing.T) {
 					t.Error(err)
 				}
 				result := pkg.Types[0]
+				tt.expected.Package = pkg
 				assert.Equal(t, tt.expected, result)
 			}
 		})
@@ -125,6 +135,8 @@ func TestEnums(t *testing.T) {
 }
 
 func TestImportResourceRef(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -140,7 +152,7 @@ func TestImportResourceRef(t *testing.T) {
 					if r.Token == "example::OtherResource" {
 						for _, p := range r.Properties {
 							if p.Name == "foo" {
-								assert.IsType(t, &ResourceType{}, p.Type)
+								assert.IsType(t, &ResourceType{}, plainType(p.Type))
 							}
 						}
 					}
@@ -158,8 +170,8 @@ func TestImportResourceRef(t *testing.T) {
 				assert.True(t, ok)
 				name, ok := pet.Property("name")
 				assert.True(t, ok)
-				assert.IsType(t, &ResourceType{}, name.Type)
-				resource := name.Type.(*ResourceType)
+				assert.IsType(t, &ResourceType{}, plainType(name.Type))
+				resource := plainType(name.Type).(*ResourceType)
 				assert.NotNil(t, resource.Resource)
 
 				for _, r := range pkg.Resources {
@@ -167,15 +179,15 @@ func TestImportResourceRef(t *testing.T) {
 					case "example::Cat":
 						for _, p := range r.Properties {
 							if p.Name == "name" {
-								assert.IsType(t, stringType, p.Type)
+								assert.IsType(t, stringType, plainType(p.Type))
 							}
 						}
 					case "example::Workload":
 						for _, p := range r.Properties {
 							if p.Name == "pod" {
-								assert.IsType(t, &ObjectType{}, p.Type)
+								assert.IsType(t, &ObjectType{}, plainType(p.Type))
 
-								obj := p.Type.(*ObjectType)
+								obj := plainType(p.Type).(*ObjectType)
 								assert.NotNil(t, obj.Properties)
 							}
 						}
@@ -185,10 +197,13 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Read in, decode, and import the schema.
 			schemaBytes, err := ioutil.ReadFile(
-				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
 			assert.NoError(t, err)
 
 			var pkgSpec PackageSpec
@@ -206,6 +221,8 @@ func TestImportResourceRef(t *testing.T) {
 }
 
 func Test_parseTypeSpecRef(t *testing.T) {
+	t.Parallel()
+
 	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
@@ -309,16 +326,422 @@ func Test_parseTypeSpecRef(t *testing.T) {
 				Token:   "pulumi:providers:kubernetes",
 			},
 		},
+		{
+			name: "hyphenatedUrlPath",
+			ref:  "/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
+			want: typeSpecRef{
+				URL:     toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
+				Package: "azure-native",
+				Version: toVersionPtr("1.22.0"),
+				Kind:    "resources",
+				Token:   "azure-native:web:WebApp",
+			},
+		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := typs.parseTypeSpecRef(tt.ref)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
+			t.Parallel()
+
+			got, diags := typs.parseTypeSpecRef("ref", tt.ref)
+			if diags.HasErrors() != tt.wantErr {
+				t.Errorf("parseTypeSpecRef() diags = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseTypeSpecRef() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMethods(t *testing.T) {
+	t.Parallel()
+
+	var tests = []struct {
+		filename      string
+		validator     func(pkg *Package)
+		expectedError string
+	}{
+		{
+			filename: "good-methods-1.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Resources, 1)
+				assert.Len(t, pkg.Resources[0].Methods, 1)
+
+				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
+				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
+				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
+				assert.Equal(t, "__self__", inputs[0].Name)
+				assert.Equal(t, &ResourceType{
+					Token:    pkg.Resources[0].Token,
+					Resource: pkg.Resources[0],
+				}, inputs[0].Type)
+
+				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Outputs)
+				assert.Len(t, pkg.Resources[0].Methods[0].Function.Outputs.Properties, 1)
+				outputs := pkg.Resources[0].Methods[0].Function.Outputs.Properties
+				assert.Equal(t, "someValue", outputs[0].Name)
+				assert.Equal(t, StringType, outputs[0].Type)
+
+				assert.Len(t, pkg.Functions, 1)
+				assert.True(t, pkg.Functions[0].IsMethod)
+				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
+			},
+		},
+		{
+			filename:      "bad-methods-1.json",
+			expectedError: "unknown function xyz:index:Foo/bar",
+		},
+		{
+			filename:      "bad-methods-2.json",
+			expectedError: "function xyz:index:Foo/bar is already a method",
+		},
+		{
+			filename:      "bad-methods-3.json",
+			expectedError: "invalid function token format xyz:index:Foo",
+		},
+		{
+			filename:      "bad-methods-4.json",
+			expectedError: "invalid function token format xyz:index:Baz/bar",
+		},
+		{
+			filename:      "bad-methods-5.json",
+			expectedError: "function xyz:index:Foo/bar has no __self__ parameter",
+		},
+		{
+			filename:      "bad-methods-6.json",
+			expectedError: "xyz:index:Foo already has a property named bar",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			pkg, err := ImportSpec(pkgSpec, nil)
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
+				tt.validator(pkg)
+			}
+		})
+	}
+}
+
+// TestIsOverlay tests that the IsOverlay field is set correctly for resources, types, and functions. Does not test
+// codegen.
+func TestIsOverlay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("overlay", func(t *testing.T) {
+		t.Parallel()
+
+		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
+
+		pkg, err := ImportSpec(pkgSpec, nil)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, v := range pkg.Resources {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Types {
+			switch v := v.(type) {
+			case *ObjectType:
+				if strings.Contains(v.Token, "Overlay") {
+					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
+				} else {
+					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
+				}
+			}
+		}
+		for _, v := range pkg.Functions {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+		}
+	})
+}
+
+// Tests that the method ReplaceOnChanges works as expected. Does not test
+// codegen.
+func TestReplaceOnChanges(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		filePath string
+		resource string
+		result   []string
+		errors   []string
+	}{
+		{
+			name:     "Simple case",
+			filePath: "replace-on-changes-1.json",
+			resource: "example::Dog",
+			result:   []string{"bone"},
+		},
+		{
+			name:     "No replaceOnChanges",
+			filePath: "replace-on-changes-2.json",
+			resource: "example::Dog",
+		},
+		{
+			name:     "Mutually Recursive",
+			filePath: "replace-on-changes-3.json",
+			resource: "example::Pets",
+			result: []string{
+				"cat.fish",
+				"dog.bone",
+				"dog.cat.fish",
+				"cat.dog.bone"},
+			errors: []string{
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"cat\"",
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Singularly Recursive",
+			filePath: "replace-on-changes-4.json",
+			resource: "example::Pets",
+			result:   []string{"dog.bone"},
+			errors:   []string{"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Drill Correctly",
+			filePath: "replace-on-changes-5.json",
+			resource: "example::Pets",
+			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
+		},
+		{
+			name:     "No replace on changes and recursive",
+			filePath: "replace-on-changes-6.json",
+			resource: "example::Child",
+			result:   []string{},
+			errors:   []string{},
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// We sort each result before comparison. We don't enforce that the
+			// results have the same order, just the same content.
+			sort.Strings(tt.result)
+			sort.Strings(tt.errors)
+			pkgSpec := readSchemaFile(
+				filepath.Join("schema", tt.filePath))
+			pkg, err := ImportSpec(pkgSpec, nil)
+			assert.NoError(t, err, "Import should be successful")
+			resource, found := pkg.GetResource(tt.resource)
+			assert.True(t, found, "The resource should exist")
+			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
+			errList := make([]string, len(errListErrors))
+			for i, e := range errListErrors {
+				errList[i] = e.Error()
+			}
+			actualResult := PropertyListJoinToString(replaceOnChanges,
+				func(x string) string { return x })
+			sort.Strings(actualResult)
+			if tt.result != nil || len(actualResult) > 0 {
+				assert.Equal(t, tt.result, actualResult,
+					"Get the correct result")
+			}
+			if tt.errors != nil || len(errList) > 0 {
+				assert.Equal(t, tt.errors, errList,
+					"Get correct error messages")
+			}
+		})
+	}
+}
+
+func TestValidateTypeToken(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name          string
+		input         string
+		expectError   bool
+		allowedExtras []string
+	}{
+		{
+			name:  "valid",
+			input: "example::typename",
+		},
+		{
+			name:        "invalid",
+			input:       "xyz::typename",
+			expectError: true,
+		},
+		{
+			name:  "valid-has-subsection",
+			input: "example:index:typename",
+		},
+		{
+			name:        "invalid-has-subsection",
+			input:       "not:index:typename",
+			expectError: true,
+		},
+		{
+			name:          "allowed-extras-valid",
+			input:         "other:index:typename",
+			allowedExtras: []string{"other"},
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			spec := &PackageSpec{Name: "example"}
+			allowed := map[string]bool{"example": true}
+			for _, e := range c.allowedExtras {
+				allowed[e] = true
+			}
+			errors := spec.validateTypeToken(allowed, "type", c.input)
+			if c.expectError {
+				assert.True(t, errors.HasErrors())
+			} else {
+				assert.False(t, errors.HasErrors())
+			}
+		})
+	}
+}
+
+func TestTypeString(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input  Type
+		output string
+	}{
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+					NumberType,
+				},
+			},
+			output: "Union<string, number>",
+		},
+		{
+			input: &UnionType{
+				ElementTypes: []Type{
+					StringType,
+				},
+				DefaultType: NumberType,
+			},
+			output: "Union<string, default=number>",
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.output, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.output, c.input.String())
+		})
+	}
+}
+
+func TestPackageIdentity(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		nameA    string
+		versionA string
+		nameB    string
+		versionB string
+		equal    bool
+	}{
+		{
+			nameA: "example",
+			nameB: "example",
+			equal: true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+			versionB: "1.0.0",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta",
+			nameB:    "example",
+			versionB: "1.2.3-beta",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta+1234",
+			nameB:    "example",
+			versionB: "1.2.3-beta+1234",
+			equal:    true,
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+		},
+		{
+			nameA:    "example",
+			nameB:    "example",
+			versionB: "1.0.0",
+		},
+		{
+			nameA:    "example",
+			versionA: "1.0.0",
+			nameB:    "example",
+			versionB: "1.2.3-beta",
+		},
+		{
+			nameA:    "example",
+			versionA: "1.2.3-beta+1234",
+			nameB:    "example",
+			versionB: "1.2.3-beta+5678",
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.nameA, func(t *testing.T) {
+			t.Parallel()
+
+			var verA *semver.Version
+			if c.versionA != "" {
+				v := semver.MustParse(c.versionA)
+				verA = &v
+			}
+
+			var verB *semver.Version
+			if c.versionB != "" {
+				v := semver.MustParse(c.versionB)
+				verB = &v
+			}
+
+			pkgA := &Package{Name: c.nameA, Version: verA}
+			pkgB := &Package{Name: c.nameB, Version: verB}
+			if c.equal {
+				assert.Equal(t, packageIdentity(c.nameA, verA), packageIdentity(c.nameB, verB))
+				assert.Equal(t, pkgA.Identity(), pkgB.Identity())
+				assert.True(t, pkgA.Equals(pkgB))
+			} else {
+				assert.NotEqual(t, packageIdentity(c.nameA, verA), packageIdentity(c.nameB, verB))
+				assert.NotEqual(t, pkgA.Identity(), pkgB.Identity())
+				assert.False(t, pkgA.Equals(pkgB))
 			}
 		})
 	}

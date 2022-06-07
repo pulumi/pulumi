@@ -1,5 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System;
+
 namespace Pulumi
 {
     /// <summary>
@@ -13,9 +15,9 @@ namespace Pulumi
 
         private protected AssetOrArchive(string sigKey, string propName, object value)
         {
-            SigKey = sigKey ?? throw new System.ArgumentNullException(nameof(sigKey));
-            PropName = propName ?? throw new System.ArgumentNullException(nameof(propName));
-            Value = value ?? throw new System.ArgumentNullException(nameof(value));
+            SigKey = sigKey ?? throw new ArgumentNullException(nameof(sigKey));
+            PropName = propName ?? throw new ArgumentNullException(nameof(propName));
+            Value = value ?? throw new ArgumentNullException(nameof(value));
         }
     }
 }

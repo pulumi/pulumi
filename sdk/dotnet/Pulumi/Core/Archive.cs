@@ -53,4 +53,11 @@ namespace Pulumi
         {
         }
     }
+
+    sealed class InvalidArchive : Archive
+    {
+        public InvalidArchive() : base(Constants.ArchiveAssetsName, ImmutableDictionary<string, AssetOrArchive>.Empty)
+        {
+        }
+    }
 }

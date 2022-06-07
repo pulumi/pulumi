@@ -1,0 +1,36 @@
+comment: false
+
+coverage:
+  status:
+    project:
+      default: false
+      core:
+        informational: true
+        paths:
+          - "pkg/*"
+          - "sdk/go/common/*"
+          - "sdk/go/auto/*"
+          - "sdk/proto/*"
+      sdk-dotnet:
+        informational: true
+        paths:
+          - "sdk/dotnet/*"
+      sdk-go:
+        informational: true
+        paths:
+          - "sdk/go/pulumi/*"
+          - "sdk/go/pulumi-language-go/*"
+      sdk-nodejs:
+        informational: true
+        paths:
+          - "sdk/nodejs/*"
+      sdk-python:
+        informational: true
+        paths:
+          - "sdk/python/*"
+    patch:
+      default:
+        informational: true
+
+github_checks:
+    annotations: false

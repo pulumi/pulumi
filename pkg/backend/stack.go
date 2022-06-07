@@ -19,18 +19,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Stack is used to manage stacks of resources against a pluggable backend.
@@ -38,9 +36,10 @@ type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
+	Tags() map[apitype.StackTagName]string                  // the stack's existing tags.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import resources into this stack.
@@ -50,7 +49,7 @@ type Stack interface {
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation) result.Result
+	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -75,7 +74,11 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackRefer
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func PreviewStack(
+	ctx context.Context,
+	s Stack,
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return s.Backend().Preview(ctx, s, op)
 }
 
@@ -103,8 +106,8 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Watch(ctx, s, op)
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) result.Result {
+	return s.Backend().Watch(ctx, s, op, paths)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
@@ -119,18 +122,16 @@ func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
+func ExportStackDeployment(
+	ctx context.Context,
+	s Stack) (*apitype.UntypedDeployment, error) {
+
 	return s.Backend().ExportDeployment(ctx, s)
 }
 
 // ImportStackDeployment imports the given deployment into the indicated stack.
 func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.UntypedDeployment) error {
 	return s.Backend().ImportDeployment(ctx, s, deployment)
-}
-
-// GetStackTags fetches the stack's existing tags.
-func GetStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
-	return s.Backend().GetStackTags(ctx, s)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
@@ -142,10 +143,7 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
 	// Get the stack's existing tags.
-	tags, err := GetStackTags(ctx, s)
-	if err != nil {
-		return nil, err
-	}
+	tags := s.Tags()
 	if tags == nil {
 		tags = make(map[apitype.StackTagName]string)
 	}
@@ -173,12 +171,13 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 	// Tags based on Pulumi.yaml.
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
-		return nil, err
+		// No current stack return empty
+		return make(map[apitype.StackTagName]string), nil
 	}
 	if projPath != "" {
 		proj, err := workspace.LoadProject(projPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error loading project %q", projPath)
+			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
 		}
 		tags[apitype.ProjectNameTag] = proj.Name.String()
 		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
@@ -219,7 +218,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		tags[apitype.VCSRepositoryNameTag] = vcsInfo.Repo
 		tags[apitype.VCSRepositoryKindTag] = vcsInfo.Kind
 	} else {
-		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
+		return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
 	}
 	// Set the old stack tags keys as GitHub so that the UI will continue to work,
 	// regardless of whether the remote URL is a GitHub URL or not.

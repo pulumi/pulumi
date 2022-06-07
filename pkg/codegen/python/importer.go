@@ -17,11 +17,14 @@ package python
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // Compatibility mode for Kubernetes 2.0 SDK
 const kubernetes20 = "kubernetes20"
+
+// Compatibility mode for tfbridge 2.x SDKs
+const tfbridge20 = "tfbridge20"
 
 // PropertyInfo tracks Python-specific information associated with properties in a package.
 type PropertyInfo struct {
@@ -30,7 +33,11 @@ type PropertyInfo struct {
 
 // PackageInfo tracks Python-specific information associated with a package.
 type PackageInfo struct {
-	Requires map[string]string `json:"requires,omitempty"`
+	// PackageName is an override for the name of the generated python package.
+	PackageName string `json:"packageName,omitempty"`
+	// PythonRequires determines the Python versions that the generated provider supports
+	PythonRequires string            `json:"pythonRequires,omitempty"`
+	Requires       map[string]string `json:"requires,omitempty"`
 	// Readme contains the text for the package's README.md files.
 	Readme string `json:"readme,omitempty"`
 	// Optional overrides for Pulumi module names
@@ -42,8 +49,11 @@ type PackageInfo struct {
 	Compatibility string `json:"compatibility,omitempty"`
 	// Deprecated: This bool is no longer needed since all providers now use input/output classes.
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
-	// Indicates whether the pulumiplugin.json file should be generated.
-	EmitPulumiPluginFile bool `json:"emitPulumiPluginFile,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

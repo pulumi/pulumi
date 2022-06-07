@@ -2,11 +2,10 @@ package python
 
 import (
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func isParameterReference(parameters codegen.Set, x model.Expression) bool {
@@ -81,12 +80,12 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to the apply intrinsic.
 		apply, ok := expr.(*model.FunctionCallExpression)
-		if !ok || apply.Name != hcl2.IntrinsicApply {
+		if !ok || apply.Name != pcl.IntrinsicApply {
 			return expr, nil
 		}
 
 		// Parse the apply call.
-		args, then := hcl2.ParseApplyCall(apply)
+		args, then := pcl.ParseApplyCall(apply)
 
 		parameters := codegen.Set{}
 		for _, p := range then.Parameters {
@@ -101,24 +100,4 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 		return expr, nil
 	}
 	return model.VisitExpression(expr, model.IdentityVisitor, rewriter)
-}
-
-func (g *generator) lowerObjectKeys(expr model.Expression, camelCaseToSnakeCase map[string]string) {
-	switch expr := expr.(type) {
-	case *model.ObjectConsExpression:
-		for _, item := range expr.Items {
-			// Ignore non-literal keys
-			if key, ok := item.Key.(*model.LiteralValueExpression); ok && key.Value.Type().Equals(cty.String) {
-				if keyVal, ok := camelCaseToSnakeCase[key.Value.AsString()]; ok {
-					key.Value = cty.StringVal(keyVal)
-				}
-			}
-
-			g.lowerObjectKeys(item.Value, camelCaseToSnakeCase)
-		}
-	case *model.TupleConsExpression:
-		for _, element := range expr.Expressions {
-			g.lowerObjectKeys(element, camelCaseToSnakeCase)
-		}
-	}
 }

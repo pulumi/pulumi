@@ -15,14 +15,16 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newLogoutCmd() *cobra.Command {
@@ -65,13 +67,14 @@ func newLogoutCmd() *cobra.Command {
 				var err error
 				cloudURL, err = workspace.GetCurrentCloudURL()
 				if err != nil {
-					return errors.Wrap(err, "could not determine current cloud")
+					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			}
 
 			var be backend.Backend
 			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
+				fmt.Printf("Logged out of %s\n", cloudURL)
 				return workspace.DeleteAccount(cloudURL)
 			}
 
@@ -86,6 +89,7 @@ func newLogoutCmd() *cobra.Command {
 			} else {
 				logoutErr = be.Logout()
 			}
+			fmt.Printf("Logged out of %s\n", be.URL())
 			return logoutErr
 		}),
 	}

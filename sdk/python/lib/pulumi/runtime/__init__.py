@@ -22,12 +22,16 @@ from .config import (
     get_config,
     get_config_env,
     get_config_env_key,
+    get_config_secret_keys_env,
+    is_config_secret,
 )
 
 from .mocks import (
     Mocks,
     set_mocks,
     test,
+    MockResourceArgs,
+    MockCallArgs,
 )
 
 from .settings import (
@@ -45,6 +49,7 @@ from .stack import (
 
 from .invoke import (
     invoke,
+    call,
 )
 
 from ._json import (
@@ -65,35 +70,30 @@ __all__ = [
     "get_config",
     "get_config_env",
     "get_config_env_key",
-
     # mocks
     "Mocks",
     "set_mocks",
     "test",
-
+    "MockCallArgs",
+    "MockResourceArgs",
     # settings
     "Settings",
     "configure",
     "is_dry_run",
     "reset_options",
     "get_root_resource",
-
     # stack
     "run_in_stack",
     "register_stack_transformation",
-
     # invoke
     "invoke",
-
     # _json
     "to_json",
-
     # rpc
     "ResourceModule",
     "ResourcePackage",
     "register_resource_module",
     "register_resource_package",
-
     # submodules
-    "rpc"
+    "rpc",
 ]

@@ -1,5 +1,13 @@
 run:
   timeout: 10m
+  # Enable checking the by default skipped "examples" dirs
+  skip-dirs:
+    - vendor$
+    - third_party$
+    - testdata$
+    - Godeps$
+    - builtin$
+  skip-dirs-use-default: false
 linters:
   enable-all: false
   enable:
@@ -7,7 +15,7 @@ linters:
     - errcheck
     - goconst
     - gofmt
-    - golint
+    - revive
     - gosec
     - govet
     - ineffassign
@@ -17,6 +25,7 @@ linters:
     - structcheck
     - unconvert
     - varcheck
+    - paralleltest
   disable:
     - staticcheck # Disabled due to OOM errors in golangci-lint@v1.18.0
     - megacheck # Disabled due to OOM errors in golangci-lint@v1.18.0

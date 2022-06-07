@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi.Automation
 {
@@ -35,10 +36,16 @@ namespace Pulumi.Automation
         public PulumiFn? Program { get; set; }
 
         /// <summary>
+        /// A custom logger instance that will be used for inline programs. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public ILogger? Logger { get; set; }
+
+        /// <summary>
         /// Environment values scoped to the current workspace. These will be supplied to every
         /// Pulumi command.
         /// </summary>
-        public IDictionary<string, string>? EnvironmentVariables { get; set; }
+        public IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
         /// The settings object for the current project.

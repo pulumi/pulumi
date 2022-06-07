@@ -14,11 +14,12 @@
 import asyncio
 import unittest
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 
 from google.protobuf import struct_pb2
-from pulumi.resource import ComponentResource, CustomResource, ResourceOptions
-from pulumi.runtime import Mocks, ResourceModule, rpc, rpc_manager, known_types, set_mocks, settings
+from google.protobuf import json_format
+from pulumi.resource import ComponentResource, CustomResource, DependencyResource, Resource, ResourceOptions
+from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, set_mocks, settings
 from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
@@ -66,29 +67,45 @@ class MyResourceModule(ResourceModule):
 
 
 class MyMocks(Mocks):
-    def call(self, token, args, provider):
-        raise Exception(f"unknown function {token}")
+    def call(self, args: MockCallArgs):
+        raise Exception(f"unknown function {args.token}")
 
-    def new_resource(self, typ, name, inputs, provider, id):
-        if typ == "test:index:resource":
+    def new_resource(self, args: MockResourceArgs):
+        if args.typ == "test:index:resource":
             return [None if settings.is_dry_run() else "id", {}]
-        elif typ == "test:index:component":
+        elif args.typ == "test:index:component":
             return [None, {}]
         else:
-            raise Exception(f"unknown resource type {typ}")
+            raise Exception(f"unknown resource type {args.typ}")
 
 
 @pulumi.output_type
 class MyOutputTypeDict(dict):
 
-    def __init__(self, values: list):
+    def __init__(self, values: list, items: list, keys: list):
         pulumi.set(self, "values", values)
+        pulumi.set(self, "items", items)
+        pulumi.set(self, "keys", keys)
 
     # Property with empty body.
     @property
     @pulumi.getter
     def values(self) -> str:
         """Values docstring."""
+        ...
+
+    # Property with empty body.
+    @property
+    @pulumi.getter
+    def items(self) -> str:
+        """Items docstring."""
+        ...
+
+    # Property with empty body.
+    @property
+    @pulumi.getter
+    def keys(self) -> str:
+        """Keys docstring."""
         ...
 
 
@@ -162,7 +179,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
@@ -192,7 +209,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
@@ -304,9 +321,11 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual({"out": 42, "other": 99}, prop_dict)
 
     @pulumi_test
-    async def test_output_all_failure_no_inputs(self):
-        self.assertRaises(ValueError, Output.all)
-        self.assertRaisesRegex(ValueError, "Output.all() was supplied no inputs")
+    async def test_output_all_no_inputs(self):
+        empty_all = Output.all()
+        deps = []
+        prop = await rpc.serialize_property(empty_all, deps)
+        self.assertEqual([], prop)
 
     @pulumi_test
     async def test_output_all_failure_mixed_inputs(self):
@@ -950,9 +969,15 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_dangerous_prop_output(self):
-        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"]), is_known=True)
+        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"],
+                                                  items=["yellow", "purple"],
+                                                  keys=["yes", "no"]), is_known=True)
+        prop = await rpc.serialize_property(out, [])
 
         self.assertTrue(await out.is_known())
+        self.assertEqual(prop["values"], ["foo", "bar"])
+        self.assertEqual(prop["items"], ["yellow", "purple"])
+        self.assertEqual(prop["keys"], ["yes", "no"])
 
     @pulumi_test
     async def test_apply_unknown_output(self):
@@ -1247,3 +1272,243 @@ class EnumSerializationTests(unittest.TestCase):
         one = FloatEnum.ZERO_POINT_ONE
         prop = await rpc.serialize_property(one, [])
         self.assertEqual(FloatEnum.ZERO_POINT_ONE, prop)
+
+
+@pulumi.input_type
+class SomeFooArgs:
+    def __init__(self, the_first: str, the_second: Mapping[str, str]):
+        pulumi.set(self, "the_first", the_first)
+        pulumi.set(self, "the_second", the_second)
+
+    @property
+    @pulumi.getter(name="theFirst")
+    def the_first(self) -> str:
+        ...
+
+    @property
+    @pulumi.getter(name="theSecond")
+    def the_second(self) -> Mapping[str, str]:
+        ...
+
+
+@pulumi.input_type
+class SerializationArgs:
+    def __init__(self,
+                 some_value: pulumi.Input[str],
+                 some_foo: pulumi.Input[pulumi.InputType[SomeFooArgs]],
+                 some_bar: pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType[SomeFooArgs]]]]):
+        pulumi.set(self, "some_value", some_value)
+        pulumi.set(self, "some_foo", some_foo)
+        pulumi.set(self, "some_bar", some_bar)
+
+    @property
+    @pulumi.getter(name="someValue")
+    def some_value(self) -> pulumi.Input[str]:
+        ...
+
+    @property
+    @pulumi.getter(name="someFoo")
+    def some_foo(self) -> pulumi.Input[pulumi.InputType[SomeFooArgs]]:
+        ...
+
+    @property
+    @pulumi.getter(name="someBar")
+    def some_bar(self) -> pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType[SomeFooArgs]]]]:
+        ...
+
+
+@pulumi.output_type
+class SomeFooOutput(dict):
+    def __init__(self, the_first: str, the_second: Mapping[str, str]):
+        pulumi.set(self, "the_first", the_first)
+        pulumi.set(self, "the_second", the_second)
+
+    @property
+    @pulumi.getter(name="theFirst")
+    def the_first(self) -> str:
+        ...
+
+    @property
+    @pulumi.getter(name="theSecond")
+    def the_second(self) -> Mapping[str, str]:
+        ...
+
+
+@pulumi.output_type
+class DeserializationOutput(dict):
+    def __init__(self,
+                 some_value: str,
+                 some_foo: SomeFooOutput,
+                 some_bar: Mapping[str, SomeFooOutput]):
+        pulumi.set(self, "some_value", some_value)
+        pulumi.set(self, "some_foo", some_foo)
+        pulumi.set(self, "some_bar", some_bar)
+
+    @property
+    @pulumi.getter(name="someValue")
+    def some_value(self) -> str:
+        ...
+
+    @property
+    @pulumi.getter(name="someFoo")
+    def some_foo(self) -> SomeFooOutput:
+        ...
+
+    @property
+    @pulumi.getter(name="someBar")
+    def some_bar(self) -> Mapping[str, SomeFooOutput]:
+        ...
+
+
+class TypeMetaDataSerializationTests(unittest.TestCase):
+    @pulumi_test
+    async def test_serialize(self):
+        # The transformer should never be called.
+        def transformer(key: str) -> str:
+            raise Exception(f"Should not be raised for key '{key}'")
+
+        tests = [
+            {
+                "some_value": "hello",
+                "some_foo": SomeFooArgs("first", {"the_first": "there"}),
+                "some_bar": {"a": SomeFooArgs("second", {"the_second": "later"})},
+            },
+            {
+                "some_value": "hello",
+                "some_foo": {"the_first": "first", "the_second": {"the_first": "there"}},
+                "some_bar": {"a": {"the_first": "second", "the_second": {"the_second": "later"}}},
+            },
+            {
+                "some_value": "hello",
+                "some_foo": {"theFirst": "first", "theSecond": {"the_first": "there"}},
+                "some_bar": {"a": {"theFirst": "second", "theSecond": {"the_second": "later"}}},
+            },
+        ]
+
+        for props in tests:
+            result = await rpc.serialize_properties(props, {}, transformer, SerializationArgs)
+
+            self.assertEqual("hello", result["someValue"])
+
+            self.assertIsInstance(result["someFoo"], struct_pb2.Struct)
+            self.assertEqual("first", result["someFoo"]["theFirst"])
+            self.assertIsInstance(result["someFoo"]["theSecond"], struct_pb2.Struct)
+            self.assertEqual("there", result["someFoo"]["theSecond"]["the_first"])
+
+            self.assertIsInstance(result["someBar"], struct_pb2.Struct)
+            self.assertIsInstance(result["someBar"]["a"], struct_pb2.Struct)
+            self.assertEqual("second", result["someBar"]["a"]["theFirst"])
+            self.assertIsInstance(result["someBar"]["a"]["theSecond"], struct_pb2.Struct)
+            self.assertEqual("later", result["someBar"]["a"]["theSecond"]["the_second"])
+
+    @pulumi_test
+    async def test_output_translation(self):
+        # The transformer should never be called.
+        def transformer(key: str) -> str:
+            raise Exception(f"Should not be raised for key '{key}'")
+
+        output = {
+            "someValue": "hello",
+            "someFoo": {"theFirst": "first", "theSecond": {"the_first": "there"}},
+            "someBar": {"a": {"theFirst": "second", "theSecond": {"the_second": "later"}}},
+        }
+
+        translated = rpc.translate_output_properties(output, transformer, DeserializationOutput, True)
+
+        self.assertIsInstance(translated, DeserializationOutput)
+        result = cast(DeserializationOutput, translated)
+
+        self.assertEqual("hello", result.some_value)
+
+        self.assertIsInstance(result.some_foo, SomeFooOutput)
+        self.assertIsInstance(result.some_foo, dict)
+        self.assertEqual("first", result.some_foo.the_first)
+        self.assertEqual("first", result.some_foo["the_first"])
+        self.assertEqual({"the_first": "there"}, result.some_foo.the_second)
+        self.assertEqual({"the_first": "there"}, result.some_foo["the_second"])
+
+        self.assertIsInstance(result.some_bar, dict)
+        self.assertEqual(1, len(result.some_bar))
+        self.assertIsInstance(result.some_bar["a"], SomeFooOutput)
+        self.assertIsInstance(result.some_bar["a"], dict)
+        self.assertEqual("second", result.some_bar["a"].the_first)
+        self.assertEqual("second", result.some_bar["a"]["the_first"])
+        self.assertEqual({"the_second": "later"}, result.some_bar["a"].the_second)
+        self.assertEqual({"the_second": "later"}, result.some_bar["a"]["the_second"])
+
+
+class OutputValueSerializationTests(unittest.TestCase):
+    async def assertOutputEqual(self, first: Output[Any], second: Output[Any]):
+        async def urns(res: Set[Resource]) -> Set[str]:
+            return cast(Set[str], {await r.urn.future() for r in res})
+
+        self.assertEqual(await first.future(), await second.future())
+        self.assertEqual(await first.is_known(), await second.is_known())
+        self.assertEqual(await first.is_secret(), await second.is_secret())
+        self.assertEqual(await urns(await first.resources()), await urns(await second.resources()))
+
+
+    @pulumi_test
+    async def test_serialize(self):
+        settings.SETTINGS.feature_support["outputValues"] = True
+
+        def gen_test_parameters():
+            for value in [None, 0, 1, "", "hi", {}, []]:
+                for deps in [[], ["fakeURN1", "fakeURN2"]]:
+                    for is_known in [True, False]:
+                        for is_secret in [True, False]:
+                            yield (value, deps, is_known, is_secret)
+
+        for (value, deps, is_known, is_secret) in gen_test_parameters():
+            with self.subTest(value=value, deps=deps, is_known=is_known, is_secret=is_secret):
+                resources: Set[Resource] = set(map(DependencyResource, deps))
+
+                obj: Dict[str, Any] = {
+                    rpc._special_sig_key: rpc._special_output_value_sig
+                }
+                if is_known:
+                    obj["value"] = value
+                if is_secret:
+                    obj["secret"] = is_secret
+                if deps:
+                    obj["dependencies"] = deps
+
+                inputs = {"value": Output(resources, future(value), future(is_known), future(is_secret))}
+                expected = struct_pb2.Struct()
+                expected["value"] = obj
+
+                expected_round_trip = Output(resources, future(value if is_known else None), future(is_known),
+                    future(is_secret))
+
+                actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
+                self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+                # Roundtrip
+                back = rpc.deserialize_properties(actual)
+                await self.assertOutputEqual(expected_round_trip, back["value"])
+
+    @pulumi_test
+    async def test_serialize_nested_dict(self):
+        settings.SETTINGS.feature_support["outputValues"] = True
+
+        inputs = {
+            "value": {
+                "foo": Output(set(), future("bar"), future(True), future(True)),
+            }
+        }
+        expected = struct_pb2.Struct()
+        expected["value"] = {
+            "foo": {
+                rpc._special_sig_key: rpc._special_output_value_sig,
+                "value": "bar",
+                "secret": True,
+            },
+        }
+        actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
+        self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+
+def future(val):
+    fut = asyncio.Future()
+    fut.set_result(val)
+    return fut

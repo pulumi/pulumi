@@ -131,13 +131,6 @@ export class StackReference extends CustomResource {
     }
 }
 
-// Shape of the result that the engine returns to us when we invoke 'pulumi:pulumi:readStackOutputs'
-interface ReadStackOutputsResult {
-    name: string;
-    outputs: Record<string, any>;
-    secretOutputNames: string[];
-}
-
 /**
  * The set of arguments for constructing a StackReference resource.
  */

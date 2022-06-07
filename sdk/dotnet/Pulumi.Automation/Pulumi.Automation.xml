@@ -4,10 +4,303 @@
         <name>Pulumi.Automation</name>
     </assembly>
     <members>
+        <member name="T:Pulumi.Automation.Collections.DictionaryContentsComparer`2">
+            Compares two dictionaries for equality by content, as F# maps would.
+        </member>
         <member name="T:Pulumi.Automation.DestroyOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.CancelEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.CancelEvent"/> is emitted when the user initiates a cancellation of the update in progress, or
+            the update successfully completes.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.DiagnosticEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/> is emitted whenever a diagnostic message is provided, for example errors from
+            a cloud resource provider while trying to create or update a resource.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.DiagnosticEvent.Severity">
+            <summary>
+            Severity is one of "info", "info#err", "warning", or "error".
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.DiffKind">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.DiffKind"/> describes the kind of a particular property diff.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Add">
+            <summary>
+            Add indicates that the property was added.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.AddReplace">
+            <summary>
+            AddReplace indicates that the property was added and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Delete">
+            <summary>
+            Delete indicates that the property was deleted.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.DeleteReplace">
+            <summary>
+            DeleteReplace indicates that the property was deleted and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Update">
+            <summary>
+            Update indicates that the property was updated.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.UpdateReplace">
+            <summary>
+            UpdateReplace indicates that the property was updated and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.EngineEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.EngineEvent"/> describes a Pulumi engine event, such as a change to a resource or diagnostic
+            message. EngineEvent is a discriminated union of all possible event types, and exactly one
+            field will be non-null.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Sequence">
+            <summary>
+            Sequence is a unique, and monotonically increasing number for each engine event sent to the
+            Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+            the sequence number is to ensure events can be placed into a total ordering.
+            <para>
+            - No two events can have the same sequence number.
+            </para>
+            <para>
+            - Events with a lower sequence number must have been emitted before those with a higher sequence number.
+            </para>
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Timestamp">
+            <summary>
+            Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Events.EventLogWatcher.Stop">
+            Stops the polling loop and awaits the background task. Any exceptions encountered in the background
+            task will be propagated to the caller of this method.
+        </member>
+        <member name="M:Pulumi.Automation.Events.EventLogWatcher.AwaitPollingTask">
+            Exposed for testing; use Stop instead.
+        </member>
+        <member name="T:Pulumi.Automation.Events.PolicyEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.PolicyEvent"/> is emitted whenever there is Policy violation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PolicyEvent.EnforcementLevel">
+            <summary>
+            EnforcementLevel is one of "warning" or "mandatory"
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PreludeEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.PreludeEvent"/> is emitted at the start of an update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PreludeEvent.Config">
+            <summary>
+            Config contains the keys and values for the update.
+            Encrypted configuration values may be blinded.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PropertyDiff">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.PropertyDiff"/> describes the difference between a single property's old and new values.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PropertyDiff.Kind">
+            <summary>
+            Kind is the kind of difference.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PropertyDiff.InputDiff">
+            <summary>
+            InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourceOperationFailedEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/> is
+            emitted before this event, indiciating what the root cause of the error.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourceOutputsEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.ResourceOutputsEvent"/> is emitted when a resource is finished being provisioned.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.ResourcePreEvent"/> is emitted before a resource is modified.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StandardOutputEngineEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.StandardOutputEngineEvent"/> is emitted whenever a generic message is written, for example warnings
+            from the pulumi CLI itself. Less common than <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/>.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StepEventMetadata">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.StepEventMetadata"/> describes a "step" within the Pulumi engine, which is any concrete action
+            to migrate a set of cloud resources from one state to another.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Op">
+            <summary>
+            Op is the operation being performed.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Old">
+            <summary>
+            Old is the state of the resource before performing the step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.New">
+            <summary>
+            New is the state of the resource after performing the step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Keys">
+            <summary>
+            Keys causing a replacement (only applicable for "create" and "replace" Ops).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Diffs">
+            <summary>
+            Keys that changed with this step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.DetailedDiff">
+            <summary>
+            The diff for this step as a list of property paths and difference types.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Logical">
+            <summary>
+            Logical is set if the step is a logical operation in the program.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Provider">
+            <summary>
+            Provider actually performing the step.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StepEventStateMetadata">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.StepEventStateMetadata"/> is the more detailed state information for a resource as it relates to
+            a step(s) being performed.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Custom">
+            <summary>
+            Custom indicates if the resource is managed by a plugin.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Delete">
+            <summary>
+            Delete is true when the resource is pending deletion due to a replacement.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Id">
+            <summary>
+            ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Parent">
+            <summary>
+            Parent is an optional parent URN that this resource belongs to.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Protect">
+            <summary>
+            Protect is true to "protect" this resource (protected resources cannot be deleted).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Inputs">
+            <summary>
+            Inputs contains the resource's input properties (as specified by the program). Secrets have
+            filtered out, and large assets have been replaced by hashes as applicable.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Outputs">
+            <summary>
+            Outputs contains the resource's complete output state (as returned by the resource provider).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Provider">
+            <summary>
+            Provider is the resource's provider reference
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.InitErrors">
+            <summary>
+            InitErrors is the set of errors encountered in the process of initializing resource.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.SummaryEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.SummaryEvent"/> is emitted at the end of an update, with a summary of the changes made.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt">
+            <summary>
+            MaybeCorrupt is set if one or more of the resources is in an invalid state.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.DurationSeconds">
+            <summary>
+            Duration is the number of seconds the update was executing.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.ResourceChanges">
+            <summary>
+            ResourceChanges contains the count for resource change by type.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.PolicyPacks">
+            <summary>
+            PolicyPacks run during update. Maps PolicyPackName -> version.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Exceptions.ProjectSettingsConflictException">
+             <summary>
+            
+             Thrown when creating a Workspace detects a conflict between
+             project settings found on disk (such as Pulumi.yaml) and a
+             ProjectSettings object passed to the Create API.
+            
+             There are two resolutions:
+            
+             (A) to use the ProjectSettings, delete the Pulumi.yaml file
+                 from WorkDir or use a different WorkDir
+            
+             (B) to use the exiting Pulumi.yaml from WorkDir, avoid
+                 customizing the ProjectSettings
+            
+             </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Exceptions.ProjectSettingsConflictException.SettingsFileLocation">
+             <summary>
+            
+             FullPath of the Pulumi.yaml (or Pulumi.yml, Pulumi.json)
+             settings file found on disk.
+            
+             </summary>
         </member>
         <member name="T:Pulumi.Automation.HistoryOptions">
             <summary>
@@ -43,10 +336,16 @@
         <member name="P:Pulumi.Automation.LocalWorkspace.PulumiHome">
             <inheritdoc/>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.PulumiVersion">
+            <inheritdoc/>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.SecretsProvider">
             <inheritdoc/>
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.Program">
+            <inheritdoc/>
+        </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.Logger">
             <inheritdoc/>
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.EnvironmentVariables">
@@ -252,22 +551,22 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.PostCommandCallbackAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetAllConfigAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigValueAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.SetAllConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveAllConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.RefreshConfigAsync(System.String,System.Threading.CancellationToken)">
@@ -288,13 +587,22 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListStacksAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.LocalWorkspaceOptions">
@@ -327,6 +635,12 @@
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for inline programs. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.LocalWorkspaceOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables">
             <summary>
             Environment values scoped to the current workspace. These will be supplied to every
@@ -351,9 +665,32 @@
             <see cref="M:Pulumi.Automation.LocalWorkspace.SaveStackSettingsAsync(System.String,Pulumi.Automation.StackSettings,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ExactVersion">
+            <summary>
+            If <c>true</c>, force installation of an exact version match (usually >= is accepted).
+            <para/>
+            Defaults to <c>false</c>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ServerUrl">
+            <summary>
+            A URL to download plugins from.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.PreviewOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Plan">
+            <summary>
+            Plan specifies the path where the update plan should be saved.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.PreviewOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.ProjectBackend">
@@ -419,6 +756,12 @@
             A Pulumi program as an inline function (in process).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.PulumiFn.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <summary>
+            Invoke the appropriate run function on the <see cref="T:Pulumi.IRunner"/> instance. The exit code returned
+            from the appropriate run function should be forwarded here as well.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
             <summary>
             Creates an asynchronous inline (in process) pulumi program.
@@ -470,10 +813,52 @@
                 using the <paramref name="serviceProvider"/>.
             </summary>
             <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
+            <param name="serviceProvider">The service provider that will be used to resolve an instance of <typeparamref name="TStack"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.IServiceProvider,System.Type)">
+            <summary>
+            Creates an inline (in process) pulumi program via a traditional <see cref="T:Pulumi.Stack"/> implementation.
+            <para/>
+                When invoked, a new stack instance will be resolved based
+                on the provided <paramref name="stackType"/> type parameter
+                using the <paramref name="serviceProvider"/>.
+            </summary>
+            <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
+            <param name="stackType">The stack type, which must derive from <see cref="T:Pulumi.Stack"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnInline.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnServiceProvider.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn`1.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.StackDeployment">
+            <summary>
+            Represents the state of a stack deployment as used by
+            ExportStackAsync and ImportStackAsync.
+            <para/>
+            There is no strongly typed model for the contents yet, but you
+            can access the raw representation via the Json property.
+            <para/>
+            NOTE: instances may contain sensitive data (secrets).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Version">
+            <summary>
+            Version indicates the schema of the encoded deployment.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Json">
+            <summary>
+            JSON representation of the deployment.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
@@ -504,9 +889,40 @@
             against an instance of <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.OnStandardOutput">
+            <summary>
+            Optional callback which is invoked whenever StandardOutput is written into
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.OnStandardError">
+            <summary>
+            Optional callback which is invoked whenever StandardError is written into
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.OnEvent">
+            <summary>
+            Optional callback which is invoked with the engine events
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Color">
+            <summary>
+            Colorize output. Choices are: always, never, raw, auto (default "auto")
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Plan">
+            <summary>
+            Plan specifies the path to an update plan to use for the update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.UpOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Workspace">
@@ -529,6 +945,11 @@
             This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.Workspace.PulumiVersion">
+            <summary>
+            The version of the underlying Pulumi CLI/Engine.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.Workspace.SecretsProvider">
             <summary>
             The secrets provider to use for encryption and decryption of stack secrets.
@@ -541,6 +962,12 @@
             The inline program <see cref="T:Pulumi.Automation.PulumiFn"/> to be used for Preview/Update operations if any.
             <para/>
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Workspace.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.Workspace.Program"/> is also provided.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.EnvironmentVariables">
@@ -599,7 +1026,7 @@
             <param name="stackName">The name of the stack.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the value associated with the specified stack name and key, scoped
             to the Workspace.
@@ -608,14 +1035,14 @@
             <param name="key">The key to use for the config lookup.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetConfigAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetAllConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the config map for the specified stack name, scoped to the current Workspace.
             </summary>
             <param name="stackName">The name of the stack to read config from.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.SetConfigValueAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.SetConfigAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <summary>
             Sets the specified key-value pair in the provided stack's config.
             </summary>
@@ -624,7 +1051,7 @@
             <param name="value">The config value to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.SetConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.SetAllConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <summary>
             Sets all values in the provided config map for the specified stack name.
             </summary>
@@ -632,7 +1059,7 @@
             <param name="configMap">The config map to upsert against the existing config.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.RemoveConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.RemoveConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <summary>
             Removes the specified key-value pair from the provided stack's config.
             </summary>
@@ -640,7 +1067,7 @@
             <param name="key">The config key to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.RemoveConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.RemoveAllConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <summary>
             Removes all values in the provided key collection from the config map for the specified stack name.
             </summary>
@@ -707,6 +1134,22 @@
             This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.{stack}.yaml files).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.Workspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <summary>
             Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
@@ -714,6 +1157,16 @@
             <param name="name">The name of the plugin.</param>
             <param name="version">The version of the plugin e.g. "v1.0.0".</param>
             <param name="kind">The kind of plugin e.g. "resource".</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
+            <summary>
+            Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+            </summary>
+            <param name="name">The name of the plugin.</param>
+            <param name="version">The version of the plugin e.g. "v1.0.0".</param>
+            <param name="kind">The kind of plugin e.g. "resource".</param>
+            <param name="options">Any additional plugin installation options.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
         <member name="M:Pulumi.Automation.Workspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
@@ -729,6 +1182,13 @@
             <summary>
             Returns a list of all plugins installed in the Workspace.
             </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
+            </summary>
+            <param name="stackName">The name of the stack.</param>
+            <param name="cancellationToken">A cancellation token.</param>
         </member>
         <member name="T:Pulumi.Automation.WorkspaceStack">
             <summary>
@@ -751,6 +1211,11 @@
         <member name="P:Pulumi.Automation.WorkspaceStack.Workspace">
             <summary>
             The Workspace the Stack was created from.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.WorkspaceStack.State">
+            <summary>
+            A module for editing the Stack's state.
             </summary>
         </member>
         <member name="M:Pulumi.Automation.WorkspaceStack.CreateAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
@@ -784,20 +1249,20 @@
             <param name="workspace">The Workspace the Stack was created from.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the config value associated with the specified key.
             </summary>
             <param name="key">The key to use for the config lookup.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetAllConfigAsync(System.Threading.CancellationToken)">
             <summary>
             Returns the full config map associated with the stack in the Workspace.
             </summary>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigValueAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <summary>
             Sets the config key-value pair on the Stack in the associated Workspace.
             </summary>
@@ -805,21 +1270,21 @@
             <param name="value">The config value to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetAllConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <summary>
             Sets all specified config values on the stack in the associated Workspace.
             </summary>
             <param name="configMap">The map of config key-value pairs to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Removes the specified config key from the Stack in the associated Workspace.
             </summary>
             <param name="key">The config key to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveAllConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <summary>
             Removes the specified config keys from the Stack in the associated Workspace.
             </summary>
@@ -865,7 +1330,7 @@
             <param name="options">Options to customize the behavior of the destroy.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetOutputAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetOutputsAsync(System.Threading.CancellationToken)">
             <summary>
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>
@@ -875,6 +1340,64 @@
             Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
             </summary>
             <param name="options">Options to customize the behavior of the fetch history action.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStack.CancelAsync(System.Threading.CancellationToken)">
+            <summary>
+            Cancel stops a stack's currently running update. It throws
+            an exception if no update is currently running. Note that
+            this operation is _very dangerous_, and may leave the
+            stack in an inconsistent state if a resource operation was
+            pending when the update was canceled. This command is not
+            supported for local backends.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.WorkspaceStackState">
+            <summary>
+            Module class for manipulating stack state for a given <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.DeleteAsync(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            This command deletes a resource from a stack’s state, as long as it is safe to do so.
+            The resource is specified by its Pulumi URN.
+            <para/>
+            Resources can’t be deleted if there exist other resources that depend on it or are parented to it.
+            Protected resources will not be deleted unless it is specifically requested using the <paramref name="force"/> flag.
+            </summary>
+            <param name="urn">The Pulumi URN of the resource to be deleted.</param>
+            <param name="force">A boolean indicating whether the deletion should be forced.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Unprotect a resource in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
+            </summary>
+            <param name="urn">The Pulumi URN to be unprotected.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAllAsync(System.Threading.CancellationToken)">
+            <summary>
+            Unprotect all resources in a stack's state.
+            This command clears the ‘protect’ bit on all resources in the stack, allowing those resources to be deleted.
+            </summary>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
     </members>

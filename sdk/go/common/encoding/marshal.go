@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,21 @@
 package encoding
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"path/filepath"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
-var JSONExt = ".json"
-var YAMLExt = ".yaml"
+var (
+	JSONExt = ".json"
+	YAMLExt = ".yaml"
+	GZIPExt = ".gz"
+)
 
 // Exts contains a list of all the valid marshalable extension types.
 var Exts = []string{
@@ -106,5 +113,77 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 
-	return yaml.Unmarshal(data, v)
+	err := yaml.Unmarshal(data, v)
+	if err != nil {
+		// Return type errors directly
+		if _, ok := err.(*yaml.TypeError); ok {
+			return err
+		}
+		// Other errors will be parse errors due to invalid syntax
+		return fmt.Errorf("invalid YAML file: %w", err)
+	}
+	return nil
+}
+
+type gzipMarshaller struct {
+	inner Marshaler
+}
+
+func (m *gzipMarshaller) IsJSONLike() bool {
+	return m.inner.IsJSONLike()
+}
+
+func (m *gzipMarshaller) IsYAMLLike() bool {
+	return m.inner.IsYAMLLike()
+}
+
+func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
+	b, err := m.inner.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	defer writer.Close()
+	_, err = writer.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+
+}
+
+func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {
+	buf := bytes.NewBuffer(data)
+	reader, err := gzip.NewReader(buf)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	inflated, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	if err := reader.Close(); err != nil {
+		return err
+	}
+	return m.inner.Unmarshal(inflated, v)
+}
+
+// IsCompressed returns if data is zip compressed.
+func IsCompressed(buf []byte) bool {
+	// Taken from compress/gzip/gunzip.go
+	return len(buf) >= 3 && buf[0] == 31 && buf[1] == 139 && buf[2] == 8
+}
+
+func Gzip(m Marshaler) Marshaler {
+	_, alreadyGZIP := m.(*gzipMarshaller)
+	if alreadyGZIP {
+		return m
+	}
+	return &gzipMarshaller{m}
 }

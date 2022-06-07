@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
@@ -38,6 +38,8 @@ func getPulumiResources(t *testing.T, path string) *Resource {
 }
 
 func TestTodo(t *testing.T) {
+	t.Parallel()
+
 	components := getPulumiResources(t, "testdata/todo.json")
 	assert.Equal(t, 4, len(components.Children))
 
@@ -75,6 +77,8 @@ func TestTodo(t *testing.T) {
 }
 
 func TestCrawler(t *testing.T) {
+	t.Parallel()
+
 	components := getPulumiResources(t, "testdata/crawler.json")
 	assert.Equal(t, 7, len(components.Children))
 

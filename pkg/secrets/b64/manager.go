@@ -18,8 +18,8 @@ package b64
 import (
 	"encoding/base64"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 const Type = "b64"
@@ -47,4 +47,8 @@ func (c *base64Crypter) DecryptValue(s string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func (c *base64Crypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return config.DefaultBulkDecrypt(c, ciphertexts)
 }

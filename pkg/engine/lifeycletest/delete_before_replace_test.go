@@ -7,16 +7,18 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type propertyDependencies map[resource.PropertyKey][]resource.URN
 
 var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
@@ -24,7 +26,6 @@ func generateComplexTestDependencyGraph(
 	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 
 	resType := tokens.Type("pkgA:m:typA")
-	type propertyDependencies map[resource.PropertyKey][]resource.URN
 
 	names := complexTestDependencyGraphNames
 
@@ -48,24 +49,7 @@ func generateComplexTestDependencyGraph(
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
-
-		inputs := resource.PropertyMap{}
-		for k := range propertyDeps {
-			inputs[k] = resource.NewStringProperty("foo")
-		}
-
-		return &resource.State{
-			Type:                 urn.Type(),
-			URN:                  urn,
-			Custom:               true,
-			Delete:               false,
-			ID:                   id,
-			Inputs:               inputs,
-			Outputs:              outputs,
-			Dependencies:         dependencies,
-			Provider:             provider,
-			PropertyDependencies: propertyDeps,
-		}
+		return newResource(urn, "", id, provider, dependencies, propertyDeps, outputs, true)
 	}
 
 	old := &deploy.Snapshot{
@@ -132,6 +116,8 @@ func generateComplexTestDependencyGraph(
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -215,6 +201,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestPropertyDependenciesAdapter(t *testing.T) {
+	t.Parallel()
 	// Ensure that the eval source properly shims in property dependencies if none were reported (and does not if
 	// any were reported).
 
@@ -288,6 +275,8 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 }
 
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	dbrDiff := false
@@ -500,6 +489,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestDependencyChangeDBR(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{

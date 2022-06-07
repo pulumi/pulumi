@@ -27,8 +27,8 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Pack runs `npm pack` in the given directory, packaging the Node.js app located there into a
@@ -36,7 +36,7 @@ import (
 // generate useful data. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn pack` is run
 // instead of `npm pack`.
 func Pack(dir string, stderr io.Writer) ([]byte, error) {
-	c, npm, bin, err := getCmd("pack")
+	c, npm, bin, err := getCmd("pack", false /*production*/)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,8 @@ func Pack(dir string, stderr io.Writer) ([]byte, error) {
 // Install runs `npm install` in the given directory, installing the dependencies for the Node.js
 // app located there. If the `PULUMI_PREFER_YARN` environment variable is set, `yarn install` is used
 // instead of `npm install`.
-func Install(dir string, stdout, stderr io.Writer) (string, error) {
-	c, npm, bin, err := getCmd("install")
+func Install(dir string, production bool, stdout, stderr io.Writer) (string, error) {
+	c, npm, bin, err := getCmd("install", production)
 	if err != nil {
 		return bin, err
 	}
@@ -107,12 +107,16 @@ func Install(dir string, stdout, stderr io.Writer) (string, error) {
 // getCmd returns the exec.Cmd used to install NPM dependencies. It will either use `npm` or `yarn` depending
 // on what is available on the current path, and if `PULUMI_PREFER_YARN` is truthy.
 // The boolean return parameter indicates if `npm` is chosen or not (instead of `yarn`).
-func getCmd(command string) (*exec.Cmd, bool, string, error) {
+func getCmd(command string, production bool) (*exec.Cmd, bool, string, error) {
+	args := []string{command}
+	if production {
+		args = append(args, "--production")
+	}
 	if preferYarn() {
 		const file = "yarn"
 		yarnPath, err := exec.LookPath(file)
 		if err == nil {
-			return exec.Command(yarnPath, command), false, file, nil
+			return exec.Command(yarnPath, args...), false, file, nil
 		}
 		logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
 	}
@@ -125,7 +129,8 @@ func getCmd(command string) (*exec.Cmd, bool, string, error) {
 	}
 	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
 	// `description`, `repository`, and `license` fields in the package.json file.
-	return exec.Command(npmPath, command, "--loglevel=error"), true, file, nil
+	args = append(args, "--loglevel=error")
+	return exec.Command(npmPath, args...), true, file, nil
 }
 
 // runCmd handles hooking up `stdout` and `stderr` and then runs the command.

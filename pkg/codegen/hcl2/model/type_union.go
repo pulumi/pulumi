@@ -21,20 +21,22 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // UnionType represents values that may be any one of a specified set of types.
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
 	ElementTypes []Type
+	// Annotations records any annotations associated with the object type.
+	Annotations []interface{}
 
 	s string
 }
 
-// NewUnionType creates a new union type with the given element types. Any element types that are union types are
-// replaced with their element types.
-func NewUnionType(types ...Type) Type {
+// NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
+// Any element types that are union types are replaced with their element types.
+func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	var elementTypes []Type
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
@@ -65,7 +67,19 @@ func NewUnionType(types ...Type) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations}
+}
+
+// NewUnionType creates a new union type with the given element types. Any element types that are union types are
+// replaced with their element types.
+func NewUnionType(types ...Type) Type {
+	var annotations []interface{}
+	for _, t := range types {
+		if union, isUnion := t.(*UnionType); isUnion {
+			annotations = append(annotations, union.Annotations...)
+		}
+	}
+	return NewUnionTypeAnnotated(types, annotations...)
 }
 
 // NewOptionalType returns a new union(T, None).
@@ -155,28 +169,52 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 // type is safely convertible, the conversion is safe; if no element is safely convertible but some element is unsafely
 // convertible, the conversion is unsafe.
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
+		var diags []lazyDiagnostics
+
+		// Fast path: see if the source type is equal to any of the element types. Equality checks are generally
+		// less expensive that full convertibility checks.
 		for _, t := range t.ElementTypes {
-			if ck := t.conversionFrom(src, unifying); ck > conversionKind {
-				conversionKind = ck
+			if src.Equals(t) {
+				return SafeConversion, nil
 			}
 		}
-		return conversionKind
+
+		for _, t := range t.ElementTypes {
+			ck, why := t.conversionFrom(src, unifying, seen)
+			if ck > conversionKind {
+				conversionKind = ck
+			} else if why != nil {
+				diags = append(diags, why)
+			}
+		}
+		if conversionKind == NoConversion {
+			return NoConversion, func() hcl.Diagnostics {
+				var all hcl.Diagnostics
+				for _, why := range diags {
+					//nolint:errcheck
+					all.Extend(why())
+				}
+				return all
+			}
+		}
+		return conversionKind, nil
 	})
 }
 
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
-		switch dest.conversionFrom(t, unifying) {
+		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
 		case SafeConversion:
 			exists = true
 		case UnsafeConversion:
@@ -186,18 +224,28 @@ func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
 		}
 	}
 	if !exists {
-		return NoConversion
+		return NoConversion, nil
 	}
-	return conversionKind
+	return conversionKind, nil
 }
 
 func (t *UnionType) String() string {
+	return t.string(nil)
+}
+
+func (t *UnionType) string(seen map[Type]struct{}) string {
 	if t.s == "" {
 		elements := make([]string, len(t.ElementTypes))
 		for i, e := range t.ElementTypes {
-			elements[i] = e.String()
+			elements[i] = e.string(seen)
 		}
-		t.s = fmt.Sprintf("union(%s)", strings.Join(elements, ", "))
+
+		annotations := ""
+		if len(t.Annotations) != 0 {
+			annotations = fmt.Sprintf(", annotated(%p)", t)
+		}
+
+		t.s = fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
 	}
 	return t.s
 }

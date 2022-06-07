@@ -5,7 +5,7 @@ package main
 import (
 	"reflect"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type componentArgs struct {
@@ -25,6 +25,7 @@ type Component struct {
 
 	Echo    pulumi.AnyOutput    `pulumi:"echo"`
 	ChildID pulumi.StringOutput `pulumi:"childId"`
+	Secret  pulumi.StringOutput `pulumi:"secret"`
 }
 
 func NewComponent(

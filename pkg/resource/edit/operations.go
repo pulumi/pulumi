@@ -15,14 +15,14 @@
 package edit
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v2/resource/graph"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // OperationFunc is the type of functions that edit resources within a snapshot. The edits are made in-place to the
@@ -41,7 +41,7 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	}
 
 	dg := graph.NewDependencyGraph(snapshot.Resources)
-	dependencies := dg.DependingOn(condemnedRes, nil)
+	dependencies := dg.DependingOn(condemnedRes, nil, false)
 	if len(dependencies) != 0 {
 		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
 	}
@@ -98,7 +98,7 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 
 // RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
 // the root Stack resource itself. May optionally change the project/package name as well.
-func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.PackageName) error {
+func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.PackageName) error {
 	contract.Require(snap != nil, "snap")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
@@ -110,10 +110,10 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.
 		// The pulumi:pulumi:Stack resource's name component is of the form `<project>-<stack>` so we want
 		// to rename the name portion as well.
 		if u.QualifiedType() == "pulumi:pulumi:Stack" {
-			return resource.NewURN(newName, project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName)
+			return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), tokens.QName(project)+"-"+newName.Q())
 		}
 
-		return resource.NewURN(newName, project, "", u.QualifiedType(), u.Name())
+		return resource.NewURN(newName.Q(), project, "", u.QualifiedType(), u.Name())
 	}
 
 	rewriteState := func(res *resource.State) {
@@ -147,7 +147,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.
 	}
 
 	if err := snap.VerifyIntegrity(); err != nil {
-		return errors.Wrap(err, "checkpoint is invalid")
+		return fmt.Errorf("checkpoint is invalid: %w", err)
 	}
 
 	for _, res := range snap.Resources {

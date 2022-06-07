@@ -16,15 +16,16 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 const (
@@ -147,7 +148,7 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
-func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) {
+func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) result.Result {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
@@ -160,7 +161,36 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
-	reg.New().Outputs = e.Outputs()
+	reg.New().Outputs = outs
+
+	old := se.deployment.Olds()[urn]
+	var oldOuts resource.PropertyMap
+	if old != nil {
+		oldOuts = old.Outputs
+	}
+
+	// If a plan is present check that these outputs match what we recorded before
+	if se.deployment.plan != nil {
+		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
+		if !ok {
+			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
+		}
+
+		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
+			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
+		}
+	}
+
+	// If we're in experimental mode save these new outputs to the plan
+	if se.opts.ExperimentalPlans {
+		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
+			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
+			resourcePlan.Outputs = outs
+		} else {
+			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+		}
+	}
+
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
@@ -172,14 +202,15 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// clients of stepExecutor to do work on worker threads by e.g. scheduling arbitrary callbacks
 			// or 2) promote RRE to be step-like so that it can be scheduled as if it were a step. Neither
 			// of these are particularly appealing right now.
-			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
+			outErr := fmt.Errorf("resource complete event returned an error: %w", eventerr)
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
 			se.deployment.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
-			return
+			return nil
 		}
 	}
 	e.Done()
+	return nil
 }
 
 // Errored returns whether or not this step executor saw a step whose execution ended in failure.
@@ -263,7 +294,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
-			return errors.Wrap(err, "pre-step event returned an error")
+			return fmt.Errorf("pre-step event returned an error: %w", err)
 		}
 	}
 
@@ -274,8 +305,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return errors.Errorf(
-					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
 
 			se.pendingNews.Store(step.URN(), step)
@@ -287,8 +317,21 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	if step.New() != nil {
 		newState := step.New()
 		for _, k := range newState.AdditionalSecretOutputs {
-			if v, has := newState.Outputs[k]; has && !v.IsSecret() {
-				newState.Outputs[k] = resource.MakeSecret(v)
+			if k == "id" {
+				se.deployment.Diag().Warningf(&diag.Diag{
+					URN:     step.URN(),
+					Message: "The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
+				})
+			} else {
+				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
+					newState.Outputs[k] = resource.MakeSecret(v)
+				} else if !has {
+					// User asked us to make k a secret, but we don't have a property k. This is probably a
+					// mistake (mostly likely due to casing, eg my_prop vs myProp) but warn the user so they know
+					// the key didn't do anything.
+					msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
+					se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
+				}
 			}
 		}
 
@@ -296,12 +339,19 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
 		}
+
+		// If we're in experimental mode update the resource's outputs in the generated plan.
+		if se.opts.ExperimentalPlans {
+			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
+				resourcePlan.Outputs = newState.Outputs
+			}
+		}
 	}
 
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
-			return errors.Wrap(postErr, "post-step event returned an error")
+			return fmt.Errorf("post-step event returned an error: %w", postErr)
 		}
 	}
 

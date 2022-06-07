@@ -20,11 +20,11 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newConsoleCmd() *cobra.Command {
@@ -42,6 +42,8 @@ func newConsoleCmd() *cobra.Command {
 				return err
 			}
 
+			ctx := commandContext()
+
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
 			cloudBackend, isCloud := currentBackend.(httpstate.Backend)
@@ -53,31 +55,30 @@ func newConsoleCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					selectedStack, err := currentBackend.GetStack(commandContext(), ref)
+					stack, err = currentBackend.GetStack(ctx, ref)
 					if err != nil {
 						return err
 					}
-					stack = selectedStack
 				} else {
-					currentStack, err := state.CurrentStack(commandContext(), currentBackend)
+					stack, err = state.CurrentStack(ctx, currentBackend)
 					if err != nil {
 						return err
 					}
-					stack = currentStack
+					if stack == nil {
+						fmt.Println("No stack is currently selected. " +
+							"Run `pulumi stack select` to select a stack.")
+						return nil
+					}
 				}
 
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if s, ok := stack.(httpstate.Stack); ok {
-					if consoleURL, err := s.ConsoleURL(); err == nil {
-						launchConsole(consoleURL)
-					} else {
-						// Open the cloud backend home page if retrieving the stack
-						// console URL fails.
-						launchConsole(cloudBackend.URL())
-					}
+				if consoleURL, err := cloudBackend.StackConsoleURL(stack.Ref()); err != nil {
+					launchConsole(consoleURL)
 				} else {
+					// Open the cloud backend home page if retrieving the stack
+					// console URL fails.
 					launchConsole(cloudBackend.URL())
 				}
 				return nil

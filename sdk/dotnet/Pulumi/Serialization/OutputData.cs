@@ -13,7 +13,7 @@ namespace Pulumi.Serialization
            => (isKnown && data.IsKnown, isSecret || data.IsSecret);
     }
 
-    internal struct OutputData<X>
+    internal readonly struct OutputData<X>
     {
         public readonly ImmutableHashSet<Resource> Resources;
         public readonly X Value;

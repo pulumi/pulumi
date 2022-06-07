@@ -12,8 +12,8 @@ namespace Pulumi
     /// </summary>
     public class ResourceException : Exception
     {
-        internal readonly Resource? Resource;
-        internal readonly bool HideStack;
+        internal Resource? Resource { get; }
+        internal bool HideStack { get; }
 
         public ResourceException(string message, Resource? resource, bool hideStack = false) : base(message)
         {

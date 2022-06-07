@@ -2,12 +2,16 @@
 **/vendor/
 **/node_modules/
 **/bin
-**/.vscode/
+**/.vscode/**/*
 **/.vs/
 **/.ionide/
 **/.idea/
+**/.DS_Store
 coverage.cov
 *.coverprofile
+**/obj/
+coverage/
+venv/
 
 **/.idea/
 *.iml
@@ -15,20 +19,55 @@ coverage.cov
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 
+# Check in vscode settings for this workspace. This is so we can save common settings like setting go build tags to use by default.
+!**/.vscode/settings.json
+
 # Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
 # it up when they pass.)
 **/command-output/
 
+# Likewise, we don't want to keep the typechecked version of our codegen tests.
+pkg/codegen/testing/test/testdata/*/typecheck/**
+
+# We don't need to keep testing python __pycache__ either either
+pkg/codegen/testing/test/testdata/*-pp/*/*.csproj
+pkg/codegen/testing/test/testdata/*-pp/*/go.mod
+pkg/codegen/testing/test/testdata/*-pp/*/go.sum
+pkg/codegen/testing/test/testdata/*-pp/*/Program.cs
+pkg/codegen/testing/test/testdata/*-pp/*/package.json
+pkg/codegen/testing/test/testdata/*-pp/*/go.sum
+pkg/codegen/testing/test/testdata/*-pp/*/tsconfig.json
+
 # By default, we don't check in yarn.lock files
 **/yarn.lock
+
+# By default, we don't check in Pipfile.lock files
+**/Pipfile.lock
 
 # Turning on MyPy in VSCode creates this workspace local folder
 .mypy_cache
 
 # for goreleaser
+**/*.exe
 goreleaser
 pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python
 pulumi-analyzer-policy
 pulumi-analyzer-policy-python
 pulumi-language-python-exec
+pulumi-resource-pulumi-nodejs.cmd
+pulumi-resource-pulumi-python.cmd
+pulumi-python3-shim.cmd
+pulumi-python-shim.cmd
+pulumi-analyzer-policy.cmd
+pulumi-analyzer-policy-python.cmd
+artifacts/
+goreleaser-downloads/
+goreleaser-prebuilt/
+goreleaser-lang/
+
+__pycache__
+.pytest_cache
+
+# File targets for make
+*.phony

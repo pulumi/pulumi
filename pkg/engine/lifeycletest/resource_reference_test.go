@@ -7,15 +7,17 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	. "github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // TestResourceReferences tests that resource references can be marshaled between the engine, language host,
 // resource providers, and statefile if each entity supports resource references.
 func TestResourceReferences(t *testing.T) {
+	t.Parallel()
+
 	var urnA resource.URN
 	var urnB resource.URN
 	var idB resource.ID
@@ -86,6 +88,8 @@ func TestResourceReferences(t *testing.T) {
 // TestResourceReferences_DownlevelSDK tests that resource references are properly marshaled as URNs (for references to
 // component resources) or IDs (for references to custom resources) if the SDK does not support resource references.
 func TestResourceReferences_DownlevelSDK(t *testing.T) {
+	t.Parallel()
+
 	var urnA resource.URN
 	var urnB resource.URN
 	var idB resource.ID
@@ -155,6 +159,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 // TestResourceReferences_DownlevelEngine tests an SDK that supports resource references communicating with an engine
 // that does not.
 func TestResourceReferences_DownlevelEngine(t *testing.T) {
+	t.Parallel()
+
 	var urnA resource.URN
 	var refB resource.PropertyValue
 

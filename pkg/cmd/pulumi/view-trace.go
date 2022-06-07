@@ -25,8 +25,8 @@ import (
 	"sourcegraph.com/sourcegraph/appdash"
 	"sourcegraph.com/sourcegraph/appdash/traceapp"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func readTrace(path string, store io.ReaderFrom) error {
@@ -52,7 +52,8 @@ func newViewTraceCmd() *cobra.Command {
 			"This command loads trace data from the indicated file and starts a\n" +
 			"webserver to display the trace. By default, this server will listen\n" +
 			"port 8008; the --port flag can be used to change this if necessary.",
-		Args: cmdutil.ExactArgs(1),
+		Args:   cmdutil.ExactArgs(1),
+		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			url, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
 			if err != nil {

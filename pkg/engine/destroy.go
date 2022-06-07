@@ -15,15 +15,20 @@
 package engine
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
+func Destroy(
+	u UpdateInfo,
+	ctx *Context,
+	opts UpdateOptions,
+	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
@@ -31,15 +36,18 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer emitter.Close()
+
+	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
@@ -74,5 +82,5 @@ func newDestroySource(
 
 	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
 	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	return deploy.NewNullSource(proj.Name), nil
 }

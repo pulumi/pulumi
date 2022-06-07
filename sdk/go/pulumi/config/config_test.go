@@ -16,13 +16,14 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type TestStruct struct {
@@ -32,11 +33,14 @@ type TestStruct struct {
 
 // TestConfig tests the basic config wrapper.
 func TestConfig(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",
 			"testpkg:bbb":    "true",
 			"testpkg:intint": "42",
+			"testpkg:badint": "4d2",
 			"testpkg:fpfpfp": "99.963",
 			"testpkg:obj": `
 				{
@@ -94,6 +98,10 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, "a string value", cfg.Require("sss"))
 	assert.Equal(t, true, cfg.RequireBool("bbb"))
 	assert.Equal(t, 42, cfg.RequireInt("intint"))
+	assert.PanicsWithError(t,
+		"unable to parse required configuration variable"+
+			" 'testpkg:badint'; unable to cast \"4d2\" of type string to int",
+		func() { cfg.RequireInt("badint") })
 	assert.Equal(t, 99.963, cfg.RequireFloat64("fpfpfp"))
 	cfg.RequireObject("obj", &testStruct)
 	assert.Equal(t, expectedTestStruct, testStruct)
@@ -120,7 +128,7 @@ func TestConfig(t *testing.T) {
 		_ = cfg.Require("missing")
 	}()
 
-	// Test Try, which returns an error for missing entries.
+	// Test Try, which returns an error for missing or invalid entries.
 	k1, err := cfg.Try("sss")
 	assert.Nil(t, err)
 	assert.Equal(t, "a string value", k1)
@@ -130,6 +138,9 @@ func TestConfig(t *testing.T) {
 	k3, err := cfg.TryInt("intint")
 	assert.Nil(t, err)
 	assert.Equal(t, 42, k3)
+	invalidInt, err := cfg.TryInt("badint")
+	assert.Error(t, err)
+	assert.Zero(t, invalidInt)
 	k4, err := cfg.TryFloat64("fpfpfp")
 	assert.Nil(t, err)
 	assert.Equal(t, 99.963, k4)
@@ -140,19 +151,26 @@ func TestConfig(t *testing.T) {
 	testStruct = TestStruct{}
 	// missing TryObject
 	err = cfg.TryObject("missing", &testStruct)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.True(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	// malformed TryObject
 	err = cfg.TryObject("malobj", &testStruct)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.False(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(),
+		"missing required configuration variable 'testpkg:missing'; run `pulumi config` to set")
+	assert.True(t, errors.Is(err, ErrMissingVar))
 }
 
 func TestSecretConfig(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",

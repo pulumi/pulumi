@@ -3,11 +3,10 @@ package authhelpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 
 	"golang.org/x/oauth2/google"
 
@@ -16,7 +15,6 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/cloudkms/v1"
 
-	"github.com/pkg/errors"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcp"
 )
@@ -40,7 +38,7 @@ func ResolveGoogleCredentials(ctx context.Context) (*google.Credentials, error) 
 		// so that users can override the default creds
 		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite, cloudkms.CloudkmsScope)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to parse credentials from $GOOGLE_CREDENTIALS")
+			return nil, fmt.Errorf("unable to parse credentials from $GOOGLE_CREDENTIALS: %w", err)
 		}
 		return credentials, nil
 	}
@@ -68,7 +66,7 @@ func ResolveGoogleCredentials(ctx context.Context) (*google.Credentials, error) 
 	// 2. application_default_credentials.json file in ~/.config/gcloud or $APPDATA\gcloud
 	credentials, err := gcp.DefaultCredentials(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to find gcp credentials")
+		return nil, fmt.Errorf("unable to find gcp credentials: %w", err)
 	}
 	return credentials, nil
 }
@@ -90,11 +88,6 @@ func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
 	if err == nil && account.ClientEmail != "" && account.PrivateKey != "" {
 		options.GoogleAccessID = account.ClientEmail
 		options.PrivateKey = []byte(account.PrivateKey)
-	} else {
-		cmdutil.Diag().Warningf(diag.Message("",
-			"Pulumi will not be able to print a statefile permalink using these credentials. "+
-				"Neither a GoogleAccessID or PrivateKey are available. "+
-				"Try using a GCP Service Account."))
 	}
 
 	blobmux := &blob.URLMux{}

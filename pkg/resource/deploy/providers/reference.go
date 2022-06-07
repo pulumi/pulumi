@@ -15,14 +15,14 @@
 package providers
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A provider reference is (URN, ID) tuple that refers to a particular provider instance. A provider reference's
@@ -59,11 +59,11 @@ func GetProviderPackage(typ tokens.Type) tokens.Package {
 
 func validateURN(urn resource.URN) error {
 	if !urn.IsValid() {
-		return errors.Errorf("%s is not a valid URN", urn)
+		return fmt.Errorf("%s is not a valid URN", urn)
 	}
 	typ := urn.Type()
 	if typ.Module() != "pulumi:providers" {
-		return errors.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
+		return fmt.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
 	}
 	if typ.Name() == "" {
 		return errors.New("provider URNs must specify a type name")
@@ -96,6 +96,31 @@ func (r Reference) String() string {
 	return string(r.urn) + resource.URNNameDelimiter + string(r.id)
 }
 
+const denyDefaultProviderID resource.ID = "denydefaultprovider"
+
+// DenyDefaultProvider represent a default provider that cannot be created.
+func NewDenyDefaultProvider(name tokens.QName) Reference {
+	return mustNewReference(
+		resource.NewURN("denied", "denied", "denied", "pulumi:providers:denied", name),
+		denyDefaultProviderID)
+}
+
+// Retrieves the package of the denied provider.
+//
+// For example, if a reference to:
+// "urn:pulumi:stack::project::pulumi:providers:aws::default_4_35_0"
+// was denied, then GetDeniedDefaultProviderPkg would return "aws".
+//
+// Panics if called on a provider that is not a DenyDefaultProvider.
+func GetDeniedDefaultProviderPkg(ref Reference) string {
+	contract.Assert(IsDenyDefaultsProvider(ref))
+	return ref.URN().Name().String()
+}
+
+func IsDenyDefaultsProvider(ref Reference) bool {
+	return ref.id == denyDefaultProviderID
+}
+
 // NewReference creates a new reference for the given URN and ID.
 func NewReference(urn resource.URN, id resource.ID) (Reference, error) {
 	if err := validateURN(urn); err != nil {
@@ -117,7 +142,7 @@ func ParseReference(s string) (Reference, error) {
 	// of the reference.
 	lastSep := strings.LastIndex(s, resource.URNNameDelimiter)
 	if lastSep == -1 {
-		return Reference{}, errors.Errorf("expected '%v' in provider reference '%v'", resource.URNNameDelimiter, s)
+		return Reference{}, fmt.Errorf("expected '%v' in provider reference '%v'", resource.URNNameDelimiter, s)
 	}
 	urn, id := resource.URN(s[:lastSep]), resource.ID(s[lastSep+len(resource.URNNameDelimiter):])
 	if err := validateURN(urn); err != nil {

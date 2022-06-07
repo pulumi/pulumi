@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
@@ -21,6 +21,7 @@ import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
 import * as v8 from "./v8";
 
@@ -101,7 +102,7 @@ export interface Entry {
     json?: any;
 
     // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
-    regexp?: { source: string, flags: string };
+    regexp?: { source: string; flags: string };
 
     // a closure we are dependent on.
     function?: FunctionInfo;
@@ -181,7 +182,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModule?: { name: string, value: any };
+    capturedModule?: { name: string; value: any };
 }
 
 interface ClosurePropertyDescriptor {
@@ -195,7 +196,7 @@ interface ClosurePropertyDescriptor {
     value?: any;
     writable?: boolean;
     get?: () => any;
-    set?: (v: any)=> void;
+    set?: (v: any) => void;
 }
 
 /*
@@ -213,7 +214,7 @@ class SerializedOutput<T> {
 
     public apply<U>(func: (t: T) => Input<U>): Output<U> {
         throw new Error(
-"'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+            "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
     }
 
     public get(): T {
@@ -339,7 +340,7 @@ export async function createClosureInfoAsync(
         // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
         // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
         async function addGeneratorEntriesAsync() {
-            // tslint:disable-next-line:no-empty
+            // eslint-disable-next-line no-empty,no-empty-function,@typescript-eslint/no-empty-function
             const emptyGenerator = function* (): any { };
 
             await addEntriesAsync(
@@ -362,8 +363,8 @@ export async function createClosureInfoAsync(
  * final FunctionInfo.
  */
 async function analyzeFunctionInfoAsync(
-        func: Function, context: Context,
-        serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
+    func: Function, context: Context,
+    serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
 
     // logInfo = logInfo || func.name === "addHandler";
 
@@ -486,9 +487,11 @@ async function analyzeFunctionInfoAsync(
                 continue;
             }
 
-            functionInfo.env.set(
-                await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo),
-                { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
+            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
+            const valEntry = await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo);
+            const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
+
+            functionInfo.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
@@ -685,7 +688,7 @@ function throwSerializationError(
     message += getTrimmedFunctionCode(func);
 
     const moduleIndex = context.frames.findIndex(
-            f => f.capturedModule !== undefined);
+        f => f.capturedModule !== undefined);
 
     if (moduleIndex >= 0) {
         const module = context.frames[moduleIndex].capturedModule!;
@@ -746,7 +749,7 @@ function getFunctionName(loc: FunctionLocation): string {
         // the entire lambda if it's lots of statements.
         const semicolonIndex = funcString.indexOf(";");
         if (semicolonIndex >= 0) {
-            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+            funcString = funcString.slice(0, semicolonIndex + 1) + " ...";
         }
 
         // squash all whitespace to single spaces.
@@ -779,6 +782,28 @@ async function isDefaultFunctionPrototypeAsync(func: Function, prototypeProp: an
     return false;
 }
 
+async function createPropertyInfoAsync(
+    descriptor: ClosurePropertyDescriptor,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo: boolean | undefined): Promise<PropertyInfo> {
+
+    const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
+    propertyInfo.configurable = descriptor.configurable;
+    propertyInfo.enumerable = descriptor.enumerable;
+    propertyInfo.writable = descriptor.writable;
+    if (descriptor.get) {
+        propertyInfo.get = await getOrCreateEntryAsync(
+            descriptor.get, undefined, context, serialize, logInfo);
+    }
+    if (descriptor.set) {
+        propertyInfo.set = await getOrCreateEntryAsync(
+            descriptor.set, undefined, context, serialize, logInfo);
+    }
+
+    return propertyInfo;
+}
+
 function getOrCreateNameEntryAsync(
     name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
     context: Context,
@@ -794,10 +819,10 @@ function getOrCreateNameEntryAsync(
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 async function getOrCreateEntryAsync(
-        obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
-        context: Context,
-        serialize: (o: any) => boolean,
-        logInfo: boolean | undefined): Promise<Entry> {
+    obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo: boolean | undefined): Promise<Entry> {
 
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this
@@ -996,7 +1021,7 @@ async function getOrCreateEntryAsync(
             }
             object.env.set(keyEntry, <any>undefined);
 
-            const propertyInfo = await createPropertyInfoAsync(descriptor);
+            const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
             const prop = await getOwnPropertyAsync(obj, descriptor);
             const valEntry = await getOrCreateEntryAsync(
                 prop, undefined, context, serialize, logInfo);
@@ -1022,7 +1047,7 @@ async function getOrCreateEntryAsync(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     async function serializeSomeObjectPropertiesAsync(
-            object: ObjectInfo, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
+        object: ObjectInfo, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
 
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
@@ -1145,29 +1170,12 @@ async function getOrCreateEntryAsync(
             const desc = Object.getOwnPropertyDescriptor(current, key);
             if (desc) {
                 const closurePropDescriptor = createClosurePropertyDescriptor(key, desc);
-                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor);
+                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor, context, serialize, logInfo);
                 return propertyInfo;
             }
         }
 
         return undefined;
-    }
-
-    async function createPropertyInfoAsync(descriptor: ClosurePropertyDescriptor): Promise<PropertyInfo> {
-        const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
-        propertyInfo.configurable = descriptor.configurable;
-        propertyInfo.enumerable = descriptor.enumerable;
-        propertyInfo.writable = descriptor.writable;
-        if (descriptor.get) {
-            propertyInfo.get = await getOrCreateEntryAsync(
-                descriptor.get, undefined, context, serialize, logInfo);
-        }
-        if (descriptor.set) {
-            propertyInfo.set = await getOrCreateEntryAsync(
-                descriptor.set, undefined, context, serialize, logInfo);
-        }
-
-        return propertyInfo;
     }
 
     function usesNonLexicalThis(localEntry: Entry | undefined) {
@@ -1218,7 +1226,7 @@ async function getOrCreateEntryAsync(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
+                ? getModuleFromPath(upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1)))
                 : normalizedModuleName;
         }
     }
@@ -1284,10 +1292,6 @@ async function getOrCreateEntryAsync(
     }
 }
 
-async function isOutputAsync(obj: any): Promise<boolean> {
-    return Output.isInstance(obj);
-}
-
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to
 // emit it.  We would be unable to actually hook up the "super()" call as one of the base
 // constructors was set to not be captured.
@@ -1351,7 +1355,8 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
-        if (require.cache[path].exports === obj) {
+        const c = require.cache[path];
+        if (c !== undefined && c.exports === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);
@@ -1414,7 +1419,9 @@ async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescr
 }
 
 async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
-    return obj[getNameOrSymbol(descriptor)];
+    return (descriptor.get || descriptor.set) ?
+        undefined :
+        obj[getNameOrSymbol(descriptor)];
 }
 
 async function getPropertyAsync(obj: any, name: string): Promise<any> {

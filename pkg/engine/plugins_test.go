@@ -20,8 +20,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func mustMakeVersion(v string) *semver.Version {
@@ -30,6 +30,8 @@ func mustMakeVersion(v string) *semver.Version {
 }
 
 func TestDefaultProvidersSingle(t *testing.T) {
+	t.Parallel()
+
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
@@ -37,27 +39,33 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginInfo{
-		Name:    "kubernetes",
-		Version: mustMakeVersion("0.22.0"),
-		Kind:    workspace.ResourcePlugin,
+		Name:              "kubernetes",
+		Version:           mustMakeVersion("0.22.0"),
+		Kind:              workspace.ResourcePlugin,
+		PluginDownloadURL: "com.server.url",
 	})
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
 
-	awsVer, ok := defaultProviders[tokens.Package("aws")]
+	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
+	awsVer := aws.Version
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.1", awsVer.String())
 
-	kubernetesVer, ok := defaultProviders[tokens.Package("kubernetes")]
+	kubernetes, ok := defaultProviders[tokens.Package("kubernetes")]
 	assert.True(t, ok)
+	kubernetesVer := kubernetes.Version
 	assert.NotNil(t, kubernetesVer)
 	assert.Equal(t, "0.22.0", kubernetesVer.String())
+	assert.Equal(t, "com.server.url", kubernetes.PluginDownloadURL)
 
 }
 
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
+	t.Parallel()
+
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
@@ -72,13 +80,16 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
-	awsVer, ok := defaultProviders[tokens.Package("aws")]
+	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
+	awsVer := aws.Version
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.1", awsVer.String())
 }
 
 func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
+	t.Parallel()
+
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
@@ -98,13 +109,16 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
 	assert.NotNil(t, defaultProviders)
-	awsVer, ok := defaultProviders[tokens.Package("aws")]
+	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
+	awsVer := aws.Version
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.2-dev.1553126336", awsVer.String())
 }
 
 func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
+	t.Parallel()
+
 	languagePlugins := newPluginSet()
 	languagePlugins.Add(workspace.PluginInfo{
 		Name: "python",
@@ -119,8 +133,31 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, snapshotPlugins)
 	assert.NotNil(t, defaultProviders)
-	awsVer, ok := defaultProviders[tokens.Package("aws")]
+	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
+	awsVer := aws.Version
 	assert.NotNil(t, awsVer)
 	assert.Equal(t, "0.17.0", awsVer.String())
+}
+
+func TestDefaultProviderPluginsSorting(t *testing.T) {
+	t.Parallel()
+	plugins := newPluginSet()
+	v1 := semver.MustParse("0.0.1-alpha.10")
+	plugins.Add(workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v1,
+		Kind:    workspace.ResourcePlugin,
+	})
+	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
+	plugin2 := workspace.PluginInfo{
+		Name:    "foo",
+		Version: &v2,
+		Kind:    workspace.ResourcePlugin,
+	}
+	plugins.Add(plugin2)
+	result := computeDefaultProviderPlugins(plugins, plugins)
+	assert.Equal(t, map[tokens.Package]workspace.PluginInfo{
+		"foo": plugin2,
+	}, result)
 }

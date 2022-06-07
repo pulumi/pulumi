@@ -6,7 +6,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 // TestQuery creates a stack and runs a query over the stack's resource ouptputs.

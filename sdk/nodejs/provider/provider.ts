@@ -14,7 +14,6 @@
 
 import { Input, Inputs } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -148,6 +147,11 @@ export interface Provider {
     version: string;
 
     /**
+     * The JSON-encoded schema for this provider's package.
+     */
+    schema?: string;
+
+    /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
      * @param olds The old input properties to use for validation.
@@ -204,7 +208,15 @@ export interface Provider {
      * @param options the options for the resource.
      */
     construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions)
-        => Promise<ConstructResult>;
+    => Promise<ConstructResult>;
+
+    /**
+     * Call calls the indicated method.
+     *
+     * @param token The token of the method to call.
+     * @param inputs The inputs to the method.
+     */
+    call?: (token: string, inputs: Inputs) => Promise<InvokeResult>;
 
     /**
      * Invoke calls the indicated function.

@@ -30,7 +30,7 @@ namespace Pulumi.Testing
             return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
         }
 
-        public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
+        public async Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request)
         {
             var args = ToDictionary(request.Args);
 
@@ -48,15 +48,41 @@ namespace Pulumi.Testing
                 return new InvokeResponse { Return = await SerializeAsync(registeredResource).ConfigureAwait(false) };
             }
 
-            var result = await _mocks.CallAsync(request.Tok, args, request.Provider)
+            var result = await _mocks.CallAsync(new MockCallArgs
+                {
+                    Token = request.Tok,
+                    Args = args,
+                    Provider = request.Provider,
+                })
                 .ConfigureAwait(false);
             return new InvokeResponse { Return = await SerializeAsync(result).ConfigureAwait(false) };
         }
 
+        public async Task<CallResponse> CallAsync(CallRequest request)
+        {
+            // For now, we'll route both Invoke and Call through IMocks.CallAsync.
+            var args = ToDictionary(request.Args);
+
+            var result = await _mocks.CallAsync(new MockCallArgs
+                {
+                    Token = request.Tok,
+                    Args = args,
+                    Provider = request.Provider,
+                })
+                .ConfigureAwait(false);
+            return new CallResponse { Return = await SerializeAsync(result).ConfigureAwait(false) };
+        }
+
         public async Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request)
         {
-            var (id, state) = await _mocks.NewResourceAsync(request.Type, request.Name,
-                ToDictionary(request.Properties), request.Provider, request.Id).ConfigureAwait(false);
+            var (id, state) = await _mocks.NewResourceAsync(new MockResourceArgs
+            {
+                Type = request.Type,
+                Name = request.Name,
+                Inputs = ToDictionary(request.Properties),
+                Provider = request.Provider,
+                Id = request.Id,
+            }).ConfigureAwait(false);
 
             var urn = NewUrn(request.Parent, request.Type, request.Name);
             var serializedState = await SerializeToDictionary(state).ConfigureAwait(false);
@@ -101,8 +127,14 @@ namespace Pulumi.Testing
                 };
             }
 
-            var (id, state) = await _mocks.NewResourceAsync(request.Type, request.Name, ToDictionary(request.Object),
-                request.Provider, request.ImportId).ConfigureAwait(false);
+            var (id, state) = await _mocks.NewResourceAsync(new MockResourceArgs
+            {
+                Type = request.Type,
+                Name = request.Name,
+                Inputs = ToDictionary(request.Object),
+                Provider = request.Provider,
+                Id = request.ImportId,
+            }).ConfigureAwait(false);
 
             var urn = NewUrn(request.Parent, request.Type, request.Name);
             var serializedState = await SerializeToDictionary(state).ConfigureAwait(false);
@@ -134,7 +166,7 @@ namespace Pulumi.Testing
                 var parentType = qualifiedType.Split("$").First();
                 type = parentType + "$" + type;
             }
-            return "urn:pulumi:" + string.Join("::", new[] { Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name });
+            return "urn:pulumi:" + string.Join("::", Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name);
         }
 
         private static ImmutableDictionary<string, object> ToDictionary(Struct s)

@@ -25,7 +25,7 @@ import (
 
 	winio "github.com/Microsoft/go-winio"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Windows specific pipe implementation. Slightly complex as it sits on top of a pair of named pipes

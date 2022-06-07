@@ -15,7 +15,7 @@
 package graph
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // Topsort topologically sorts the graph, yielding an array of nodes that are in dependency order, using a simple

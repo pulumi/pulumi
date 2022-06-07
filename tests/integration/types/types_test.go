@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build python || all
 // +build python all
 
 package ints
@@ -8,11 +9,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPythonTypes(t *testing.T) {
+	t.Parallel()
+
 	for _, dir := range []string{"simple", "declared"} {
 		d := filepath.Join("python", dir)
 		t.Run(d, func(t *testing.T) {

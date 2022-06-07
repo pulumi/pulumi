@@ -20,14 +20,14 @@ namespace Pulumi.Automation.Commands.Exceptions
             this.Name = name;
         }
 
-        private static readonly Regex NotFoundRegexPattern = new Regex("no stack named.*found");
-        private static readonly Regex AlreadyExistsRegexPattern = new Regex("stack.*already exists");
-        private static readonly string ConflictText = "[409] Conflict: Another update is currently in progress.";
+        private static readonly Regex _notFoundRegexPattern = new Regex("no stack named.*found");
+        private static readonly Regex _alreadyExistsRegexPattern = new Regex("stack.*already exists");
+        private static readonly string _conflictText = "[409] Conflict: Another update is currently in progress.";
 
         internal static CommandException CreateFromResult(CommandResult result)
-            => NotFoundRegexPattern.IsMatch(result.StandardError) ? new StackNotFoundException(result)
-            : AlreadyExistsRegexPattern.IsMatch(result.StandardError) ? new StackAlreadyExistsException(result)
-            : result.StandardError?.IndexOf(ConflictText) >= 0 ? new ConcurrentUpdateException(result)
+            => _notFoundRegexPattern.IsMatch(result.StandardError) ? new StackNotFoundException(result)
+            : _alreadyExistsRegexPattern.IsMatch(result.StandardError) ? new StackAlreadyExistsException(result)
+            : result.StandardError.IndexOf(_conflictText, StringComparison.Ordinal) >= 0 ? new ConcurrentUpdateException(result)
             : new CommandException(result);
     }
 }

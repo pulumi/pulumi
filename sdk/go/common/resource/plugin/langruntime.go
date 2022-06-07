@@ -17,8 +17,8 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LanguageRuntime is a convenient interface for interacting with language runtime plugins.  These tend to be
@@ -38,6 +38,9 @@ type LanguageRuntime interface {
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+
+	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+	InstallDependencies(directory string) error
 }
 
 // ProgInfo contains minimal information about the program to be run.
@@ -49,14 +52,15 @@ type ProgInfo struct {
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.
 type RunInfo struct {
-	MonitorAddress string                // the RPC address to the host resource monitor.
-	Project        string                // the project name housing the program being run.
-	Stack          string                // the stack name being evaluated.
-	Pwd            string                // the program's working directory.
-	Program        string                // the path to the program to execute.
-	Args           []string              // any arguments to pass to the program.
-	Config         map[config.Key]string // the configuration variables to apply before running.
-	DryRun         bool                  // true if we are performing a dry-run (preview).
-	QueryMode      bool                  // true if we're only doing a query.
-	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress   string                // the RPC address to the host resource monitor.
+	Project          string                // the project name housing the program being run.
+	Stack            string                // the stack name being evaluated.
+	Pwd              string                // the program's working directory.
+	Program          string                // the path to the program to execute.
+	Args             []string              // any arguments to pass to the program.
+	Config           map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
+	DryRun           bool                  // true if we are performing a dry-run (preview).
+	QueryMode        bool                  // true if we're only doing a query.
+	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
 }

@@ -12,7 +12,13 @@ jobs:
         uses: thollander/actions-comment-pull-request@1.0.1
         with:
           message: |
-            PR is now waiting for a maintainer to run the acceptance tests.
+            PR is now waiting for a maintainer to take action.
 
-            **Note for the maintainer:** To run the acceptance tests, please comment */run-acceptance-tests* on the PR
+            **Note for the maintainer:**  Commands available:
+
+            * `/run-acceptance-tests` - used to test run the acceptance tests for the project
+            * `/run-integration-tests` - used to run the full integration tests for the project
+            * `/run-codegen` - used to test the Pull Request against downstream codegen
+            * `/run-docs-gen` - used to test the Pull Request against documentation generation
+            * `/run-containers` - used to test the Pull Request against the containers tests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

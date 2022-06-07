@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -34,30 +35,34 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	user "github.com/tweekmonster/luser"
 )
 
-const PythonRuntime = "python"
-const NodeJSRuntime = "nodejs"
-const GoRuntime = "go"
-const DotNetRuntime = "dotnet"
+const (
+	PythonRuntime = "python"
+	NodeJSRuntime = "nodejs"
+	GoRuntime     = "go"
+	DotNetRuntime = "dotnet"
+	YAMLRuntime   = "yaml"
+	JavaRuntime   = "java"
+)
 
 const windowsOS = "windows"
 
@@ -192,6 +197,12 @@ type ProgramTestOptions struct {
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
 	SkipStackRemoval bool
+	// Destroy on cleanup defers stack destruction until the test cleanup step, rather than after
+	// program test execution. This is useful for more realistic stack reference testing, allowing one
+	// project and stack to be stood up and a second to be run before the first is destroyed.
+	//
+	// Implies NoParallel because we expect that another caller to ProgramTest will set that
+	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
@@ -216,8 +227,23 @@ type ProgramTestOptions struct {
 	// environment during tests.
 	StackName string
 
-	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocations.
+	// If non-empty, specifies the value of the `--tracing` flag to pass
+	// to Pulumi CLI, which may be a Zipkin endpoint or a
+	// `file:./local.trace` style url for AppDash tracing.
+	//
+	// Template `{command}` syntax will be expanded to the current
+	// command name such as `pulumi-stack-rm`. This is useful for
+	// file-based tracing since `ProgramTest` performs multiple
+	// CLI invocations that can inadvertently overwrite the trace
+	// file.
 	Tracing string
+
+	// If non-empty, specifies the value of the `--test.coverprofile` flag to pass to the Pulumi CLI. As with the
+	// Tracing field, the `{command}` template will expand to the current command name.
+	//
+	// If PULUMI_TEST_COVERAGE_PATH is set, this defaults to $PULUMI_TEST_COVERAGE_PATH/{command}-[random suffix].out
+	CoverProfile string
+
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
@@ -264,6 +290,23 @@ type ProgramTestOptions struct {
 	UseAutomaticVirtualEnv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
+
+	// If set, this hook is called after the `pulumi preview` command has completed.
+	PreviewCompletedHook func(dir string) error
+
+	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
+	// `refresh` and `destroy` commands.
+	JSONOutput bool
+
+	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
+	// hook is ignored.
+	ExportStateValidator func(t *testing.T, stack []byte)
+
+	// If not nil, specifies the logic of preparing a project by
+	// ensuring dependencies. If left as nil, runs default
+	// preparation logic by dispatching on whether the project
+	// uses Node, Python, .NET or Go.
+	PrepareProject func(*engine.Projinfo) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -400,6 +443,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
+	if overrides.DestroyOnCleanup {
+		opts.DestroyOnCleanup = overrides.DestroyOnCleanup
+	}
 	if overrides.Quick {
 		opts.Quick = overrides.Quick
 	}
@@ -429,6 +475,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
+	}
+	if overrides.CoverProfile != "" {
+		opts.CoverProfile = overrides.CoverProfile
 	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
@@ -471,6 +520,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
+	}
+	if overrides.PrepareProject != nil {
+		opts.PrepareProject = overrides.PrepareProject
 	}
 	return opts
 }
@@ -556,7 +608,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	}
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
-	if !opts.NoParallel {
+	if !opts.NoParallel && !opts.DestroyOnCleanup {
 		t.Parallel()
 	}
 
@@ -588,6 +640,16 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	if opts.Tracing == "" {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
+	}
+
+	if opts.CoverProfile == "" {
+		if cov := os.Getenv("PULUMI_TEST_COVERAGE_PATH"); cov != "" {
+			var b [4]byte
+			if _, err := cryptorand.Read(b[:]); err != nil {
+				t.Errorf("could not read random bytes: %v", err)
+			}
+			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
+		}
 	}
 }
 
@@ -631,19 +693,19 @@ func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *Program
 
 // ProgramTester contains state associated with running a single test pass.
 type ProgramTester struct {
-	t            *testing.T          // the Go tester for this run.
-	opts         *ProgramTestOptions // options that control this test run.
-	bin          string              // the `pulumi` binary we are using.
-	yarnBin      string              // the `yarn` binary we are using.
-	goBin        string              // the `go` binary we are using.
-	pythonBin    string              // the `python` binary we are using.
-	pipenvBin    string              // The `pipenv` binary we are using.
-	dotNetBin    string              // the `dotnet` binary we are using.
-	eventLog     string              // The path to the event log for this test.
-	maxStepTries int                 // The maximum number of times to retry a failed pulumi step.
-	tmpdir       string              // the temporary directory we use for our test environment
-	projdir      string              // the project directory we use for this run
-	TestFinished bool                // whether or not the test if finished
+	t              *testing.T          // the Go tester for this run.
+	opts           *ProgramTestOptions // options that control this test run.
+	bin            string              // the `pulumi` binary we are using.
+	yarnBin        string              // the `yarn` binary we are using.
+	goBin          string              // the `go` binary we are using.
+	pythonBin      string              // the `python` binary we are using.
+	pipenvBin      string              // The `pipenv` binary we are using.
+	dotNetBin      string              // the `dotnet` binary we are using.
+	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
+	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
+	tmpdir         string              // the temporary directory we use for our test environment
+	projdir        string              // the project directory we use for this run
+	TestFinished   bool                // whether or not the test if finished
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -658,10 +720,10 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipEmptyPreviewUpdate = true
 	}
 	return &ProgramTester{
-		t:            t,
-		opts:         opts,
-		eventLog:     filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
-		maxStepTries: maxStepTries,
+		t:              t,
+		opts:           opts,
+		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		maxStepTries:   maxStepTries,
 	}
 }
 
@@ -700,7 +762,7 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 				}
 			}
 			if err != nil {
-				return "", errors.Wrapf(err, "Expected to find one of %q on $PATH", pythonCmds)
+				return "", fmt.Errorf("Expected to find one of %q on $PATH: %w", pythonCmds, err)
 			}
 		}
 	}
@@ -716,7 +778,7 @@ func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
-func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error) {
 	bin, err := pt.getBin()
 	if err != nil {
 		return nil, err
@@ -727,7 +789,10 @@ func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
-		cmd = append(cmd, "--tracing", tracing)
+		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
+	}
+	if cov := pt.opts.CoverProfile; cov != "" {
+		cmd = append(cmd, "--test.coverprofile", strings.ReplaceAll(cov, "{command}", name))
 	}
 	return cmd, nil
 }
@@ -767,7 +832,7 @@ func (pt *ProgramTester) runCommand(name string, args []string, wd string) error
 }
 
 func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
-	cmd, err := pt.pulumiCmd(args)
+	cmd, err := pt.pulumiCmd(name, args)
 	if err != nil {
 		return err
 	}
@@ -813,14 +878,14 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 			} else if _, ok := runerr.(*exec.ExitError); ok && isUpdate && !expectFailure {
 				// the update command failed, let's try again, assuming we haven't failed a few times.
 				if try+1 >= pt.maxStepTries {
-					return false, nil, errors.Errorf("%v did not succeed after %v tries", cmd, try+1)
+					return false, nil, fmt.Errorf("%v did not succeed after %v tries", cmd, try+1)
 				}
 
 				pt.t.Logf("%v failed: %v; retrying...", cmd, runerr)
 				return false, nil, nil
 			}
 
-			// someother error, fail
+			// some other error, fail
 			return false, nil, runerr
 		},
 	})
@@ -846,7 +911,7 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 			} else if _, ok := runerr.(*exec.ExitError); ok {
 				// yarn failed, let's try again, assuming we haven't failed a few times.
 				if try+1 >= 3 {
-					return false, nil, errors.Errorf("%v did not complete after %v tries", cmd, try+1)
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
 				}
 
 				return false, nil, nil
@@ -990,35 +1055,45 @@ func (pt *ProgramTester) TestCleanUp() {
 func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	err := pt.TestLifeCyclePrepare()
 	if err != nil {
-		return errors.Wrapf(err, "copying test to temp dir %s", pt.tmpdir)
+		return fmt.Errorf("copying test to temp dir %s: %w", pt.tmpdir, err)
 	}
 
 	pt.TestFinished = false
-	defer pt.TestCleanUp()
+	if pt.opts.DestroyOnCleanup {
+		pt.t.Cleanup(pt.TestCleanUp)
+	} else {
+		defer pt.TestCleanUp()
+	}
 
 	err = pt.TestLifeCycleInitialize()
 	if err != nil {
-		return errors.Wrap(err, "initializing test project")
+		return fmt.Errorf("initializing test project: %w", err)
 	}
 
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer func() {
+	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
 		assert.NoError(pt.t, destroyErr)
-	}()
+	}
+	if pt.opts.DestroyOnCleanup {
+		// Allow other tests to refer to this stack until the test is complete.
+		pt.t.Cleanup(destroyStack)
+	} else {
+		// Ensure that before we exit, we attempt to destroy and remove the stack.
+		defer destroyStack()
+	}
 
 	if err = pt.TestPreviewUpdateAndEdits(); err != nil {
-		return errors.Wrap(err, "running test preview, update, and edits")
+		return fmt.Errorf("running test preview, update, and edits: %w", err)
 	}
 
 	if pt.opts.RunUpdateTest {
 		err = upgradeProjectDeps(pt.projdir, pt)
 		if err != nil {
-			return errors.Wrap(err, "upgrading project dependencies")
+			return fmt.Errorf("upgrading project dependencies: %w", err)
 		}
 
 		if err = pt.TestPreviewUpdateAndEdits(); err != nil {
-			return errors.Wrap(err, "running test preview, update, and edits")
+			return fmt.Errorf("running test preview, update, and edits: %w", err)
 		}
 	}
 
@@ -1029,7 +1104,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 	projInfo, err := pt.getProjinfo(projectDir)
 	if err != nil {
-		return errors.Wrap(err, "getting project info")
+		return fmt.Errorf("getting project info: %w", err)
 	}
 
 	switch rt := projInfo.Proj.Runtime.Name(); rt {
@@ -1042,7 +1117,7 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 			return err
 		}
 	default:
-		return errors.Errorf("unrecognized project runtime: %s", rt)
+		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
 
 	return nil
@@ -1140,6 +1215,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		if pt.opts.GetDebugUpdates() {
 			destroy = append(destroy, "-d")
 		}
+		if pt.opts.JSONOutput {
+			destroy = append(destroy, "--json")
+		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err
 		}
@@ -1201,6 +1279,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		if pt.opts.GetDebugUpdates() {
 			refresh = append(refresh, "-d")
 		}
+		if pt.opts.JSONOutput {
+			refresh = append(refresh, "--json")
+		}
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
 		}
@@ -1225,6 +1306,16 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		return err
 	}
 
+	if f := pt.opts.ExportStateValidator; f != nil {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		if err != nil {
+			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			return err
+		}
+		pt.t.Logf("Calling ExportStateValidator")
+		f(pt.t, bytes)
+	}
+
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
 }
 
@@ -1232,11 +1323,15 @@ func (pt *ProgramTester) exportImport(dir string) error {
 func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
 	expectNopUpdate bool) error {
 
-	preview := []string{"preview", "--non-interactive"}
-	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.eventLog}
+	preview := []string{"preview", "--non-interactive", "--diff"}
+	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.updateEventLog}
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
+	}
+	if pt.opts.JSONOutput {
+		preview = append(preview, "--json")
+		update = append(update, "--json")
 	}
 	if expectNopPreview {
 		preview = append(preview, "--expect-no-changes")
@@ -1259,6 +1354,11 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 				return nil
 			}
 			return err
+		}
+		if pt.opts.PreviewCompletedHook != nil {
+			if err := pt.opts.PreviewCompletedHook(dir); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1324,13 +1424,13 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 	if edit.Additive {
 		// Just copy new files into dir
 		if err := fsutil.CopyFile(dir, edit.Dir, nil); err != nil {
-			return errors.Wrapf(err, "Couldn't copy %v into %v", edit.Dir, dir)
+			return fmt.Errorf("Couldn't copy %v into %v: %w", edit.Dir, dir, err)
 		}
 	} else {
 		// Create a new temporary directory
 		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
 		if err != nil {
-			return errors.Wrapf(err, "Couldn't create new temporary directory")
+			return fmt.Errorf("Couldn't create new temporary directory: %w", err)
 		}
 
 		// Delete whichever copy of the test is unused when we return
@@ -1348,7 +1448,7 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		exclusions[configYaml] = true
 
 		if err := fsutil.CopyFile(newDir, edit.Dir, exclusions); err != nil {
-			return errors.Wrapf(err, "Couldn't copy %v into %v", edit.Dir, newDir)
+			return fmt.Errorf("Couldn't copy %v into %v: %w", edit.Dir, newDir, err)
 		}
 
 		// Copy Pulumi.yaml, Pulumi.<stack-name>.yaml, and .pulumi from old directory to new directory
@@ -1362,25 +1462,25 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		newProjectDir := filepath.Join(newDir, workspace.BookkeepingDir)
 
 		if err := fsutil.CopyFile(newProjectYaml, oldProjectYaml, nil); err != nil {
-			return errors.Wrap(err, "Couldn't copy Pulumi.yaml")
+			return fmt.Errorf("Couldn't copy Pulumi.yaml: %w", err)
 		}
 		if err := fsutil.CopyFile(newConfigYaml, oldConfigYaml, nil); err != nil {
-			return errors.Wrapf(err, "Couldn't copy Pulumi.%s.yaml", pt.opts.StackName)
+			return fmt.Errorf("Couldn't copy Pulumi.%s.yaml: %w", pt.opts.StackName, err)
 		}
 		if err := fsutil.CopyFile(newProjectDir, oldProjectDir, nil); err != nil {
-			return errors.Wrap(err, "Couldn't copy .pulumi")
+			return fmt.Errorf("Couldn't copy .pulumi: %w", err)
 		}
 
 		// Finally, replace our current temp directory with the new one.
 		dirOld := dir + ".old"
 		if err := os.Rename(dir, dirOld); err != nil {
-			return errors.Wrapf(err, "Couldn't rename %v to %v", dir, dirOld)
+			return fmt.Errorf("Couldn't rename %v to %v: %w", dir, dirOld, err)
 		}
 
 		// There's a brief window here where the old temp dir name could be taken from us.
 
 		if err := os.Rename(newDir, dir); err != nil {
-			return errors.Wrapf(err, "Couldn't rename %v to %v", newDir, dir)
+			return fmt.Errorf("Couldn't rename %v to %v: %w", newDir, dir, err)
 		}
 
 		// Keep dir, delete oldDir
@@ -1389,7 +1489,7 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 
 	err := pt.prepareProjectDir(dir)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't prepare project in %v", dir)
+		return fmt.Errorf("Couldn't prepare project in %v: %w", dir, err)
 	}
 
 	oldStdOut := pt.opts.Stdout
@@ -1451,13 +1551,13 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	}
 	if err = pt.runPulumiCommand("pulumi-export",
 		pulumiCommand, dir, false); err != nil {
-		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
+		return fmt.Errorf("expected to export stack to file: %s: %w", fileName, err)
 	}
 
 	// Open the exported JSON file
 	f, err := os.Open(fileName)
 	if err != nil {
-		return errors.Wrapf(err, "expected to be able to open file with stack exports: %s", fileName)
+		return fmt.Errorf("expected to be able to open file with stack exports: %s: %w", fileName, err)
 	}
 	defer func() {
 		contract.IgnoreClose(f)
@@ -1484,22 +1584,9 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 		}
 	}
 
-	// Read the event log.
-	eventsFile, err := os.Open(pt.eventLog)
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "expected to be able to open event log file %s", pt.eventLog)
-	}
-	defer contract.IgnoreClose(eventsFile)
-	decoder, events := json.NewDecoder(eventsFile), []apitype.EngineEvent{}
-	for {
-		var event apitype.EngineEvent
-		if err = decoder.Decode(&event); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return errors.Wrapf(err, "decoding engine event")
-		}
-		events = append(events, event)
+	events, err := pt.readUpdateEventLog()
+	if err != nil {
+		return err
 	}
 
 	// Populate stack info object with all of this data to pass to the validation function
@@ -1515,6 +1602,35 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	extraRuntimeValidation(pt.t, stackInfo)
 	pt.t.Log("Extra runtime validation complete.")
 	return nil
+}
+
+func (pt *ProgramTester) readUpdateEventLog() ([]apitype.EngineEvent, error) {
+	events := []apitype.EngineEvent{}
+	eventsFile, err := os.Open(pt.updateEventLog)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return events, nil
+		}
+		return events, fmt.Errorf("expected to be able to open event log file %s: %w",
+			pt.updateEventLog, err)
+	}
+
+	defer contract.IgnoreClose(eventsFile)
+
+	decoder := json.NewDecoder(eventsFile)
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return events, fmt.Errorf("failed decoding engine event from log file %s: %w",
+				pt.updateEventLog, err)
+		}
+		events = append(events, event)
+	}
+
+	return events, nil
 }
 
 // copyTestToTemporaryDirectory creates a temporary directory to run the test in and copies the test to it.
@@ -1548,14 +1664,14 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if projinfo.Proj.Runtime.Name() == "go" {
 		targetDir, err := tools.CreateTemporaryGoFolder("stackName")
 		if err != nil {
-			return "", "", errors.Wrap(err, "Couldn't create temporary directory")
+			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", err)
 		}
 		tmpdir = targetDir
 		projdir = targetDir
 	} else {
 		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
 		if tempErr != nil {
-			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
+			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", tempErr)
 		}
 		tmpdir = targetDir
 		projdir = targetDir
@@ -1568,7 +1684,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "Failed to prepare %v", projdir)
+		return "", "", fmt.Errorf("Failed to prepare %v: %w", projdir, err)
 	}
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
@@ -1617,19 +1733,10 @@ func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
-	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.Runtime.Name(); rt {
-	case NodeJSRuntime:
-		return pt.prepareNodeJSProject(projinfo)
-	case PythonRuntime:
-		return pt.preparePythonProject(projinfo)
-	case GoRuntime:
-		return pt.prepareGoProject(projinfo)
-	case DotNetRuntime:
-		return pt.prepareDotNetProject(projinfo)
-	default:
-		return errors.Errorf("unrecognized project runtime: %s", rt)
+	if pt.opts.PrepareProject != nil {
+		return pt.opts.PrepareProject(projinfo)
 	}
+	return pt.defaultPrepareProject(projinfo)
 }
 
 // prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
@@ -1714,13 +1821,13 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {
-		return nil, errors.Wrap(err, "opening package.json")
+		return nil, fmt.Errorf("opening package.json: %w", err)
 	}
 	defer contract.IgnoreClose(f)
 
 	var ret map[string]interface{}
 	if err := json.NewDecoder(f).Decode(&ret); err != nil {
-		return nil, errors.Wrap(err, "decoding package.json")
+		return nil, fmt.Errorf("decoding package.json: %w", err)
 	}
 
 	return ret, nil
@@ -1730,14 +1837,14 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	// os.Create truncates the already existing file.
 	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {
-		return errors.Wrap(err, "opening package.json")
+		return fmt.Errorf("opening package.json: %w", err)
 	}
 	defer contract.IgnoreClose(f)
 
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "  ")
 
-	return errors.Wrap(encoder.Encode(metadata), "writing package.json")
+	return fmt.Errorf("writing package.json: %w", encoder.Encode(metadata))
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
@@ -1759,7 +1866,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		projinfo.Proj.Runtime.SetOption("virtualenv", "venv")
 		projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
 		if err = projinfo.Proj.Save(projfile); err != nil {
-			return errors.Wrap(err, "saving project")
+			return fmt.Errorf("saving project: %w", err)
 		}
 
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
@@ -1778,10 +1885,19 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 }
 
 func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
+	// Allow ENV var based overload of desired Python version for
+	// the Pipenv environment. This is useful in CI scenarios that
+	// need to pin a specific version such as 3.9.x vs 3.10.x.
+	pythonVersion := os.Getenv("PYTHON_VERSION")
+	if pythonVersion == "" {
+		pythonVersion = "3"
+	}
+
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
+
+	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
 		return err
 	}
 
@@ -1841,7 +1957,7 @@ func getVirtualenvBinPath(cwd, bin string) (string, error) {
 		virtualenvBinPath = filepath.Join(cwd, "venv", "Scripts", fmt.Sprintf("%s.exe", bin))
 	}
 	if info, err := os.Stat(virtualenvBinPath); err != nil || info.IsDir() {
-		return "", errors.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)
+		return "", fmt.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)
 	}
 	return virtualenvBinPath, nil
 }
@@ -1882,25 +1998,32 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 
 }
 
+// Fetchs the GOPATH
+func GoPath() (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+	return gopath, nil
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
 	goBin, err := pt.getGoBin()
 	if err != nil {
-		return errors.Wrap(err, "locating `go` binary")
-	}
-
-	// Ensure GOPATH is known.
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		usr, userErr := user.Current()
-		if userErr != nil {
-			return userErr
-		}
-		gopath = filepath.Join(usr.HomeDir, "go")
+		return fmt.Errorf("locating `go` binary: %w", err)
 	}
 
 	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
+	gopath, userError := GoPath()
+	if userError != nil {
+		return userError
+	}
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
@@ -1916,12 +2039,6 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	// initial tidy to resolve dependencies
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
-	if err != nil {
-		return err
-	}
-
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
 
@@ -1933,8 +2050,9 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 	}
-	// resolve dependencies
-	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
+
+	// tidy to resolve all transitive dependencies including from local dependencies above
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
 	if err != nil {
 		return err
 	}
@@ -1962,7 +2080,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	dotNetBin, err := pt.getDotNetBin()
 	if err != nil {
-		return errors.Wrap(err, "locating `dotnet` binary")
+		return fmt.Errorf("locating `dotnet` binary: %w", err)
 	}
 
 	cwd, _, err := projinfo.GetPwdMain()
@@ -1972,29 +2090,72 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		localNuget = "/opt/pulumi/nuget"
+		home := os.Getenv("HOME")
+		localNuget = filepath.Join(home, ".pulumi-dev", "nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
+		matches, err := filepath.Glob(globPattern)
 		if err != nil {
-			return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
+			return fmt.Errorf("failed to find a local Pulumi NuGet package: %w", err)
 		}
 		if len(matches) != 1 {
-			return errors.New(fmt.Sprintf("attempting to find a local Pulumi NuGet package yielded %v results", matches))
+			return fmt.Errorf("attempting to find a local NuGet package %s by searching %s yielded %d results: %v",
+				dep,
+				globPattern,
+				len(matches),
+				matches)
 		}
 		file := filepath.Base(matches[0])
 		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
 		version := r.Replace(file)
 
+		// We don't restore because the program might depend on external
+		// packages which cannot be found in our local nuget source. A restore
+		// will happen automatically as part of the `pulumi up`.
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-s", localNuget, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep,
+				"-v", version,
+				"-s", localNuget,
+				"--no-restore"},
+			cwd)
 		if err != nil {
-			return errors.Wrapf(err, "failed to add dependency on %s", dep)
+			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}
 	}
 
 	return nil
+}
+
+func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
+	// YAML doesn't need any system setup, and should auto-install required plugins
+	return nil
+}
+
+func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
+	// Java doesn't need any system setup, and should auto-install required plugins
+	return nil
+}
+
+func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
+	// Based on the language, invoke the right routine to prepare the target directory.
+	switch rt := projinfo.Proj.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		return pt.prepareNodeJSProject(projinfo)
+	case PythonRuntime:
+		return pt.preparePythonProject(projinfo)
+	case GoRuntime:
+		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
+	case YAMLRuntime:
+		return pt.prepareYAMLProject(projinfo)
+	case JavaRuntime:
+		return pt.prepareJavaProject(projinfo)
+	default:
+		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	}
 }

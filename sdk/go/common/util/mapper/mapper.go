@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Mapper can map from weakly typed JSON-like property bags to strongly typed structs, and vice versa.

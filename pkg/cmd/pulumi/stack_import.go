@@ -16,18 +16,19 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackImportCmd() *cobra.Command {
@@ -50,7 +51,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -61,7 +62,7 @@ func newStackImportCmd() *cobra.Command {
 			if file != "" {
 				reader, err = os.Open(file)
 				if err != nil {
-					return errors.Wrap(err, "could not open file")
+					return fmt.Errorf("could not open file: %w", err)
 				}
 			}
 
@@ -81,7 +82,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 			var result error
 			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != stackName {
+				if res.URN.Stack() != stackName.Q() {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
 						res.URN, res.URN.Stack(), stackName)
 					if force {
@@ -122,7 +123,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
 			if err != nil {
-				return errors.Wrap(err, "constructing deployment for upload")
+				return fmt.Errorf("constructing deployment for upload: %w", err)
 			}
 
 			bytes, err := json.Marshal(sdp)
@@ -137,7 +138,7 @@ func newStackImportCmd() *cobra.Command {
 
 			// Now perform the deployment.
 			if err = s.ImportDeployment(commandContext(), &dep); err != nil {
-				return errors.Wrap(err, "could not import deployment")
+				return fmt.Errorf("could not import deployment: %w", err)
 			}
 			fmt.Printf("Import successful.\n")
 			return nil

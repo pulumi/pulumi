@@ -17,8 +17,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Value is a single config value.
@@ -54,8 +56,8 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 		return "", errors.New("non-nil decrypter required for secret")
 	}
 	if c.object && decrypter != NopDecrypter {
-		var obj interface{}
-		if err := json.Unmarshal([]byte(c.value), &obj); err != nil {
+		obj, err := c.unmarshalObjectJSON()
+		if err != nil {
 			return "", err
 		}
 		decryptedObj, err := decryptObject(obj, decrypter)
@@ -133,14 +135,7 @@ func (c Value) ToObject() (interface{}, error) {
 	if !c.object {
 		return c.value, nil
 	}
-
-	var v interface{}
-	err := json.Unmarshal([]byte(c.value), &v)
-	if err != nil {
-		return nil, err
-	}
-
-	return v, nil
+	return c.unmarshalObjectJSON()
 }
 
 func (c Value) MarshalJSON() ([]byte, error) {
@@ -208,9 +203,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 
 func (c Value) marshalValue() (interface{}, error) {
 	if c.object {
-		var obj interface{}
-		err := json.Unmarshal([]byte(c.value), &obj)
-		return obj, err
+		return c.unmarshalObjectJSON()
 	}
 
 	if !c.secure {
@@ -357,6 +350,55 @@ func decryptObject(v interface{}, decrypter Decrypter) (interface{}, error) {
 			a[i] = decrypted
 		}
 		return a, nil
+	}
+	return v, nil
+}
+
+func (c Value) unmarshalObjectJSON() (interface{}, error) {
+	contract.Assertf(c.object, "expected value to be an object")
+	var v interface{}
+	dec := json.NewDecoder(strings.NewReader(c.value))
+	// By default, the JSON decoder will unmarshal numbers as float64, but we want to keep integers as integers
+	// if possible. We use the decoder's UseNumber option so that numbers are unmarshalled as json.Number, and
+	// then iterate through the object and try to convert any values of json.Number to an int64, otherwise falling
+	// back to float64.
+	dec.UseNumber()
+	err := dec.Decode(&v)
+	if err != nil {
+		return nil, err
+	}
+	v, err = replaceNumberWithIntOrFloat(v)
+	if err != nil {
+		return nil, err
+	}
+	return v, err
+}
+
+func replaceNumberWithIntOrFloat(v interface{}) (interface{}, error) {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		for key, val := range t {
+			f, err := replaceNumberWithIntOrFloat(val)
+			if err != nil {
+				return nil, err
+			}
+			t[key] = f
+		}
+	case []interface{}:
+		for i, val := range t {
+			f, err := replaceNumberWithIntOrFloat(val)
+			if err != nil {
+				return nil, err
+			}
+			t[i] = f
+		}
+	case json.Number:
+		// Try to return the number as an int64, otherwise fall back to float64.
+		i, err := t.Int64()
+		if err == nil {
+			return i, nil
+		}
+		return t.Float64()
 	}
 	return v, nil
 }

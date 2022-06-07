@@ -1,5 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.Collections.Generic;
+
 namespace Pulumi.Automation
 {
     /// <summary>
@@ -7,6 +10,8 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectRuntimeOptions
     {
+        internal static IEqualityComparer<ProjectRuntimeOptions> Comparer { get; } = new ProjectRuntimeOptionsComparer();
+
         /// <summary>
         /// Applies to NodeJS projects only.
         /// <para/>
@@ -29,5 +34,33 @@ namespace Pulumi.Automation
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
         public string? VirtualEnv { get; set; }
+
+        private sealed class ProjectRuntimeOptionsComparer : IEqualityComparer<ProjectRuntimeOptions>
+        {
+            bool IEqualityComparer<ProjectRuntimeOptions>.Equals(ProjectRuntimeOptions? x, ProjectRuntimeOptions? y)
+            {
+                if (x == null)
+                {
+                    return y == null;
+                }
+
+                if (y == null)
+                {
+                    return false;
+                }
+
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
+                return x.TypeScript == y.TypeScript && x.Binary == y.Binary && x.VirtualEnv == y.VirtualEnv;
+            }
+
+            int IEqualityComparer<ProjectRuntimeOptions>.GetHashCode(ProjectRuntimeOptions obj)
+            {
+                return HashCode.Combine(obj.TypeScript, obj.Binary, obj.VirtualEnv);
+            }
+        }
     }
 }

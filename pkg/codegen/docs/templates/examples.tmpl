@@ -1,19 +1,26 @@
 {{ define "examples" -}}
-{{ print "{{% examples %}}" }}
+{{ htmlSafe "<div><pulumi-examples>" }}
+
 ## Example Usage
 
-{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "<div><pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser></div>" }}
 
-{{- range . }}
+{{ range . }}
 {{ .Title }}
 
-{{- range $key, $val := .Snippets }}
-{{ print "{{% example " }}{{ $key }}{{ print " %}}" }}
+{{ range $key, $val := .Snippets }}
+{{ htmlSafe "<div>" }}
+{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
+
 {{ htmlSafe $val }}
-{{ print "{{% /example %}}" }}
+
+{{ htmlSafe "</pulumi-choosable>" }}
+{{ htmlSafe "</div>" }}
+
 {{ end }}
 
-{{- end }}
-{{ print "{{% /examples %}}" }}
+{{ end }}
 
-{{- end }}
+{{ htmlSafe "</pulumi-examples></div>" }}
+
+{{ end }}

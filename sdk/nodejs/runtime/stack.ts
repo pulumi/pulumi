@@ -14,14 +14,14 @@
 
 import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
-import { Inputs, Output, output, secret } from "../output";
+import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
 import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
  * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/sdk/v2/go/common/resource/stack.RootStackType`.
+ * `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 

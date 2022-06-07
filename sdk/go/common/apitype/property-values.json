@@ -1,0 +1,231 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json",
+    "$anchor": "property_value",
+    "title": "Pulumi Property Value",
+    "description": "A schema for Pulumi Property values.",
+    "oneOf": [
+        {
+            "title": "Primitive property values",
+            "type": ["null", "boolean", "number", "string"],
+            "not": { "$ref": "#unknown_value" }
+        },
+        {
+            "$anchor": "unknown_value",
+            "title": "Unknown property values",
+            "const": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+        },
+        {
+            "title": "Array property values",
+            "type": "array",
+            "items": {
+                "$ref": "#property_value"
+            }
+        },
+        {
+            "title": "Object property values",
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#property_value"
+            },
+            "$comment": "The properties map below prevents the object schema from matching special objects",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": false
+            }
+        },
+        {
+            "$anchor": "asset_value",
+            "title": "Asset property values",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Asset signature",
+                    "const": "c44067f5952c0a294b673a41bacd8c17"
+                },
+                "hash": {
+                    "description": "The SHA256 hash of the asset's contents.",
+                    "type": "string"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d"],
+            "oneOf": [
+                {
+                    "title": "Hash-only Asset",
+                    "properties": {
+                        "text": false,
+                        "path": false,
+                        "uri": false
+                    },
+                    "required": ["hash"]
+                },
+                {
+                    "title": "Literal Asset",
+                    "properties": {
+                        "text": {
+                            "description": "The literal contents of the asset.",
+                            "type": "string"
+                        },
+                        "path": false,
+                        "uri": false
+                    },
+                    "required": ["text"]
+                },
+                {
+                    "title": "Local File Asset",
+                    "properties": {
+                        "path": {
+                            "description": "The path to a local file that contains the asset's contents.",
+                            "type": "string"
+                        },
+                        "text": false,
+                        "uri": false
+                    },
+                    "required": ["path"]
+                },
+                {
+                    "title": "URI File Asset",
+                    "properties": {
+                        "uri": {
+                            "description": "The URI of a file that contains the asset's contents.",
+                            "type": "string",
+                            "format": "uri"
+                        },
+                        "text": false,
+                        "path": false
+                    },
+                    "required": ["uri"]
+                }
+            ]
+        },
+        {
+            "$anchor": "archive_value",
+            "title": "Archive property values",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Archive signature",
+                    "const": "0def7320c3a5731c473e5ecbe6d01bc7"
+                },
+                "hash": {
+                    "description": "The SHA256 hash of the archive's contents.",
+                    "type": "string"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d"],
+            "oneOf": [
+                {
+                    "title": "Hash-only Archive",
+                    "properties": {
+                        "assets": false,
+                        "path": false,
+                        "uri": false
+                    },
+                    "required": ["hash"]
+                },
+                {
+                    "title": "Literal Archive",
+                    "properties": {
+                        "assets": {
+                            "description": "The literal contents of the archive.",
+                            "type": "object",
+                            "additionalProperties": {
+                                "oneOf": [
+                                    { "$ref": "#asset_value" },
+                                    { "$ref": "#archive_value" }
+                                ]
+                            }
+                        },
+                        "path": false,
+                        "uri": false
+                    },
+                    "required": ["assets"]
+                },
+                {
+                    "title": "Local File Archive",
+                    "properties": {
+                        "path": {
+                            "description": "The path to a local file that contains the archive's contents.",
+                            "type": "string"
+                        },
+                        "assets": false,
+                        "uri": false
+                    },
+                    "required": ["path"]
+                },
+                {
+                    "title": "URI File Archive",
+                    "properties": {
+                        "uri": {
+                            "description": "The URI of a file that contains the archive's contents.",
+                            "type": "string",
+                            "format": "uri"
+                        },
+                        "assets": false,
+                        "path": false
+                    },
+                    "required": ["uri"]
+                }
+            ]
+        },
+        {
+            "title": "Secret Property Values",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Secret signature",
+                    "const": "1b47061264138c4ac30d75fd1eb44270"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d"],
+            "oneOf": [
+                {
+                    "title": "Encrypted Secret",
+                    "type": "object",
+                    "properties": {
+                        "ciphertext": {
+                            "description": "The encrypted, JSON-serialized property value",
+                            "type": "string"
+                        },
+                        "plaintext": false
+                    },
+                    "required": ["ciphertext"]
+                },
+                {
+                    "title": "Decrypted Secret",
+                    "type": "object",
+                    "properties": {
+                        "plaintext": {
+                            "description": "The decrypted, JSON-serialized property value",
+                            "type": "string"
+                        },
+                        "ciphertext": false
+                    },
+                    "required": ["plaintext"]
+                }
+            ]
+        },
+        {
+            "title": "Resource reference property values",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Resource reference signature",
+                    "const": "5cf8f73096256a8f31e491e813e4eb8e"
+                },
+                "packageVersion": {
+                    "description": "The package version of the referenced resource.",
+                    "type": "string"
+                },
+                "urn": {
+                    "description": "The URN of the referenced resource.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The ID of the referenced resource.",
+                    "type": "string"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d", "urn"]
+        }
+    ]
+}

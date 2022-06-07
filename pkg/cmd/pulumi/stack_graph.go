@@ -15,16 +15,16 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/graph"
-	"github.com/pulumi/pulumi/pkg/v2/graph/dotconv"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/graph"
+	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -50,14 +50,14 @@ func newStackGraphCmd() *cobra.Command {
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
-			"admitted when it was ran. This graph is output in the DOT format. This command operates\n" +
+			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func newStackGraphCmd() *cobra.Command {
 
 			// This will prevent a panic when trying to assemble a dependencyGraph when no snapshot is found
 			if snap == nil {
-				return errors.Errorf("unable to find snapshot for stack %q", stackName)
+				return fmt.Errorf("unable to find snapshot for stack %q", stackName)
 			}
 
 			dg := makeDependencyGraph(snap)

@@ -23,11 +23,11 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackCmd() *cobra.Command {
@@ -43,7 +43,7 @@ func newStackCmd() *cobra.Command {
 		Short: "Manage stacks",
 		Long: "Manage stacks\n" +
 			"\n" +
-			"An stack is a named update target, and a single project may have many of them.\n" +
+			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
@@ -52,11 +52,7 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
-			if err != nil {
-				return err
-			}
-			snap, err := s.Snapshot(commandContext())
+			s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -64,6 +60,11 @@ func newStackCmd() *cobra.Command {
 			if showStackName {
 				fmt.Printf("%s\n", s.Ref().Name())
 				return nil
+			}
+
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
 			}
 
 			// First print general info about the current stack.
@@ -140,11 +141,15 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
+
+				if showSecrets {
+					log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack")
+				}
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if cs, ok := s.(httpstate.Stack); ok {
-				if consoleURL, err := cs.ConsoleURL(); err == nil {
+			if isCloud {
+				if consoleURL, err := cloudBe.StackConsoleURL(s.Ref()); err == nil {
 					fmt.Printf("\n")
 					fmt.Printf("More information at: %s\n", consoleURL)
 				}
@@ -181,6 +186,7 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackRenameCmd())
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
+	cmd.AddCommand(newStackUnselectCmd())
 
 	return cmd
 }

@@ -1,7 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -34,7 +33,7 @@ namespace Pulumi
         private protected Input(Output<T> outputValue)
             => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
 
-        public static implicit operator Input<T>([MaybeNull]T value)
+        public static implicit operator Input<T>(T value)
             => Output.Create(value);
 
         public static implicit operator Input<T>(Output<T> value)
@@ -81,16 +80,16 @@ namespace Pulumi
     {
         public static void Add<T, U>(this InputList<Union<T, U>> list, Input<T> value)
             => list.Add(value.ToOutput().Apply(v => (Union<T, U>)v));
-        
+
         public static void Add<T, U>(this InputList<Union<T, U>> list, Input<U> value)
             => list.Add(value.ToOutput().Apply(v => (Union<T, U>)v));
     }
 
     public static class InputMapExtensions
-    {  
+    {
         public static void Add<T, U>(this InputMap<Union<T, U>> map, string key, Input<T> value)
             => map.Add(key, value.ToOutput().Apply(v => (Union<T, U>)v));
-        
+
         public static void Add<T, U>(this InputMap<Union<T, U>> map, string key, Input<U> value)
             => map.Add(key, value.ToOutput().Apply(v => (Union<T, U>)v));
     }

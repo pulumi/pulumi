@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
@@ -9,10 +9,11 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Enum = System.Enum;
 
 namespace Pulumi.Serialization
 {
-    internal struct Serializer
+    internal readonly struct Serializer
     {
         public readonly HashSet<Resource> DependentResources;
 
@@ -20,7 +21,7 @@ namespace Pulumi.Serialization
 
         public Serializer(bool excessiveDebugOutput)
         {
-            this.DependentResources = new HashSet<Resource>();
+            DependentResources = new HashSet<Resource>();
             _excessiveDebugOutput = excessiveDebugOutput;
         }
 
@@ -38,7 +39,7 @@ namespace Pulumi.Serialization
         /// <item><see cref="Asset"/>s</item>
         /// <item><see cref="Archive"/>s</item>
         /// <item><see cref="Resource"/>s</item>
-        /// <item><see cref="ResourceArgs"/>s</item>
+        /// <item><see cref="ResourceArgs"/></item>
         /// <item><see cref="JsonElement"/></item>
         /// </list>
         /// Additionally, other more complex objects can be serialized as long as they are built
@@ -66,7 +67,7 @@ namespace Pulumi.Serialization
         /// </list>
         /// No other result type are allowed to be returned.
         /// </summary>
-        public async Task<object?> SerializeAsync(string ctx, object? prop, bool keepResources)
+        public async Task<object?> SerializeAsync(string ctx, object? prop, bool keepResources, bool keepOutputValues = false)
         {
             // IMPORTANT:
             // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
@@ -86,10 +87,15 @@ namespace Pulumi.Serialization
             }
 
             if (prop is InputArgs args)
-                return await SerializeInputArgsAsync(ctx, args, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeInputArgsAsync(ctx, args, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
             if (prop is AssetOrArchive assetOrArchive)
+            {
+                // There's no need to pass keepOutputValues when serializing assets or archives.
                 return await SerializeAssetOrArchiveAsync(ctx, assetOrArchive, keepResources).ConfigureAwait(false);
+            }
 
             if (prop is Task)
             {
@@ -104,7 +110,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into IInput");
                 }
 
-                return await SerializeAsync(ctx, input.ToOutput(), keepResources).ConfigureAwait(false);
+                return await SerializeAsync(ctx, input.ToOutput(), keepResources, keepOutputValues).ConfigureAwait(false);
             }
 
             if (prop is IUnion union)
@@ -114,7 +120,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into IUnion");
                 }
 
-                return await SerializeAsync(ctx, union.Value, keepResources).ConfigureAwait(false);
+                return await SerializeAsync(ctx, union.Value, keepResources, keepOutputValues).ConfigureAwait(false);
             }
 
             if (prop is JsonElement element)
@@ -133,9 +139,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 {
                     Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
-
                 var data = await output.GetDataAsync().ConfigureAwait(false);
-                this.DependentResources.AddRange(data.Resources);
+                DependentResources.AddRange(data.Resources);
+                var propResources = new HashSet<Resource>(data.Resources);
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
                 // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -143,15 +149,62 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
 
+                var valueSerializer = new Serializer(_excessiveDebugOutput);
+
+                // It is unsafe to serialize unknown values.
+                object? value = isKnown
+                    ? await valueSerializer.SerializeAsync(
+                        $"{ctx}.id", data.Value, keepResources, keepOutputValues: false).ConfigureAwait(false)
+                    : null;
+
+                var promiseDeps = valueSerializer.DependentResources;
+                DependentResources.UnionWith(promiseDeps);
+                propResources.UnionWith(promiseDeps);
+
+                if (keepOutputValues)
+                {
+                    if (isKnown && !isSecret && propResources.Count == 0)
+                    {
+                        return value;
+                    }
+
+                    var urnDeps = new HashSet<Resource>();
+                    foreach (var resource in propResources)
+                    {
+                        var urnSerializer = new Serializer(_excessiveDebugOutput);
+                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
+                        urnDeps.UnionWith(urnSerializer.DependentResources);
+                    }
+                    DependentResources.UnionWith(urnDeps);
+                    propResources.UnionWith(urnDeps);
+
+                    var dependencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources).ConfigureAwait(false);
+                    var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+                    builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
+                    if (isKnown)
+                    {
+                        builder.Add(Constants.ValueName, value);
+                    }
+                    if (isSecret)
+                    {
+                        builder.Add(Constants.SecretName, isSecret);
+                    }
+                    if (dependencies.Count > 0)
+                    {
+                        builder.Add(Constants.DependenciesName,
+                            dependencies.OrderBy(x => x, StringComparer.Ordinal).ToImmutableArray<object>());
+                    }
+                    return builder.ToImmutable();
+                }
+
                 if (!isKnown)
                     return Constants.UnknownValue;
 
-                var value = await SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
                 if (isSecret)
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialSecretSig);
-                    builder.Add(Constants.SecretValueName, value);
+                    builder.Add(Constants.ValueName, value);
                     return builder.ToImmutable();
                 }
 
@@ -166,12 +219,12 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered CustomResource");
                 }
 
-                this.DependentResources.Add(customResource);
+                DependentResources.Add(customResource);
 
-                var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources).ConfigureAwait(false);
+                var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 if (keepResources)
                 {
-                    var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources).ConfigureAwait(false);
+                    var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialResourceSig);
                     builder.Add(Constants.ResourceUrnName, urn);
@@ -205,7 +258,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
                 }
 
-                var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources).ConfigureAwait(false);
+                var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 if (keepResources)
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -217,12 +270,16 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             if (prop is IDictionary dictionary)
-                return await SerializeDictionaryAsync(ctx, dictionary, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeDictionaryAsync(ctx, dictionary, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
             if (prop is IList list)
-                return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeListAsync(ctx, list, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
-            if (prop is System.Enum e && e.GetTypeCode() == TypeCode.Int32)
+            if (prop is Enum e && e.GetTypeCode() == TypeCode.Int32)
             {
                 return (int)prop;
             }
@@ -230,12 +287,12 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             var propType = prop.GetType();
             if (propType.IsValueType && propType.GetCustomAttribute<EnumTypeAttribute>() != null)
             {
-                MethodInfo? mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
+                var mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
                 if (mi == null || (mi.ReturnType != typeof(string) && mi.ReturnType != typeof(double)))
                 {
                     throw new InvalidOperationException($"Expected {propType.FullName} to have an explicit conversion operator to String or Double.\n\t{ctx}");
                 }
-                return mi.Invoke(null, new object[] { prop });
+                return mi.Invoke(null, new[] { prop });
             }
 
             throw new InvalidOperationException($"{propType.FullName} is not a supported argument type.\n\t{ctx}");
@@ -256,27 +313,27 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 case JsonValueKind.False:
                     return element.GetBoolean();
                 case JsonValueKind.Array:
-                {
-                    var result = ImmutableArray.CreateBuilder<object?>();
-                    var index = 0;
-                    foreach (var child in element.EnumerateArray())
                     {
-                        result.Add(SerializeJson($"{ctx}[{index}]", child));
-                        index++;
-                    }
+                        var result = ImmutableArray.CreateBuilder<object?>();
+                        var index = 0;
+                        foreach (var child in element.EnumerateArray())
+                        {
+                            result.Add(SerializeJson($"{ctx}[{index}]", child));
+                            index++;
+                        }
 
-                    return result.ToImmutable();
-                }
+                        return result.ToImmutable();
+                    }
                 case JsonValueKind.Object:
-                {
-                    var result = ImmutableDictionary.CreateBuilder<string, object?>();
-                    foreach (var x in element.EnumerateObject())
                     {
-                        result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
-                    }
+                        var result = ImmutableDictionary.CreateBuilder<string, object?>();
+                        foreach (var x in element.EnumerateObject())
+                        {
+                            result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
+                        }
 
-                    return result.ToImmutable();
-                }
+                        return result.ToImmutable();
+                    }
                 default:
                     throw new InvalidOperationException($"Unknown {nameof(JsonElement)}.{nameof(JsonElement.ValueKind)}: {element.ValueKind}");
             }
@@ -289,8 +346,13 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 Log.Debug($"Serialize property[{ctx}]: asset/archive={assetOrArchive.GetType().Name}");
             }
 
+            if (assetOrArchive is InvalidAsset)
+                throw new InvalidOperationException("Cannot serialize invalid asset");
+            if (assetOrArchive is InvalidArchive)
+                throw new InvalidOperationException("Cannot serialize invalid archive");
+
             var propName = assetOrArchive.PropName;
-            var value = await SerializeAsync(ctx + "." + propName, assetOrArchive.Value, keepResources).ConfigureAwait(false);
+            var value = await SerializeAsync(ctx + "." + propName, assetOrArchive.Value, keepResources, keepOutputValues: false).ConfigureAwait(false);
 
             var builder = ImmutableDictionary.CreateBuilder<string, object>();
             builder.Add(Constants.SpecialSigKey, assetOrArchive.SigKey);
@@ -298,7 +360,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return builder.ToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args, bool keepResources)
+        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -306,10 +368,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
-            return await SerializeDictionaryAsync(ctx, dictionary, keepResources).ConfigureAwait(false);
+            return await SerializeDictionaryAsync(ctx, dictionary, keepResources, keepOutputValues).ConfigureAwait(false);
         }
 
-        private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources)
+        private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -324,13 +386,13 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
                 }
 
-                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i], keepResources).ConfigureAwait(false));
+                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i], keepResources, keepOutputValues).ConfigureAwait(false));
             }
 
             return result.MoveToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary, bool keepResources)
+        private async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -353,7 +415,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 // When serializing an object, we omit any keys with null values. This matches
                 // JSON semantics.
-                var v = await SerializeAsync($"{ctx}.{stringKey}", dictionary[stringKey], keepResources).ConfigureAwait(false);
+                var v = await SerializeAsync($"{ctx}.{stringKey}", dictionary[stringKey], keepResources, keepOutputValues).ConfigureAwait(false);
                 if (v != null)
                 {
                     result[stringKey] = v;
@@ -374,8 +436,29 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 double d => Value.ForNumber(d),
                 bool b => Value.ForBool(b),
                 string s => Value.ForString(s),
-                ImmutableArray<object> list => Value.ForList(list.Select(v => CreateValue(v)).ToArray()),
+                ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
                 ImmutableDictionary<string, object> dict => Value.ForStruct(CreateStruct(dict)),
+                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
+            };
+
+        /// <summary>
+        /// Detects encoded `Unknown` values in objects that conform
+        /// to the grammar returned by `SerializeAsync`.
+        ///
+        /// This possibly needs to be revisited to detect `Unknown`
+        /// values before `SerializeAsync` converts them, in the more
+        /// generic Output representation.
+        /// </summary>
+        internal static bool ContainsUnknowns(object? value)
+            => value switch
+            {
+                null => false,
+                int _ => false,
+                double d => false,
+                bool b => false,
+                string s => s == Constants.UnknownValue,
+                ImmutableArray<object> list => list.Any(v => ContainsUnknowns(v)),
+                ImmutableDictionary<string, object> dict => dict.AnyValues(v => ContainsUnknowns(v)),
                 _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
             };
 

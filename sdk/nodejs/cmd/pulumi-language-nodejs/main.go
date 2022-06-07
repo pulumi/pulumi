@@ -37,24 +37,25 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/hashicorp/go-multierror"
-
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	opentracing "github.com/opentracing/opentracing-go"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
-	"google.golang.org/grpc"
+	"time"
 
 	"github.com/blang/semver"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/shlex"
+	"github.com/hashicorp/go-multierror"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 const (
@@ -64,6 +65,10 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// The runtime expects the array of secret config keys to be saved to this environment variable.
+	//nolint: gosec
+	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
 	// need for us to print any additional error messages since the user already got a a good
@@ -77,31 +82,22 @@ const (
 func main() {
 	var tracing string
 	var typescript bool
+	var root string
+	var tsconfigpath string
+	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
 		"Use ts-node at runtime to support typescript source natively")
+	flag.StringVar(&root, "root", "", "Project root path to use")
+	flag.StringVar(&tsconfigpath, "tsconfig", "",
+		"Path to tsconfig.json to use")
+	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
-
-	nodePath, err := exec.LookPath("node")
-	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
-	}
-
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPath
-	}
-
-	runPath, err = locateModule(runPath, nodePath)
-	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
-	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
@@ -109,10 +105,22 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
+			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -131,9 +139,9 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(mod string, nodePath string) (string, error) {
+func locateModule(mod string, nodeBin string) (string, error) {
 	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
-	cmd := exec.Command(nodePath, "-e", program)
+	cmd := exec.Command(nodeBin, "-e", program)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -144,21 +152,24 @@ func locateModule(mod string, nodePath string) (string, error) {
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
-	nodeBin       string
-	runPath       string
 	engineAddress string
 	tracing       string
 	typescript    bool
+	tsconfigpath  string
+	nodeargs      string
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(
+	engineAddress, tracing string,
+	typescript bool, tsconfigpath,
+	nodeargs string) pulumirpc.LanguageRuntimeServer {
+
 	return &nodeLanguageHost{
-		nodeBin:       nodePath,
-		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
+		tsconfigpath:  tsconfigpath,
+		nodeargs:      nodeargs,
 	}
 }
 
@@ -263,8 +274,8 @@ func getPluginsFromDir(
 				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
-				continue
 			}
+			// Even if there was an error, still append any plugins found in the dir.
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
@@ -462,8 +473,24 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		}
 	}()
 
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+	}
+
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPath
+	}
+
+	runPath, err = locateModule(runPath, nodeBin)
+	if err != nil {
+		cmdutil.ExitError(
+			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+	}
+
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(responseChannel, req, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
+	go host.execNodejs(responseChannel, req, nodeBin, runPath, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
@@ -475,33 +502,48 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(
 	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
-	address, pipesDirectory string) {
+	nodeBin, runPath, address, pipesDirectory string) {
 
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, address, pipesDirectory)
+		args := host.constructArguments(req, runPath, address, pipesDirectory)
 		config, err := host.constructConfig(req)
 		if err != nil {
 			err = errors.Wrap(err, "failed to serialize configuration")
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
+		configSecretKeys, err := host.constructConfigSecretKeys(req)
+		if err != nil {
+			err = errors.Wrap(err, "failed to serialize configuration secret keys")
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
 
 		env := os.Environ()
 		env = append(env, pulumiConfigVar+"="+config)
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
 		if host.typescript {
 			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
 		}
+		if host.tsconfigpath != "" {
+			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+		}
+
+		nodeargs, err := shlex.Split(host.nodeargs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
+		nodeargs = append(nodeargs, args...)
 
 		if logging.V(5) {
-			commandStr := strings.Join(args, " ")
-			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
+			commandStr := strings.Join(nodeargs, " ")
+			logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
 		}
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
-		cmd := exec.Command(host.nodeBin, args...)
+		cmd := exec.Command(nodeBin, nodeargs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env
@@ -553,8 +595,10 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
-	args := []string{host.runPath}
+func (host *nodeLanguageHost) constructArguments(
+	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string) []string {
+
+	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k, v)
@@ -615,8 +659,50 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	return string(configJSON), nil
 }
 
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *nodeLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
+}
+
 func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (host *nodeLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	_, err = npm.Install(req.Directory, false /*production*/, stdout, stderr)
+	if err != nil {
+		return fmt.Errorf("npm install failed: %w", err)
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

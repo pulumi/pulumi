@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -148,11 +148,12 @@ func (u *tupleElementUnifier) unify(t *TupleType) {
 }
 
 func (t *TupleType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *TupleType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching
@@ -161,55 +162,71 @@ func (t *TupleType) conversionFrom(src Type, unifying bool) ConversionKind {
 				var unifier tupleElementUnifier
 				unifier.unify(t)
 				unifier.unify(src)
-				return unifier.conversionKind
+				return unifier.conversionKind, nil
 			}
 
 			if len(t.ElementTypes) != len(src.ElementTypes) {
-				return NoConversion
+				return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)} }
 			}
 
 			conversionKind := SafeConversion
+			var diags lazyDiagnostics
 			for i, dst := range t.ElementTypes {
-				if ck := dst.conversionFrom(src.ElementTypes[i], unifying); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src.ElementTypes[i], unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
 
 			// When unifying, the conversion kind of two tuple types is the lesser of the conversion in each direction.
 			if unifying {
-				conversionTo := src.conversionFrom(t, false)
+				conversionTo, _ := src.conversionFrom(t, false, seen)
 				if conversionTo < conversionKind {
 					conversionKind = conversionTo
 				}
 			}
 
-			return conversionKind
+			return conversionKind, diags
 		case *ListType:
 			conversionKind := UnsafeConversion
+			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
-				if ck := t.conversionFrom(src.ElementType, unifying); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		case *SetType:
 			conversionKind := UnsafeConversion
+			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
-				if ck := t.conversionFrom(src.ElementType, unifying); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 
 func (t *TupleType) String() string {
+	return t.string(nil)
+}
+
+func (t *TupleType) string(seen map[Type]struct{}) string {
 	if t.s == "" {
 		elements := make([]string, len(t.ElementTypes))
 		for i, e := range t.ElementTypes {
-			elements[i] = e.String()
+			elements[i] = e.string(seen)
 		}
 		t.s = fmt.Sprintf("tuple(%s)", strings.Join(elements, ", "))
 	}
@@ -250,7 +267,8 @@ func (t *TupleType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Otherwise, prefer the tuple type.
-			return t, t.conversionFrom(other, true)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

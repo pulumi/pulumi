@@ -21,8 +21,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -179,59 +179,93 @@ func (u *objectTypeUnifier) unify(t *ObjectType) {
 // This conversion is always unsafe, and may fail if the map does not contain an appropriate set of keys for the
 // destination type.
 func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
+			if seen != nil {
+				if _, ok := seen[t]; ok {
+					return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{invalidRecursiveType(t)} }
+				}
+			} else {
+				seen = map[Type]struct{}{}
+			}
+			seen[t] = struct{}{}
+			defer delete(seen, t)
+
 			if unifying {
 				var unifier objectTypeUnifier
 				unifier.unify(t)
 				unifier.unify(src)
-				return unifier.conversionKind
+				return unifier.conversionKind, nil
 			}
 
 			conversionKind := SafeConversion
+			var diags lazyDiagnostics
 			for k, dst := range t.Properties {
 				src, ok := src.Properties[k]
 				if !ok {
 					src = NoneType
 				}
-				if ck := dst.conversionFrom(src, unifying); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		case *MapType:
 			conversionKind := UnsafeConversion
+			var diags lazyDiagnostics
 			for _, dst := range t.Properties {
-				if ck := dst.conversionFrom(src.ElementType, unifying); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 
 func (t *ObjectType) String() string {
-	if t.s == "" {
-		var properties []string
-		for k, v := range t.Properties {
-			properties = append(properties, fmt.Sprintf("%s = %v", k, v))
-		}
-		sort.Strings(properties)
+	return t.string(nil)
+}
 
-		annotations := ""
-		if len(t.Annotations) != 0 {
-			annotations = fmt.Sprintf(", annotated(%p)", t)
-		}
-
-		t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
+func (t *ObjectType) string(seen map[Type]struct{}) string {
+	if t.s != "" {
+		return t.s
 	}
+
+	if seen != nil {
+		if _, ok := seen[t]; ok {
+			return "..."
+		}
+	} else {
+		seen = map[Type]struct{}{}
+	}
+	seen[t] = struct{}{}
+
+	var properties []string
+	for k, v := range t.Properties {
+		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
+	}
+	sort.Strings(properties)
+
+	annotations := ""
+	if len(t.Annotations) != 0 {
+		annotations = fmt.Sprintf(", annotated(%p)", t)
+	}
+
+	t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
 	return t.s
 }
 
@@ -258,7 +292,8 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 			return NewObjectType(unifier.properties), unifier.conversionKind
 		default:
 			// Otherwise, prefer the object type.
-			return t, t.conversionFrom(other, true)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

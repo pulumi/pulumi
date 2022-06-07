@@ -15,14 +15,14 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Target represents information about a deployment target.
 type Target struct {
-	Name      tokens.QName     // the target stack name.
+	Name      tokens.Name      // the target stack name.
 	Config    config.Map       // optional configuration key/value pairs.
 	Decrypter config.Decrypter // decrypter for secret configuration values.
 	Snapshot  *Snapshot        // the last snapshot deployed to the target.

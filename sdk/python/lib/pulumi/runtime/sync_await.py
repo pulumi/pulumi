@@ -32,10 +32,10 @@ if sys.version_info[0] == 3 and sys.version_info[1] < 7:
     _all_tasks = asyncio.Task.all_tasks
     _get_current_task = asyncio.Task.current_task
 else:
-    _enter_task = asyncio.tasks._enter_task # type: ignore
-    _leave_task = asyncio.tasks._leave_task # type: ignore
-    _all_tasks = asyncio.all_tasks # type: ignore
-    _get_current_task = asyncio.current_task # type: ignore
+    _enter_task = asyncio.tasks._enter_task  # type: ignore
+    _leave_task = asyncio.tasks._leave_task  # type: ignore
+    _all_tasks = asyncio.all_tasks  # type: ignore
+    _get_current_task = asyncio.current_task  # type: ignore
 
 
 def _sync_await(awaitable: Awaitable[Any]) -> Any:
@@ -45,15 +45,7 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     """
 
     # Fetch the current event loop and ensure a future.
-    loop = None
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        pass
-    if loop is None:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
+    loop = _ensure_event_loop()
     fut = asyncio.ensure_future(awaitable)
 
     # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
@@ -75,17 +67,17 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     #
     # See https://github.com/python/cpython/blob/3.6/Lib/asyncio/base_events.py#L1428-L1452 for the details of the
     # _run_once kernel with which we need to cooperate.
-    ntodo = len(loop._ready) # type: ignore
+    ntodo = len(loop._ready)  # type: ignore
     while not fut.done() and not fut.cancelled():
-        loop._run_once() # type: ignore
-        if loop._stopping: # type: ignore
+        loop._run_once()  # type: ignore
+        if loop._stopping:  # type: ignore
             break
     # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
     # cancelled handles onto the list.
-    while len(loop._ready) < ntodo: # type: ignore
+    while len(loop._ready) < ntodo:  # type: ignore
         handle = asyncio.Handle(lambda: None, [], loop)
         handle._cancelled = True
-        loop._ready.append(handle) # type: ignore
+        loop._ready.append(handle)  # type: ignore
 
     # If we were executing inside a task, restore its context and continue on.
     if task is not None:
@@ -93,3 +85,14 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # Return the result of the future.
     return fut.result()
+
+
+def _ensure_event_loop():
+    """Ensures an asyncio event loop exists for the current thread."""
+    loop = None
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop

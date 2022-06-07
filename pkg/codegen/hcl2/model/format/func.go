@@ -14,7 +14,9 @@
 
 package format
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Func is a function type that implements the fmt.Formatter interface. This can be used to conveniently
 // implement this interface for types defined in other packages.

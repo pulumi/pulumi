@@ -27,11 +27,10 @@ import (
 	"google.golang.org/api/option"
 	loggingpb "google.golang.org/genproto/googleapis/logging/v2"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -147,10 +146,10 @@ func getLogEntryMessage(e *loggingpb.LogEntry) (string, error) {
 	case *loggingpb.LogEntry_JsonPayload:
 		byts, err := json.Marshal(payload.JsonPayload)
 		if err != nil {
-			return "", errors.Wrap(err, "encoding to JSON")
+			return "", fmt.Errorf("encoding to JSON: %w", err)
 		}
 		return string(byts), nil
 	default:
-		return "", errors.Errorf("can't decode entry of type %s", reflect.TypeOf(e))
+		return "", fmt.Errorf("can't decode entry of type %s", reflect.TypeOf(e))
 	}
 }

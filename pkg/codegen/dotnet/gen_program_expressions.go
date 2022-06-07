@@ -15,19 +15,19 @@
 package dotnet
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"math/big"
 	"strings"
 
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type nameInfo int
@@ -38,10 +38,10 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
 	contract.Assert(len(diags) == 0)
-	expr = hcl2.RewriteConversions(expr, typ)
+	expr = pcl.RewriteConversions(expr, typ)
 	if g.asyncInit {
 		expr = g.awaitInvokes(expr)
 	} else {
@@ -60,7 +60,7 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != hcl2.Invoke {
+		if !ok || call.Name != pcl.Invoke {
 			return x, nil
 		}
 
@@ -90,7 +90,7 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != hcl2.Invoke {
+		if !ok || call.Name != pcl.Invoke {
 			return x, nil
 		}
 
@@ -215,7 +215,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
@@ -239,13 +239,19 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir":  {"System.IO", "System.Linq"},
-	"readFile": {"System.IO"},
-	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
+	"assetArchive":     {"System.Collections.Generic"},
+	"readDir":          {"System.IO", "System.Linq"},
+	"readFile":         {"System.IO"},
+	"cwd":              {"System.IO"},
+	"filebase64":       {"System", "System.IO"},
+	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
+	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64":         {"System"},
+	"sha1":             {"System.Security.Cryptography", "System.Text"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
-	if x.Name != hcl2.Invoke {
+	if x.Name != pcl.Invoke {
 		return functionNamespaces[x.Name]
 	}
 
@@ -253,16 +259,106 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
 }
 
+func (g *generator) markTypeAsUsedInFunctionOutputVersionInputs(t model.Type) {
+	if g.usedInFunctionOutputVersionInputs == nil {
+		g.usedInFunctionOutputVersionInputs = make(map[schema.Type]bool)
+	}
+	schemaType, ok := g.toSchemaType(t)
+	if !ok {
+		return
+	}
+	g.usedInFunctionOutputVersionInputs[schemaType] = true
+}
+
+func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model.Expression) {
+	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		isCons, _, t := pcl.RecognizeTypedObjectCons(expr)
+		if isCons {
+			g.markTypeAsUsedInFunctionOutputVersionInputs(t)
+		}
+		return expr, nil
+	}
+	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
+}
+
+func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
+	return func(member *schema.Enum) {
+		// We know the enum value at the call site, so we can directly stamp in a
+		// valid enum instance. We don't need to convert.
+		pkg, name := enumName(to)
+		contract.Assertf(pkg != "", "pkg cannot be empty")
+		contract.Assertf(name != "", "name cannot be empty")
+		memberTag := member.Name
+		if memberTag == "" {
+			memberTag = member.Value.(string)
+		}
+		memberTag, err := makeSafeEnumName(memberTag, name)
+		contract.AssertNoErrorf(err, "Enum is invalid")
+		g.Fgenf(w, "%s.%s.%s", pkg, name, memberTag)
+	}
+}
+
+func enumName(enum *model.EnumType) (string, string) {
+	components := strings.Split(enum.Token, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	enumName := tokenToName(enum.Token)
+	e, ok := pcl.GetSchemaForType(enum)
+	if !ok {
+		return "", ""
+	}
+	namespaceMap := e.(*schema.EnumType).Package.Language["csharp"].(CSharpPackageInfo).Namespaces
+	namespace := namespaceName(namespaceMap, components[0])
+	if components[1] != "" && components[1] != "index" {
+		namespace += "." + namespaceName(namespaceMap, components[1])
+	}
+	return namespace, enumName
+}
+
+func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
+	to = pcl.LowerConversion(from, to)
+	output, isOutput := to.(*model.OutputType)
+	if isOutput {
+		to = output.ElementType
+	}
+	switch to := to.(type) {
+	case *model.EnumType:
+		pkg, name := enumName(to)
+		if pkg == "" || name == "" {
+			// Something has gone wrong. Produce a best effort result.
+			g.Fgenf(w, "%.v", from)
+			return
+		}
+		var convertFn string
+		switch {
+		case to.Type.Equals(model.StringType):
+			convertFn = fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
+		default:
+			panic(fmt.Sprintf(
+				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
+				from.Type(), from, to))
+		}
+		if isOutput {
+			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
+		} else {
+			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+				g.Fgenf(w, "%s(%v)", convertFn, from)
+			})
+		}
+	default:
+		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
+	}
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
-	case hcl2.IntrinsicConvert:
+	case pcl.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
+			g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 		}
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
@@ -284,19 +380,46 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "new RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgen(w, "new AssetArchive(")
+		g.genDictionary(w, expr.Args[0].(*model.ObjectConsExpression), "AssetOrArchive")
+		g.Fgen(w, ")")
 	case "fileAsset":
 		g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
-	case hcl2.Invoke:
+	case "stringAsset":
+		g.Fgenf(w, "new StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "new RemoteAsset(%.v)", expr.Args[0])
+	case "filebase64":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
+	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		optionsBag := ""
-		if len(expr.Args) == 3 {
-			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
-			optionsBag = buf.String()
+		isOut, outArgs, outArgsTy := pcl.RecognizeOutputVersionedInvoke(expr)
+		if isOut {
+			g.visitToMarkTypesUsedInFunctionOutputVersionInputs(outArgs)
+			g.Fprintf(w, "%s.Invoke(", name)
+			typeName := g.argumentTypeNameWithSuffix(expr, outArgsTy, "InvokeArgs")
+			g.genObjectConsExpressionWithTypeName(w, outArgs, typeName)
+		} else {
+			g.Fprintf(w, "%s.InvokeAsync(", name)
+			if len(expr.Args) >= 2 {
+				g.Fgenf(w, "%.v", expr.Args[1])
+			}
 		}
 
-		g.Fgenf(w, "%s.InvokeAsync(%.v%v)", name, expr.Args[1], optionsBag)
+		if len(expr.Args) == 3 {
+			g.Fgenf(w, ", %.v", expr.Args[2])
+		}
+		g.Fprint(w, ")")
+	case "join":
+		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
 	case "length":
 		g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
@@ -314,28 +437,30 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "Output.CreateSecret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "Convert.ToBase64String(System.Text.UTF8.GetBytes(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
-		g.genDictionary(w, expr.Args[0])
+		g.genDictionaryOrTuple(w, expr.Args[0])
 		g.Fgen(w, ")")
+	case "sha1":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
+	case "stack":
+		g.Fgen(w, "Deployment.Instance.StackName")
+	case "project":
+		g.Fgen(w, "Deployment.Instance.ProjectName")
+	case "cwd":
+		g.Fgenf(w, "Directory.GetCurrentDirectory()")
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
 }
 
-func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
+func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	switch expr := expr.(type) {
 	case *model.ObjectConsExpression:
-		g.Fgen(w, "new Dictionary<string, object?>\n")
-		g.Fgenf(w, "%s{\n", g.Indent)
-		g.Indented(func() {
-			for _, item := range expr.Items {
-				g.Fgenf(w, "%s{ %.v, ", g.Indent, item.Key)
-				g.genDictionary(w, item.Value)
-				g.Fgen(w, " },\n")
-			}
-		})
-		g.Fgenf(w, "%s}", g.Indent)
+		g.genDictionary(w, expr, "object?")
 	case *model.TupleConsExpression:
 		g.Fgen(w, "new[]\n")
 		g.Indented(func() {
@@ -343,7 +468,7 @@ func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
 			g.Indented(func() {
 				for _, v := range expr.Expressions {
 					g.Fgenf(w, "%s", g.Indent)
-					g.genDictionary(w, v)
+					g.genDictionaryOrTuple(w, v)
 					g.Fgen(w, ",\n")
 				}
 			})
@@ -353,6 +478,19 @@ func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
 	default:
 		g.Fgenf(w, "%.v", expr)
 	}
+}
+
+func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression, valueType string) {
+	g.Fgenf(w, "new Dictionary<string, %s>\n", valueType)
+	g.Fgenf(w, "%s{\n", g.Indent)
+	g.Indented(func() {
+		for _, item := range expr.Items {
+			g.Fgenf(w, "%s{ %.v, ", g.Indent, item.Key)
+			g.genDictionaryOrTuple(w, item.Value)
+			g.Fgen(w, " },\n")
+		}
+	})
+	g.Fgenf(w, "%s}", g.Indent)
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -399,7 +537,12 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	switch expr.Type() {
+	typ := expr.Type()
+	if cns, ok := typ.(*model.ConstType); ok {
+		typ = cns.Type
+	}
+
+	switch typ {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
@@ -429,7 +572,18 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		return
 	}
 
-	typeName := g.argumentTypeName(expr, destType)
+	destTypeName := g.argumentTypeName(expr, destType)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer, expr *model.ObjectConsExpression, destTypeName string) {
+
+	if len(expr.Items) == 0 {
+		return
+	}
+
+	typeName := destTypeName
 	if typeName != "" {
 		g.Fgenf(w, "new %s", typeName)
 		g.Fgenf(w, "\n%s{\n", g.Indent)
@@ -504,8 +658,8 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	g.Fgen(w, rootName)
 
 	var objType *schema.ObjectType
-	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
-		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
+	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
+		if schemaType, ok := pcl.GetSchemaForType(resource.InputType); ok {
 			objType, _ = schemaType.(*schema.ObjectType)
 		}
 	}
@@ -520,7 +674,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	multiLine := false
 	expressions := false
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			if strings.Contains(lit.Value.AsString(), "\n") {
 				multiLine = true
 			}
@@ -537,7 +691,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	}
 	g.Fgen(w, "\"")
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.Fgen(w, g.escapeString(lit.Value.AsString(), multiLine, expressions))
 		} else {
 			g.Fgenf(w, "{%.v}", expr)

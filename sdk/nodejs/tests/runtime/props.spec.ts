@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { ComponentResource, CustomResource, Inputs, Resource, ResourceOptions, runtime, secret } from "../../index";
+import { ComponentResource, CustomResource, DependencyResource, Inputs, Output, Resource, ResourceOptions, runtime,
+    secret } from "../../index";
 import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -32,70 +33,82 @@ class TestCustomResource extends CustomResource {
     }
 }
 
+class TestErrorResource extends CustomResource {
+    constructor(name: string) {
+        super("error", name, {});
+    }
+}
+
 class TestResourceModule implements runtime.ResourceModule {
     construct(name: string, type: string, urn: string): Resource {
         switch (type) {
-            case "test:index:component":
-                return new TestComponentResource(name, {urn});
-            case "test:index:custom":
-                return new TestCustomResource(name, type, {urn});
-            default:
-                throw new Error(`unknown resource type ${type}`);
+        case "test:index:component":
+            return new TestComponentResource(name, {urn});
+        case "test:index:custom":
+            return new TestCustomResource(name, type, {urn});
+        default:
+            throw new Error(`unknown resource type ${type}`);
         }
     }
 }
 
 class TestMocks implements runtime.Mocks {
-    call(token: string, args: any, provider?: string): Record<string, any> {
-        throw new Error(`unknown function ${token}`);
+    call(args: runtime.MockCallArgs): Record<string, any> {
+        throw new Error(`unknown function ${args.token}`);
     }
 
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string | undefined, state: Record<string, any> } {
-        switch (type) {
-            case "test:index:component":
-                return {id: undefined, state: {}};
-            case "test:index:custom":
-            case "test2:index:custom":
-                return {
-                    id: runtime.isDryRun() ? undefined : "test-id",
-                    state: {},
-                };
-            default:
-                throw new Error(`unknown resource type ${type}`);
+    newResource(args: runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
+        switch (args.type) {
+        case "test:index:component":
+            return {id: undefined, state: {}};
+        case "test:index:custom":
+        case "test2:index:custom":
+            return {
+                id: runtime.isDryRun() ? undefined : "test-id",
+                state: {},
+            };
+        case "error":
+            throw new Error("this is an intentional error");
+        default:
+            throw new Error(`unknown resource type ${args.type}`);
         }
     }
 }
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestStrEnum = {
     Foo: "foo",
     Bar: "bar",
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
     One: 1,
     Zero: 0,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
     One: 1.0,
     ZeroPointOne: 0.1,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
     One: true,
     Zero: false,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 
 interface TestInputs {
@@ -119,6 +132,79 @@ describe("runtime", () => {
     });
 
     describe("transferProperties", () => {
+        describe("output values", () => {
+            function* generateTests() {
+                const testValues = [
+                    { value: undefined, expected: null },
+                    { value: null,      expected: null },
+                    { value: 0,         expected: 0 },
+                    { value: 1,         expected: 1 },
+                    { value: "",        expected: "" },
+                    { value: "hi",      expected: "hi" },
+                    { value: {},        expected: {} },
+                    { value: [],        expected: [] },
+                ];
+                for (const tv of testValues) {
+                    for (const deps of [[], ["fakeURN1", "fakeURN2"]]) {
+                        for (const isKnown of [true, false]) {
+                            for (const isSecret of [true, false])
+                            {
+                                const resources = deps.map(dep => new DependencyResource(dep));
+                                yield {
+                                    name: `Output(${JSON.stringify(deps)}, ${JSON.stringify(tv.value)}, ` +
+                                        `isKnown=${isKnown}, isSecret=${isSecret})`,
+                                    input: new Output(resources, Promise.resolve(tv.value), Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret), Promise.resolve([])),
+                                    expected: {
+                                        [runtime.specialSigKey]: runtime.specialOutputValueSig,
+                                        ...isKnown && { value: tv.expected },
+                                        ...isSecret && { secret: isSecret },
+                                        ...(deps.length > 0) && { dependencies: deps },
+                                    },
+                                    expectedRoundTrip: new Output(resources,
+                                        Promise.resolve(isKnown ? tv.expected : undefined), Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret), Promise.resolve([])),
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            async function assertOutputsEqual<T>(a: Output<T>, e: Output<T>) {
+                async function urns(res: Set<Resource>): Promise<Set<string>> {
+                    const result = new Set<string>();
+                    for (const r of res) {
+                        result.add(await r.urn.promise());
+                    }
+                    return result;
+                }
+
+                assert.deepStrictEqual(await urns(a.resources()), await urns(e.resources()));
+                assert.deepStrictEqual(await a.isKnown, await e.isKnown);
+                assert.deepStrictEqual(await a.promise(), await e.promise());
+                assert.deepStrictEqual(await a.isSecret, await e.isSecret);
+                assert.deepStrictEqual(await urns(await a.allResources!()), await urns(await e.allResources!()));
+            }
+
+            for (const test of generateTests()) {
+                it(`marshals ${test.name} correctly`, asyncTest(async () => {
+                    runtime._setTestModeEnabled(true);
+                    runtime._setFeatureSupport("outputValues", true);
+
+                    const inputs = { value: test.input };
+                    const expected = { value: test.expected };
+
+                    const actual = await runtime.serializeProperties("test", inputs, { keepOutputValues: true });
+                    assert.deepStrictEqual(actual, expected);
+
+                    // Roundtrip.
+                    const back = runtime.deserializeProperties(gstruct.Struct.fromJavaScript(actual));
+                    await assertOutputsEqual(back.value, test.expectedRoundTrip);
+                }));
+            }
+        });
+
         it("marshals basic properties correctly", asyncTest(async () => {
             const inputs: TestInputs = {
                 "aNum": 42,
@@ -347,6 +433,22 @@ describe("runtime", () => {
             assert.ok((<ComponentResource>deserialized["component"]).__pulumiComponentResource);
             assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
             assert.deepEqual(deserialized["unregistered"], unregisteredID);
+        }));
+    });
+
+    describe("resource error handling", () => {
+        it("registerResource errors propagate appropriately", asyncTest(async () => {
+            runtime.setMocks(new TestMocks());
+
+            await assert.rejects(async () => {
+                const errResource = new TestErrorResource("test");
+                const customURN = await errResource.urn.promise();
+                const customID = await errResource.id.promise();
+            }, (err: Error) => {
+                const containsMessage = err.stack!.indexOf("this is an intentional error") >= 0;
+                const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
+                return containsMessage && containsRegisterResource;
+            });
         }));
     });
 });

@@ -1,0 +1,3 @@
+name: esm-js
+runtime: nodejs
+description: Use ECMAScript modules for a plain JS program.

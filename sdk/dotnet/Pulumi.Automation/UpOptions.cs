@@ -1,7 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi.Automation
 {
@@ -12,12 +12,23 @@ namespace Pulumi.Automation
     {
         public bool? ExpectNoChanges { get; set; }
 
+        public bool? Diff { get; set; }
+
         public List<string>? Replace { get; set; }
 
         public bool? TargetDependents { get; set; }
 
-        public Action<string>? OnOutput { get; set; }
-
         public PulumiFn? Program { get; set; }
+
+        /// <summary>
+        /// Plan specifies the path to an update plan to use for the update.
+        /// </summary>
+        public string? Plan {get; set; }
+
+        /// <summary>
+        /// A custom logger instance that will be used for the action. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public ILogger? Logger { get; set; }
     }
 }

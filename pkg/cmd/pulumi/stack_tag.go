@@ -18,13 +18,12 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackTagCmd() *cobra.Command {
@@ -64,23 +63,23 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			if value, ok := tags[name]; ok {
 				fmt.Printf("%v\n", value)
 				return nil
 			}
 
-			return errors.Errorf(
-				"stack tag '%s' not found for stack '%s'", name, s.Ref())
+			return fmt.Errorf("stack tag '%s' not found for stack '%s'", name, s.Ref())
 		}),
 	}
 }
@@ -95,15 +94,18 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
+
 			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
+
+			tags := s.Tags()
 
 			if jsonOut {
 				return printJSON(tags)
@@ -154,16 +156,15 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			delete(tags, name)
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }
@@ -185,19 +186,18 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			if tags == nil {
 				tags = make(map[apitype.StackTagName]string)
 			}
 			tags[name] = value
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }

@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // SetType represents sets of particular element types.
@@ -72,31 +72,38 @@ func (t *SetType) AssignableFrom(src Type) bool {
 // the entire conversion is unsafe; otherwise the conversion is safe. An unsafe conversion exists from list(U) or
 // or tuple(U_0 ... U_N) to set(T) if a conversion exists from each U to T.
 func (t *SetType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *SetType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *SetType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ListType:
-			if conversionKind := t.ElementType.conversionFrom(src.ElementType, unifying); conversionKind == NoConversion {
-				return NoConversion
+			if conversionKind, why := t.ElementType.conversionFrom(src.ElementType, unifying, seen); conversionKind ==
+				NoConversion {
+				return NoConversion, why
 			}
-			return UnsafeConversion
+			return UnsafeConversion, nil
 		case *TupleType:
-			if conversionKind := NewListType(t.ElementType).conversionFrom(src, unifying); conversionKind == NoConversion {
-				return NoConversion
+			if conversionKind, why := NewListType(t.ElementType).conversionFrom(src, unifying, seen); conversionKind ==
+				NoConversion {
+				return NoConversion, why
 			}
-			return UnsafeConversion
+			return UnsafeConversion, nil
 		}
-		return NoConversion
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 
 func (t *SetType) String() string {
-	return fmt.Sprintf("set(%v)", t.ElementType)
+	return t.string(nil)
+}
+
+func (t *SetType) string(seen map[Type]struct{}) string {
+	return fmt.Sprintf("set(%s)", t.ElementType.string(seen))
 }
 
 func (t *SetType) unify(other Type) (Type, ConversionKind) {
@@ -123,7 +130,8 @@ func (t *SetType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Prefer the set type.
-			return t, t.conversionFrom(other, true)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

@@ -1,13 +1,13 @@
 package engine
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var _ = SnapshotManager((*Journal)(nil))
@@ -28,7 +28,7 @@ type JournalEntry struct {
 
 type JournalEntries []JournalEntry
 
-func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
@@ -111,6 +111,17 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	if base != nil {
+		// Track pending create operations from the base snapshot
+		// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+		// because these must require user intervention to be cleared or resolved.
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
+		}
+	}
+
 	// If we have a base snapshot, copy over its secrets manager.
 	var secretsManager secrets.Manager
 	if base != nil {
@@ -119,8 +130,13 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
 
+	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations)
+	err := snap.NormalizeURNReferences()
+	if err != nil {
+		return snap, err
+	}
+	return snap, snap.VerifyIntegrity()
 }
 
 type Journal struct {
@@ -178,7 +194,7 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (j *Journal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 

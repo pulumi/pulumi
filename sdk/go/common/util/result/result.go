@@ -15,6 +15,8 @@
 package result
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
@@ -51,6 +53,18 @@ type simpleResult struct {
 
 func (r *simpleResult) Error() error { return r.err }
 func (r *simpleResult) IsBail() bool { return r.err == nil }
+func (r *simpleResult) String() string {
+	if r.err == nil {
+		return "Bail"
+	}
+	return fmt.Sprintf("Error: %s", r.err)
+}
+func (r *simpleResult) GoString() string {
+	if r.err == nil {
+		return "&simpleResult{}"
+	}
+	return fmt.Sprintf("&simpleResult{err: %#v}", r.err)
+}
 
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.

@@ -19,18 +19,19 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	netUrl "net/url"
 
-	"github.com/pkg/errors"
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
 	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
 
-	"github.com/pulumi/pulumi/pkg/v2/authhelpers"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // Type is the type of secrets managed by this secrets provider
@@ -43,11 +44,11 @@ type cloudSecretsManagerState struct {
 
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
-// envelope encyrtion of secrets values.
+// envelope encryption of secrets values.
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	return NewCloudSecretsManager(s.URL, s.EncryptedKey)
@@ -88,7 +89,7 @@ func openKeeper(url string) (*gosecrets.Keeper, error) {
 }
 
 // GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
-// using the target coud key management service.
+// using the target cloud key management service.
 func GenerateNewDataKey(url string) ([]byte, error) {
 	plaintextDataKey := make([]byte, 32)
 	_, err := rand.Read(plaintextDataKey)

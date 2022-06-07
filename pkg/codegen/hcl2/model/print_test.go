@@ -9,6 +9,8 @@ import (
 )
 
 func TestPrintNoTokens(t *testing.T) {
+	t.Parallel()
+
 	b := &Block{
 		Type: "block", Body: &Body{
 			Items: []BodyItem{

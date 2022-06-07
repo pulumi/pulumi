@@ -1,4 +1,4 @@
-# Copyright 2016-2019, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,16 +21,16 @@ class ReadTest(LanghostTest):
             program=path.join(self.base_path(), "read"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "foo2")
         return {
             "urn": self.make_urn(ty, name),
         }
 
-    def read_resource(self, ctx, ty, name, id, parent, state, dependencies, provider, version):
+    def read_resource(self, ctx, ty, name, _id, parent, state, dependencies, provider, version):
         if name == "foo":
             self.assertDictEqual(state, {
                 "a": "bar",
@@ -40,14 +40,14 @@ class ReadTest(LanghostTest):
                 }
             })
             self.assertEqual(ty, "test:read:resource")
-            self.assertEqual(id, "myresourceid")
+            self.assertEqual(_id, "myresourceid")
             self.assertEqual(version, "0.17.9")
         elif name == "foo-with-parent":
             self.assertDictEqual(state, {
                 "state": "foo",
             })
             self.assertEqual(ty, "test:read:resource")
-            self.assertEqual(id, "myresourceid2")
+            self.assertEqual(_id, "myresourceid2")
             self.assertEqual(parent, self.make_urn("test:index:MyResource", "foo2"))
             self.assertEqual(version, "0.17.9")
         return {

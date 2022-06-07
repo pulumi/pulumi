@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v2/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +31,8 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 }
 
 func TestPendingOperationsDeployment(t *testing.T) {
+	t.Parallel()
+
 	resourceA := newResource("a")
 	resourceB := newResource("b")
 	snap := newSnapshot([]*resource.State{
@@ -42,17 +44,6 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, &fixedSource{}, nil, false, nil)
-	if !assert.Error(t, err) {
-		t.FailNow()
-	}
-
-	invalidErr, ok := err.(PlanPendingOperationsError)
-	if !assert.True(t, ok) {
-		t.FailNow()
-	}
-
-	assert.Len(t, invalidErr.Operations, 1)
-	assert.Equal(t, resourceB.URN, invalidErr.Operations[0].Resource.URN)
-	assert.Equal(t, resource.OperationTypeCreating, invalidErr.Operations[0].Type)
+	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, &fixedSource{}, nil, false, nil)
+	assert.NoError(t, err)
 }

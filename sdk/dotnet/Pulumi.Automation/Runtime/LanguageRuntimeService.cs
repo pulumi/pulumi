@@ -1,12 +1,11 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Pulumirpc;
 
 namespace Pulumi.Automation
@@ -41,9 +40,11 @@ namespace Pulumi.Automation
             var engineAddr = args != null && args.Any() ? args[0] : "";
 
             var settings = new InlineDeploymentSettings(
+                _callerContext.Logger,
                 engineAddr,
                 request.MonitorAddress,
                 request.Config,
+                request.ConfigSecretKeys,
                 request.Project,
                 request.Stack,
                 request.Parallel,
@@ -53,12 +54,22 @@ namespace Pulumi.Automation
                 this._callerContext.CancellationToken,
                 context.CancellationToken);
 
-            this._callerContext.ExceptionDispatchInfo = await Deployment.RunInlineAsync(
+            var result = await Deployment.RunInlineAsync(
                 settings,
+                // ReSharper disable once AccessToDisposedClosure
                 runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
                 .ConfigureAwait(false);
 
-            Deployment.Instance = null!;
+            if (result.ExitCode != 0 || result.ExceptionDispatchInfo != null)
+            {
+                this._callerContext.ExceptionDispatchInfo = result.ExceptionDispatchInfo;
+                return new RunResponse()
+                {
+                    Bail = true,
+                    Error = result.ExceptionDispatchInfo?.SourceException.Message ?? "One or more errors occurred.",
+                };
+            }
+
             return new RunResponse();
         }
 
@@ -66,15 +77,19 @@ namespace Pulumi.Automation
         {
             public PulumiFn Program { get; }
 
+            public ILogger? Logger { get; }
+
             public CancellationToken CancellationToken { get; }
 
             public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
 
             public CallerContext(
                 PulumiFn program,
+                ILogger? logger,
                 CancellationToken cancellationToken)
             {
                 this.Program = program;
+                this.Logger = logger;
                 this.CancellationToken = cancellationToken;
             }
         }

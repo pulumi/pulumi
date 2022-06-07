@@ -3,11 +3,13 @@ package gen
 import (
 	"bytes"
 	"io"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,19 +34,46 @@ func (e environment) scope() *model.Scope {
 }
 
 func TestLiteralExpression(t *testing.T) {
+	t.Parallel()
+
 	cases := []exprTestCase{
 		{hcl2Expr: "false", goCode: "false"},
 		{hcl2Expr: "true", goCode: "true"},
 		{hcl2Expr: "0", goCode: "0"},
 		{hcl2Expr: "3.14", goCode: "3.14"},
 		{hcl2Expr: "\"foo\"", goCode: "\"foo\""},
+		{hcl2Expr: `"foo: ${bar}"`, goCode: `fmt.Sprintf("foo: %v", bar)`},
+		{hcl2Expr: `"fizz${bar}buzz"`, goCode: `fmt.Sprintf("fizz%vbuzz", bar)`},
+		{hcl2Expr: `"foo ${bar} %baz"`, goCode: `fmt.Sprintf("foo %v %vbaz", bar, "%")`},
+		{hcl2Expr: strings.ReplaceAll(`"{
+    \"Version\": \"2008-10-17\",
+    \"Statement\": [
+        {
+            ${Sid}: ${newpolicy},
+            ${Effect}: ${Allow},
+            \"Principal\": \"*\",
+         }
+    ]
+}"`, "\n", "\\n"), goCode: "fmt.Sprintf(`" + `{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+            %v: %v,
+            %v: %v,
+            "Principal": "*",
+         }
+    ]
+}` + "`, Sid, newpolicy, Effect, Allow)"},
 	}
 	for _, c := range cases {
+		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, nil)
 	}
 }
 
 func TestBinaryOpExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.BoolType,
 		"b": model.BoolType,
@@ -79,6 +108,8 @@ func TestBinaryOpExpression(t *testing.T) {
 }
 
 func TestUnaryOpExrepssion(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.NumberType,
 		"b": model.BoolType,
@@ -99,6 +130,8 @@ func TestUnaryOpExrepssion(t *testing.T) {
 
 // nolint: lll
 func TestConditionalExpression(t *testing.T) {
+	t.Parallel()
+
 	cases := []exprTestCase{
 		{
 			hcl2Expr: "true ? 1 : 0",
@@ -118,8 +151,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
-		isInput := false
-		e, temps := g.lowerExpression(e, e.Type(), isInput)
+		e, temps := g.lowerExpression(e, e.Type())
 		g.genTemps(w, temps)
 		g.Fgenf(w, "%v", e)
 	}
@@ -129,6 +161,8 @@ func TestConditionalExpression(t *testing.T) {
 }
 
 func TestObjectConsExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.StringType,
 	})
@@ -162,6 +196,8 @@ func TestObjectConsExpression(t *testing.T) {
 }
 
 func TestTupleConsExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.StringType,
 	})
@@ -189,6 +225,7 @@ func TestTupleConsExpression(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
+		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }
@@ -200,8 +237,10 @@ func testGenerateExpression(
 	gen func(w io.Writer, g *generator, e model.Expression),
 ) {
 	t.Run(hcl2Expr, func(t *testing.T) {
+		t.Parallel()
+
 		// test program is only for schema info
-		g := newTestGenerator(t, "aws-s3-logging.pp")
+		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {

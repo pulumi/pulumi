@@ -17,17 +17,19 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newPolicyArgs{
 		interactive:       false,
@@ -42,12 +44,13 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	assert.FileExists(t, filepath.Join(tempdir, "index.ts"))
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newPolicyArgs{
 		interactive:       true,
@@ -61,6 +64,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	assert.FileExists(t, filepath.Join(tempdir, "index.js"))
 }
 
+//nolint:paralleltest // changes directory for process
 func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -68,11 +72,10 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.DirExists(t, tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		var args = newPolicyArgs{
 			interactive:       false,
@@ -82,16 +85,13 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 		err := runNewPolicyPack(args)
 		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assertNotFoundError(t, err)
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
-
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		var args = newPolicyArgs{
 			generateOnly:      true,
@@ -102,7 +102,14 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 		err := runNewPolicyPack(args)
 		assert.Error(t, err)
-
-		assert.Contains(t, err.Error(), "not found")
+		assertNotFoundError(t, err)
 	})
+}
+
+func assertNotFoundError(t *testing.T, err error) {
+	msg := err.Error()
+	if strings.Contains(msg, "not found") || strings.Contains(msg, "no such file or directory") {
+		return
+	}
+	assert.Failf(t, "Error message does not contain \"not found\" or \"no such file or directory\": %s", msg)
 }

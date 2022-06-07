@@ -16,9 +16,10 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -42,13 +43,14 @@ func newWhoAmICmd() *cobra.Command {
 				return err
 			}
 
-			name, err := b.CurrentUser()
+			name, orgs, err := b.CurrentUser()
 			if err != nil {
 				return err
 			}
 
 			if verbose {
 				fmt.Printf("User: %s\n", name)
+				fmt.Printf("Organizations: %s\n", strings.Join(orgs, ", "))
 				fmt.Printf("Backend URL: %s\n", b.URL())
 			} else {
 				fmt.Println(name)

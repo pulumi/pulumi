@@ -15,9 +15,9 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // UpdateMetadata describes optional metadata about an update.
@@ -88,6 +88,8 @@ const (
 
 	// ExecutionKind indicates how the update was executed. One of "cli", "auto.local", or "auto.inline".
 	ExecutionKind = "exec.kind"
+	// ExecutionAgent indicates the user agent of the updater for automated scenarios (GHA, Kubernetes Operator).
+	ExecutionAgent = "exec.agent"
 )
 
 // UpdateInfo describes a previous update.

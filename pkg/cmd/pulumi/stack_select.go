@@ -15,13 +15,15 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
@@ -80,7 +82,7 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(s.Ref().String())
 				}
 
-				return errors.Errorf("no stack named '%s' found", stackRef)
+				return fmt.Errorf("no stack named '%s' found", stackRef)
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.

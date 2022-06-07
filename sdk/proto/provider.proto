@@ -40,6 +40,9 @@ service ResourceProvider {
     // of responses.
     rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
 
+    // Call dynamically executes a method in the provider associated with a component resource.
+    rpc Call(CallRequest) returns (CallResponse) {}
+
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
     // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
     // inputs returned by a call to Check should preserve the original representation of the properties as present in
@@ -62,10 +65,17 @@ service ResourceProvider {
     // Construct creates a new instance of the provided component resource and returns its state.
     rpc Construct(ConstructRequest) returns (ConstructResponse) {}
 
-    // Cancel signals the provider to abort all outstanding resource operations.
+    // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+    // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+    // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+    // to the host to decide how long to wait after Cancel is called before (e.g.)
+    // hard-closing any gRPC connection.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+
+    // Attach sends the engine address to an already running plugin.
+    rpc Attach(PluginAttach) returns (google.protobuf.Empty)  {}
 }
 
 message GetSchemaRequest {
@@ -87,6 +97,7 @@ message ConfigureResponse {
     bool acceptSecrets = 1;   // when true, the engine should pass secrets as strongly typed values to the provider.
     bool supportsPreview = 2; // when true, the engine should invoke create and update with preview=true during previews.
     bool acceptResources = 3; // when true, the engine should pass resources as strongly typed values to the provider.
+    bool acceptOutputs = 4;   // when true, the engine should pass output values to the provider.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.
@@ -102,9 +113,12 @@ message ConfigureErrorMissingKeys {
 message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
-    string provider = 3;             // an optional reference to the provider to use for this invoke.
-    string version = 4;              // the version of the provider to use when servicing this request.
-    bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+
+    // We used to send ResourceInvokeRequest for both provider invokes and monitor invokes, despite them being
+    // different. We've now split them but need to make sure we don't confuse any old plugins/monitors making
+    // sure those fields don't get reused.
+    reserved 3 to 6;
+    reserved "provider", "version", "acceptResources", "pluginDownloadURL";
 }
 
 message InvokeResponse {
@@ -112,10 +126,44 @@ message InvokeResponse {
     repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
 }
 
+message CallRequest {
+    // ArgumentDependencies describes the resources that a particular argument depends on.
+    message ArgumentDependencies {
+        repeated string urns = 1; // A list of URNs this argument depends on.
+    }
+
+    string tok = 1;                                        // the function token to invoke.
+    google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
+    map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
+    string provider = 4;                                   // an optional reference to the provider to use for this invoke.
+    string version = 5;                                    // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
+
+    string project = 6;             // the project name.
+    string stack = 7;               // the name of the stack being deployed into.
+    map<string, string> config = 8; // the configuration variables to apply before running.
+    repeated string configSecretKeys = 9; // the configuration keys that have secret values.
+    bool dryRun = 10;                // true if we're only doing a dryrun (preview).
+    int32 parallel = 11;            // the degree of parallelism for resource operations (<=1 for serial).
+    string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
+}
+
+message CallResponse {
+    // ReturnDependencies describes the resources that a particular return value depends on.
+    message ReturnDependencies {
+        repeated string urns = 1; // A list of URNs this return value depends on.
+    }
+
+    google.protobuf.Struct return = 1;                      // the returned values, if call was successful.
+    map<string, ReturnDependencies> returnDependencies = 2; // a map from return value keys to the dependencies of the return value.
+    repeated CheckFailure failures = 3;                     // the failures if any arguments didn't pass verification.
+}
+
 message CheckRequest {
     string urn = 1;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
     google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
+    int32 sequenceNumber = 4;        // the sequence number for this resource, or 0 if sequence is unknown.
 }
 
 message CheckResponse {
@@ -269,6 +317,7 @@ message ConstructRequest {
     map<string, string> providers = 13;                       // the map of providers to use for this resource's children.
     repeated string aliases = 14;                             // a list of additional URNs that shoud be considered the same.
     repeated string dependencies = 15;                        // a list of URNs that this resource depends on, as observed by the language host.
+    repeated string configSecretKeys = 16; // the configuration keys that have secret values.
 }
 
 message ConstructResponse {

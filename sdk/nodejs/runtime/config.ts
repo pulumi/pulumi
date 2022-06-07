@@ -18,6 +18,12 @@
 const configEnvKey = "PULUMI_CONFIG";
 
 /**
+ * configSecretKeysEnvKey is the environment variable key that the language plugin uses to set configuration keys that
+ * contain secrets.
+ */
+const configSecretKeysEnvKey = "PULUMI_CONFIG_SECRET_KEYS";
+
+/**
  * allConfig returns a copy of the full config map.
  */
 export function allConfig(): {[key: string]: string} {
@@ -28,12 +34,12 @@ export function allConfig(): {[key: string]: string} {
 /**
  * setAllConfig overwrites the config map.
  */
-export function setAllConfig(c: {[key: string]: string}) {
+export function setAllConfig(c: {[key: string]: string}, secretKeys?: string[]) {
     const obj: {[key: string]: string} = {};
     for (const k of Object.keys(c)) {
         obj[cleanKey(k)] = c[k];
     }
-    persistConfig(obj);
+    persistConfig(obj, secretKeys);
 }
 
 /**
@@ -42,7 +48,7 @@ export function setAllConfig(c: {[key: string]: string}) {
 export function setConfig(k: string, v: string): void {
     const config = parseConfig();
     config[cleanKey(k)] = v;
-    persistConfig(config)
+    persistConfig(config, []);
 }
 
 /**
@@ -51,6 +57,21 @@ export function setConfig(k: string, v: string): void {
 export function getConfig(k: string): string | undefined {
     const config = parseConfig();
     return config[k];
+}
+
+/**
+ * isConfigSecret returns true if the key contains a secret value.
+ * @internal
+ */
+export function isConfigSecret(k: string): boolean {
+    const envConfigSecretKeys = process.env[configSecretKeysEnvKey];
+    if (envConfigSecretKeys) {
+        const envConfigSecretArray = JSON.parse(envConfigSecretKeys);
+        if (Array.isArray(envConfigSecretArray)) {
+            return envConfigSecretArray.includes(k);
+        }
+    }
+    return false;
 }
 
 /**
@@ -76,9 +97,11 @@ function parseConfig() {
  * config changes must always be persisted to the environment because automation api introduces
  * new program lifetime semantics where program lifetime != module lifetime.
  */
-function persistConfig(config: {[key: string]: string}) {
+function persistConfig(config: {[key: string]: string}, secretKeys?: string[]) {
     const serializedConfig = JSON.stringify(config);
+    const serializedSecretKeys = Array.isArray(secretKeys) ? JSON.stringify(secretKeys) : "[]";
     process.env[configEnvKey] = serializedConfig;
+    process.env[configSecretKeysEnvKey] = serializedSecretKeys;
 }
 
 /**

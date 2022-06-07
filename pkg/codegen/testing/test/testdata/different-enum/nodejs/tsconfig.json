@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "outDir": "bin",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
+    },
+    "files": [
+        "index.ts",
+        "provider.ts",
+        "tree/index.ts",
+        "tree/v1/index.ts",
+        "tree/v1/nursery.ts",
+        "tree/v1/rubberTree.ts",
+        "types/enums/index.ts",
+        "types/enums/tree/index.ts",
+        "types/enums/tree/v1/index.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
+        "utilities.ts"
+    ]
+}

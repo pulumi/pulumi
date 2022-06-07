@@ -1,0 +1,105 @@
+dist: goreleaser
+
+project_name: pulumi
+
+release:
+  disable: true
+
+changelog:
+  skip: true
+
+builds:
+
+- id: pulumi
+  binary: pulumi
+  dir: pkg
+  main: ./cmd/pulumi
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-nodejs
+  binary: pulumi-language-nodejs
+  dir: sdk
+  main: ./nodejs/cmd/pulumi-language-nodejs
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-python
+  binary: pulumi-language-python
+  dir: sdk
+  main: ./python/cmd/pulumi-language-python
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-dotnet
+  binary: pulumi-language-dotnet
+  dir: sdk
+  main: ./dotnet/cmd/pulumi-language-dotnet
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-go
+  binary: pulumi-language-go
+  dir: sdk
+  main: ./go/pulumi-language-go
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+
+snapshot:
+  name_template: "{{ .Version }}-SNAPSHOT"
+
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"

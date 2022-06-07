@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,13 +28,13 @@ class FirstClassProviderTest(LanghostTest):
             program=path.join(self.base_path(), "first_class_provider"),
             expected_resource_count=2)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if name == "testprov":
             # Provider resource.
             self.assertEqual("pulumi:providers:test", ty)
-            self.assertEqual("", provider)
+            self.assertEqual("", _provider)
             self.prov_urn = self.make_urn(ty, name)
             self.prov_id = "testid"
             return {
@@ -50,10 +50,9 @@ class FirstClassProviderTest(LanghostTest):
 
             # The provider reference is created by concatenating the URN and ID of the referenced provider.
             # The language host is responsible for doing this, since the engine will parse this identifier.
-            self.assertEqual(f"{self.prov_urn}::{self.prov_id}", provider)
+            self.assertEqual(f"{self.prov_urn}::{self.prov_id}", _provider)
             return {
                 "urn": self.make_urn(ty, name)
             }
 
         self.fail(f"unexpected resource: {name} ({ty})")
-        return None

@@ -19,27 +19,27 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // useLegacyName are names that should return the result of PyNameLegacy from PyName, for compatibility.
-var useLegacyName = codegen.StringSet{
+var useLegacyName = codegen.NewStringSet(
 	// The following property name of a nested type is a case where the newer algorithm produces an incorrect name
 	// (`open_xjson_ser_de`). It should be the legacy name of `open_x_json_ser_de`.
 	// TODO[pulumi/pulumi#5199]: We should see if we can fix this in the algorithm of PyName so it doesn't need to
 	// be special-cased in this set.
-	"openXJsonSerDe": struct{}{}, // AWS
+	"openXJsonSerDe", // AWS
 
 	// The following function name has already shipped with the legacy name (`get_public_i_ps`).
 	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_public_ips`)
 	// and another function with the legacy name (`get_public_i_ps`) marked as deprecated.
-	"GetPublicIPs": struct{}{}, // Azure
+	"GetPublicIPs", // Azure
 
 	// The following function name has already shipped with the legacy name (`get_uptime_check_i_ps`).
 	// TODO[pulumi/pulumi#5200]: Consider emitting two functions: one with the correct name (`get_uptime_check_ips`)
 	// and another function with the legacy name (`get_uptime_check_i_ps`) marked as deprecated.
-	"GetUptimeCheckIPs": struct{}{}, // GCP
-}
+	"GetUptimeCheckIPs", // GCP
+)
 
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func PyName(name string) string {
@@ -105,6 +105,12 @@ func pyName(name string, legacy bool) string {
 
 	var result strings.Builder           // The components of the name, joined together with underscores.
 	var currentComponent strings.Builder // The characters composing the current component being built
+
+	// Preallocate enough space for the name + 5 underscores. '5' is based on a wild guess that most names will consist
+	// of 5 or fewer words.
+	result.Grow(len(name) + 5)
+	currentComponent.Grow(len(name) + 5)
+
 	state := stateFirst
 	for _, char := range name {
 		// If this is an illegal character for a Python identifier, replace it.

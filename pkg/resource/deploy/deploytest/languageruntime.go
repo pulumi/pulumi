@@ -17,9 +17,9 @@ package deploytest
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
@@ -64,4 +64,8 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 
 func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
+}
+
+func (p *languageRuntime) InstallDependencies(directory string) error {
+	return nil
 }

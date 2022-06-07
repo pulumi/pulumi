@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example::Dog": {
+      "properties": {
+        "bone": {
+          "type": "string",
+          "replaceOnChanges": true
+        }
+      }
+    }
+  }
+}

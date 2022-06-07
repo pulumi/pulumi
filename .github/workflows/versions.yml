@@ -1,0 +1,34 @@
+name: Computes current build versions
+
+on:
+  workflow_call:
+    inputs: {}
+    secrets: {}
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  compute_versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
+      - name: Compute versions
+        run: ./scripts/versions.sh | tee versions.txt
+      - name: Upload versions.txt as an artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: versions.txt
+          path: versions.txt

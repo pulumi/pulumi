@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
@@ -26,12 +26,13 @@ func newStackHistoryCmd() *cobra.Command {
 	var showSecrets bool
 	var pageSize int
 	var page int
+	var showFullDates bool
 
 	cmd := &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
-		Short:      "[PREVIEW] Display history for a stack",
+		Short:      "Display history for a stack",
 		Long: `Display history for a stack
 
 This command displays data about previous updates for a stack.`,
@@ -46,22 +47,26 @@ This command displays data about previous updates for a stack.`,
 			b := s.Backend()
 			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
 			if err != nil {
-				return errors.Wrap(err, "getting history")
+				return fmt.Errorf("getting history: %w", err)
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
 				crypter, err := getStackDecrypter(s)
 				if err != nil {
-					return errors.Wrap(err, "decrypting secrets")
+					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				decrypter = crypter
+			}
+
+			if showSecrets {
+				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack history")
 			}
 
 			if jsonOut {
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts)
+			return displayUpdatesConsole(updates, page, opts, showFullDates)
 		}),
 	}
 
@@ -73,10 +78,12 @@ This command displays data about previous updates for a stack.`,
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().BoolVar(
+		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
 	cmd.PersistentFlags().IntVar(
-		&pageSize, "page-size", 0, "Used with 'page' to control number of results returned")
+		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
 	cmd.PersistentFlags().IntVar(
-		&page, "page", 0, "Used with 'page-size' to paginate results")
+		&page, "page", 1, "Used with 'page-size' to paginate results")
 	return cmd
 }
 
@@ -151,7 +158,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 	return printJSON(updatesJSON)
 }
 
-func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options) error {
+func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool) error {
 	if len(updates) == 0 {
 		if page > 1 {
 			fmt.Printf("No stack updates found on page '%d'\n", page)
@@ -182,7 +189,12 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		printResourceChanges(colors.BlueBackground, colors.Black, " ", colors.Reset, update.ResourceChanges["same"])
 
 		timeStart := time.Unix(update.StartTime, 0)
-		timeCreated := humanize.Time(timeStart)
+		var timeCreated string
+		if noHumanize {
+			timeCreated = timeStart.String()
+		} else {
+			timeCreated = humanize.Time(timeStart)
+		}
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
 		fmt.Printf("%sUpdated %s took %s\n", " ", timeCreated, duration)

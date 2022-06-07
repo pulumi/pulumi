@@ -18,12 +18,14 @@ package dotnet
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
 var testPackageSpec = schema.PackageSpec{
 	Name:        "aws",
+	Version:     "0.0.1",
 	Description: "A fake provider package used for testing.",
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
@@ -66,6 +68,8 @@ func getTestPackage(t *testing.T) *schema.Package {
 }
 
 func TestGetDocLinkForResourceType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 
 	d := DocLanguageHelper{}
@@ -75,6 +79,8 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 }
 
 func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 
 	namespaces := map[string]string{
@@ -85,8 +91,8 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	}
 	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html"
 	// Generate the type string for the property type and use that to generate the doc link.
-	propertyType := pkg.Resources[0].InputProperties[0].Type
-	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true, true)
+	propertyType := codegen.UnwrapType(pkg.Resources[0].InputProperties[0].Type)
+	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true)
 	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "doesNotMatter", typeString, true)
 	assert.Equal(t, expected, link)
 }

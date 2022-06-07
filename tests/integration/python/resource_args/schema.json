@@ -1,0 +1,43 @@
+{
+    "version": "0.0.1",
+    "name": "example",
+    "resources": {
+        "example::Foo": {
+            "properties": {
+                "first": {
+                    "type": "integer"
+                },
+                "second": {
+                    "type": "string"
+                },
+                "third": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "string"
+                }
+            },
+            "inputProperties": {
+                "first": {
+                    "type": "integer"
+                },
+                "second": {
+                    "type": "string"
+                },
+                "third": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "language": {
+        "csharp": {},
+        "go": {},
+        "nodejs": {},
+        "python": {}
+    }
+}

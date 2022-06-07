@@ -28,15 +28,14 @@ describe("runtime", () => {
         describe("register", () => {
             const tests = [
                 { name: "wildcard version", version: undefined },
-                { name: "blank version", version: "" },
                 { name: "version", version: "1.2.3" },
                 { name: "alpha version", version: "1.0.0-alpha1" },
             ];
             for (const { name, version } of tests) {
-                it(`throws on same ${name}`, () => {
+                it(`ignores registration on same ${name}`, () => {
                     const source = new Map<string, runtime.ResourceModule[]>();
-                    runtime.register(source, rt, "test", { version, construct });
-                    assert.throws(() => runtime.register(source, rt, "test", { version, construct }));
+                    assert.strictEqual(runtime.register(source, rt, "test", { version, construct }), true);
+                    assert.strictEqual(runtime.register(source, rt, "test", { version, construct }), false);
                 });
             }
         });

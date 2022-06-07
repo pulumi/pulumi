@@ -17,7 +17,7 @@ package codegen
 import (
 	"github.com/pgavlin/goldmark/ast"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
@@ -29,12 +29,16 @@ type DocLanguageHelper interface {
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
 	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
+	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string
 
 	GetFunctionName(modName string, f *schema.Function) string
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
+
+	GetMethodName(m *schema.Method) string
+	GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource, m *schema.Method) string
+
 	// GetModuleDocLink returns the display name and the link for a module (including root modules) in a given package.
 	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)
 }

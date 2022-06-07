@@ -28,6 +28,9 @@ service LanguageRuntime {
     rpc Run(RunRequest) returns (RunResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+
+    // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+    rpc  InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 }
 
 message GetRequiredPluginsRequest {
@@ -51,7 +54,8 @@ message RunRequest {
     bool dryRun = 7;                // true if we're only doing a dryrun (preview).
     int32 parallel = 8;             // the degree of parallelism for resource operations (<=1 for serial).
     string monitor_address = 9;     // the address for communicating back to the resource monitor.
-    bool queryMode = 10;     // true if we're only doing a query.
+    bool queryMode = 10;            // true if we're only doing a query.
+    repeated string configSecretKeys = 11; // the configuration keys that have secret values.
 }
 
 // RunResponse is the response back from the interpreter/source back to the monitor.
@@ -63,4 +67,14 @@ message RunResponse {
     // with nothing further to print to the user.  This corresponds to a "result.Bail()"
     // value in the 'go' layer.
     bool bail = 2;
+}
+
+message InstallDependenciesRequest {
+    string directory = 1; // the program's working directory.
+    bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
+}
+
+message InstallDependenciesResponse {
+    bytes stdout = 1; // a line of stdout text.
+    bytes stderr = 2; // a line of stderr text.
 }

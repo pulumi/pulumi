@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class GeneralJsonConverterTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void CanDeserializeConfigValue()
@@ -18,11 +18,11 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     ""aws:region"": {
         ""value"": ""us-east-1"",
-        ""secret"": false,
+        ""secret"": false
     },
     ""project:name"": {
         ""value"": ""test"",
-        ""secret"": true,
+        ""secret"": true
     }
 }
 ";
@@ -87,7 +87,8 @@ namespace Pulumi.Automation.Tests.Serialization
     ""result"": ""in-progress"",
     ""endTime"": ""2021-01-07T17:09:14.000Z"",
     ""resourceChanges"": {
-        ""delete"": 3
+        ""delete"": 3,
+        ""discard"": 1
     }
   },
   {
@@ -124,9 +125,12 @@ namespace Pulumi.Automation.Tests.Serialization
             Assert.Equal(UpdateKind.Destroy, destroy.Kind);
             Assert.Equal(UpdateState.InProgress, destroy.Result);
             Assert.NotNull(destroy.ResourceChanges);
-            Assert.Equal(1, destroy.ResourceChanges!.Count);
+            Assert.Equal(2, destroy.ResourceChanges!.Count);
             Assert.True(destroy.ResourceChanges.TryGetValue(OperationType.Delete, out var deletedCount));
             Assert.Equal(3, deletedCount);
+            Assert.True(destroy.ResourceChanges.TryGetValue(OperationType.ReadDiscard, out var discardCount));
+            Assert.Equal(1, discardCount);
+
 
             var update = history[1];
             Assert.Equal(UpdateKind.Update, update.Kind);

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const unableToFindProgramTemplate = "unable to find program: %s"
@@ -32,18 +32,24 @@ func FindExecutable(program string) (string, error) {
 		return cwdProgram, nil
 	}
 
-	// look in $GOPATH/bin
+	// look in potentials $GOPATH/bin
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		goPathProgram := filepath.Join(goPath, "bin", program)
-		fileInfo, err := os.Stat(goPathProgram)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return "", errors.Wrapf(err, "unable to find program in %q", goPathProgram)
+		// splitGoPath will return a list of paths in which to look for the binary.
+		// Because the GOPATH can take the form of multiple paths (https://golang.org/cmd/go/#hdr-GOPATH_environment_variable)
+		// we need to split the GOPATH, and look into each of the paths.
+		// If the GOPATH hold only one path, there will only be one element in the slice.
+		goPathParts := splitGoPath(goPath, runtime.GOOS)
+		for _, pp := range goPathParts {
+			goPathProgram := filepath.Join(pp, "bin", program)
+			fileInfo, err := os.Stat(goPathProgram)
+			if err != nil && !os.IsNotExist(err) {
+				return "", err
 			}
-		}
-		if fileInfo != nil && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
-			return goPathProgram, nil
+
+			if fileInfo != nil && !fileInfo.Mode().IsDir() {
+				logging.V(5).Infof("program %s found in %s/bin", program, pp)
+				return goPathProgram, nil
+			}
 		}
 	}
 
@@ -54,4 +60,16 @@ func FindExecutable(program string) (string, error) {
 	}
 
 	return "", errors.Errorf(unableToFindProgramTemplate, program)
+}
+
+func splitGoPath(goPath string, os string) []string {
+	var sep string
+	switch os {
+	case "windows":
+		sep = ";"
+	case "linux", "darwin":
+		sep = ":"
+	}
+
+	return strings.Split(goPath, sep)
 }

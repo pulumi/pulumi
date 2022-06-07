@@ -31,9 +31,10 @@ const (
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
 
-// Command returns an *exec.Cmd for running `python`. If the `PULUMI_PYTHON_CMD` variable is set
-// it will be looked for on `PATH`, otherwise, `python3` and `python` will be looked for.
-func Command(arg ...string) (*exec.Cmd, error) {
+// Find the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
+// variable is set it will be looked for on `PATH`, otherwise, `python3` and
+// `python` will be looked for.
+func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 	var err error
 	var pythonCmds []string
 
@@ -65,12 +66,22 @@ func Command(arg ...string) (*exec.Cmd, error) {
 			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
 		}
 		if err != nil {
-			return nil, errors.Errorf(
+			return "", "", errors.Errorf(
 				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 				pythonCmds)
 		}
 	}
+	return pythonPath, pythonCmd, nil
 
+}
+
+// Command returns an *exec.Cmd for running `python`. Uses `ComandPath`
+// internally to find the correct executable.
+func Command(arg ...string) (*exec.Cmd, error) {
+	pythonPath, pythonCmd, err := CommandPath()
+	if err != nil {
+		return nil, err
+	}
 	if needsPythonShim(pythonPath) {
 		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
 		return exec.Command(shimCmd, arg...), nil
@@ -218,7 +229,10 @@ func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoW
 	print("Creating virtual environment...")
 
 	// Create the virtual environment by running `python -m venv <venvDir>`.
-	venvDir = filepath.Join(root, venvDir)
+	if !filepath.IsAbs(venvDir) {
+		venvDir = filepath.Join(root, venvDir)
+	}
+
 	cmd, err := Command("-m", "venv", venvDir)
 	if err != nil {
 		return err

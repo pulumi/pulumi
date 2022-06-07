@@ -19,12 +19,11 @@
 package docs
 
 import (
-	"encoding/json"
-	"strings"
+	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,11 +56,12 @@ var (
 func initTestPackageSpec(t *testing.T) {
 	t.Helper()
 
-	pythonMapCase := map[string]json.RawMessage{
-		"python": json.RawMessage(`{"mapCase":false}`),
+	pythonMapCase := map[string]schema.RawMessage{
+		"python": schema.RawMessage(`{"mapCase":false}`),
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,
+		Version:     "0.0.1",
 		Description: "A fake provider package used for testing.",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
@@ -129,7 +129,95 @@ func initTestPackageSpec(t *testing.T) {
 				},
 			},
 		},
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Description: fmt.Sprintf("The provider type for the %s package.", providerPackage),
+				Type:        "object",
+			},
+			InputProperties: map[string]schema.PropertySpec{
+				"stringProp": {
+					Description: "A stringProp for the provider resource.",
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
+			"prov:module2/resource2:Resource2": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: `This is a module-level resource called Resource.
+{{% examples %}}
+## Example Usage
+
+{{% example %}}
+### Basic Example
+
+` + codeFence + `typescript
+					// Some TypeScript code.
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% example %}}
+### Custom Sub-Domain Example
+
+` + codeFence + `typescript
+					// Some typescript code
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% /examples %}}
+
+## Import
+
+The import docs would be here
+
+` + codeFence + `sh
+$ pulumi import prov:module/resource:Resource test test
+` + codeFence + `
+`,
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"integerProp": {
+						Description: "This is integerProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "integer",
+						},
+					},
+					"stringProp": {
+						Description: "This is stringProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+					"boolProp": {
+						Description: "A bool prop.",
+						TypeSpec: schema.TypeSpec{
+							Type: "boolean",
+						},
+					},
+					"optionsProp": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+					"options2Prop": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions2:ResourceOptions2",
+						},
+					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+				},
+			},
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: `This is a module-level resource called Resource.
@@ -158,12 +246,12 @@ func initTestPackageSpec(t *testing.T) {
 {{% /example %}}
 {{% /examples %}}
 
-## Import 
+## Import
 
 The import docs would be here
 
 ` + codeFence + `sh
-$ pulumi import prov:module/resource:Resource test test		
+$ pulumi import prov:module/resource:Resource test test
 ` + codeFence + `
 `,
 				},
@@ -264,86 +352,6 @@ $ pulumi import prov:module/resource:Resource test test
 	}
 }
 
-// TestResourceNestedPropertyPythonCasing tests that the properties
-// of a nested object have the expected casing.
-func TestResourceNestedPropertyPythonCasing(t *testing.T) {
-	initTestPackageSpec(t)
-
-	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
-	assert.NoError(t, err, "importing spec")
-
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
-	mod := modules["module"]
-	for _, r := range mod.resources {
-		nestedTypes := mod.genNestedTypes(r, true)
-		if len(nestedTypes) == 0 {
-			t.Error("did not find any nested types")
-			return
-		}
-
-		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, false, false)
-			for _, p := range props {
-				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
-			}
-		})
-
-		// Non-unique nested properties are ones that have names that occur as direct input properties
-		// of the resource or elsewhere in the package and are mapped as snake_case even if the property
-		// itself has a "Language" spec with the `MapCase` value of `false`.
-		t.Run("NonUniqueNestedProperties", func(t *testing.T) {
-			n := nestedTypes[0]
-			assert.Equal(t, "Resource<wbr>Options", n.Name, "got %v instead of Resource<wbr>Options", n.Name)
-
-			pyProps := n.Properties["python"]
-			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions:ResourceOptions"]
-			if !ok {
-				t.Error("sample schema package spec does not contain known object type")
-				return
-			}
-
-			for name := range nestedObject.Properties {
-				found := false
-				pyName := python.PyName(name)
-				for _, prop := range pyProps {
-					if prop.Name == pyName {
-						found = true
-						break
-					}
-				}
-
-				assert.True(t, found, "expected to find %q", pyName)
-			}
-		})
-
-		// Unique nested properties are those that only appear inside a nested object and should also be snake_cased.
-		t.Run("UniqueNestedProperties", func(t *testing.T) {
-			n := nestedTypes[1]
-			assert.Equal(t, "Resource<wbr>Options2", n.Name, "got %v instead of Resource<wbr>Options2", n.Name)
-
-			pyProps := n.Properties["python"]
-			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions2:ResourceOptions2"]
-			if !ok {
-				t.Error("sample schema package spec does not contain known object type")
-				return
-			}
-
-			for name := range nestedObject.Properties {
-				found := false
-				pyName := python.PyName(name)
-				for _, prop := range pyProps {
-					if prop.Name == pyName {
-						found = true
-						break
-					}
-				}
-
-				assert.True(t, found, "expected to find %q", name)
-			}
-		})
-	}
-}
-
 func getResourceFromModule(resource string, mod *modContext) *schema.Resource {
 	for _, r := range mod.resources {
 		if resourceName(r) != resource {
@@ -365,6 +373,9 @@ func getFunctionFromModule(function string, mod *modContext) *schema.Function {
 }
 
 func TestFunctionHeaders(t *testing.T) {
+	t.Parallel()
+
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -391,9 +402,12 @@ func TestFunctionHeaders(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
+		test := test
 		t.Run(test.FunctionName, func(t *testing.T) {
+			t.Parallel()
+
 			mod, ok := modules[test.ModuleName]
 			if !ok {
 				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
@@ -411,6 +425,9 @@ func TestFunctionHeaders(t *testing.T) {
 }
 
 func TestResourceDocHeader(t *testing.T) {
+	t.Parallel()
+
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -440,9 +457,12 @@ func TestResourceDocHeader(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
+		test := test
 		t.Run(test.Name, func(t *testing.T) {
+			t.Parallel()
+
 			mod, ok := modules[test.ModuleName]
 			if !ok {
 				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
@@ -460,10 +480,13 @@ func TestResourceDocHeader(t *testing.T) {
 }
 
 func TestExamplesProcessing(t *testing.T) {
+	t.Parallel()
+
 	initTestPackageSpec(t)
+	dctx := newDocGenContext()
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
-	docInfo := decomposeDocstring(description)
+	docInfo := dctx.decomposeDocstring(description)
 	examplesSection := docInfo.examples
 	importSection := docInfo.importDetails
 
@@ -486,4 +509,20 @@ func TestExamplesProcessing(t *testing.T) {
 			assert.Contains(t, "Coming soon!", snippet)
 		}
 	}
+}
+
+func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	dctx := newDocGenContext()
+	dctx.initialize(tool, pkg)
+	return dctx.generatePackage(tool, pkg)
+}
+
+func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "docs",
+		GenPackage: generatePackage,
+		TestCases:  test.PulumiPulumiSDKTests,
+	})
 }

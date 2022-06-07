@@ -4,16 +4,19 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Pulumi.Automation.Events;
 
 namespace Pulumi.Automation.Commands
 {
     internal interface IPulumiCmd
     {
         Task<CommandResult> RunAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
-            IDictionary<string, string> additionalEnv,
-            Action<string>? onOutput = null,
+            IDictionary<string, string?> additionalEnv,
+            Action<string>? onStandardOutput = null,
+            Action<string>? onStandardError = null,
+            Action<EngineEvent>? onEngineEvent = null,
             CancellationToken cancellationToken = default);
     }
 }

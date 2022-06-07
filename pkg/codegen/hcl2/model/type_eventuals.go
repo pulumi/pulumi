@@ -69,7 +69,7 @@ func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type
 			}
 			elementTypes[i] = element
 		}
-		return NewUnionType(elementTypes...), transform
+		return NewUnionTypeAnnotated(elementTypes, t.Annotations...), transform
 	case *ObjectType:
 		transform := makeIdentity
 		if already, ok := seen[t]; ok {
@@ -267,10 +267,6 @@ func inputTypeImpl(t Type, seen map[Type]Type) Type {
 		return t
 	}
 
-	if already, ok := seen[t]; ok {
-		return already
-	}
-
 	var src Type
 	switch t := t.(type) {
 	case *OutputType:
@@ -286,8 +282,12 @@ func inputTypeImpl(t Type, seen map[Type]Type) Type {
 		for i, t := range t.ElementTypes {
 			elementTypes[i] = inputTypeImpl(t, seen)
 		}
-		src = NewUnionType(elementTypes...)
+		src = NewUnionTypeAnnotated(elementTypes, t.Annotations...)
 	case *ObjectType:
+		if already, ok := seen[t]; ok {
+			return already
+		}
+
 		properties := map[string]Type{}
 		src = NewObjectType(properties, t.Annotations...)
 		seen[t] = src

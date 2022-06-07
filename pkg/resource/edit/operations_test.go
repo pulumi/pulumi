@@ -18,13 +18,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v2/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -71,6 +71,8 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 }
 
 func TestDeletion(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -89,6 +91,8 @@ func TestDeletion(t *testing.T) {
 }
 
 func TestFailedDeletionProviderDependency(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -115,6 +119,8 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 }
 
 func TestFailedDeletionRegularDependency(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA, a.URN)
@@ -142,6 +148,8 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 }
 
 func TestFailedDeletionProtected(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	a.Protect = true
@@ -157,6 +165,8 @@ func TestFailedDeletionProtected(t *testing.T) {
 }
 
 func TestFailedDeletionParentDependency(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -186,6 +196,8 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 }
 
 func TestUnprotectResource(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	a.Protect = true
@@ -206,6 +218,8 @@ func TestUnprotectResource(t *testing.T) {
 }
 
 func TestLocateResourceNotFound(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -224,6 +238,8 @@ func TestLocateResourceNotFound(t *testing.T) {
 }
 
 func TestLocateResourceAmbiguous(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -245,6 +261,8 @@ func TestLocateResourceAmbiguous(t *testing.T) {
 }
 
 func TestLocateResourceExact(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -262,6 +280,8 @@ func TestLocateResourceExact(t *testing.T) {
 }
 
 func TestRenameStack(t *testing.T) {
+	t.Parallel()
+
 	pA := NewProviderResource("a", "p1", "0")
 	a := NewResource("a", pA)
 	b := NewResource("b", pA)
@@ -287,8 +307,9 @@ func TestRenameStack(t *testing.T) {
 	assert.EqualValues(t, "test", baselineResourceURN.Project())
 
 	// Rename just the stack.
+	//nolint:paralleltest // uses shared stack
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(snap, tokens.QName("new-stack"), tokens.PackageName(""))
+		err := RenameStack(snap, tokens.Name("new-stack"), tokens.PackageName(""))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -306,8 +327,9 @@ func TestRenameStack(t *testing.T) {
 	})
 
 	// Rename the stack and project.
+	//nolint:paralleltest // uses shared stack
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(snap, tokens.QName("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(snap, tokens.Name("new-stack2"), tokens.PackageName("new-project"))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}

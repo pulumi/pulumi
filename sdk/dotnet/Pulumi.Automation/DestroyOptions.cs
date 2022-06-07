@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
-
 namespace Pulumi.Automation
 {
     /// <summary>
@@ -10,7 +8,5 @@ namespace Pulumi.Automation
     public sealed class DestroyOptions : UpdateOptions
     {
         public bool? TargetDependents { get; set; }
-
-        public Action<string>? OnOutput { get; set; }
     }
 }

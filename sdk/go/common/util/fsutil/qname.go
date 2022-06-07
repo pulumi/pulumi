@@ -18,10 +18,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // QnamePath just cleans a name and makes sure it's appropriate to use as a path.
 func QnamePath(nm tokens.QName) string {
 	return strings.Replace(string(nm), tokens.QNameDelimiter, string(os.PathSeparator), -1)
+}
+
+// NamePath just cleans a name and makes sure it's appropriate to use as a path.
+func NamePath(nm tokens.Name) string {
+	// Currently this is a no-op because the set of chars allowed in a Name [A-Za-z0-9_.-] are also
+	// valid file names
+	return string(nm)
 }

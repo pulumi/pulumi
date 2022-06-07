@@ -15,17 +15,17 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
@@ -70,7 +70,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
 		}
 
-		return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))
+		return nil, fmt.Errorf("unknown stack type %s", reflect.TypeOf(s))
 	}()
 	if err != nil {
 		return nil, err
@@ -86,9 +86,8 @@ func validateSecretsProvider(typ string) error {
 			return nil
 		}
 	}
-	return errors.Errorf(
-		"unknown secrets provider type '%s' (supported values: %s)",
+	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,
-		strings.Join(supportedKinds, ","),
-	)
+		strings.Join(supportedKinds, ","))
+
 }

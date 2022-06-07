@@ -23,8 +23,9 @@ package pulumirpc;
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
-    rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
-    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+    rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
+    rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
+    rpc Call(CallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
@@ -60,6 +61,7 @@ message ReadResourceRequest {
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
     repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -102,6 +104,10 @@ message RegisterResourceRequest {
     bool supportsPartialValues = 19;                            // true if the request is from an SDK that supports partially-known properties during preview.
     bool remote = 20;                                           // true if the resource is a plugin-managed component resource.
     bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
+    map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
+    repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
+    string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
+    bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -124,4 +130,13 @@ message RegisterResourceResponse {
 message RegisterResourceOutputsRequest {
     string urn = 1;                     // the URN for the resource to attach output properties to.
     google.protobuf.Struct outputs = 2; // additional output properties to add to the existing resource.
+}
+
+message ResourceInvokeRequest {
+    string tok = 1;                  // the function token to invoke.
+    google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider version to use for this invoke.
+    string version = 4;              // the version of the provider to use when servicing this request.
+    bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
 }

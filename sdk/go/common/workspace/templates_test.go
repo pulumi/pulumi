@@ -23,6 +23,8 @@ import (
 )
 
 func TestGetValidDefaultProjectName(t *testing.T) {
+	t.Parallel()
+
 	// Valid names remain the same.
 	for _, name := range getValidProjectNamePrefixes() {
 		assert.Equal(t, name, getValidProjectName(name))
@@ -75,6 +77,7 @@ func getValidProjectNamePrefixes() []string {
 	return results
 }
 
+//nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveNonExistingTemplate(t *testing.T) {
 	tests := []struct {
 		testName     string
@@ -92,13 +95,17 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 
 	templateName := "not-the-template-that-exists-in-pulumi-repo-nor-on-disk"
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := RetrieveTemplates(templateName, false, tt.templateKind)
 			assert.NotNil(t, err)
 		})
 	}
 }
 
+//nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveStandardTemplate(t *testing.T) {
 	tests := []struct {
 		testName     string
@@ -118,6 +125,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(tt.templateName, false, tt.templateKind)
 			assert.Nil(t, err)
@@ -135,6 +143,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveHttpsTemplate(t *testing.T) {
 	tests := []struct {
 		testName        string
@@ -146,20 +155,21 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 		{
 			testName:        "TemplateKindPulumiProject",
 			templateKind:    TemplateKindPulumiProject,
-			templateURL:     "https://github.com/pulumi/pulumi-aws/tree/master/examples/minimal",
+			templateURL:     "https://github.com/pulumi/pulumi/tree/test-examples/examples/minimal",
 			yamlFile:        "Pulumi.yaml",
 			expectedSubPath: []string{"examples", "minimal"},
 		},
 		{
 			testName:        "TemplateKindPolicyPack",
 			templateKind:    TemplateKindPolicyPack,
-			templateURL:     "https://github.com/pulumi/examples/tree/master/policy-packs/aws-ts-advanced",
+			templateURL:     "https://github.com/pulumi/pulumi/tree/test-examples/examples/policy-packs/aws-ts-advanced",
 			yamlFile:        "PulumiPolicy.yaml",
-			expectedSubPath: []string{"policy-packs", "aws-ts-advanced"},
+			expectedSubPath: []string{"examples", "policy-packs", "aws-ts-advanced"},
 		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(tt.templateURL, false, tt.templateKind)
 			assert.Nil(t, err)
@@ -189,6 +199,8 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 }
 
 func TestRetrieveHttpsTemplateOffline(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		testName     string
 		templateKind TemplateKind
@@ -207,13 +219,17 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
 			_, err := RetrieveTemplates(tt.templateURL, true, tt.templateKind)
 			assert.NotNil(t, err)
 		})
 	}
 }
 
+//nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveFileTemplate(t *testing.T) {
 	tests := []struct {
 		testName     string
@@ -230,6 +246,7 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
 			repository, err := RetrieveTemplates(".", false, tt.templateKind)
 			assert.Nil(t, err)
@@ -243,6 +260,8 @@ func TestRetrieveFileTemplate(t *testing.T) {
 }
 
 func TestProjectNames(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		testName    string
 		projectName string
@@ -291,7 +310,10 @@ func TestProjectNames(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
+			t.Parallel()
+
 			err := ValidateProjectName(tt.projectName)
 			if tt.expectError {
 				assert.Error(t, err)

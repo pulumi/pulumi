@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 func TestNodejsTransformations(t *testing.T) {
+	t.Parallel()
+
 	for _, dir := range Dirs {
 		d := filepath.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {

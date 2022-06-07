@@ -1,13 +1,15 @@
 package pulumi
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStackReference(t *testing.T) {
+	t.Parallel()
 	var resName string
 	outputs := map[string]interface{}{
 		"foo": "bar",
@@ -15,18 +17,19 @@ func TestStackReference(t *testing.T) {
 		"zed": map[string]interface{}{
 			"alpha": "beta",
 		},
+		"numf": 123.4,
+		"numi": 567.0,
 	}
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
-			assert.Equal(t, "pulumi:pulumi:StackReference", typeToken)
-			assert.Equal(t, resName, name)
-			assert.True(t, inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
+			assert.Equal(t, resName, args.Name)
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "stack",
 			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, inputs["name"].StringValue(), id)
-			return inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.Equal(t, "", args.Provider)
+			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
+			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name":    "stack",
 				"outputs": outputs,
 			}), nil
@@ -53,6 +56,18 @@ func TestStackReference(t *testing.T) {
 		zed1, _, _, _, err := await(ref1.GetOutput(String("zed")))
 		assert.NoError(t, err)
 		assert.Equal(t, outputs["zed"], zed1)
+		numf, _, _, _, err := await(ref1.GetFloat64Output(String("numf")))
+		assert.NoError(t, err)
+		assert.Equal(t, outputs["numf"], numf)
+		_, _, _, _, err = await(ref1.GetFloat64Output(String("foo")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf("failed to convert %T to float64", outputs["foo"]), err)
+		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
+		assert.NoError(t, err)
+		assert.Equal(t, int(outputs["numi"].(float64)), numi)
+		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf("failed to convert %T to int", outputs["foo"]), err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)

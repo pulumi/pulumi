@@ -17,7 +17,7 @@ package cmdutil
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +42,12 @@ var NoArgs = ArgsFunc(cobra.NoArgs)
 // Pulumi error handling.
 func MaximumNArgs(n int) cobra.PositionalArgs {
 	return ArgsFunc(cobra.MaximumNArgs(n))
+}
+
+// MinimumNArgs is the same as cobra.MinimumNArgs, except it is wrapped with ArgsFunc to provide standard
+// Pulumi error handling.
+func MinimumNArgs(n int) cobra.PositionalArgs {
+	return ArgsFunc(cobra.MinimumNArgs(n))
 }
 
 // ExactArgs is the same as cobra.ExactArgs, except it is wrapped with ArgsFunc to provide standard

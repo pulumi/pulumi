@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,21 +26,24 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/buildutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/goversion"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func findProgram(binary string) (*exec.Cmd, error) {
@@ -79,8 +82,10 @@ func findProgram(binary string) (*exec.Cmd, error) {
 func main() {
 	var tracing string
 	var binary string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	flag.Parse()
 	args := flag.Args()
@@ -93,8 +98,20 @@ func main() {
 	}
 	engineAddress := args[0]
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
@@ -134,22 +151,46 @@ func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRu
 type modInfo struct {
 	Path    string
 	Version string
+	Dir     string
 }
 
-func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
-	if !strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
-		return nil, errors.New("module is not a pulumi provider")
+// Returns the pulumi-plugin.json if found. If not found, then returns nil, nil.
+// The lookup path for pulumi-plugin.json is
+// 1. m.Dir
+// 2. m.Dir/go
+// 3. m.Dir/go/*
+func (m *modInfo) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
+	if m.Dir == "" {
+		return nil, nil
 	}
 
-	// github.com/pulumi/pulumi-aws/sdk/... => aws
-	pluginPart := strings.Split(m.Path, "/")[2]
-	name := strings.SplitN(pluginPart, "-", 2)[1]
-
-	v, err := semver.ParseTolerant(m.Version)
+	path1 := filepath.Join(m.Dir, "pulumi-plugin.json")
+	path2 := filepath.Join(m.Dir, "go", "pulumi-plugin.json")
+	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumi-plugin.json"))
 	if err != nil {
-		return nil, errors.New("module does not have semver compatible version")
+		path3 = []string{}
 	}
-	version := m.Version
+	paths := append([]string{path1, path2}, path3...)
+
+	for _, path := range paths {
+		plugin, err := plugin.LoadPulumiPluginJSON(path)
+		switch {
+		case os.IsNotExist(err):
+			continue
+		case err != nil:
+			return nil, err
+		default:
+			return plugin, nil
+		}
+	}
+	return nil, nil
+}
+
+func normalizeVersion(version string) (string, error) {
+	v, err := semver.ParseTolerant(version)
+	if err != nil {
+		return "", errors.New("module does not have semver compatible version")
+	}
 
 	// psuedoversions are commits that don't have a corresponding tag at the specified git hash
 	// https://golang.org/cmd/go/#hdr-Pseudo_versions
@@ -157,7 +198,7 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	if buildutil.IsPseudoVersion(version) {
 		// no prior tag means there was never a release build
 		if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
-			return nil, errors.New("invalid pseduoversion with no prior tag")
+			return "", errors.New("invalid pseduoversion with no prior tag")
 		}
 		// patch is typically bumped from the previous tag when using pseudo version
 		// downgrade the patch by 1 to make sure we match a release that exists
@@ -167,11 +208,50 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 		}
 		version = fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, patch)
 	}
+	return version, nil
+}
+
+func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	pulumiPlugin, err := m.readPulumiPluginJSON()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load pulumi-plugin.json: %w", err)
+	}
+
+	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
+		(pulumiPlugin != nil && !pulumiPlugin.Resource) {
+		return nil, errors.New("module is not a pulumi provider")
+	}
+
+	var name string
+	if pulumiPlugin != nil && pulumiPlugin.Name != "" {
+		name = pulumiPlugin.Name
+	} else {
+		// github.com/pulumi/pulumi-aws/sdk/... => aws
+		pluginPart := strings.Split(m.Path, "/")[2]
+		name = strings.SplitN(pluginPart, "-", 2)[1]
+	}
+
+	version := m.Version
+	if pulumiPlugin != nil && pulumiPlugin.Version != "" {
+		version = pulumiPlugin.Version
+	}
+	version, err = normalizeVersion(version)
+	if err != nil {
+		return nil, err
+	}
+
+	var server string
+
+	if pulumiPlugin != nil {
+		// There is no way to specify server without using `pulumi-plugin.json`.
+		server = pulumiPlugin.Server
+	}
 
 	plugin := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
+		Server:  server,
 	}
 
 	return plugin, nil
@@ -196,10 +276,21 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
+	args := []string{"list", "-m", "-json", "-mod=mod", "all"}
+
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		fmt.Sprintf("%s %s", gobin, strings.Join(args, " ")),
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: gobin},
+		opentracing.Tag{Key: "args", Value: args})
+
 	// don't wire up stderr so non-module users don't see error output from list
-	cmd := exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
+	cmd := exec.Command(gobin, args...)
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
+
+	tracingSpan.Finish()
+
 	if err != nil {
 		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
@@ -282,6 +373,10 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	if err != nil {
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		return nil, err
+	}
 
 	env := os.Environ()
 	maybeAppendEnv := func(k, v string) {
@@ -293,6 +388,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	maybeAppendEnv(pulumi.EnvProject, req.GetProject())
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
+	maybeAppendEnv(pulumi.EnvConfigSecretKeys, configSecretKeys)
 	maybeAppendEnv(pulumi.EnvDryRun, fmt.Sprintf("%v", req.GetDryRun()))
 	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
@@ -316,8 +412,64 @@ func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, 
 	return string(configJSON), nil
 }
 
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
+}
+
 func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (host *goLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return err
+	}
+
+	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
+		return err
+	}
+
+	cmd := exec.Command(gobin, "mod", "tidy")
+	cmd.Dir = req.Directory
+	cmd.Env = os.Environ()
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
+
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

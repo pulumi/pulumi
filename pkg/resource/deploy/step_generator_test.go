@@ -1,13 +1,31 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package deploy
 
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name          string
 		oldInputs     map[string]interface{}
@@ -95,7 +113,10 @@ func TestIgnoreChanges(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			olds, news := resource.NewPropertyMapFromMap(c.oldInputs), resource.NewPropertyMapFromMap(c.newInputs)
 
 			expected := olds
@@ -110,6 +131,186 @@ func TestIgnoreChanges(t *testing.T) {
 				assert.Nil(t, res)
 				assert.Equal(t, expected, processed)
 			}
+		})
+	}
+}
+
+func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name             string
+		diff             plugin.DiffResult
+		replaceOnChanges []string
+		hasInitErrors    bool
+		expected         plugin.DiffResult
+	}{
+		{
+			name:             "Empty diff and replaceOnChanges",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{},
+			hasInitErrors:    false,
+			expected:         plugin.DiffResult{},
+		},
+		{
+			name:             "DiffSome and empty replaceOnChanges",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{},
+			hasInitErrors:    false,
+			expected:         plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+		},
+		{
+			name:             "DiffSome and non-empty replaceOnChanges",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{"a"},
+			hasInitErrors:    false,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"a"},
+				ReplaceKeys: []resource.PropertyKey{"a"},
+			},
+		},
+		{
+			name:             "Empty diff and replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{},
+			hasInitErrors:    true,
+			expected:         plugin.DiffResult{},
+		},
+		{
+			name:             "DiffSome and empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{},
+			hasInitErrors:    true,
+			expected:         plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+		},
+		{
+			name:             "DiffSome and non-empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{"a"},
+			hasInitErrors:    true,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"a"},
+				ReplaceKeys: []resource.PropertyKey{"a"},
+			},
+		},
+		{
+			name:             "Empty diff and non-empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{"*"},
+			hasInitErrors:    true,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ReplaceKeys: []resource.PropertyKey{"#initerror"},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			newdiff, err := applyReplaceOnChanges(c.diff, c.replaceOnChanges, c.hasInitErrors)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected, newdiff)
+		})
+	}
+
+}
+
+func TestEngineDiff(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name                 string
+		oldInputs, newInputs resource.PropertyMap
+		ignoreChanges        []string
+		expected             []resource.PropertyKey
+		expectedChanges      plugin.DiffChanges
+	}{
+		{
+			name: "Empty diff",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(8),
+				"val2": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(8),
+				"val2": resource.NewPropertyValue("hello"),
+			}),
+			expected:        nil,
+			expectedChanges: plugin.DiffNone,
+		},
+		{
+			name: "All changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val0": resource.NewPropertyValue(3.14),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewNumberProperty(42),
+				"val2": resource.NewPropertyValue("world"),
+			}),
+			expected:        []resource.PropertyKey{"val0", "val1", "val2"},
+			expectedChanges: plugin.DiffSome,
+		},
+		{
+			name: "Some changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(42),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewNumberProperty(42),
+				"val2": resource.NewPropertyValue("world"),
+			}),
+			expected:        []resource.PropertyKey{"val2"},
+			expectedChanges: plugin.DiffSome,
+		},
+		{
+			name: "Ignore some changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val2": resource.NewPropertyValue(8),
+			}),
+
+			ignoreChanges:   []string{"val1"},
+			expected:        []resource.PropertyKey{"val2"},
+			expectedChanges: plugin.DiffSome,
+		},
+		{
+			name: "Ignore all changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val2": resource.NewPropertyValue(8),
+			}),
+
+			ignoreChanges:   []string{"val1", "val2"},
+			expected:        nil,
+			expectedChanges: plugin.DiffNone,
+		},
+	}
+	urn := resource.URN("urn:pulumi:dev::website-and-lambda::aws:s3/bucket:Bucket::my-bucket")
+	id := resource.ID("someid")
+	var oldOutputs resource.PropertyMap
+	allowUnknowns := false
+	provider := deploytest.Provider{}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
+			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
+			t.Logf("diff.StableKeys = %v", diff.StableKeys)
+			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expectedChanges, diff.Changes)
+			assert.EqualValues(t, c.expected, diff.ChangedKeys)
 		})
 	}
 }

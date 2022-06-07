@@ -23,10 +23,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type providerServer struct {
@@ -143,6 +143,20 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
 }
 
+func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
+	// so for now we type test here
+	if grpcProvider, ok := p.provider.(GrpcProvider); ok {
+		err := grpcProvider.Attach(req.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+		return &pbempty.Empty{}, nil
+	}
+	// Else report this is unsupported
+	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
+}
+
 func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
 	if err := p.provider.SignalCancellation(); err != nil {
 		return nil, err
@@ -252,7 +266,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true)
+	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, int(req.SequenceNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -409,13 +423,24 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		cfg[configKey] = v
 	}
+
+	cfgSecretKeys := []config.Key{}
+	for _, k := range req.GetConfigSecretKeys() {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfgSecretKeys = append(cfgSecretKeys, key)
+	}
+
 	info := ConstructInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Config:         cfg,
-		DryRun:         req.GetDryRun(),
-		Parallel:       int(req.GetParallel()),
-		MonitorAddress: req.GetMonitorEndpoint(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		ConfigSecretKeys: cfgSecretKeys,
+		DryRun:           req.GetDryRun(),
+		Parallel:         int(req.GetParallel()),
+		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
 	aliases := make([]resource.URN, len(req.GetAliases()))
@@ -525,4 +550,74 @@ func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
 	}
 
 	return server.Send(&pulumirpc.InvokeResponse{Failures: rpcFailures})
+}
+
+func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := map[config.Key]string{}
+	for k, v := range req.GetConfig() {
+		configKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfg[configKey] = v
+	}
+	info := CallInfo{
+		Project:        req.GetProject(),
+		Stack:          req.GetStack(),
+		Config:         cfg,
+		DryRun:         req.GetDryRun(),
+		Parallel:       int(req.GetParallel()),
+		MonitorAddress: req.GetMonitorEndpoint(),
+	}
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+	options := CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	result, err := p.provider.Call(tokens.ModuleMember(req.GetTok()), args, info, options)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcResult, err := MarshalProperties(result.Return, MarshalOptions{
+		Label:         "result",
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range result.ReturnDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(result.Failures))
+	for i, f := range result.Failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.CallResponse{
+		Return:             rpcResult,
+		ReturnDependencies: returnDependencies,
+		Failures:           rpcFailures,
+	}, nil
 }

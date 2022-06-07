@@ -21,6 +21,8 @@ import (
 )
 
 func TestStringifyOutput(t *testing.T) {
+	t.Parallel()
+
 	num := 42
 	str := "ABC"
 	arr := []string{"hello", "goodbye"}
@@ -30,9 +32,11 @@ func TestStringifyOutput(t *testing.T) {
 			"baz": true,
 		},
 	}
+	specialChar := "pass&word"
 
 	assert.Equal(t, "42", stringifyOutput(num))
 	assert.Equal(t, "ABC", stringifyOutput(str))
 	assert.Equal(t, "[\"hello\",\"goodbye\"]", stringifyOutput(arr))
 	assert.Equal(t, "{\"bar\":{\"baz\":true},\"foo\":42}", stringifyOutput(obj))
+	assert.Equal(t, "pass&word", stringifyOutput(specialChar))
 }

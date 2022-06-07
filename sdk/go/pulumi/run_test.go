@@ -1,33 +1,36 @@
+//nolint: goconst
 package pulumi
 
 import (
+	"context"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 type testMonitor struct {
-	CallF        func(tok string, args resource.PropertyMap, provider string) (resource.PropertyMap, error)
-	NewResourceF func(typeToken, name string, inputs resource.PropertyMap,
-		provider, id string) (string, resource.PropertyMap, error)
+	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF func(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-func (m *testMonitor) Call(tok string, args resource.PropertyMap, provider string) (resource.PropertyMap, error) {
+func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF == nil {
 		return resource.PropertyMap{}, nil
 	}
-	return m.CallF(tok, args, provider)
+	return m.CallF(args)
 }
 
-func (m *testMonitor) NewResource(typeToken, name string, inputs resource.PropertyMap,
-	provider, id string) (string, resource.PropertyMap, error) {
-
+func (m *testMonitor) NewResource(args MockResourceArgs) (string, resource.PropertyMap, error) {
 	if m.NewResourceF == nil {
-		return name, resource.PropertyMap{}, nil
+		return args.Name, resource.PropertyMap{}, nil
 	}
-	return m.NewResourceF(typeToken, name, inputs, provider, id)
+	return m.NewResourceF(args)
 }
 
 type testResource2 struct {
@@ -71,22 +74,43 @@ type invokeResult struct {
 }
 
 func TestRegisterResource(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.TypeToken {
+			case "test:resource:type":
+				assert.Equal(t, "resA", args.Name)
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"foo":  "oof",
+					"bar":  "rab",
+					"baz":  "zab",
+					"bang": "gnab",
+				})))
+				assert.Equal(t, "", args.Provider)
+				assert.Equal(t, "", args.ID)
 
-			assert.Equal(t, "test:resource:type", typeToken)
-			assert.Equal(t, "resA", name)
-			assert.True(t, inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"foo":  "oof",
-				"bar":  "rab",
-				"baz":  "zab",
-				"bang": "gnab",
-			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, "", id)
+				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			case "test:resource:complextype":
+				assert.Equal(t, "resB", args.Name)
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"foo":  "oof",
+					"bar":  "rab",
+					"baz":  "zab",
+					"bang": "gnab",
+				})))
+				assert.Equal(t, "", args.Provider)
+				assert.Equal(t, "", args.ID)
 
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{
+					"foo":    resource.NewStringProperty("qux"),
+					"secret": resource.MakeSecret(resource.NewStringProperty("shh")),
+					"output": resource.MakeOutput(resource.NewStringProperty("known unknown")),
+				}, nil
+			default:
+				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
+				return "someID", nil, nil
+			}
 		},
 	}
 
@@ -131,6 +155,7 @@ func TestRegisterResource(t *testing.T) {
 			"bang": String("gnab"),
 		}, &res2)
 		assert.NoError(t, err)
+		assert.NotNil(t, res2.rawOutputs)
 
 		id, known, secret, deps, err = await(res2.ID())
 		assert.NoError(t, err)
@@ -153,25 +178,45 @@ func TestRegisterResource(t *testing.T) {
 		assert.Equal(t, []Resource{&res2}, deps)
 		assert.Equal(t, map[string]interface{}{"foo": "qux"}, outputs)
 
+		// Test raw access to property values:
+		var res3 testResource3
+		err = ctx.RegisterResource("test:resource:complextype", "resB", Map{
+			"foo":  String("oof"),
+			"bar":  String("rab"),
+			"baz":  String("zab"),
+			"bang": String("gnab"),
+		}, &res3)
+		assert.NoError(t, err)
+		assert.NotNil(t, res3.rawOutputs)
+		output := InternalGetRawOutputs(&res3.ResourceState)
+		rawOutputsTmp, _, _, _, err := await(output)
+		assert.NoError(t, err)
+		rawOutputs, ok := rawOutputsTmp.(resource.PropertyMap)
+		assert.True(t, ok)
+		assert.True(t, rawOutputs.HasValue("foo"))
+		assert.True(t, rawOutputs.HasValue("secret"))
+		assert.True(t, rawOutputs.ContainsSecrets())
+
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 }
 
 func TestReadResource(t *testing.T) {
-	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, state resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
+	t.Parallel()
 
-			assert.Equal(t, "test:resource:type", typeToken)
-			assert.Equal(t, "resA", name)
-			assert.True(t, state.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+
+			assert.Equal(t, "test:resource:type", args.TypeToken)
+			assert.Equal(t, "resA", args.Name)
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": "oof",
 			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, "someID", id)
+			assert.Equal(t, "", args.Provider)
+			assert.Equal(t, "someID", args.ID)
 
-			return id, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return args.ID, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
 		},
 	}
 
@@ -224,10 +269,12 @@ func TestReadResource(t *testing.T) {
 }
 
 func TestInvoke(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
-		CallF: func(token string, args resource.PropertyMap, provider string) (resource.PropertyMap, error) {
-			assert.Equal(t, "test:index:func", token)
-			assert.True(t, args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			assert.Equal(t, "test:index:func", args.Token)
+			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"bang": "gnab",
 				"bar":  "rab",
 			})))
@@ -259,6 +306,715 @@ func TestInvoke(t *testing.T) {
 		assert.Equal(t, "oof", result2["foo"].(string))
 		assert.Equal(t, "zab", result2["baz"].(string))
 
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+type testInstanceResource struct {
+	CustomResourceState
+}
+
+type testInstanceResourceArgs struct {
+}
+
+type testInstanceResourceInputs struct {
+}
+
+func (*testInstanceResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResourceArgs)(nil)).Elem()
+}
+
+type testInstanceResourceInput interface {
+	Input
+
+	ToTestInstanceResourceOutput() testInstanceResourceOutput
+	ToTestInstanceResourceOutputWithContext(ctx context.Context) testInstanceResourceOutput
+}
+
+func (*testInstanceResource) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResource)(nil)).Elem()
+}
+
+func (i *testInstanceResource) ToTestInstanceResourceOutput() testInstanceResourceOutput {
+	return i.ToTestInstanceResourceOutputWithContext(context.Background())
+}
+
+func (i *testInstanceResource) ToTestInstanceResourceOutputWithContext(ctx context.Context) testInstanceResourceOutput {
+	return ToOutputWithContext(ctx, i).(testInstanceResourceOutput)
+}
+
+type testInstanceResourceOutput struct {
+	*OutputState
+}
+
+func (testInstanceResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResource)(nil)).Elem()
+}
+
+func (o testInstanceResourceOutput) ToTestInstanceResourceOutput() testInstanceResourceOutput {
+	return o
+}
+
+func (o testInstanceResourceOutput) ToTestInstanceResourceOutputWithContext(
+	ctx context.Context) testInstanceResourceOutput {
+	return o
+}
+
+type testMyCustomResource struct {
+	CustomResourceState
+
+	Instance testInstanceResourceOutput `pulumi:"instance"`
+}
+
+type testMyCustomResourceArgs struct {
+	Instance testInstanceResource `pulumi:"instance"`
+}
+
+type testMyCustomResourceInputs struct {
+	Instance testInstanceResourceInput
+}
+
+func (testMyCustomResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testMyCustomResourceArgs)(nil)).Elem()
+}
+
+type module int
+
+func (module) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
+	switch typ {
+	case "pkg:index:Instance":
+		var instance testInstanceResource
+		return &instance, nil
+	default:
+		return nil, errors.Errorf("unknown resource type %s", typ)
+	}
+}
+
+func (module) Version() semver.Version {
+	return semver.Version{}
+}
+
+func TestRegisterResourceWithResourceReferences(t *testing.T) {
+	t.Parallel()
+
+	RegisterOutputType(testInstanceResourceOutput{})
+
+	RegisterResourceModule("pkg", "index", module(0))
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+
+			switch args.TypeToken {
+			case "pkg:index:Instance":
+				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
+			case "pkg:index:MyCustom":
+				return args.Name + "_id", args.Inputs, nil
+			default:
+				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+			}
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var instance testInstanceResource
+		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
+		assert.NoError(t, err)
+
+		var mycustom testMyCustomResource
+		err = ctx.RegisterResource("pkg:index:MyCustom", "mycustom", &testMyCustomResourceInputs{
+			Instance: &instance,
+		}, &mycustom)
+		assert.NoError(t, err)
+
+		_, _, secret, _, err := await(mycustom.Instance)
+		assert.NoError(t, err)
+		assert.False(t, secret)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+type testMyRemoteComponentArgs struct {
+	Inprop string `pulumi:"inprop"`
+}
+
+type testMyRemoteComponentInputs struct {
+	Inprop StringInput
+}
+
+func (testMyRemoteComponentInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testMyRemoteComponentArgs)(nil)).Elem()
+}
+
+type testMyRemoteComponent struct {
+	ResourceState
+
+	Outprop StringOutput `pulumi:"outprop"`
+}
+
+func TestRemoteComponent(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+
+			switch args.TypeToken {
+			case "pkg:index:Instance":
+				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
+			case "pkg:index:MyRemoteComponent":
+				outprop := resource.NewStringProperty(fmt.Sprintf("output: %s", args.Inputs["inprop"].StringValue()))
+				return args.Name + "_id", resource.PropertyMap{
+					"inprop":  args.Inputs["inprop"],
+					"outprop": outprop,
+				}, nil
+			default:
+				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+			}
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var instance testInstanceResource
+		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
+		assert.NoError(t, err)
+
+		var myremotecomponent testMyRemoteComponent
+		err = ctx.RegisterRemoteComponentResource(
+			"pkg:index:MyRemoteComponent", "myremotecomponent", &testMyRemoteComponentInputs{
+				Inprop: Sprintf("hello: %v", instance.id),
+			}, &myremotecomponent)
+		assert.NoError(t, err)
+
+		val, known, secret, deps, err := await(myremotecomponent.Outprop)
+		assert.NoError(t, err)
+		stringVal, ok := val.(string)
+		assert.True(t, ok)
+		assert.True(t, strings.HasPrefix(stringVal, "output: hello: "))
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&myremotecomponent}, deps)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+func TestWaitOrphanedApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		res.ID().ApplyT(func(id ID) int {
+			theID = id
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedNestedApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		ctx.Export("urn", res.URN().ApplyT(func(urn URN) URN {
+			res.ID().ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return urn
+		}))
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedAllApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+			theURN, _ = vs[0].(URN)
+			theID, _ = vs[1].(ID)
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedAnyApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		Any(map[string]Output{
+			"urn": res.URN(),
+			"id":  res.ID(),
+		}).ApplyT(func(v interface{}) int {
+			m := v.(map[string]Output)
+			m["urn"].ApplyT(func(urn URN) int {
+				theURN = urn
+				return 0
+			})
+			m["id"].ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedContextAllApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+			theURN, _ = vs[0].(URN)
+			theID, _ = vs[1].(ID)
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedContextAnyApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		Any(map[string]Output{
+			"urn": res.URN(),
+			"id":  res.ID(),
+		}).ApplyT(func(v interface{}) int {
+			m := v.(map[string]Output)
+			m["urn"].ApplyT(func(urn URN) int {
+				theURN = urn
+				return 0
+			})
+			m["id"].ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedResource(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var res testResource2
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(outputResolved), res.urn.state)
+	assert.Equal(t, uint32(outputResolved), res.id.state)
+}
+
+func TestWaitResourceInsideApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var innerRes testResource2
+	err := RunErr(func(ctx *Context) error {
+		var outerRes testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &outerRes)
+		assert.NoError(t, err)
+
+		outerRes.ID().ApplyT(func(_ ID) error {
+			return ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
+				Foo: String("foo"),
+			}, &innerRes)
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(outputResolved), innerRes.urn.state)
+	assert.Equal(t, uint32(outputResolved), innerRes.id.state)
+}
+
+func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var outerRes testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &outerRes)
+		assert.NoError(t, err)
+
+		outerRes.ID().ApplyT(func(_ ID) int {
+			var innerRes testResource2
+			err := ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
+				Foo: String("foo"),
+			}, &innerRes)
+			assert.NoError(t, err)
+
+			innerRes.ID().ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitRecursiveApply(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	resources := 0
+
+	var newResource func(ctx *Context, n int)
+	newResource = func(ctx *Context, n int) {
+		if n == 0 {
+			return
+		}
+
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", fmt.Sprintf("res%d", n), &testResource2Inputs{
+			Foo: String(fmt.Sprintf("%d", n)),
+		}, &res)
+		assert.NoError(t, err)
+
+		resources++
+		res.ID().ApplyT(func(_ ID) int {
+			newResource(ctx, n-1)
+			return 0
+		})
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		newResource(ctx, 10)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 10, resources)
+}
+
+func TestWaitOrphanedManualOutput(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	output := make(chan Output)
+	doResolve := make(chan bool)
+	done := make(chan bool)
+	go func() {
+		err := RunErr(func(ctx *Context) error {
+			out, resolve, _ := ctx.NewOutput()
+			go func() {
+				<-doResolve
+				resolve("foo")
+			}()
+			output <- out
+
+			return nil
+		}, WithMocks("project", "stack", mocks))
+		assert.NoError(t, err)
+
+		close(done)
+	}()
+
+	state := (<-output).getState()
+	assert.Equal(t, uint32(outputPending), state.state)
+	close(doResolve)
+
+	<-done
+	assert.Equal(t, uint32(outputResolved), state.state)
+	assert.Equal(t, "foo", state.value)
+}
+
+func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var output Output
+	err := RunErr(func(ctx *Context) error {
+		output, _, _ = NewOutput()
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	state := output.getState()
+	assert.Equal(t, uint32(outputPending), state.state)
+}
+
+func TestExportResource(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var any Output
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		any = Any(&res)
+
+		ctx.Export("any", any)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	state := any.getState()
+	assert.NotNil(t, state.value)
+}
+
+type testResource2Input interface {
+	Input
+
+	ToTestResource2Output() testResource2Output
+	ToTestResource2OutputWithContext(ctx context.Context) testResource2Output
+}
+
+func (*testResource2) ElementType() reflect.Type {
+	return reflect.TypeOf((**testResource2)(nil)).Elem()
+}
+
+func (r *testResource2) ToTestResource2Output() testResource2Output {
+	return r.ToTestResource2OutputWithContext(context.Background())
+}
+
+func (r *testResource2) ToTestResource2OutputWithContext(ctx context.Context) testResource2Output {
+	return ToOutputWithContext(ctx, r).(testResource2Output)
+}
+
+type testResource2Output struct{ *OutputState }
+
+func (testResource2Output) ElementType() reflect.Type {
+	return reflect.TypeOf((**testResource2)(nil)).Elem()
+}
+
+func (o testResource2Output) ToTestResource2Output() testResource2Output {
+	return o
+}
+
+func (o testResource2Output) ToTestResource2OutputWithContext(ctx context.Context) testResource2Output {
+	return o
+}
+
+type testResource4Args struct {
+	Inprop *testResource2 `pulumi:"inprop"`
+}
+
+type testResource4Inputs struct {
+	Inprop testResource2Input
+}
+
+func (testResource4Inputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testResource4Args)(nil)).Elem()
+}
+
+type testResource4 struct {
+	ResourceState
+
+	Outprop StringOutput `pulumi:"outprop"`
+}
+
+func TestResourceInput(t *testing.T) {
+	t.Parallel()
+
+	RegisterOutputType(testResource2Output{})
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.TypeToken {
+			case "test:resource:type":
+				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			case "pkg:index:MyRemoteComponent":
+				return args.Name + "_id", resource.PropertyMap{
+					"outprop": resource.NewStringProperty("bar"),
+				}, nil
+			default:
+				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+			}
+
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		var myremotecomponent testResource4
+		err = ctx.RegisterRemoteComponentResource("pkg:index:MyRemoteComponent", "myremotecomponent",
+			&testResource4Inputs{
+				Inprop: res.ToTestResource2Output(),
+			}, &myremotecomponent)
+		assert.NoError(t, err)
+
+		ctx.Export("outprop", myremotecomponent.Outprop)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
