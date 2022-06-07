@@ -119,7 +119,7 @@ func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
 	copy := *ctx
 	go func() {
 		select {
-		case <-c:
+		case _, _ = <-c:
 			copy.Close()
 		}
 	}()

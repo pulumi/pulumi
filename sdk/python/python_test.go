@@ -38,7 +38,7 @@ func TestIsVirtualEnv(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command(context.TODO(), "-m", "venv", venvDir)
+	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
 	assert.NoError(t, err)
 	err = cmd.Run()
 	assert.NoError(t, err)
