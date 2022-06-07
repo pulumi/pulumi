@@ -3,7 +3,6 @@ package authhelpers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -55,7 +54,7 @@ func ResolveGoogleCredentials(ctx context.Context) (*google.Credentials, error) 
 func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
 	credentials, err := ResolveGoogleCredentials(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "missing google credentials")
+		return nil, fmt.Errorf("missing google credentials: %w", err)
 	}
 
 	client, err := gcp.NewHTTPClient(gcp.DefaultTransport(), credentials.TokenSource)

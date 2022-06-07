@@ -61,12 +61,8 @@ func openKeeper(url string) (*gosecrets.Keeper, error) {
 		return nil, errors.Wrap(err, "unable to parse the secrets provider URL")
 	}
 	switch u.Scheme {
-	case "gcpkms":
+	case gcpkms.Scheme:
 		ctx := context.Background()
-		usePulumiAuth := u.Query().Get("google_application_credentials") == "pulumi"
-		if !usePulumiAuth {
-			return gosecrets.OpenKeeper(ctx, url)
-		}
 
 		credentials, err := authhelpers.ResolveGoogleCredentials(context.Background())
 		if err != nil {
@@ -81,7 +77,6 @@ func openKeeper(url string) (*gosecrets.Keeper, error) {
 			Client: kmsClient,
 		}
 
-		u.RawQuery = ""
 		return opener.OpenKeeperURL(ctx, u)
 	default:
 		return gosecrets.OpenKeeper(context.Background(), url)
