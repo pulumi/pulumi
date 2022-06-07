@@ -2084,24 +2084,6 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 - [sdk/dotnet] F# API to specify stack options.
   [#5077](https://github.com/pulumi/pulumi/pull/5077)
 
-<<<<<<< HEAD
-### Improvements
-
-- [cli] Add support for using `PULUMI_GOOGLE_CREDENTIALS_HELPER` environment variable
-  as a cli tool to get the GCP credentials from an external source. This can be used to
-  e.g. integrate with external secret storages:
-  ```bash
-  cat > helper <<EOF
-  #!/bin/sh
-  exec op get item pulumi-gcp-secret --fields password
-  EOF
-  chmod +x helper
-  env PULUMI_GOOGLE_CREDENTIALS_HELPER=./helper pulumi login gs://...
-  ```
-- [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the
-  state store, including the `PULUMI_GOOGLE_CREDENTIALS_HELPER` by specifying
-  `?google_application_credentials=pulumi` in the secretsprovider URL.
-=======
 ### Bug Fixes
 
 - [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js
@@ -2116,7 +2098,6 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 
 - [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
   [#6381](https://github.com/pulumi/pulumi/pull/6381)
->>>>>>> origin/master
 
 ## 2.21.0 (2021-02-17)
 
