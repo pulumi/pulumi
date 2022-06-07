@@ -111,8 +111,8 @@ func (ctx *Context) Close() error {
 	return nil
 }
 
-// WithCancelChannel registers a close channel which will close the Context when the
-// channel is closed.
+// WithCancelChannel registers a close channel which will close the returned Context when
+// the channel is closed.
 //
 // WARNING: Calling this function without ever closing `c` will leak go routines.
 func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {

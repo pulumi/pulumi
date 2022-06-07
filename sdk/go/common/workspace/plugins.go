@@ -825,12 +825,11 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
-			// TODO: pass a context here
 			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}

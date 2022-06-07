@@ -180,7 +180,7 @@ func (pack *cloudPolicyPack) Publish(
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	runtime := op.PolicyPack.Runtime.Name()
 	if strings.EqualFold(runtime, "nodejs") {
-		packTarball, err = npm.Pack(op.PlugCtx.Pwd, os.Stderr)
+		packTarball, err = npm.Pack(ctx, op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not publish policies because of error running npm pack: %w", err))
 		}
@@ -292,7 +292,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if err := completeNodeJSInstall(finalDir); err != nil {
+		if err := completeNodeJSInstall(ctx, finalDir); err != nil {
 			return err
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
@@ -307,8 +307,8 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 	return nil
 }
 
-func completeNodeJSInstall(finalDir string) error {
-	if bin, err := npm.Install(finalDir, false /*production*/, nil, os.Stderr); err != nil {
+func completeNodeJSInstall(ctx context.Context, finalDir string) error {
+	if bin, err := npm.Install(ctx, finalDir, false /*production*/, nil, os.Stderr); err != nil {
 		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
 			"in %q before this policy pack works"+": %w", bin, finalDir, err)
 

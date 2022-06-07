@@ -195,7 +195,7 @@ func installPolicyPackDependencies(ctx context.Context,
 		fmt.Println("Installing dependencies...")
 		fmt.Println()
 
-		bin, err := npm.Install("", false /*production*/, os.Stdout, os.Stderr)
+		bin, err := npm.Install(ctx, "", false /*production*/, os.Stdout, os.Stderr)
 		if err != nil {
 			return fmt.Errorf("`%s install` failed; rerun manually to try again.: %w", bin, err)
 		}

@@ -47,7 +47,7 @@ func TestProjectRuntime(t *testing.T) {
 	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	var runtime projectRuntimeAbout
-	runtime, err = getProjectRuntimeAbout(context.TODO(), &workspace.Project{
+	runtime, err = getProjectRuntimeAbout(context.Background(), &workspace.Project{
 		Name:    "TestProject",
 		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
 	})
