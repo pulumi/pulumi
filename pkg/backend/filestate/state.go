@@ -339,46 +339,47 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 
 func (b *localBackend) stackPath(stack tokens.Name) string {
 	path := filepath.Join(b.StateDir(), workspace.StackDir)
-	if stack != "" {
-		// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
-		// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
-		// results in a slice.
-		plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
-		gzipedPath := plainPath + ".gz"
+	if stack == "" {
+		return path
+	}
 
-		bucketIter := b.bucket.List(&blob.ListOptions{
-			Delimiter: "/",
-			Prefix:    plainPath,
-		})
+	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
+	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
+	// results in a slice.
+	plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+	gzipedPath := plainPath + ".gz"
 
-		var plainObj *blob.ListObject
-		ctx := context.TODO()
-		for {
-			file, err := bucketIter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				// Error fetching the available ojects, assume .json
+	bucketIter := b.bucket.List(&blob.ListOptions{
+		Delimiter: "/",
+		Prefix:    plainPath,
+	})
+
+	var plainObj *blob.ListObject
+	ctx := context.TODO()
+	for {
+		file, err := bucketIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// Error fetching the available ojects, assume .json
+			return plainPath
+		}
+
+		// plainObj will always come out first since allObjs is sorted by Key
+		if file.Key == plainPath {
+			plainObj = file
+		} else if file.Key == gzipedPath {
+			// We have a plain .json file and it was modified after this gzipped one so use it.
+			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
 				return plainPath
 			}
-
-			// plainObj will always come out first since allObjs is sorted by Key
-			if file.Key == plainPath {
-				plainObj = file
-			} else if file.Key == gzipedPath {
-				// We have a plain .json file and it was modified after this gzipped one so use it.
-				if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
-					return plainPath
-				}
-				// else use the gzipped object
-				return gzipedPath
-			}
+			// else use the gzipped object
+			return gzipedPath
 		}
-		// Couldn't find any objects, assume nongzipped path?
-		return plainPath
 	}
-	return path
+	// Couldn't find any objects, assume nongzipped path?
+	return plainPath
 }
 
 func (b *localBackend) historyDirectory(stack tokens.Name) string {
