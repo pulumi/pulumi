@@ -25,3 +25,6 @@
 
 - [cli/engine] Provide a sorting for plugins of equivalent version.
   [#9761](https://github.com/pulumi/pulumi/pull/9761)
+
+- [cli/python] Respond to SIGINT when installing plugins.
+  [#9793](https://github.com/pulumi/pulumi/pull/9793)
