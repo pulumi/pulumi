@@ -37,3 +37,7 @@
 
 - [cli/backend] Fix degraded performance in filestate backend.
   [#9777](https://github.com/pulumi/pulumi/pull/9777)
+
+- [cli/backend] Fix degraded performance in filestate backend
+  [#9777](https://github.com/pulumi/pulumi/pull/9777)
+  [#9796](https://github.com/pulumi/pulumi/pull/9796)
