@@ -253,7 +253,77 @@ func TestResourceOptionComposite(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			opts := merge(Composite(tt.input...))
+
+			opts := &resourceOptions{}
+			Composite(tt.input...).applyResourceOption(opts)
+			assert.Equal(t, tt.want, opts)
+		})
+	}
+}
+
+func TestInvokeOptionComposite(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []InvokeOption
+		want  *invokeOptions
+	}{
+		{
+			name:  "no options",
+			input: []InvokeOption{},
+			want:  &invokeOptions{},
+		},
+		{
+			name: "single option",
+			input: []InvokeOption{
+				Version("test"),
+			},
+			want: &invokeOptions{
+				Version: "test",
+			},
+		},
+		{
+			name: "multiple conflicting options",
+			input: []InvokeOption{
+				Version("test1"),
+				Version("test2"),
+			},
+			want: &invokeOptions{
+				Version: "test2",
+			},
+		},
+		{
+			name: "bouncing options",
+			input: []InvokeOption{
+				Version("test1"),
+				Version("test2"),
+				Version("test1"),
+			},
+			want: &invokeOptions{
+				Version: "test1",
+			},
+		},
+		{
+			name: "different options",
+			input: []InvokeOption{
+				Version("test"),
+				PluginDownloadURL("url"),
+			},
+			want: &invokeOptions{
+				Version:           "test",
+				PluginDownloadURL: "url",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := &invokeOptions{}
+			CompositeInvoke(tt.input...).applyInvokeOption(opts)
 			assert.Equal(t, tt.want, opts)
 		})
 	}

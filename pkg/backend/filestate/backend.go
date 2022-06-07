@@ -38,6 +38,7 @@ import (
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
+	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -129,7 +130,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
 	if p.Scheme == gcsblob.Scheme {
-		blobmux, err = GoogleCredentialsMux(context.TODO())
+		blobmux, err = authhelpers.GoogleCredentialsMux(context.TODO())
 		if err != nil {
 			return nil, err
 		}
