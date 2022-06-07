@@ -60,11 +60,12 @@ func openKeeper(url string) (*gosecrets.Keeper, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse the secrets provider URL")
 	}
+	ctx := context.Background()
+
 	switch u.Scheme {
 	case gcpkms.Scheme:
-		ctx := context.Background()
 
-		credentials, err := authhelpers.ResolveGoogleCredentials(context.Background())
+		credentials, err := authhelpers.ResolveGoogleCredentials(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "missing google credentials")
 		}
@@ -79,7 +80,7 @@ func openKeeper(url string) (*gosecrets.Keeper, error) {
 
 		return opener.OpenKeeperURL(ctx, u)
 	default:
-		return gosecrets.OpenKeeper(context.Background(), url)
+		return gosecrets.OpenKeeper(ctx, url)
 	}
 }
 
