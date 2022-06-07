@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -94,7 +95,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
+	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
 	assert.NoError(t, err)
 	err = cmd.Run()
 	assert.NoError(t, err)

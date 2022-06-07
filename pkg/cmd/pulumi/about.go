@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -77,7 +78,8 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				summary := getSummaryAbout(transitiveDependencies, stack)
+				ctx := context.Background()
+				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 				if jsonOut {
 					return printJSON(summary)
 				}
@@ -112,7 +114,7 @@ type summaryAbout struct {
 	LogMessage    string                    `json:"-"`
 }
 
-func getSummaryAbout(transitiveDependencies bool, selectedStack string) summaryAbout {
+func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -146,12 +148,12 @@ func getSummaryAbout(transitiveDependencies bool, selectedStack string) summaryA
 		addError(err, "Failed to read project")
 	} else {
 		var runtime projectRuntimeAbout
-		if runtime, err = getProjectRuntimeAbout(proj); err != nil {
+		if runtime, err = getProjectRuntimeAbout(ctx, proj); err != nil {
 			addError(err, "Failed to get information about the project runtime")
 		} else {
 			result.Runtime = &runtime
 		}
-		if deps, err := getProgramDependenciesAbout(proj, pwd, transitiveDependencies); err != nil {
+		if deps, err := getProgramDependenciesAbout(ctx, proj, pwd, transitiveDependencies); err != nil {
 			addError(err, "Failed to get information about the Pulumi program's plugins")
 		} else {
 			result.Dependencies = deps
@@ -488,17 +490,17 @@ func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error
 
 // Calls a python command as pulumi would. This means we need to accommodate for
 // a virtual environment if it exists.
-func callPythonCommand(proj *workspace.Project, root string, args ...string) (string, error) {
+func callPythonCommand(ctx context.Context, proj *workspace.Project, root string, args ...string) (string, error) {
 	if proj == nil {
 		return "", errors.New("Project must not be nil")
 	}
 	options := proj.Runtime.Options()
 	if options == nil {
-		return callPythonCommandNoEnvironment(args...)
+		return callPythonCommandNoEnvironment(ctx, args...)
 	}
 	virtualEnv, exists := options["virtualenv"]
 	if !exists {
-		return callPythonCommandNoEnvironment(args...)
+		return callPythonCommandNoEnvironment(ctx, args...)
 	}
 	virtualEnvPath := virtualEnv.(string)
 	// We now know that a virtual environment exists.
@@ -515,8 +517,8 @@ func callPythonCommand(proj *workspace.Project, root string, args ...string) (st
 
 // Call a python command in a runtime agnostic way. Call python from the path.
 // Do not use a virtual environment.
-func callPythonCommandNoEnvironment(args ...string) (string, error) {
-	cmd, err := python.Command(args...)
+func callPythonCommandNoEnvironment(ctx context.Context, args ...string) (string, error) {
+	cmd, err := python.Command(ctx, args...)
 	if err != nil {
 		return "", err
 	}
@@ -528,14 +530,14 @@ func callPythonCommandNoEnvironment(args ...string) (string, error) {
 	return string(result), nil
 }
 
-func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
+func getPythonProgramDependencies(ctx context.Context, proj *workspace.Project, rootDir string,
 	transitive bool) ([]programDependencieAbout, error) {
 	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
 	if !transitive {
 		cmdArgs = append(cmdArgs, "--not-required")
 
 	}
-	out, err := callPythonCommand(proj, rootDir, cmdArgs...)
+	out, err := callPythonCommand(ctx, proj, rootDir, cmdArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -797,14 +799,14 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 	return result, nil
 }
 
-func getProgramDependenciesAbout(proj *workspace.Project, root string,
+func getProgramDependenciesAbout(ctx context.Context, proj *workspace.Project, root string,
 	transitive bool) ([]programDependencieAbout, error) {
 	language := proj.Runtime.Name()
 	switch language {
 	case langNodejs:
 		return getNodeProgramDependencies(root, transitive)
 	case langPython:
-		return getPythonProgramDependencies(proj, root, transitive)
+		return getPythonProgramDependencies(ctx, proj, root, transitive)
 	case langGo:
 		return getGoProgramDependencies(transitive)
 	case langDotnet:
@@ -903,7 +905,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error) {
+func getProjectRuntimeAbout(ctx context.Context, proj *workspace.Project) (projectRuntimeAbout, error) {
 	var ex, version string
 	var err error
 	var out []byte
@@ -943,7 +945,7 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 		// if CommandPath has an error, then so will Command. The error can
 		// therefore be ignored as redundant.
 		ex, _, _ = python.CommandPath()
-		cmd, err = python.Command("--version")
+		cmd, err = python.Command(ctx, "--version")
 		if err != nil {
 			return projectRuntimeAbout{}, err
 		}

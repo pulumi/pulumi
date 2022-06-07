@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -37,7 +38,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 		templateNameOrURL: "aws-typescript",
 	}
 
-	err := runNewPolicyPack(args)
+	err := runNewPolicyPack(context.TODO(), args)
 	assert.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
@@ -57,7 +58,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 		templateNameOrURL: "aws-javascript",
 	}
 
-	err := runNewPolicyPack(args)
+	err := runNewPolicyPack(context.TODO(), args)
 	assert.NoError(t, err)
 
 	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
@@ -83,7 +84,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			templateNameOrURL: nonExistantTemplate,
 		}
 
-		err := runNewPolicyPack(args)
+		err := runNewPolicyPack(context.TODO(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
@@ -100,7 +101,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 			yes:               true,
 		}
 
-		err := runNewPolicyPack(args)
+		err := runNewPolicyPack(context.TODO(), args)
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})

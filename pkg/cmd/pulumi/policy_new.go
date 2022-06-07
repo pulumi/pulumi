@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -65,7 +66,7 @@ func newPolicyNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
-			return runNewPolicyPack(args)
+			return runNewPolicyPack(context.Background(), args)
 		}),
 	}
 
@@ -85,7 +86,7 @@ func newPolicyNewCmd() *cobra.Command {
 	return cmd
 }
 
-func runNewPolicyPack(args newPolicyArgs) error {
+func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -171,7 +172,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(proj, projPath, root); err != nil {
+		if err := installPolicyPackDependencies(ctx, proj, projPath, root); err != nil {
 			return err
 		}
 	}
@@ -187,7 +188,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, root string) error {
+func installPolicyPackDependencies(ctx context.Context, proj *workspace.PolicyPackProject, projPath, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		fmt.Println("Installing dependencies...")
@@ -202,7 +203,7 @@ func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, 
 		fmt.Println()
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		const venvDir = "venv"
-		if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
+		if err := python.InstallDependencies(ctx, root, venvDir, true /*showOutput*/); err != nil {
 			return err
 		}
 

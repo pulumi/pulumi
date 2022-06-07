@@ -76,7 +76,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return policyPackPath, installRequiredPolicy(policyPackPath, policyPackTarball)
+	return policyPackPath, installRequiredPolicy(ctx, policyPackPath, policyPackTarball)
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
@@ -246,7 +246,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
+func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
@@ -296,7 +296,7 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 			return err
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := completePythonInstall(finalDir, projPath, proj); err != nil {
+		if err := completePythonInstall(ctx, finalDir, projPath, proj); err != nil {
 			return err
 		}
 	}
@@ -317,9 +317,9 @@ func completeNodeJSInstall(finalDir string) error {
 	return nil
 }
 
-func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
+func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	const venvDir = "venv"
-	if err := python.InstallDependencies(finalDir, venvDir, false /*showOutput*/); err != nil {
+	if err := python.InstallDependencies(ctx, finalDir, venvDir, false /*showOutput*/); err != nil {
 		return err
 	}
 
