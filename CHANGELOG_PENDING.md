@@ -18,6 +18,9 @@
 - [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the state store, including the `GOOGLE_CREDENTIALS`.`
   [#6379](https://github.com/pulumi/pulumi/pull/6379)
 
+- [codegen/go] Always chose the correct version when `respectSchemaVersion` is set.
+  [#9798](https://github.com/pulumi/pulumi/pull/9798)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
