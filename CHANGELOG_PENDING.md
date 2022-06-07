@@ -25,3 +25,7 @@
 
 - [cli/engine] Provide a sorting for plugins of equivalent version.
   [#9761](https://github.com/pulumi/pulumi/pull/9761)
+
+- [cli/backend] Fix degraded performance in filestate backend
+  [#9777](https://github.com/pulumi/pulumi/pull/9777)
+
