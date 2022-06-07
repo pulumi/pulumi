@@ -11,9 +11,12 @@
 
 - [cli/engine] The engine will emit a warning of a key given in additional secret outputs doesn't match any of the property keys on the resources.
   [#9750](https://github.com/pulumi/pulumi/pull/9750)
-  
+
 - [sdk/go] Add `CompositeInvoke` function, like `Composite` but for `InvokeOption`.
   [#9752](https://github.com/pulumi/pulumi/pull/9752)
+
+- [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the state store, including the `GOOGLE_CREDENTIALS`.`
+  [#6379](https://github.com/pulumi/pulumi/pull/6379)
 
 ### Bug Fixes
 
