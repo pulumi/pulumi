@@ -188,7 +188,8 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(ctx context.Context, proj *workspace.PolicyPackProject, projPath, root string) error {
+func installPolicyPackDependencies(ctx context.Context,
+	proj *workspace.PolicyPackProject, projPath, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		fmt.Println("Installing dependencies...")

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -126,9 +127,9 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(context.TODO(), "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages("venv", cwd)
+		packages, err := determinePulumiPackages(context.TODO(), "venv", cwd)
 		assert.NoError(t, err)
 		assert.Empty(t, packages)
 	})
@@ -136,13 +137,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(context.TODO(), "", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
-		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
+		_, err = runPythonCommand(context.TODO(), "venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
-		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonCommand(context.TODO(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
-		packages, err := determinePulumiPackages("venv", cwd)
+		packages, err := determinePulumiPackages(context.TODO(), "venv", cwd)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
 		assert.Equal(t, 1, len(packages))
@@ -154,13 +155,13 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		t.Parallel()
 
 		cwd := t.TempDir()
-		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand(context.TODO(), "", cwd, "-m", "venv", "venv")
 		require.NoError(t, err)
-		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		_, err = runPythonCommand(context.TODO(), "venv", cwd, "-m", "pip", "install", "pip-install-test")
 		require.NoError(t, err)
 		// Find sitePackages folder in Python that contains pip_install_test subfolder.
 		var sitePackages string
-		possibleSitePackages, err := runPythonCommand("venv", cwd, "-c",
+		possibleSitePackages, err := runPythonCommand(context.TODO(), "venv", cwd, "-c",
 			"import site; import json; print(json.dumps(site.getsitepackages()))")
 		require.NoError(t, err)
 		var possibleSitePackagePaths []string
@@ -183,7 +184,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		err = os.WriteFile(path, bytes, 0600)
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
-		packages, err := determinePulumiPackages("venv", cwd)
+		packages, err := determinePulumiPackages(context.TODO(), "venv", cwd)
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(packages))
 		pipInstallTest := packages[0]
