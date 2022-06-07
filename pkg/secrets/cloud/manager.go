@@ -55,16 +55,14 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 }
 
 // openKeeper opens the keeper, handling pulumi-specifc cases in the URL.
-func openKeeper(url string) (*gosecrets.Keeper, error) {
+func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
 	u, err := netUrl.Parse(url)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse the secrets provider URL")
 	}
-	ctx := context.Background()
 
 	switch u.Scheme {
 	case gcpkms.Scheme:
-
 		credentials, err := authhelpers.ResolveGoogleCredentials(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "missing google credentials")
@@ -92,7 +90,7 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	keeper, err := openKeeper(url)
+	keeper, err := openKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +100,7 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 // NewCloudSecretsManager returns a secrets manager that uses the target cloud key management
 // service to encrypt/decrypt a data key used for envelope encryption of secrets values.
 func NewCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
-	keeper, err := openKeeper(url)
+	keeper, err := openKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}
