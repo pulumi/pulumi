@@ -35,3 +35,5 @@
 - [cli/backend] Fix degraded performance in filestate backend
   [#9777](https://github.com/pulumi/pulumi/pull/9777)
 
+- [engine] Engine correctly the number of bytes written to a TAR archive is what was expected.
+  [#9792](https://github.com/pulumi/pulumi/pull/9792)
