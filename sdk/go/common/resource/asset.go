@@ -986,6 +986,11 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool
 	if err == tar.ErrWriteTooLong {
 		return errors.Wrap(err, fmt.Sprintf("incorrect blob size for %v: expected %v, got %v", file, sz, n))
 	}
+	// tar expect us to write all the bytes we said we would write. If copy doesn't write Size bytes to the
+	// tar file then we'll get a "missed writing X bytes" error on the next call to WriteHeader or Flush.
+	if n != sz {
+		return fmt.Errorf("incorrect blob size for %v: expected %v, got %v", file, sz, n)
+	}
 	return err
 }
 
