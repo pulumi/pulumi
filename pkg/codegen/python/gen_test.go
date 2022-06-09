@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -67,7 +68,7 @@ func TestGeneratePackage(t *testing.T) {
 		// To speed up these tests, we will generate one common
 		// virtual environment for all of them to run in, rather than
 		// having one per test.
-		err := buildVirtualEnv()
+		err := buildVirtualEnv(context.Background())
 		if err != nil {
 			t.Error(err)
 			return
@@ -105,7 +106,7 @@ func virtualEnvPath() (string, error) {
 // tests with `-parallel` causes sproadic failure.
 var venvMutex = &sync.Mutex{}
 
-func buildVirtualEnv() error {
+func buildVirtualEnv(ctx context.Context) error {
 	hereDir, err := absTestsPath()
 	if err != nil {
 		return err
@@ -127,7 +128,7 @@ func buildVirtualEnv() error {
 		}
 	}
 
-	err = python.InstallDependencies(hereDir, venvDir, false /*showOutput*/)
+	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
 	if err != nil {
 		return err
 	}

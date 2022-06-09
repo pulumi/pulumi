@@ -76,7 +76,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return policyPackPath, installRequiredPolicy(policyPackPath, policyPackTarball)
+	return policyPackPath, installRequiredPolicy(ctx, policyPackPath, policyPackTarball)
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
@@ -180,7 +180,7 @@ func (pack *cloudPolicyPack) Publish(
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	runtime := op.PolicyPack.Runtime.Name()
 	if strings.EqualFold(runtime, "nodejs") {
-		packTarball, err = npm.Pack(op.PlugCtx.Pwd, os.Stderr)
+		packTarball, err = npm.Pack(ctx, op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not publish policies because of error running npm pack: %w", err))
 		}
@@ -246,7 +246,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
+func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
@@ -292,11 +292,11 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if err := completeNodeJSInstall(finalDir); err != nil {
+		if err := completeNodeJSInstall(ctx, finalDir); err != nil {
 			return err
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := completePythonInstall(finalDir, projPath, proj); err != nil {
+		if err := completePythonInstall(ctx, finalDir, projPath, proj); err != nil {
 			return err
 		}
 	}
@@ -307,8 +307,8 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 	return nil
 }
 
-func completeNodeJSInstall(finalDir string) error {
-	if bin, err := npm.Install(finalDir, false /*production*/, nil, os.Stderr); err != nil {
+func completeNodeJSInstall(ctx context.Context, finalDir string) error {
+	if bin, err := npm.Install(ctx, finalDir, false /*production*/, nil, os.Stderr); err != nil {
 		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
 			"in %q before this policy pack works"+": %w", bin, finalDir, err)
 
@@ -317,9 +317,9 @@ func completeNodeJSInstall(finalDir string) error {
 	return nil
 }
 
-func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
+func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	const venvDir = "venv"
-	if err := python.InstallDependencies(finalDir, venvDir, false /*showOutput*/); err != nil {
+	if err := python.InstallDependencies(ctx, finalDir, venvDir, false /*showOutput*/); err != nil {
 		return err
 	}
 

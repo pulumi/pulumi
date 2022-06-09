@@ -1,5 +1,7 @@
 ### Improvements
 
+- [cli/python] Respond to SIGINT when installing plugins.
+  [#9793](https://github.com/pulumi/pulumi/pull/9793)
 
 - [codegen/go] Always chose the correct version when `respectSchemaVersion` is set.
   [#9798](https://github.com/pulumi/pulumi/pull/9798)

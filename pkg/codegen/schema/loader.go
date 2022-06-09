@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -125,7 +126,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		if err != nil {
 			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
-		if err := pkgPlugin.Install(reader, false); err != nil {
+		if err := pkgPlugin.InstallWithContext(context.Background(), reader, false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}

@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -151,7 +152,7 @@ func newPluginInstallCmd() *cobra.Command {
 					}
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.Install(tarball, reinstall); err != nil {
+				if err = install.InstallWithContext(context.Background(), tarball, reinstall); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}

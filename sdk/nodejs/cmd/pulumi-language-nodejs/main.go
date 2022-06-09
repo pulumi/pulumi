@@ -693,7 +693,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(req.Directory, false /*production*/, stdout, stderr)
+	_, err = npm.Install(server.Context(), req.Directory, false /*production*/, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("npm install failed: %w", err)
 	}

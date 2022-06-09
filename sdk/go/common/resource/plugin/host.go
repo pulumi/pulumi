@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"os"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -98,6 +99,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		languageLoadRequests:    make(chan pluginLoadRequest),
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
+		closer:                  new(sync.Once),
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -151,6 +153,8 @@ type defaultHost struct {
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
+
+	closer *sync.Once
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -400,35 +404,38 @@ func (host *defaultHost) CloseProvider(provider Provider) error {
 	return err
 }
 
-func (host *defaultHost) Close() error {
-	// Close all plugins.
-	for _, plug := range host.analyzerPlugins {
-		if err := plug.Plugin.Close(); err != nil {
-			logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+func (host *defaultHost) Close() (err error) {
+	host.closer.Do(func() {
+		// Close all plugins.
+		for _, plug := range host.analyzerPlugins {
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			}
 		}
-	}
-	for _, plug := range host.resourcePlugins {
-		if err := plug.Plugin.Close(); err != nil {
-			logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+		for _, plug := range host.resourcePlugins {
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			}
 		}
-	}
-	for _, plug := range host.languagePlugins {
-		if err := plug.Plugin.Close(); err != nil {
-			logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+		for _, plug := range host.languagePlugins {
+			if err := plug.Plugin.Close(); err != nil {
+				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Info.Name, err)
+			}
 		}
-	}
 
-	// Empty out all maps.
-	host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)
-	host.languagePlugins = make(map[string]*languagePlugin)
-	host.resourcePlugins = make(map[Provider]*resourcePlugin)
+		// Empty out all maps.
+		host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)
+		host.languagePlugins = make(map[string]*languagePlugin)
+		host.resourcePlugins = make(map[Provider]*resourcePlugin)
 
-	// Shut down the plugin loader.
-	close(host.languageLoadRequests)
-	close(host.loadRequests)
+		// Shut down the plugin loader.
+		close(host.languageLoadRequests)
+		close(host.loadRequests)
 
-	// Finally, shut down the host's gRPC server.
-	return host.server.Cancel()
+		// Finally, shut down the host's gRPC server.
+		err = host.server.Cancel()
+	})
+	return err
 }
 
 // Flags can be used to filter out plugins during loading that aren't necessary.
