@@ -326,7 +326,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	if err := os.MkdirAll(templateDir, 0700); err != nil {
 		return TemplateRepository{}, err
 	}
-	
+
 	if !offline {
 		// Clone or update the pulumi/templates repo.
 		repo := pulumiTemplateGitRepository
