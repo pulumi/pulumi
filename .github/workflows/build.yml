@@ -65,6 +65,8 @@ jobs:
       fail-fast: false
     name: Build Pulumi Go binaries
     runs-on: ${{ matrix.platform }}
+    env:
+      - CGO_ENABLED:  ${{ matrix.os == darwin }}
     steps:
       - name: Enable code coverage
         run: |
