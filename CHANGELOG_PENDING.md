@@ -11,3 +11,7 @@
 
 - [cli] Revert changes causing a panic in `pulumi destroy` that tried to operate without config files.
   [#9821](https://github.com/pulumi/pulumi/pull/9821)
+
+- [cli] Revert to statically linked binaries on Windows and Linux,
+  fixing a regression introduced in 3.34.0
+  [#9816](https://github.com/pulumi/pulumi/issues/9816)
