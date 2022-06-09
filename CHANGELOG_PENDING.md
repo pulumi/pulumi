@@ -9,5 +9,5 @@
 - [sdk/python] Better explain the keyword arguments to create(etc)_stack.
   [#9794](https://github.com/pulumi/pulumi/pull/9794)
 
-- [cli] Revert changes to `pulumi destroy` that tried to operate without config files.
+- [cli] Revert changes causing a panic in `pulumi destroy` that tried to operate without config files.
   [#9821](https://github.com/pulumi/pulumi/pull/9821)
