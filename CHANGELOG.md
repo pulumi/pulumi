@@ -23,6 +23,11 @@ CHANGELOG
 - [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the state store, including the `GOOGLE_CREDENTIALS`.`
   [#6379](https://github.com/pulumi/pulumi/pull/6379)
 
+- [yaml] [Updates Pulumi YAML to v0.5.1](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.1),
+  containing bug fixes, new functions, diagnostics and validation. Fixes support for using providers
+  such as `awsx`.
+  [#9797](https://github.com/pulumi/pulumi/pull/9797)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
