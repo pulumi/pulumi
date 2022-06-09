@@ -10,4 +10,4 @@
   [#9794](https://github.com/pulumi/pulumi/pull/9794)
 
 - [cli] Revert changes to `pulumi destroy` that tried to operate without config files.
-  [#TODO](TODO)
+  [#9821](https://github.com/pulumi/pulumi/pull/9821)
