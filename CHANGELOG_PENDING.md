@@ -8,3 +8,7 @@
 
 - [sdk/python] Better explain the keyword arguments to create(etc)_stack.
   [#9794](https://github.com/pulumi/pulumi/pull/9794)
+
+- [cli] Revert to statically linked binaries on Windows and Linux,
+  fixing a regression introduced in 3.34.0
+  [#9816](https://github.com/pulumi/pulumi/issues/9816)
