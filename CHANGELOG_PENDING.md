@@ -15,3 +15,6 @@
 - [cli] Revert to statically linked binaries on Windows and Linux,
   fixing a regression introduced in 3.34.0
   [#9816](https://github.com/pulumi/pulumi/issues/9816)
+
+- [codegen/python] ResourceOptions are no longer mutated by resources.
+  [#9802](https://github.com/pulumi/pulumi/pull/9802)
