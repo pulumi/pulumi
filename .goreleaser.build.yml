@@ -50,6 +50,7 @@ builds:
   binary: pulumi-language-python
   dir: sdk
   main: ./python/cmd/pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
   goarch:
     - amd64
     - arm64
@@ -67,6 +68,7 @@ builds:
   binary: pulumi-language-dotnet
   dir: sdk
   main: ./dotnet/cmd/pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
   goarch:
     - amd64
     - arm64
@@ -84,6 +86,7 @@ builds:
   binary: pulumi-language-go
   dir: sdk
   main: ./go/pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
   goarch:
     - amd64
     - arm64
