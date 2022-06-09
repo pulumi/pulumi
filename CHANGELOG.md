@@ -73,9 +73,6 @@ CHANGELOG
 - [codegen/nodejs] Emit the "package.json".pulumi.server as "server" correctly. Previously, "pluginDownloadURL" was emitted but never read.
   [#9662](https://github.com/pulumi/pulumi/pull/9662)
 
-- [cli] Fix panic in `pulumi console` when no stack is selected.
-  [#9594](https://github.com/pulumi/pulumi/pull/9594)
-
 - [cli] Engine now correctly tracks that resource reads have unique URNs.
   [#9516](https://github.com/pulumi/pulumi/pull/9516)
 
@@ -104,8 +101,6 @@ CHANGELOG
 - [cli] Updated gocloud.dev to 0.24.0, which adds support for using AWS SDK v2. It enables users to pass an AWS profile to the `awskms` secrets provider url (i.e. `awskms://alias/pulumi?awssdk=v2&region=eu-west-1&profile=aws-prod`)
   [#9590](https://github.com/pulumi/pulumi/pull/9590)
 
-- [sdk/nodejs] Lazy load V8 inspector session to remove module import side-effect [#9375](https://github.com/pulumi/pulumi/issues/9375)
-
 ### Bug Fixes
 
 - [cli] The PULUMI_CONFIG_PASSPHRASE environment variables can be empty, this is treated different to being unset.
@@ -117,8 +112,7 @@ CHANGELOG
 - [cli] Fix panic in `pulumi console` when no stack is selected.
   [#9594](https://github.com/pulumi/pulumi/pull/9594)
 
-
-- [auto/python] - Fix text color argument being ignored during stack     operations.
+- [auto/python] - Fix text color argument being ignored during stack operations.
   [#9615](https://github.com/pulumi/pulumi/pull/9615)
 
 
