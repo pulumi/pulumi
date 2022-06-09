@@ -353,6 +353,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 		relRoot := path.Dir(rel)
 		relImport := relPathToRelImport(relRoot)
 
+		fmt.Fprintf(w, "import copy\n")
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
@@ -1225,6 +1226,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 	fmt.Fprintf(w, "        if opts is None:\n")
 	fmt.Fprintf(w, "            opts = pulumi.ResourceOptions()\n")
+	fmt.Fprintf(w, "        else:\n")
+	// We mutate opts so ensure we take a copy of it (see https://github.com/pulumi/pulumi/issues/9801)
+	fmt.Fprintf(w, "            opts = copy.copy(opts)\n")
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")

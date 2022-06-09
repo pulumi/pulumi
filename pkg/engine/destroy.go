@@ -71,7 +71,7 @@ func newDestroySource(
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugins); err != nil {
+	if err := ensurePluginsAreInstalled(plugctx.Request(), plugins); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 

@@ -4,6 +4,9 @@
   create operations.
   [#9778](https://github.com/pulumi/pulumi/pull/9778)
 
+- [cli/python] Respond to SIGINT when installing plugins.
+  [#9793](https://github.com/pulumi/pulumi/pull/9793)
+
 - [codegen/go] Always chose the correct version when `respectSchemaVersion` is set.
   [#9798](https://github.com/pulumi/pulumi/pull/9798)
 
@@ -18,3 +21,6 @@
 - [cli] Revert to statically linked binaries on Windows and Linux,
   fixing a regression introduced in 3.34.0
   [#9816](https://github.com/pulumi/pulumi/issues/9816)
+
+- [codegen/python] ResourceOptions are no longer mutated by resources.
+  [#9802](https://github.com/pulumi/pulumi/pull/9802)
