@@ -398,6 +398,11 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		}
 		opts.Secrets[k] = v
 	}
+	if overrides.OrderedConfig != nil {
+		for _, cv := range overrides.OrderedConfig {
+			opts.OrderedConfig = append(opts.OrderedConfig, cv)
+		}
+	}
 	if overrides.SecretsProvider != "" {
 		opts.SecretsProvider = overrides.SecretsProvider
 	}

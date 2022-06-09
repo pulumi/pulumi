@@ -171,8 +171,7 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 	// Tags based on Pulumi.yaml.
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
-		// No current stack return empty
-		return make(map[apitype.StackTagName]string), nil
+		return nil, err
 	}
 	if projPath != "" {
 		proj, err := workspace.LoadProject(projPath)
