@@ -358,9 +358,8 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 
 	// Shortcut for general case: URI Path contains '.git'
 	// Cleave URI into what comes before and what comes after.
-	const gitExtension string = ".git"
-	if loc := strings.LastIndex(path, gitExtension); loc != -1 {
-		var extensionOffset = loc + len(gitExtension)
+	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
+		var extensionOffset = loc + len(defaultGitCloudRepositorySuffix)
 		var resultURL = u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
 		var gitRepoPath = path[extensionOffset:]
 		var resultPath = strings.Trim(gitRepoPath, "/")
