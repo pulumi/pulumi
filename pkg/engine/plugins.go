@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -174,7 +175,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
@@ -190,7 +191,7 @@ func ensurePluginsAreInstalled(plugins pluginSet) error {
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(info)
+			return installPlugin(ctx, info)
 		})
 	}
 
@@ -206,7 +207,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(plugin workspace.PluginInfo) error {
+func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 	if plugin.Kind == workspace.LanguagePlugin {
 		logging.V(preparePluginLog).Infof(
@@ -238,7 +239,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.Install(stream, false); err != nil {
+	if err := plugin.InstallWithContext(ctx, stream, false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 

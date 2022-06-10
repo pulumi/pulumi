@@ -1,6 +1,31 @@
 CHANGELOG
 =========
 
+## 3.34.1 (2022-06-10)
+
+### Improvements
+
+- [cli/python] Respond to SIGINT when installing plugins.
+  [#9793](https://github.com/pulumi/pulumi/pull/9793)
+
+- [codegen/go] Always chose the correct version when `respectSchemaVersion` is set.
+  [#9798](https://github.com/pulumi/pulumi/pull/9798)
+
+### Bug Fixes
+
+- [sdk/python] Better explain the keyword arguments to create(etc)_stack.
+  [#9794](https://github.com/pulumi/pulumi/pull/9794)
+
+- [cli] Revert changes causing a panic in `pulumi destroy` that tried to operate without config files.
+  [#9821](https://github.com/pulumi/pulumi/pull/9821)
+
+- [cli] Revert to statically linked binaries on Windows and Linux,
+  fixing a regression introduced in 3.34.0
+  [#9816](https://github.com/pulumi/pulumi/issues/9816)
+
+- [codegen/python] ResourceOptions are no longer mutated by resources.
+  [#9802](https://github.com/pulumi/pulumi/pull/9802)
+
 ## 3.34.0 (2022-06-08)
 
 ### Improvements
@@ -22,6 +47,11 @@ CHANGELOG
 
 - [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the state store, including the `GOOGLE_CREDENTIALS`.`
   [#6379](https://github.com/pulumi/pulumi/pull/6379)
+
+- [yaml] [Updates Pulumi YAML to v0.5.1](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.1),
+  containing bug fixes, new functions, diagnostics and validation. Fixes support for using providers
+  such as `awsx`.
+  [#9797](https://github.com/pulumi/pulumi/pull/9797)
 
 ### Bug Fixes
 
