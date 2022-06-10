@@ -541,19 +541,32 @@ func TestFileExtentionSniffing(t *testing.T) {
 	assert.Equal(t, ArchiveFormat(NotArchive), detectArchiveFormat("./some/path/who.even.knows"))
 }
 
-func TestInvalidPathArchive(t *testing.T) {
+func TestSingleFilePathArchive(t *testing.T) {
 	t.Parallel()
 
-	// Create a temp file that is not an asset.
+	// Attempt to construct a PathArchive with the path to a temp file.
 	tmpFile, err := ioutil.TempFile("", "")
 	fileName := tmpFile.Name()
 	assert.NoError(t, err)
 	fmt.Fprintf(tmpFile, "foo\n")
 	tmpFile.Close()
 
-	// Attempt to construct a PathArchive with the temp file.
-	_, err = NewPathArchive(fileName)
-	assert.Error(t, err)
+	a, err := NewPathArchive(fileName)
+	assert.NoError(t, err)
+
+	r, err := a.Open()
+	assert.NoError(t, err)
+	seen := false
+	for {
+		name, _, err := r.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.ToSlash(fileName), name)
+		seen = true
+	}
+	assert.Equal(t, true, seen, "expected file was not in archive")
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {

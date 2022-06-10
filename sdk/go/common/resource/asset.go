@@ -769,13 +769,13 @@ func (a *Archive) readAssets() (ArchiveReader, error) {
 	return r, nil
 }
 
-// directoryArchiveReader is used to read an archive that is represented by a directory in the host filesystem.
-type directoryArchiveReader struct {
-	directoryPath string
-	assetPaths    []string
+// filesystemArchiveReader is used to read an archive that is represented by files in the host filesystem.
+type filesystemArchiveReader struct {
+	base       string   // the base path for the files
+	assetPaths []string // a slice of all the file paths, relative to the base
 }
 
-func (r *directoryArchiveReader) Next() (string, *Blob, error) {
+func (r *filesystemArchiveReader) Next() (string, *Blob, error) {
 	// If there are no more members in this archive, return io.EOF.
 	if len(r.assetPaths) == 0 {
 		return "", nil, io.EOF
@@ -785,25 +785,18 @@ func (r *directoryArchiveReader) Next() (string, *Blob, error) {
 	assetPath := r.assetPaths[0]
 	r.assetPaths = r.assetPaths[1:]
 
-	// Crop the asset's path s.t. it is relative to the directory path.
-	name, err := filepath.Rel(r.directoryPath, assetPath)
-	if err != nil {
-		return "", nil, err
-	}
-	name = filepath.Clean(name)
-
 	// Replace Windows separators with Linux ones (ToSlash is a no-op on Linux)
-	name = filepath.ToSlash(name)
+	name := filepath.ToSlash(assetPath)
 
 	// Open and return the blob.
-	blob, err := (&Asset{Path: assetPath}).Read()
+	blob, err := (&Asset{Path: filepath.Join(r.base, assetPath)}).Read()
 	if err != nil {
 		return "", nil, err
 	}
 	return name, blob, nil
 }
 
-func (r *directoryArchiveReader) Close() error {
+func (r *filesystemArchiveReader) Close() error {
 	return nil
 }
 
@@ -815,16 +808,25 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 	format := detectArchiveFormat(path)
 
 	if format == NotArchive {
-		// If not an archive, it could be a directory; if so, simply expand it out uncompressed as an archive.
+		// If not an archive, it could be a directory or just a single file; if so, simply expand it
+		// out uncompressed as an archive.
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
-		} else if !info.IsDir() {
-			return nil, errors.Errorf("'%v' is neither a recognized archive type nor a directory", path)
+		}
+
+		// When the path is a file rather than a directory, the expected behaviour is to make an
+		// archive with just that file, named for the path given.
+		if !info.IsDir() {
+			return &filesystemArchiveReader{
+				assetPaths: []string{path},
+				base:       "",
+			}, nil
 		}
 
 		// Accumulate the list of asset paths. This list is ordered deterministically by filepath.Walk.
 		assetPaths := []string{}
+
 		if walkerr := filepath.Walk(path, func(filePath string, f os.FileInfo, fileerr error) error {
 			// If there was an error, exit.
 			if fileerr != nil {
@@ -860,15 +862,19 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 			}
 
 			// Otherwise, add this asset to the list of paths and keep going.
-			assetPaths = append(assetPaths, filePath)
+			relpath, err := filepath.Rel(path, filePath)
+			if err != nil {
+				return err
+			}
+			assetPaths = append(assetPaths, relpath)
 			return nil
 		}); walkerr != nil {
 			return nil, walkerr
 		}
 
-		r := &directoryArchiveReader{
-			directoryPath: path,
-			assetPaths:    assetPaths,
+		r := &filesystemArchiveReader{
+			base:       path,
+			assetPaths: assetPaths,
 		}
 		return r, nil
 	}
