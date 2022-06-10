@@ -3,6 +3,8 @@ package pulumi
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // StackReference manages a reference to a Pulumi stack.
@@ -22,21 +24,30 @@ type StackReference struct {
 // GetOutput returns a stack output keyed by the given name as an AnyOutput
 // If the given name is not present in the StackReference, Output<nil> is returned.
 func (s *StackReference) GetOutput(name StringInput) AnyOutput {
-	return All(name, s.Outputs).
-		ApplyT(func(args []interface{}) interface{} {
-			n, outs := args[0].(string), args[1].(map[string]interface{})
-			v, ok := outs[n]
-			if ok {
-				return v
+	return All(name, s.rawOutputs).
+		ApplyT(func(args []interface{}) (interface{}, error) {
+			n, stack := args[0].(string), args[1].(resource.PropertyMap)
+			if !stack["outputs"].IsObject() {
+				return Any(nil), fmt.Errorf("failed to convert %T to object", stack)
 			}
-			if s.ctx.DryRun() {
-				// It is a dry run, so it is safe to return an unknown output.
-				return UnsafeUnknownOutput([]Resource{s})
+			outs := stack["outputs"].ObjectValue()
+			v, ok := outs[resource.PropertyKey(n)]
+			if !ok {
+				if s.ctx.DryRun() {
+					// It is a dry run, so it is safe to return an unknown output.
+					return UnsafeUnknownOutput([]Resource{s}), nil
+				}
+
+				// We don't return an error to remain consistent with other SDKs regarding missing keys.
+				return nil, nil
 			}
 
-			// We don't return an error to remain consistent with other SDKs regarding
-			// missing keys.
-			return nil
+			ret, secret, _ := unmarshalPropertyValue(s.ctx, v)
+
+			if secret {
+				ret = ToSecret(ret)
+			}
+			return ret, nil
 		}).(AnyOutput)
 }
 
