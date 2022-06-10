@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x65rrors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x65rrors.proto\x12\tpulumirpc\"1\n\nErrorCause\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x12\n\nstackTrace\x18\x02 \x01(\tB0Z.github.com/pulumi/pulumi/v3/proto/go/pulumirpcb\x06proto3')
 
 
 
@@ -29,6 +29,7 @@ _sym_db.RegisterMessage(ErrorCause)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
+  DESCRIPTOR._serialized_options = b'Z.github.com/pulumi/pulumi/v3/proto/go/pulumirpc'
   _ERRORCAUSE._serialized_start=27
   _ERRORCAUSE._serialized_end=76
 # @@protoc_insertion_point(module_scope)
