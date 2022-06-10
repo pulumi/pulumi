@@ -356,7 +356,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		return "", "", errors.New("invalid Git URL")
 	}
 
-	// Special case: URI Path contains '.git'
+	// Shortcut for general case: URI Path contains '.git'
 	// Cleave URI into what comes before and what comes after.
 	const gitExtension string = ".git"
 	if loc := strings.LastIndex(path, gitExtension); loc != -1 {
