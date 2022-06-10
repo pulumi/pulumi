@@ -187,9 +187,12 @@ namespace Pulumi
                 throw new ArgumentNullException(nameof(value));
             }
 
-            var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => OutputData.Create(ImmutableHashSet<Resource>.Empty, t, isKnown: true, isSecret: isSecret));
-            return new Output<T>(tcs.Task);
+            async Task<OutputData<T>> GetData()
+            {
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, await value, isKnown: true, isSecret);
+            }
+
+            return new Output<T>(GetData());
         }
 
         internal static Output<T> CreateUnknown(T value)
