@@ -75,6 +75,10 @@ func TestParseGitRepoURL(t *testing.T) {
 	exp = "https://gitlab.com/a/b/c/d/e/f/g/finally.git"
 	test(exp, "1/2/3/4/5", pre)
 	test(exp, "1/2/3/4/5", pre+"/")
+	pre = "https://gitlab.com/dotgit/.git.git"
+	exp = "https://gitlab.com/dotgit/.git.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
 
 	// No owner.
 	testError("https://github.com")
