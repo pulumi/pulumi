@@ -405,7 +405,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 		return nil, fmt.Errorf("Invalid package version: %w", err)
 	}
 
-	result := pulumirpc.PluginDependency{
+	result := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Server:  pulumiPlugin.Server,
@@ -413,7 +413,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
-	return &result, nil
+	return result, nil
 }
 
 func (host *dotnetLanguageHost) DotnetBuild(
