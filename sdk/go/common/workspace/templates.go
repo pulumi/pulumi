@@ -335,15 +335,6 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 			repo = pulumiPolicyTemplateGitRepository
 			branch = plumbing.NewBranchReferenceName(pulumiPolicyTemplateBranch)
 		}
-
-		if os.Getenv("GITHUB_REPOSITORY") == "pulumi/templates" {
-			// means we are running this function from pulumi/templates
-			// make sure we are retrieving the templates from the branch
-			// that had triggered this code so that we are testing the right changes
-			currentTemplatesBranch := os.Getenv("GITHUB_BRANCH")
-			branch = plumbing.NewBranchReferenceName(currentTemplatesBranch)
-		}
-
 		err := gitutil.GitCloneOrPull(repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
 			return TemplateRepository{}, fmt.Errorf("cloning templates repo: %w", err)
