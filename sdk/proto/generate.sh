@@ -37,7 +37,7 @@ GO_PULUMIRPC=./go
 GO_PROTOFLAGS="plugins=grpc"
 echo -e "\tGo: $GO_PULUMIRPC [$GO_PROTOFLAGS]"
 mkdir -p $GO_PULUMIRPC
-$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC $PROTO_FILES
+$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC --go_opt=paths=source_relative $PROTO_FILES
 
 # Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module prologue that mutate
 # the global object, which causes side-by-side bugs in pulumi/pulumi (pulumi/pulumi#2401). The protoc compiler
