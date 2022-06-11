@@ -1,17 +1,15 @@
-package filestate
+package authhelpers
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
+	"cloud.google.com/go/storage"
 	"golang.org/x/oauth2/google"
 
 	"gocloud.dev/blob/gcsblob"
-
-	"cloud.google.com/go/storage"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/gcp"
@@ -24,7 +22,9 @@ type GoogleCredentials struct {
 	ClientID     string `json:"client_id"`
 }
 
-func googleCredentials(ctx context.Context) (*google.Credentials, error) {
+// ResolveGoogleCredentials loads the google credentials using the pulumi-specific
+// logic first, falling back to the DefaultCredentials resoulution after.
+func ResolveGoogleCredentials(ctx context.Context, scope string) (*google.Credentials, error) {
 	// GOOGLE_CREDENTIALS aren't part of the gcloud standard authorization variables
 	// but the GCP terraform provider uses this variable to allow users to authenticate
 	// with the contents of a credentials.json file instead of just a file path.
@@ -32,7 +32,7 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 	if creds := os.Getenv("GOOGLE_CREDENTIALS"); creds != "" {
 		// We try $GOOGLE_CREDENTIALS before gcp.DefaultCredentials
 		// so that users can override the default creds
-		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite)
+		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), scope)
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse credentials from $GOOGLE_CREDENTIALS: %w", err)
 		}
@@ -50,9 +50,9 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 }
 
 func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
-	credentials, err := googleCredentials(ctx)
+	credentials, err := ResolveGoogleCredentials(ctx, storage.ScopeReadWrite)
 	if err != nil {
-		return nil, errors.New("missing google credentials")
+		return nil, fmt.Errorf("missing google credentials: %w", err)
 	}
 
 	client, err := gcp.NewHTTPClient(gcp.DefaultTransport(), credentials.TokenSource)

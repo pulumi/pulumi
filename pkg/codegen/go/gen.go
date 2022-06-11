@@ -3733,14 +3733,20 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) {
 	const template string = `
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
 func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
-	defaults := []pulumi.%[1]sOption{%[2]s}
+	defaults := []pulumi.%[1]sOption{%[2]s%[3]s}
 
 	return append(defaults, opts...)
 }
 `
 	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
+	version := ""
+	if info := pkg.pkg.Language["go"]; info != nil {
+		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version != nil {
+			version = fmt.Sprintf(", pulumi.Version(%q)", pkg.pkg.Version.String())
+		}
+	}
 	for _, typ := range []string{"Resource", "Invoke"} {
-		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL)
+		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, version)
 		contract.AssertNoError(err)
 	}
 }

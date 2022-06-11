@@ -16,6 +16,15 @@ PKG=github.com/pulumi/pulumi/pkg/v3/...
 SDK=github.com/pulumi/pulumi/sdk/v3/...
 COVERPKG="$PKG,$SDK"
 
+case $(go env GOOS) in
+    darwin)
+        export CGO_ENABLED=1
+        ;;
+    *)
+        export CGO_ENABLED=0
+        ;;
+esac
+
 case "$1" in
     build)
         ARGS=( "$@" )

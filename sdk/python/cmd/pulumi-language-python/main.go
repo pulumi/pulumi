@@ -35,6 +35,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -127,12 +128,24 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err = rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	validateVersion(virtualenvPath)
+	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
@@ -193,7 +206,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	// Now, determine which Pulumi packages are installed.
-	pulumiPackages, err := determinePulumiPackages(host.virtualenvPath, host.cwd)
+	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +299,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		if err := python.InstallDependenciesWithWriters(
+		if err := python.InstallDependenciesWithWriters(ctx,
 			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return err
 		}
@@ -372,12 +385,12 @@ func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, erro
 	return plugin, nil
 }
 
-func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
+func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pythonPackage, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
 	// Run the `python -m pip list -v --format json` command.
 	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
-	output, err := runPythonCommand(virtualenv, cwd, args...)
+	output, err := runPythonCommand(ctx, virtualenv, cwd, args...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "calling `python %s`", strings.Join(args, " "))
 	}
@@ -587,13 +600,13 @@ func determinePluginVersion(packageVersion string) (string, error) {
 	return result, nil
 }
 
-func runPythonCommand(virtualenv, cwd string, arg ...string) ([]byte, error) {
+func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string) ([]byte, error) {
 	var err error
 	var cmd *exec.Cmd
 	if virtualenv != "" {
 		cmd = python.VirtualEnvCommand(virtualenv, "python", arg...)
 	} else {
-		cmd, err = python.Command(arg...)
+		cmd, err = python.Command(ctx, arg...)
 		if err != nil {
 			return nil, err
 		}
@@ -649,7 +662,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
 	} else {
-		cmd, err = python.Command(args...)
+		cmd, err = python.Command(ctx, args...)
 		if err != nil {
 			return nil, err
 		}
@@ -770,13 +783,13 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 // validateVersion checks that python is running a valid version. If a version
 // is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
 // by the Pulumi CLI program.
-func validateVersion(virtualEnvPath string) {
+func validateVersion(ctx context.Context, virtualEnvPath string) {
 	var versionCmd *exec.Cmd
 	var err error
 	versionArgs := []string{"--version"}
 	if virtualEnvPath != "" {
 		versionCmd = python.VirtualEnvCommand(virtualEnvPath, "python", versionArgs...)
-	} else if versionCmd, err = python.Command(versionArgs...); err != nil {
+	} else if versionCmd, err = python.Command(ctx, versionArgs...); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to find python executable\n")
 		return
 	}
@@ -813,7 +826,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	if err := python.InstallDependenciesWithWriters(
+	if err := python.InstallDependenciesWithWriters(server.Context(),
 		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
 		return err
 	}

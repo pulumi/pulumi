@@ -4944,3 +4944,74 @@ func TestPluginsAreDownloaded(t *testing.T) {
 	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 	assert.Nil(t, res)
 }
+
+func TestAdditionalSecretOutputs(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("id123"), inputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var inputs resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:                  inputs,
+			AdditionalSecretOutputs: []resource.PropertyKey{"a", "b"},
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	inputs = resource.PropertyMap{
+		"a": resource.NewStringProperty("testA"),
+		// b is missing
+		"c": resource.MakeSecret(resource.NewStringProperty("testC")),
+	}
+
+	// Run an update to create the resource and check we warn about b
+	validate := func(
+		project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
+		if res != nil {
+			return res
+		}
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				if payload.Severity == "warning" &&
+					payload.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" &&
+					payload.Message == "<{%reset%}>Could not find property 'b' listed in additional secret outputs.<{%reset%}>\n" {
+					// Found the message we expected
+					return nil
+				}
+			}
+		}
+		return result.Error("Expected a diagnostic message, got none")
+	}
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+
+	// Should have the provider and resA
+	assert.Len(t, snap.Resources, 2)
+	resA := snap.Resources[1]
+	assert.Equal(t, []resource.PropertyKey{"a", "b"}, resA.AdditionalSecretOutputs)
+	assert.True(t, resA.Outputs["a"].IsSecret())
+	assert.True(t, resA.Outputs["c"].IsSecret())
+}

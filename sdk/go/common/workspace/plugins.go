@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -720,6 +721,11 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 	}, nil
 }
 
+// Install installs a plugin's tarball into the cache. See InstallWithContext for details.
+func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
+	return info.InstallWithContext(context.Background(), tgz, reinstall)
+}
+
 // Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
 // Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp directory
 // to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners opening
@@ -731,7 +737,7 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
+func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser, reinstall bool) error {
 	defer contract.IgnoreClose(tgz)
 
 	// Fetch the directory into which we will expand this tarball.
@@ -819,12 +825,12 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(finalDir, true /* production */, &b, &b); err != nil {
+			if _, err := npm.Install(ctx, finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
-			if err := python.InstallDependencies(finalDir, "venv", false /*showOutput*/); err != nil {
+			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		}
