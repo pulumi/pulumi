@@ -15,7 +15,10 @@
 package rpcutil
 
 import (
+	"fmt"
+	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -60,9 +63,17 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 
 	health := health.NewServer()
 
+	logFile, err := os.Create(fmt.Sprintf("/tmp/grpc-%d.log", rand.Intn(10000)))
+	if err != nil {
+		return 0, nil, err
+	}
+
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
 	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
+		grpc.ChainUnaryInterceptor(
+			OpenTracingServerInterceptor(parentSpan, options...),
+			LoggingServerInterceptor(logFile),
+		),
 		grpc.MaxRecvMsgSize(maxRPCMessageSize),
 	)
 	for _, register := range registers {
@@ -106,6 +117,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 			done <- nil // send a signal so caller knows we're done, even though it's nil.
 		}
 		close(done)
+		logFile.Close()
 	}()
 
 	return port, done, nil

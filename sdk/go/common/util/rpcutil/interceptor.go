@@ -15,14 +15,22 @@
 package rpcutil
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"os"
 	"strings"
+	"sync"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
 // metadataReaderWriter satisfies both the opentracing.TextMapReader and
@@ -91,4 +99,70 @@ func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInte
 			return method != ""
 		}))
 	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
+}
+
+type grpcRequestLog struct {
+	FullMethod string          `json:"fullMethod"`
+	Request    json.RawMessage `json:"request"`
+	Response   json.RawMessage `json:"response"`
+	Errors     []string        `json:"errors,omitempty"`
+}
+
+func (l *grpcRequestLog) transcode(m proto.Message) (json.RawMessage, error) {
+	jsonSer := jsonpb.Marshaler{
+		Indent: "  ",
+	}
+	buf := bytes.Buffer{}
+	if err := jsonSer.Marshal(&buf, m); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (l *grpcRequestLog) setRequest(m proto.Message) error {
+	j, err := l.transcode(m)
+	if err != nil {
+		return err
+	}
+	l.Request = j
+	return nil
+}
+
+func (l *grpcRequestLog) setResponse(m proto.Message) error {
+	j, err := l.transcode(m)
+	if err != nil {
+		return err
+	}
+	l.Response = j
+	return nil
+}
+
+func (l *grpcRequestLog) addError(e error) {
+	l.Errors = append(l.Errors, e.Error())
+}
+
+// LoggingServerInterceptor provides a gRPC server interceptor for
+// logging gRPC payloads to the given writer.
+func LoggingServerInterceptor(writer io.Writer) grpc.UnaryServerInterceptor {
+	mu := &sync.Mutex{}
+	jw := json.NewEncoder(writer)
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		log := grpcRequestLog{FullMethod: info.FullMethod}
+		if err := log.setRequest(req.(proto.Message)); err != nil {
+			log.addError(err)
+		}
+		resp, err := handler(ctx, req)
+		if err != nil {
+			log.addError(err)
+		} else if err := log.setResponse(resp.(proto.Message)); err != nil {
+			log.addError(err)
+		}
+		mu.Lock()
+		json.NewEncoder(os.Stderr).Encode(log)
+		if err := jw.Encode(log); err != nil {
+			panic(err)
+		}
+		mu.Unlock()
+		return resp, err
+	}
 }
