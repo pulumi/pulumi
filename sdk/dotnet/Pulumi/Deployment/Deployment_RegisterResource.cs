@@ -53,7 +53,12 @@ namespace Pulumi
             request.Parent = prepareResult.ParentUrn;
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
-            request.SmartAliases.Add(prepareResult.Aliases);
+            if (prepareResult.Aliases != null) {
+                request.Aliases.Add(prepareResult.Aliases);
+            } else {
+                System.Diagnostics.Debug.Assert(prepareResult.SmartAliases != null, "Aliases and SmartAliases were both null");
+                request.SmartAliases.Add(prepareResult.SmartAliases);
+            }
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
             foreach (var (key, resourceUrns) in prepareResult.PropertyToDirectDependencyUrns)
