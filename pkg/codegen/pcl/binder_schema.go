@@ -234,12 +234,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		}
 		return objType
 	case *schema.TokenType:
-		t, ok := model.GetOpaqueType(src.Token)
-		if !ok {
-			tt, err := model.NewOpaqueType(src.Token)
-			contract.IgnoreError(err)
-			t = tt
-		}
+		t := model.NewOpaqueType(src.Token)
 
 		if src.UnderlyingType != nil {
 			underlyingType := b.schemaTypeToType(src.UnderlyingType)

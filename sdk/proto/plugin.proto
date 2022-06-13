@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/v3/proto/go/pulumirpc";
+
 // PluginInfo is meta-information about a plugin that is used by the system.
 message PluginInfo {
     string version = 1; // the semver for this plugin.
