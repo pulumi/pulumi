@@ -348,15 +348,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return nil, res
 	}
 
-	for _, secret := range goal.AdditionalSecretOutputs {
-		if secret == "id" {
-			sg.deployment.ctx.Diag.Warningf(&diag.Diag{
-				URN:     urn,
-				Message: "The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
-			})
-		}
-	}
-
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.

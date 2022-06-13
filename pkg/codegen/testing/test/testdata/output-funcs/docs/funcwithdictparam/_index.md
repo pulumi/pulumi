@@ -156,7 +156,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_java" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String,String></span>
+        <span class="property-type">Map&lt;String,String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -222,7 +222,7 @@ The following arguments are supported:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_yaml" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Map<String></span>
+        <span class="property-type">Map&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -19,6 +20,9 @@ type PackageReference interface {
 	Name() string
 	// Version returns the package version.
 	Version() *semver.Version
+
+	// Description returns the packages description.
+	Description() string
 
 	// Types returns the package's types.
 	Types() PackageTypes
@@ -136,6 +140,10 @@ func (p packageDefRef) Name() string {
 
 func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
+}
+
+func (p packageDefRef) Description() string {
+	return p.pkg.Description
 }
 
 func (p packageDefRef) Types() PackageTypes {
@@ -284,6 +292,11 @@ func (i *packageDefFunctionsIter) Next() bool {
 // PartialPackage is backed by a PartialPackageSpec, which leaves package members in their JSON-encoded form until
 // they are required. PartialPackages are created using ImportPartialSpec.
 type PartialPackage struct {
+	// This mutex guards two operations:
+	// - access to PartialPackage.def
+	// - package binding operations
+	m sync.Mutex
+
 	spec      *PartialPackageSpec
 	languages map[string]Language
 	types     *types
@@ -294,6 +307,9 @@ type PartialPackage struct {
 }
 
 func (p *PartialPackage) Name() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def.Name
 	}
@@ -301,13 +317,29 @@ func (p *PartialPackage) Name() string {
 }
 
 func (p *PartialPackage) Version() *semver.Version {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def.Version
 	}
 	return p.types.pkg.Version
 }
 
+func (p *PartialPackage) Description() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.Description
+	}
+	return p.types.pkg.Description
+}
+
 func (p *PartialPackage) Types() PackageTypes {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return packageDefTypes{p.def}
 	}
@@ -315,6 +347,9 @@ func (p *PartialPackage) Types() PackageTypes {
 }
 
 func (p *PartialPackage) Config() ([]*Property, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def.Config, nil
 	}
@@ -323,6 +358,10 @@ func (p *PartialPackage) Config() ([]*Property, error) {
 		return p.config, nil
 	}
 
+	return p.bindConfig()
+}
+
+func (p *PartialPackage) bindConfig() ([]*Property, error) {
 	var spec ConfigSpec
 	if err := parseJSONPropertyValue(p.spec.Config, &spec); err != nil {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
@@ -341,6 +380,9 @@ func (p *PartialPackage) Config() ([]*Property, error) {
 }
 
 func (p *PartialPackage) Provider() (*Resource, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def.Provider, nil
 	}
@@ -356,6 +398,9 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 }
 
 func (p *PartialPackage) Resources() PackageResources {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return packageDefResources{p.def}
 	}
@@ -363,6 +408,9 @@ func (p *PartialPackage) Resources() PackageResources {
 }
 
 func (p *PartialPackage) Functions() PackageFunctions {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return packageDefFunctions{p.def}
 	}
@@ -370,6 +418,9 @@ func (p *PartialPackage) Functions() PackageFunctions {
 }
 
 func (p *PartialPackage) TokenToModule(token string) string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def.TokenToModule(token)
 	}
@@ -377,11 +428,14 @@ func (p *PartialPackage) TokenToModule(token string) string {
 }
 
 func (p *PartialPackage) Definition() (*Package, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def, nil
 	}
 
-	config, err := p.Config()
+	config, err := p.bindConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -436,6 +490,9 @@ func (p *PartialPackage) Definition() (*Package, error) {
 // Definition has been called, the returned definition will include all of the package's members. It is safe to call
 // Snapshot multiple times.
 func (p *PartialPackage) Snapshot() (*Package, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if p.def != nil {
 		return p.def, nil
 	}
@@ -444,16 +501,18 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	provider := p.types.resourceDefs["pulumi:providers:"+p.spec.Name]
 
 	resources := make([]*Resource, 0, len(p.types.resourceDefs))
-	for _, res := range p.types.resourceDefs {
-		resources = append(resources, res)
+	resourceDefs := make(map[string]*Resource, len(p.types.resourceDefs))
+	for token, res := range p.types.resourceDefs {
+		resources, resourceDefs[token] = append(resources, res), res
 	}
 	sort.Slice(resources, func(i, j int) bool {
 		return resources[i].Token < resources[j].Token
 	})
 
 	functions := make([]*Function, 0, len(p.types.functionDefs))
-	for _, fn := range p.types.functionDefs {
-		functions = append(functions, fn)
+	functionDefs := make(map[string]*Function, len(p.types.functionDefs))
+	for token, fn := range p.types.functionDefs {
+		functions, functionDefs[token] = append(functions, fn), fn
 	}
 	sort.Slice(functions, func(i, j int) bool {
 		return functions[i].Token < functions[j].Token
@@ -463,16 +522,33 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	contract.Assert(err == nil)
 	contract.Assert(len(diags) == 0)
 
+	typeDefs := make(map[string]Type, len(p.types.typeDefs))
+	for token, typ := range p.types.typeDefs {
+		typeDefs[token] = typ
+	}
+	resourceTypes := make(map[string]*ResourceType, len(p.types.resources))
+	for token, typ := range p.types.resources {
+		resourceTypes[token] = typ
+	}
+
+	// NOTE: these writes are very much not concurrency-safe. There is a data race on each write to a slice-typed field
+	// because slices are multi-word values. Unfortunately, fixing this is rather involved. The simplest solution--
+	// returning a copy of p.types.pkg--breaks package membership tests that use pointer equality (e.g. if the result
+	// of Snapshot() is in a variable named `pkg`, `pkg.Resources[0].Package == pkg` will evaluate to `false`). It is
+	// likely that we will need to make a breaking change in order to fix this.
+	//
+	// There is also a race between the call to ImportLanguages and readers of the Language property on the various
+	// types.
 	pkg := p.types.pkg
 	pkg.Config = config
 	pkg.Types = typeList
 	pkg.Provider = provider
 	pkg.Resources = resources
 	pkg.Functions = functions
-	pkg.resourceTable = p.types.resourceDefs
-	pkg.functionTable = p.types.functionDefs
-	pkg.typeTable = p.types.typeDefs
-	pkg.resourceTypeTable = p.types.resources
+	pkg.resourceTable = resourceDefs
+	pkg.functionTable = functionDefs
+	pkg.typeTable = typeDefs
+	pkg.resourceTypeTable = resourceTypes
 	if err := pkg.ImportLanguages(p.languages); err != nil {
 		return nil, err
 	}
@@ -492,6 +568,9 @@ func (p partialPackageTypes) Range() TypesIter {
 }
 
 func (p partialPackageTypes) Get(token string) (Type, bool, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	typ, diags, err := p.types.bindTypeDef(token)
 	if err != nil {
 		return nil, false, err
@@ -532,6 +611,9 @@ func (p partialPackageResources) Range() ResourcesIter {
 }
 
 func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	res, diags, err := p.types.bindResourceDef(token)
 	if err != nil {
 		return nil, false, err
@@ -543,6 +625,9 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 }
 
 func (p partialPackageResources) GetType(token string) (*ResourceType, bool, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	typ, diags, err := p.types.bindResourceTypeDef(token)
 	if err != nil {
 		return nil, false, err
@@ -583,6 +668,9 @@ func (p partialPackageFunctions) Range() FunctionsIter {
 }
 
 func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	fn, diags, err := p.types.bindFunctionDef(token)
 	if err != nil {
 		return nil, false, err

@@ -1,6 +1,121 @@
 CHANGELOG
 =========
 
+## 3.34.1 (2022-06-10)
+
+### Improvements
+
+- [cli/python] Respond to SIGINT when installing plugins.
+  [#9793](https://github.com/pulumi/pulumi/pull/9793)
+
+- [codegen/go] Always chose the correct version when `respectSchemaVersion` is set.
+  [#9798](https://github.com/pulumi/pulumi/pull/9798)
+
+### Bug Fixes
+
+- [sdk/python] Better explain the keyword arguments to create(etc)_stack.
+  [#9794](https://github.com/pulumi/pulumi/pull/9794)
+
+- [cli] Revert changes causing a panic in `pulumi destroy` that tried to operate without config files.
+  [#9821](https://github.com/pulumi/pulumi/pull/9821)
+
+- [cli] Revert to statically linked binaries on Windows and Linux,
+  fixing a regression introduced in 3.34.0
+  [#9816](https://github.com/pulumi/pulumi/issues/9816)
+
+- [codegen/python] ResourceOptions are no longer mutated by resources.
+  [#9802](https://github.com/pulumi/pulumi/pull/9802)
+
+## 3.34.0 (2022-06-08)
+
+### Improvements
+
+- [codegen/go] Handle long and complicated traversals in a nicer way.
+  [#9726](https://github.com/pulumi/pulumi/pull/9726)
+
+- [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
+  [#9613](https://github.com/pulumi/pulumi/pull/9613)
+
+- [cli] Plugins will now shut themselves down if they can't contact the engine that started them.
+  [#9735](https://github.com/pulumi/pulumi/pull/9735)
+
+- [cli/engine] The engine will emit a warning of a key given in additional secret outputs doesn't match any of the property keys on the resources.
+  [#9750](https://github.com/pulumi/pulumi/pull/9750)
+
+- [sdk/go] Add `CompositeInvoke` function, like `Composite` but for `InvokeOption`.
+  [#9752](https://github.com/pulumi/pulumi/pull/9752)
+
+- [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the state store, including the `GOOGLE_CREDENTIALS`.`
+  [#6379](https://github.com/pulumi/pulumi/pull/6379)
+
+- [yaml] [Updates Pulumi YAML to v0.5.1](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.1),
+  containing bug fixes, new functions, diagnostics and validation. Fixes support for using providers
+  such as `awsx`.
+  [#9797](https://github.com/pulumi/pulumi/pull/9797)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix a crash due to dependency cycles from component resources.
+  [#9683](https://github.com/pulumi/pulumi/pull/9683)
+
+- [cli/about] Make `pulumi about` aware of the YAML and Java runtimes.
+  [#9745](https://github.com/pulumi/pulumi/pull/9745)
+
+- [cli/engine] Fix a panic deserializing resource plans without goals.
+  [#9749](https://github.com/pulumi/pulumi/pull/9749)
+
+- [cli/engine] Provide a sorting for plugins of equivalent version.
+  [#9761](https://github.com/pulumi/pulumi/pull/9761)
+
+- [cli/backend] Fix degraded performance in filestate backend
+  [#9777](https://github.com/pulumi/pulumi/pull/9777)
+  [#9796](https://github.com/pulumi/pulumi/pull/9796)
+
+- [engine] Engine correctly the number of bytes written to a TAR archive is what was expected.
+  [#9792](https://github.com/pulumi/pulumi/pull/9792)
+
+## 3.33.2 (2022-05-27)
+
+### Improvements
+
+- [cli] `pulumi logout` now prints a confirmation message that it logged out.
+  [#9641](https://github.com/pulumi/pulumi/pull/9641)
+
+- [cli/backend] Add gzip compression to filestate backend. Compression can be enabled via `PULUMI_SELF_MANAGED_STATE_GZIP=true`. Special thanks to @awoimbee for the initial PR.
+  [#9610](https://github.com/pulumi/pulumi/pull/9610)
+
+- [sdk/nodejs] Lazy load inflight context to remove module import side-effect.
+  [#9375](https://github.com/pulumi/pulumi/issues/9375)
+
+### Bug Fixes
+
+- [sdk/python] Fix spurious diffs causing an "update" on resources created by dynamic providers.
+  [#9656](https://github.com/pulumi/pulumi/pull/9656)
+
+- [sdk/python] Do not depend on the children of remote component resources.
+  [#9665](https://github.com/pulumi/pulumi/pull/9665)
+
+- [codegen/nodejs] Emit the "package.json".pulumi.server as "server" correctly. Previously, "pluginDownloadURL" was emitted but never read.
+  [#9662](https://github.com/pulumi/pulumi/pull/9662)
+
+- [cli] Fix panic in `pulumi console` when no stack is selected.
+  [#9594](https://github.com/pulumi/pulumi/pull/9594)
+
+- [cli] Engine now correctly tracks that resource reads have unique URNs.
+  [#9516](https://github.com/pulumi/pulumi/pull/9516)
+
+- [sdk/python] Fixed bug in automation API that invoked Pulumi with malformed arguments.
+  [#9607](https://github.com/pulumi/pulumi/pull/9607)
+
+- [cli/backend] Fix a panic in the filestate backend when renaming history files.
+  [#9673](https://github.com/pulumi/pulumi/pull/9673)
+
+- [sdk/python] Pin protobuf library to <4.
+  [#9696](https://github.com/pulumi/pulumi/pull/9696)
+
+- [sdk/proto] Inline dockerfile used to generate protobuf code.
+  [#9700](https://github.com/pulumi/pulumi/pull/9700)
+
 ## 3.33.1 (2022-05-19)
 
 ### Improvements

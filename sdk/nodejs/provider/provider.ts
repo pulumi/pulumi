@@ -14,7 +14,6 @@
 
 import { Input, Inputs } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.

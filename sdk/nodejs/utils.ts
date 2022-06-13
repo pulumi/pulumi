@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { InvokeOptions } from "./invoke";
-
 /**
  * Common code for doing RTTI typechecks.  RTTI is done by having a boolean property on an object
  * with a special name (like "__resource" or "__asset").  This function checks that the object

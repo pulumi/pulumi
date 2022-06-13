@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -338,26 +339,47 @@ func (b *localBackend) backupStack(name tokens.Name) error {
 
 func (b *localBackend) stackPath(stack tokens.Name) string {
 	path := filepath.Join(b.StateDir(), workspace.StackDir)
-	if stack != "" {
-		allObjs, err := listBucket(b.bucket, path)
-		path = filepath.Join(path, fsutil.NamePath(stack)) + ".json"
-		if err == nil {
-			gzipedPath := path + ".gz"
-			var plainObj *blob.ListObject
-			for _, obj := range allObjs {
-				// plainObj will always come out first since allObjs is sorted by Key
-				if obj.Key == path {
-					plainObj = obj
-				} else if obj.Key == gzipedPath {
-					if plainObj != nil && plainObj.ModTime.After(obj.ModTime) {
-						return path
-					}
-					return gzipedPath
-				}
+	if stack == "" {
+		return path
+	}
+
+	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
+	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
+	// results in a slice.
+	plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+	gzipedPath := plainPath + ".gz"
+
+	bucketIter := b.bucket.List(&blob.ListOptions{
+		Delimiter: "/",
+		Prefix:    plainPath,
+	})
+
+	var plainObj *blob.ListObject
+	ctx := context.TODO()
+	for {
+		file, err := bucketIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// Error fetching the available ojects, assume .json
+			return plainPath
+		}
+
+		// plainObj will always come out first since allObjs is sorted by Key
+		if file.Key == plainPath {
+			plainObj = file
+		} else if file.Key == gzipedPath {
+			// We have a plain .json file and it was modified after this gzipped one so use it.
+			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
+				return plainPath
 			}
+			// else use the gzipped object
+			return gzipedPath
 		}
 	}
-	return path
+	// Couldn't find any objects, assume nongzipped path?
+	return plainPath
 }
 
 func (b *localBackend) historyDirectory(stack tokens.Name) string {
@@ -464,9 +486,16 @@ func (b *localBackend) renameHistory(oldName tokens.Name, newName tokens.Name) e
 		fileName := objectName(file)
 		oldBlob := path.Join(oldHistory, fileName)
 
-		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json, we need to change
-		// the stack name part but retain the other parts.
-		newFileName := string(newName) + fileName[strings.LastIndex(fileName, "-"):]
+		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz], we need to change
+		// the stack name part but retain the other parts. If we find files that don't match this format
+		// ignore them.
+		dashIndex := strings.LastIndex(fileName, "-")
+		if dashIndex == -1 || (fileName[:dashIndex] != oldName.String()) {
+			// No dash or the string up to the dash isn't the old name
+			continue
+		}
+
+		newFileName := string(newName) + fileName[dashIndex:]
 		newBlob := path.Join(newHistory, newFileName)
 
 		if err := b.bucket.Copy(context.TODO(), newBlob, oldBlob, nil); err != nil {

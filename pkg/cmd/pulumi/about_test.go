@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"runtime"
 	"strings"
 	"testing"
@@ -36,17 +37,17 @@ func TestCLI(t *testing.T) {
 func TestProjectRuntime(t *testing.T) {
 	t.Parallel()
 
-	cmd, err := python.Command("--version")
+	cmd, err := python.Command(context.Background(), "--version")
 	var out []byte
 	if err != nil {
 		t.Skip("Python needs to be in path for this func Test")
 	}
 	out, err = cmd.Output()
 	assert.NoError(t, err, "This should not fail")
-	version := strings.TrimSpace("v" + strings.TrimPrefix(string(out), "Python "))
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
 
 	var runtime projectRuntimeAbout
-	runtime, err = getProjectRuntimeAbout(&workspace.Project{
+	runtime, err = getProjectRuntimeAbout(context.Background(), &workspace.Project{
 		Name:    "TestProject",
 		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
 	})

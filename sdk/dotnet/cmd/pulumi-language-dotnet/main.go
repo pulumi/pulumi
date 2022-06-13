@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -92,8 +93,20 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			host := newLanguageHost(dotnetExec, engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
@@ -392,7 +405,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 		return nil, fmt.Errorf("Invalid package version: %w", err)
 	}
 
-	result := pulumirpc.PluginDependency{
+	result := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Server:  pulumiPlugin.Server,
@@ -400,7 +413,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
-	return &result, nil
+	return result, nil
 }
 
 func (host *dotnetLanguageHost) DotnetBuild(

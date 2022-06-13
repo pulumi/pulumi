@@ -352,7 +352,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_java" style="color: inherit; text-decoration: inherit;">keys</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#storageaccountkeyresponse">List<Storage<wbr>Account<wbr>Key<wbr>Response></a></span>
+        <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
 </dd></dl>
@@ -397,7 +397,7 @@ The following output properties are available:
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_yaml" style="color: inherit; text-decoration: inherit;">keys</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#storageaccountkeyresponse">List<Property Map></a></span>
+        <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
 </dd></dl>

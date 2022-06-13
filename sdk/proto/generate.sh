@@ -13,11 +13,11 @@
 set -o errexit
 set -o pipefail
 
-PULUMI_BUILD_CONTAINER_VERSION=v0.2.0
+PULUMI_BUILD_CONTAINER_VERSION=v0.3.0
 
-# First pull the image for the Pulumi Build Container
-echo "* Pulling Pulumi Build Container:"
-docker pull "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+# First build the image for the Pulumi Build Container
+echo "* Building Pulumi Build Container:"
+docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 DOCKER_RUN="docker run -it --rm -w /local -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 PROTOC="$DOCKER_RUN protoc"
@@ -37,7 +37,7 @@ GO_PULUMIRPC=./go
 GO_PROTOFLAGS="plugins=grpc"
 echo -e "\tGo: $GO_PULUMIRPC [$GO_PROTOFLAGS]"
 mkdir -p $GO_PULUMIRPC
-$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC $PROTO_FILES
+$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC --go_opt=paths=source_relative $PROTO_FILES
 
 # Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module prologue that mutate
 # the global object, which causes side-by-side bugs in pulumi/pulumi (pulumi/pulumi#2401). The protoc compiler

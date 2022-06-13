@@ -345,6 +345,12 @@ func (o resourceOption) applyResourceOption(opts *resourceOptions) {
 	o(opts)
 }
 
+type invokeOption func(*invokeOptions)
+
+func (o invokeOption) applyInvokeOption(opts *invokeOptions) {
+	o(opts)
+}
+
 type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
 
 func (o resourceOrInvokeOption) applyResourceOption(opts *resourceOptions) {
@@ -394,6 +400,15 @@ func Composite(opts ...ResourceOption) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		for _, o := range opts {
 			o.applyResourceOption(ro)
+		}
+	})
+}
+
+// CompositeInvoke is an invoke option that contains other invoke options.
+func CompositeInvoke(opts ...InvokeOption) InvokeOption {
+	return invokeOption(func(ro *invokeOptions) {
+		for _, o := range opts {
+			o.applyInvokeOption(ro)
 		}
 	})
 }

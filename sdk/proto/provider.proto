@@ -20,6 +20,8 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/v3/proto/go/pulumirpc";
+
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
@@ -65,7 +67,11 @@ service ResourceProvider {
     // Construct creates a new instance of the provided component resource and returns its state.
     rpc Construct(ConstructRequest) returns (ConstructResponse) {}
 
-    // Cancel signals the provider to abort all outstanding resource operations.
+    // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+    // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+    // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+    // to the host to decide how long to wait after Cancel is called before (e.g.)
+    // hard-closing any gRPC connection.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
