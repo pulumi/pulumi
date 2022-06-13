@@ -743,34 +743,34 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
-		switch destType {
-		case model.IntType:
+		switch *destType {
+		case *model.IntType:
 			if isInput {
 				return "pulumi.Int"
 			}
 			return "int"
-		case model.NumberType:
+		case *model.NumberType:
 			if isInput {
 				return "pulumi.Float64"
 			}
 			return "float64"
-		case model.StringType:
+		case *model.StringType:
 			if isInput {
 				return "pulumi.String"
 			}
 			return "string"
-		case model.BoolType:
+		case *model.BoolType:
 			if isInput {
 				return "pulumi.Bool"
 			}
 			return "bool"
-		case model.DynamicType:
+		case *model.DynamicType:
 			if isInput {
 				return "pulumi.Any"
 			}
 			return "interface{}"
 		default:
-			return destType.Name
+			return string(*destType)
 		}
 	case *model.ObjectType:
 

@@ -118,7 +118,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(fmt.Errorf("invalid Go source code:\n\n%s", index.String()))
+		panic(fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err))
 	}
 
 	files := map[string][]byte{
@@ -527,7 +527,7 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	}
 }
 
-var resourceType = model.MustNewOpaqueType("pulumi.Resource")
+var resourceType = model.NewOpaqueType("pulumi.Resource")
 
 func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
 	if opts == nil {
