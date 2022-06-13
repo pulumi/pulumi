@@ -624,6 +624,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableResourceReferences
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
+	case "smartAliases":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)

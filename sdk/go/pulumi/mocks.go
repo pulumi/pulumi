@@ -81,7 +81,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id == "secrets" || id == "resourceReferences"
+	hasSupport := id == "secrets" || id == "resourceReferences" || id == "smartAliases"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
