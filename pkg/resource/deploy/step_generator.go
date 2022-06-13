@@ -167,6 +167,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 
 	// Some event settings are based on the parent settings so make sure our parent is correct.
 	parent, res := sg.checkParent(event.Parent(), event.Type())
+	if res != nil {
+		return nil, res
+	}
 
 	urn, res := sg.generateURN(parent, event.Type(), event.Name())
 	if res != nil {
