@@ -1,7 +1,7 @@
 ### Improvements
 
 - [sdk/python] Changed `Output[T].__str__()` to return an informative message rather than "<pulumi.output.Output object at 0x012345ABCDEF>".
-  [#XXXX](https://github.com/pulumi/pulumi/pull/XXXX)
+  [#9848](https://github.com/pulumi/pulumi/pull/9848)
 
 ### Bug Fixes
 
