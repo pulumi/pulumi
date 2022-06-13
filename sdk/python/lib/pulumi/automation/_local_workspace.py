@@ -402,20 +402,33 @@ def create_stack(
 ) -> Stack:
     """
     Creates a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
-    Pulumi CLI program from the specified workdir.
+    Pulumi CLI program from the specified working dir.
 
     **Inline Programs**
 
     For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-    debuggable and runs in process. If no project_settings option is specified, default project settings will be
-    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-    default to a new temporary directory provided by the OS.
+    debuggable and runs in process. The work_dir keyword argument is ignored (but see the note on the work_dir
+    field of opts, below).
+
+    If no project_settings option is specified, default project settings will be created on behalf of the user.
+    Similarly, unless a `work_dir` option is specified, the working directory will default to a new temporary
+    directory provided by the OS.
+
+    Example of creating a stack with an inline program:
+
+        create_stack('dev', project_name='my-app', program=myAppFn)
 
     **Local Programs**
 
-    For local programs, the work_dir keyword argument must be provided.
+    For local programs, the work_dir keyword argument must be provided, and will override the work_dir field in
+    opts. Keyword arguments other than work_dir and opts are ignored.
+
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
     available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
+
+    Example of creating a stack with a local program:
+
+        create_stack('dev', work_dir='myapp/')
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.
@@ -443,20 +456,33 @@ def select_stack(
 ) -> Stack:
     """
     Selects a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
-    Pulumi CLI program from the specified workdir.
+    Pulumi CLI program from the specified working dir.
 
     **Inline Programs**
 
     For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-    debuggable and runs in process. If no project_settings option is specified, default project settings will be
-    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-    default to a new temporary directory provided by the OS.
+    debuggable and runs in process. The work_dir keyword argument is ignored (but see the note on the work_dir
+    field of opts, below).
+
+    If no project_settings option is specified, default project settings will be created on behalf of the user.
+    Similarly, unless a `work_dir` option is specified, the working directory will default to a new temporary
+    directory provided by the OS.
+
+    Example of selecting a stack with an inline program:
+
+        select_stack('dev', project_name='my-app', program=myAppFn)
 
     **Local Programs**
 
-    For local programs, the work_dir keyword argument must be provided.
+    For local programs, the work_dir keyword argument must be provided, and will override the work_dir field in
+    opts. Keyword arguments other than work_dir and opts are ignored.
+
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
     available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
+
+    Example of selecting a stack with a local program:
+
+        select_stack('dev', work_dir='myapp/')
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.
@@ -483,20 +509,33 @@ def create_or_select_stack(
 ) -> Stack:
     """
     Creates or selects an existing Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi
-    program or the local Pulumi CLI program from the specified workdir.
+    program or the local Pulumi CLI program from the specified working dir.
 
     **Inline Programs**
 
     For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-    debuggable and runs in process. If no project_settings option is specified, default project settings will be
-    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-    default to a new temporary directory provided by the OS.
+    debuggable and runs in process. The work_dir keyword argument is ignored (but see the note on the work_dir
+    field of opts, below).
+
+    If no project_settings option is specified, default project settings will be created on behalf of the user.
+    Similarly, unless a `work_dir` option is specified, the working directory will default to a new temporary
+    directory provided by the OS.
+
+    Example of selecting a stack with an inline program:
+
+        create_or_select_stack('dev', project_name='my-app', program=myAppFn)
 
     **Local Programs**
 
-    For local programs, the work_dir keyword argument must be provided.
+    For local programs, the work_dir keyword argument must be provided, and will override the work_dir field in
+    opts. Keyword arguments other than work_dir and opts are ignored.
+
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
     available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
+
+    Example of creating or selecting a stack with a local program:
+
+        create_or_select_stack('dev', work_dir='myapp/')
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.

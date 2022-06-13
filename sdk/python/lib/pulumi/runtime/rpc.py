@@ -161,7 +161,9 @@ async def serialize_properties(
     if typ is not None:
         py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
         types = _types.input_type_types(typ)
+        # pylint: disable=C3001
         translate = lambda k: py_name_to_pulumi_name.get(k) or k
+        # pylint: disable=C3001
         get_type = lambda k: types.get(translate(k))  # type: ignore
 
     struct = struct_pb2.Struct()
@@ -405,7 +407,9 @@ async def serialize_property(
             if _types.is_input_type(typ):
                 # If it's intended to be an input type, translate using the type's metadata.
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
+                # pylint: disable=C3001
                 types = _types.input_type_types(typ)
+                # pylint: disable=C3001
                 translate = lambda k: py_name_to_pulumi_name.get(k) or k
                 get_type = types.get
             else:
@@ -414,6 +418,7 @@ async def serialize_property(
                 if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                     args = _types.get_args(typ)
                     if len(args) == 2 and args[0] is str:
+                        # pylint: disable=C3001
                         get_type = lambda k: args[1]
                         translate = None
                 else:
@@ -833,10 +838,12 @@ def translate_output_properties(
             if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
+                    # pylint: disable=C3001
                     get_type = lambda k: args[1]
                     # If transform_using_type_metadata is True, don't translate its keys because
                     # it is intended to be a user-defined dict.
                     if transform_using_type_metadata:
+                        # pylint: disable=C3001
                         translate = lambda k: k
             else:
                 raise AssertionError(
@@ -971,7 +978,9 @@ def resolve_outputs(
     )
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
+        # pylint: disable=C3001
         translate = lambda k: pulumi_to_py_names.get(k) or k
+        # pylint: disable=C3001
         translate_to_pass = lambda k: k
 
     for key, value in deserialize_properties(outputs).items():

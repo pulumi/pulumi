@@ -105,14 +105,14 @@ jobs:
     uses: ./.github/workflows/publish-binaries.yml
     needs: [lint, language-sdk-lint, build, test-linux, test-windows, test-macos, versions]
     with:
-      goreleaser-config: '.goreleaser.prerelease.yml'
-      goreleaser-build-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
-      goreleaser-flags: '-p 3 --skip-validate'
+      goreleaser-config: .goreleaser.prerelease.yml
+      goreleaser-flags: -p 3 --skip-validate
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_UPLOAD_ROLE_ARN: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
 
   #  examples_smoke_test:
   #    name: Trigger Examples Smoke Test
@@ -242,16 +242,12 @@ jobs:
     uses: ./.github/workflows/build.yml
     needs: versions
     with:
-      # Cross-compiling from ubuntu-latest is faster but the artifact
-      # checksums will not match what publish-binaries expects.
-      default-build-platform: macos-latest
       enable-coverage: true
-      goreleaser-config: '.goreleaser.prerelease.yml'
-      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
+      goreleaser-flags: -p 3 --skip-validate
   test-linux:
     name: Test Linux
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test.yml@master
+    uses: ./.github/workflows/test.yml
     with:
       enable-coverage: true
       platform: ubuntu-latest
@@ -260,7 +256,7 @@ jobs:
   test-macos:
     name: Test MacOS
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: ./.github/workflows/test-fast.yml
     with:
       enable-coverage: true
       platform: macos-latest
@@ -269,7 +265,7 @@ jobs:
   test-windows:
     name: Test Windows
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: ./.github/workflows/test-fast.yml
     with:
       enable-coverage: true
       platform: windows-latest

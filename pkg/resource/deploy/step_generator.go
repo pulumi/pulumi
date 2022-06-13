@@ -374,15 +374,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return nil, res
 	}
 
-	for _, secret := range goal.AdditionalSecretOutputs {
-		if secret == "id" {
-			sg.deployment.ctx.Diag.Warningf(&diag.Diag{
-				URN:     urn,
-				Message: "The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
-			})
-		}
-	}
-
 	// Generate the aliases for this resource
 	aliases := make([]resource.URN, 0)
 	for _, alias := range goal.Aliases {

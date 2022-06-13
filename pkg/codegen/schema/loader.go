@@ -1,10 +1,12 @@
 package schema
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
@@ -124,7 +126,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		if err != nil {
 			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
-		if err := pkgPlugin.Install(reader, false); err != nil {
+		if err := pkgPlugin.InstallWithContext(context.Background(), reader, false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
@@ -138,6 +140,22 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 	return ref.Definition()
+}
+
+var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
+
+type getSchemaNotImplemented struct{}
+
+func (f getSchemaNotImplemented) Error() string {
+	return fmt.Sprintf("it looks like GetSchema is not implemented")
+}
+
+var schemaIsEmptyRE = regexp.MustCompile(`\s*\{\s*\}\s*$`)
+
+func schemaIsEmpty(schemaBytes []byte) bool {
+	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
+	// returned. That is what we did in the past when we chose not to implement GetSchema.
+	return schemaIsEmptyRE.Match(schemaBytes)
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
@@ -161,6 +179,9 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
 	if err != nil {
 		return nil, err
+	}
+	if schemaIsEmpty(schemaBytes) {
+		return nil, getSchemaNotImplemented{}
 	}
 
 	var spec PartialPackageSpec

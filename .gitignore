@@ -65,6 +65,9 @@ artifacts/
 goreleaser-downloads/
 goreleaser-prebuilt/
 goreleaser-lang/
+goreleaser-linux/
+goreleaser-darwin/
+goreleaser-windows/
 
 __pycache__
 .pytest_cache
