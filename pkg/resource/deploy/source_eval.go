@@ -1178,7 +1178,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom && len(ignoreChanges) > 0 {
-		rm.ctx.Diag.Warningf(diag.Message(result.State.URN, "The option 'ignoreChanges' has no effect on components. This may be changed in a future version."))
+		rm.ctx.Diag.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'ignoreChanges' has no effect on components. This may be changed in a future version.",
+		))
 	}
 
 	logging.V(5).Infof(
