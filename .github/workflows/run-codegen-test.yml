@@ -15,17 +15,34 @@ env:
 jobs:
   comment-notification:
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: github.event_name == 'repository_dispatch'
     steps:
       - name: Create URL to the run output
         id: vars
-        run: echo ::set-output name=run-url::https://$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+        run: echo ::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
       - name: Update with Result
         uses: peter-evans/create-or-update-comment@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
           issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            Please view the results of the Downstream Codegen Tests [Here][1]
+
+            [1]: ${{ steps.vars.outputs.run-url }}
+  comment-notification-pr:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Create URL to the run output
+        id: vars
+        run: echo ::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: |
             Please view the results of the Downstream Codegen Tests [Here][1]
 
