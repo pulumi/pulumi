@@ -71,4 +71,23 @@ func TestStackReference(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+
+	err = RunErr(func(ctx *Context) error {
+		ctx.info.DryRun = true
+		ref0, err := NewStackReference(ctx, resName, nil)
+		assert.NoError(t, err)
+		_, known, _, _, err := await(ref0.GetIntOutput(String("does-not-exist")))
+		assert.NoError(t, err)
+		assert.False(t, known)
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
+				"name":    "stack",
+				"outputs": outputs,
+			}), nil
+		},
+	}))
+	assert.NoError(t, err)
 }
