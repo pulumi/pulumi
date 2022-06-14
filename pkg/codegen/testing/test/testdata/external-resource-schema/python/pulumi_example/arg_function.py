@@ -46,10 +46,7 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
     """
     __args__ = dict()
     __args__['name'] = name
-    if opts is None:
-        opts = pulumi.InvokeOptions()
-    if opts.version is None:
-        opts.version = _utilities.get_version()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('example::argFunction', __args__, opts=opts, typ=ArgFunctionResult).value
 
     return AwaitableArgFunctionResult(
