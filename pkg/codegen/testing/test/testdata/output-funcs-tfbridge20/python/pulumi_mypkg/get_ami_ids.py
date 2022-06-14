@@ -132,10 +132,7 @@ def get_ami_ids(executable_users: Optional[Sequence[str]] = None,
     __args__['nameRegex'] = name_regex
     __args__['owners'] = owners
     __args__['sortAscending'] = sort_ascending
-    if opts is None:
-        opts = pulumi.InvokeOptions()
-    if opts.version is None:
-        opts.version = _utilities.get_version()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('mypkg::getAmiIds', __args__, opts=opts, typ=GetAmiIdsResult).value
 
     return AwaitableGetAmiIdsResult(
