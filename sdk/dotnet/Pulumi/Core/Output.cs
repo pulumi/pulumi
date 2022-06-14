@@ -189,7 +189,7 @@ namespace Pulumi
 
             async Task<OutputData<T>> GetData()
             {
-                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, await value, isKnown: true, isSecret);
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, await value.ConfigureAwait(false), isKnown: true, isSecret);
             }
 
             return new Output<T>(GetData());
