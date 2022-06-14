@@ -314,8 +314,8 @@ func TestStackParenting(t *testing.T) {
 					case "g":
 						assert.Equal(t, urns["f"], res.Parent)
 					case "default":
-						// Default providers are not parented.
-						assert.Equal(t, "", string(res.Parent))
+						// Default providers should have the stack as a parent.
+						assert.Equal(t, stackRes.URN, res.Parent)
 					default:
 						t.Fatalf("unexpected name %s", res.URN.Name())
 					}
