@@ -170,7 +170,6 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Error(err)
 		return
 	}
-	fmt.Printf("🤯🤯🤯🤯 found venv: %v", venvDir)
 
 	cmd := func(name string, args ...string) error {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))

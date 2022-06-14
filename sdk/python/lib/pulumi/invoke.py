@@ -115,7 +115,7 @@ class InvokeOptions:
             raise TypeError("Expected opts2 to be a InvokeOptions instance")
 
         dest = copy.copy(opts1)
-        source = copy.copy(opts2)
+        source = opts2
 
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.provider = dest.provider if source.provider is None else source.provider
