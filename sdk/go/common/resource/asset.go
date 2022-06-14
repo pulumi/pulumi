@@ -391,9 +391,12 @@ func (a *Asset) EnsureHash() error {
 		defer contract.IgnoreClose(blob)
 
 		hash := sha256.New()
-		_, err = io.Copy(hash, blob)
+		n, err := io.Copy(hash, blob)
 		if err != nil {
 			return err
+		}
+		if n != blob.Size() {
+			return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
 		}
 		a.Hash = hex.EncodeToString(hash.Sum(nil))
 	}
@@ -940,7 +943,7 @@ func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		_, err := io.Copy(w, ss)
+		_, err = io.Copy(w, ss)
 		return err
 	}
 
@@ -1037,6 +1040,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	}
 	seenFiles[file] = true
 
+	sz := data.Size()
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
 		Name:   file,
@@ -1054,8 +1058,14 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(fw, data)
-	return err
+	n, err := io.Copy(fw, data)
+	if err != nil {
+		return err
+	}
+	if n != sz {
+		return fmt.Errorf("incorrect blob size for %v: expected %v, got %v", file, sz, n)
+	}
+	return nil
 }
 
 func (a *Archive) archiveZIP(w io.Writer) error {
