@@ -20,6 +20,7 @@ type StackReference struct {
 }
 
 // GetOutput returns a stack output keyed by the given name as an AnyOutput
+// If the given name is not present in the StackReference, Output<nil> is returned.
 func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 	return All(name, s.Outputs).
 		ApplyT(func(args []interface{}) interface{} {
@@ -33,21 +34,19 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 				return UnsafeUnknownOutput([]Resource{s})
 			}
 
-			// We need to return a knowable output to avoid hanging the program, so we
-			// warn and return nil.
-			s.ctx.Log.Warn(fmt.Sprintf("stack referenced missing output '%s'", n), &LogArgs{Resource: s})
+			// We don't return an error to remain consistent with other SDKs regarding
+			// missing keys.
 			return nil
 		}).(AnyOutput)
 }
 
 // GetStringOutput returns a stack output keyed by the given name as an StringOutput
 func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
-	return s.GetOutput(name).ApplyT(func(out interface{}) string {
-		var res string
-		if out != nil {
-			res = out.(string)
+	return s.GetOutput(name).ApplyT(func(out interface{}) (string, error) {
+		if s, ok := out.(string); ok {
+			return s, nil
 		}
-		return res
+		return "", fmt.Errorf("failed to convert %T to string", out)
 	}).(StringOutput)
 }
 
