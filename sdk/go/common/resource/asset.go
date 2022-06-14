@@ -943,7 +943,7 @@ func (a *Archive) Archive(format ArchiveFormat, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(w, ss)
+		_, err := io.Copy(w, ss)
 		return err
 	}
 
