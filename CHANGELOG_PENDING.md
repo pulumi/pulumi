@@ -13,3 +13,6 @@
 
 - [sdk/go] Mark StackReference keys that don't exist as unknown. Error when converting unknown keys to strings.
   [#9855](https://github.com/pulumi/pulumi/pull/9855)
+
+- [sdk/go] Precisely mark values obtained via stack reference `Get...Output(key)` methods as secret or not.
+  [#9842](https://github.com/pulumi/pulumi/pull/9842)
