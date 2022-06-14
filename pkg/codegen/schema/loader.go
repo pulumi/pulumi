@@ -46,9 +46,9 @@ type pluginLoader struct {
 type pluginLoaderCacheOptions struct {
 	// useEntriesCache enables in-memory re-use of packages
 	disableEntryCache bool
-	// useFileCache enables skipping plugin loading when possible and caching JSON schemas to files.
+	// useFileCache enables skipping plugin loading when possible and caching JSON schemas to files
 	disableFileCache bool
-	// useMmap enables the use of memory mapped IO to avoid copying the JSON schema when using
+	// useMmap enables the use of memory mapped IO to avoid copying the JSON schema
 	disableMmap bool
 }
 
