@@ -5,33 +5,33 @@
     "example::Pet": {
       "properties": {
         "name": {
-          "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
         },
         "requiredName": {
-          "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
         },
         "nameArray": {
           "type": "array",
           "items": {
-            "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "requiredNameArray": {
           "type": "array",
           "items": {
-            "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "nameMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "requiredNameMap": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         },
         "age": {
@@ -73,7 +73,7 @@
           "$ref": "/kubernetes/v3.7.0/schema.json#/provider"
         },
         "securityGroup": {
-          "$ref": "/aws/v4.19.0/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
+          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
         },
         "storageClasses": {
           "type": "object",
@@ -127,7 +127,7 @@
       "inputs": {
         "properties": {
           "name": {
-            "$ref": "/random/v4.2.0/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           }
         }
       },

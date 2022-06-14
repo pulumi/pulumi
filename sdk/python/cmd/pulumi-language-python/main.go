@@ -472,7 +472,7 @@ func determinePluginDependency(
 		version = fmt.Sprintf("v%s", version)
 	}
 
-	result := pulumirpc.PluginDependency{
+	result := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
@@ -480,7 +480,7 @@ func determinePluginDependency(
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
-	return &result, nil
+	return result, nil
 }
 
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.

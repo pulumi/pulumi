@@ -51,15 +51,21 @@ jobs:
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
           issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
           body: |
-            Please view the results of the PR Build + Acceptance Tests Run [Here][1]
+            Please view the results of the PR Build + Integration Tests Run [Here][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
 
+  versions:
+    name: Versions
+    uses: ./.github/workflows/versions.yml
+
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    uses: ./.github/workflows/build.yml
+    needs: versions
     with:
       enable-coverage: true
+      goreleaser-flags: -p 3 --skip-validate
 
   test-linux:
     name: Test Linux

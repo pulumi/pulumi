@@ -72,6 +72,8 @@ type Host interface {
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
+	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
+	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -375,6 +377,11 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 	}
 
 	return result
+}
+
+func (host *defaultHost) ResolvePlugin(
+	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	return workspace.GetPluginInfo(kind, name, version)
 }
 
 func (host *defaultHost) SignalCancellation() error {
