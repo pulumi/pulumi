@@ -54,10 +54,13 @@ namespace Pulumi
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
             if (prepareResult.Aliases != null) {
-                request.Aliases.Add(prepareResult.Aliases);
+                #pragma warning disable 612
+                // UrnAliases is marked obsolete, but it does still work and is needed for old engines.
+                request.UrnAliases.Add(prepareResult.Aliases);
+                #pragma warning restore 612
             } else {
                 System.Diagnostics.Debug.Assert(prepareResult.SmartAliases != null, "Aliases and SmartAliases were both null");
-                request.SmartAliases.Add(prepareResult.SmartAliases);
+                request.Aliases.Add(prepareResult.SmartAliases);
             }
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 

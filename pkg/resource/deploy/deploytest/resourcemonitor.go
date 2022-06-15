@@ -207,7 +207,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		Aliases:                    aliasStrings,
+		UrnAliases:                 aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
@@ -217,7 +217,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
-		SmartAliases:               aliasObjects,
+		Aliases:                    aliasObjects,
 	}
 
 	// submit request
