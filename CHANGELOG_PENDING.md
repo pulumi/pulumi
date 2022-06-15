@@ -4,6 +4,7 @@
   [#9872](https://github.com/pulumi/pulumi/pull/9872)
 
 - [cli] The engine now produces a warning when the 'ignoreChanges' option is applied to a Component resource.
+  [#9863](https://github.com/pulumi/pulumi/pull/9863)
 
 - [sdk/python] Changed `Output[T].__str__()` to return an informative message rather than "<pulumi.output.Output object at 0x012345ABCDEF>".
   [#9848](https://github.com/pulumi/pulumi/pull/9848)
