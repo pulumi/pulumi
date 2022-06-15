@@ -417,7 +417,7 @@ func (host *pluginHost) ResolvePlugin(
 }
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
-	return nil, nil
+	return host.languageRuntime.GetRequiredPlugins(info)
 }
 
 func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,

@@ -1014,6 +1014,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
+
+		// Make sure that an explicit provider which doesn't specify its plugin gets the
+		// same plugin as the default provider for the package.
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+			if defaultProvider.Version != nil {
+				providers.SetProviderVersion(props, defaultProvider.Version)
+			}
+			if defaultProvider.PluginDownloadURL != "" {
+				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+			}
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
