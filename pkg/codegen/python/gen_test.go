@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -143,6 +144,14 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd.Dir = hereDir
+	err = pyCmd.Run()
+	if err != nil {
+		contract.Failf("failed to link venv against in-source pulumi: %v", err)
+	}
+
 	if !gotSdk {
 		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 	}
@@ -166,6 +175,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 		return cmd.Run()
 	}
 

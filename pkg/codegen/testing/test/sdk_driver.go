@@ -378,6 +378,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
 	for _, tt := range opts.TestCases {
 		tt := tt // avoid capturing loop variable `sdkTest` in the closure
+
 		t.Run(tt.Directory, func(t *testing.T) {
 			t.Parallel()
 

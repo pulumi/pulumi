@@ -8,6 +8,7 @@ import (
 
 func TestEmptySchemaResponse(t *testing.T) {
 	t.Parallel()
+
 	assert.True(t, schemaIsEmpty([]byte("{}")))
 	assert.True(t, schemaIsEmpty([]byte("{  }")))
 	assert.True(t, schemaIsEmpty([]byte("{	}")))           // tab character
