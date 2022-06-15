@@ -19,10 +19,9 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"hash"
-	"math/rand"
 
 	"github.com/pkg/errors"
+	"lukechampine.com/frand"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -131,52 +130,6 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil
 }
 
-type cryptoSource struct{}
-
-func (c *cryptoSource) Int63() int64 {
-	return int64(c.Uint64() & ((1 << 63) - 1))
-}
-func (cryptoSource) Uint64() uint64 {
-	var data uint64
-	err := binary.Read(cryptorand.Reader, binary.LittleEndian, &data)
-	contract.AssertNoError(err)
-	return data
-}
-func (cryptoSource) Seed(seed int64) {
-	panic("We don't expect or support this method being called")
-}
-
-type hashSource struct {
-	hasher hash.Hash
-	seed   []byte
-}
-
-func (src *hashSource) Int63() int64 {
-	return int64(src.Uint64() & ((1 << 63) - 1))
-}
-func (src *hashSource) Uint64() uint64 {
-	// hashSource works by re-hashing the same seed over and over.
-	n, err := src.hasher.Write(src.seed)
-	contract.Assert(n == len(src.seed))
-	contract.AssertNoError(err)
-
-	randomBytes := src.hasher.Sum(nil)
-	// We expect hasher to be a SHA256 hash function
-	contract.Assert(len(randomBytes) == 32)
-
-	// Collapse the 32 bytes down to 8
-	seed :=
-		binary.LittleEndian.Uint64(randomBytes[0:]) ^
-			binary.LittleEndian.Uint64(randomBytes[8:]) ^
-			binary.LittleEndian.Uint64(randomBytes[16:]) ^
-			binary.LittleEndian.Uint64(randomBytes[24:])
-
-	return seed
-}
-func (hashSource) Seed(seed int64) {
-	panic("We don't expect or support this method being called")
-}
-
 // NewUniqueName generates a new "random" string primarily intended for use by resource providers for
 // autonames. It will take the optional prefix and append randlen random characters (defaulting to 8 if not >
 // 0). The result must not exceed maxlen total characters (if > 0). The characters that make up the random
@@ -196,17 +149,20 @@ func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charse
 		charset = []rune("0123456789abcdef")
 	}
 
-	var randomSource rand.Source
-	if randomSeed == nil {
-		randomSource = &cryptoSource{}
+	var random *frand.RNG
+	if len(randomSeed) == 0 {
+		random = frand.New()
 	} else {
-		randomSource = &hashSource{
-			seed:   randomSeed,
-			hasher: crypto.SHA256.New(),
-		}
+		// frand.NewCustom needs a 32 byte seed. Take the SHA256 hash of whatever bytes we've been given as a
+		// seed and pass the 32 byte result of that to frand.
+		hash := crypto.SHA256.New()
+		hash.Write(randomSeed)
+		seed := hash.Sum(nil)
+		bufsize := 1024 // Same bufsize as used by frand.New.
+		rounds := 12    // Same rounds as used by frand.New.
+		random = frand.NewCustom(seed, bufsize, rounds)
 	}
 
-	random := rand.New(randomSource) // nolint gosec
 	randomSuffix := make([]rune, randlen)
 	for i := range randomSuffix {
 		randomSuffix[i] = charset[random.Intn(len(charset))]

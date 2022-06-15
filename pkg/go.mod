@@ -163,6 +163,7 @@ require (
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/kms v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.9.0 // indirect
@@ -188,4 +189,5 @@ require (
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	lukechampine.com/frand v1.4.2 // indirect
 )
