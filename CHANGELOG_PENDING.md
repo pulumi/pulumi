@@ -9,6 +9,12 @@
 - [engine] Reduce memory usage in convert and yaml programs by caching of package schemas.
   [#9684](https://github.com/pulumi/pulumi/issues/9684)
 
+- [engine] The engine now understands alias objects which it can resolve to URNs, requiring less logic in SDKs.
+  [#9731](https://github.com/pulumi/pulumi/pull/9731)
+
+- [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
+  [#9731](https://github.com/pulumi/pulumi/pull/9731)
+
 ### Bug Fixes
 
 - [sdk/go] Correctly parse nested git projects in GitLab.
