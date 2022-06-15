@@ -79,10 +79,7 @@ def list_product_families(customer_subscription_details: Optional[pulumi.InputTy
     __args__['expand'] = expand
     __args__['filterableProperties'] = filterable_properties
     __args__['skipToken'] = skip_token
-    if opts is None:
-        opts = pulumi.InvokeOptions()
-    if opts.version is None:
-        opts.version = _utilities.get_version()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('myedgeorder::listProductFamilies', __args__, opts=opts, typ=ListProductFamiliesResult).value
 
     return AwaitableListProductFamiliesResult(

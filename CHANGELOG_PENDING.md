@@ -9,6 +9,9 @@
 - [engine] Reduce memory usage in convert and yaml programs by caching of package schemas.
   [#9684](https://github.com/pulumi/pulumi/issues/9684)
 
+- [sdk/go] Added `NewUniqueName` for providers to use for generating autonames.
+  [#9852](https://github.com/pulumi/pulumi/pull/9852)
+
 - [engine] The engine now understands alias objects which it can resolve to URNs, requiring less logic in SDKs.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
@@ -16,6 +19,9 @@
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
 ### Bug Fixes
+
+- [engine] Explicit providers use the same plugin as default providers unless otherwise requested.
+  [#9708](https://github.com/pulumi/pulumi/pull/9708)
 
 - [sdk/go] Correctly parse nested git projects in GitLab.
   [#9354](https://github.com/pulumi/pulumi/issues/9354)
