@@ -2,12 +2,7 @@ module github.com/pulumi/pulumi/pkg/v3
 
 go 1.17
 
-replace (
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
-	github.com/hashicorp/hcl/v2 => github.com/hashicorp/hcl/v2 v2.3.0
-	github.com/pulumi/pulumi/sdk/v3 => ../sdk
-	github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
-)
+replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
 require (
 	cloud.google.com/go/logging v1.0.0
@@ -166,7 +161,6 @@ require (
 	cloud.google.com/go/kms v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
-	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.7.0 // indirect
