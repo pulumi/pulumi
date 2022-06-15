@@ -1197,43 +1197,31 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = filtered
 	}
 
-	// TODO(@platform): Currently component resources ignore the "ignoreChanges" option.
+	// TODO(@platform):
+	// Currently component resources ignore these options:
+	// • ignoreChanges
+	// • customTimeouts
+	// • additionalSecretOutputs
+	// • replaceOnChanges
+	// • retainOnDelete
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
-	if !custom && len(ignoreChanges) > 0 {
-		rm.diagostics.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'ignoreChanges' has no effect on component resources.",
-		))
-	}
-	// Timeouts are no recognized on component resources.
-	if !custom && customTimeouts != nil {
-		rm.ctx.Diag.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'customTimeouts' has no effect on components.",
-		))
-	}
-
-	// additionalSecretOutputs are ignored on components.
-	if !custom && len(additionalSecretOutputs) > 0 {
-		rm.diagostics.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'additionalSecretOutputs' has no effect on component resources.",
-		))
-	}
-
-	if !custom && len(replaceOnChanges) > 0 {
-		rm.ctx.Diag.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'replaceOnChanges' has no effect on components.",
-		))
-	}
-
-	if !custom && retainOnDelete {
-		rm.ctx.Diag.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'retainOnDelete' has no effect on components.",
-		))
+	if !custom {
+		rm.checkComponentOption(result.State.URN, "ignoreChanges", func() bool {
+			return len(ignoreChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
+			return customTimeouts != nil
+		})
+		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
+			return len(additionalSecretOutputs) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "replaceOnChanges", func() bool {
+			return len(replaceOnChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
+			return retainOnDelete
+		})
 	}
 
 	logging.V(5).Infof(
@@ -1257,6 +1245,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 	}, nil
+}
+
+// checkComponentOption generates a warning message on the resource
+// 'srcURN' if 'check' returns true.
+// This function is intended to validate options passed to component resources,
+// so srcURN is expected to refer to a component.
+func (rm *resmon) checkComponentOption(srcURN resource.URN, optName string, check func() bool) {
+	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
+	if check() {
+		rm.diagostics.Warningf(diag.Message(
+			srcURN,
+			msg,
+		))
+	}
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial

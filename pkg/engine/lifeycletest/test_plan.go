@@ -280,6 +280,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	return snap
 }
 
+// resCount is the expected number of resources registered during this test.
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 	return []TestStep{
 		// Initial update
