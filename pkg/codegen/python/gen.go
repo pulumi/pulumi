@@ -395,14 +395,14 @@ func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
 	fmt.Fprintf(buffer, utilitiesFile)
-	optionalUrl := "None"
+	optionalURL := "None"
 	if url := mod.pkg.PluginDownloadURL; url != "" {
-		optionalUrl = fmt.Sprintf("%q", url)
+		optionalURL = fmt.Sprintf("%q", url)
 	}
 	_, err := fmt.Fprintf(buffer, `
 def get_plugin_download_url():
 	return %s
-`, optionalUrl)
+`, optionalURL)
 	contract.AssertNoError(err)
 	return buffer.Bytes()
 }
