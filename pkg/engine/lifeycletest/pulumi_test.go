@@ -2018,13 +2018,13 @@ func TestSmartAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n2",
 		smartAliases: []resource.Alias{
-			{Name: "n1", Type: "t1"},
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n3",
 		smartAliases: []resource.Alias{
-			{Name: "n1", Type: "t1"},
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}}, []deploy.StepOp{deploy.OpCreate}, true)
 
@@ -2033,13 +2033,13 @@ func TestSmartAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		smartAliases: []resource.Alias{
-			{Name: "n1", Type: "t1"},
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n2",
 		smartAliases: []resource.Alias{
-			{Name: "n2", Type: "t1"},
+			{Name: "n2", Type: "pkgA:index:t1"},
 		},
 	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
