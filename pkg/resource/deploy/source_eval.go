@@ -1206,6 +1206,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"The option 'ignoreChanges' has no effect on component resources.",
 		))
 	}
+	// additionalSecretOutputs are ignored on components.
+	if !custom && len(additionalSecretOutputs) > 0 {
+		rm.diagostics.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'additionalSecretOutputs' has no effect on component resources.",
+		))
+	}
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
