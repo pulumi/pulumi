@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes", "azure-native"]
+        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
       fail-fast: false
     steps:
       - name: Install Go
