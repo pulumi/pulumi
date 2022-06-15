@@ -104,6 +104,7 @@ type ResourceOptions struct {
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
+	SmartAliases            []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -140,6 +141,24 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	aliasStrings := []string{}
 	for _, a := range opts.Aliases {
 		aliasStrings = append(aliasStrings, string(a))
+	}
+
+	aliasObjects := []*pulumirpc.Alias{}
+	for _, a := range opts.SmartAliases {
+		alias := &pulumirpc.Alias_SmartAlias{
+			Name:    a.Name,
+			Type:    a.Type,
+			Project: a.Project,
+			Stack:   a.Stack,
+		}
+		if a.NoParent {
+			alias.Parent = &pulumirpc.Alias_SmartAlias_NoParent{NoParent: a.NoParent}
+		} else if a.Parent != "" {
+			alias.Parent = &pulumirpc.Alias_SmartAlias_ParentUrn{ParentUrn: string(a.Parent)}
+		}
+
+		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_SmartAlias_{SmartAlias: alias}}
+		aliasObjects = append(aliasObjects, obj)
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
@@ -198,6 +217,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
+		SmartAliases:               aliasObjects,
 	}
 
 	// submit request
