@@ -9,6 +9,9 @@
 - [engine] Reduce memory usage in convert and yaml programs by caching of package schemas.
   [#9684](https://github.com/pulumi/pulumi/issues/9684)
 
+- [sdk/go] Added `NewUniqueName` for providers to use for generating autonames.
+  [#9852](https://github.com/pulumi/pulumi/pull/9852)
+
 ### Bug Fixes
 
 - [sdk/go] Correctly parse nested git projects in GitLab.

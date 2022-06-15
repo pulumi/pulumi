@@ -42,7 +42,10 @@ require (
 require (
 	github.com/pkg/term v1.1.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	lukechampine.com/frand v1.4.2
 )
+
+require github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 
 require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
