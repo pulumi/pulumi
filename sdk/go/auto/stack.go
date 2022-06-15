@@ -232,6 +232,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	for _, tURN := range preOpts.Target {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
+	for _, pack := range preOpts.PolicyPacks {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+	}
+	for _, packConfig := range preOpts.PolicyPackConfigs {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
+	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
@@ -338,6 +344,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	for _, tURN := range upOpts.Target {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
+	}
+	for _, pack := range upOpts.PolicyPacks {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+	}
+	for _, packConfig := range upOpts.PolicyPackConfigs {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
 	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
