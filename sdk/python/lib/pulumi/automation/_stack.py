@@ -704,7 +704,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
             extra_args.extend(["--policy-pack", p])
     if policy_pack_configs:
         for p in policy_pack_configs:
-            extra_args.extend(["--policy-pack-config", p]) 
+            extra_args.extend(["--policy-pack-config", p])
     if target_dependents:
         extra_args.append("--target-dependents")
     if parallel:
