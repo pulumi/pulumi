@@ -47,10 +47,7 @@ def func_with_dict_param(a: Optional[Mapping[str, str]] = None,
     __args__ = dict()
     __args__['a'] = a
     __args__['b'] = b
-    if opts is None:
-        opts = pulumi.InvokeOptions()
-    if opts.version is None:
-        opts.version = _utilities.get_version()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('mypkg::funcWithDictParam', __args__, opts=opts, typ=FuncWithDictParamResult).value
 
     return AwaitableFuncWithDictParamResult(

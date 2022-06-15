@@ -77,10 +77,7 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[str] = None,
     __args__['integrationRuntimeName'] = integration_runtime_name
     __args__['metadataPath'] = metadata_path
     __args__['resourceGroupName'] = resource_group_name
-    if opts is None:
-        opts = pulumi.InvokeOptions()
-    if opts.version is None:
-        opts.version = _utilities.get_version()
+    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
     __ret__ = pulumi.runtime.invoke('mypkg::getIntegrationRuntimeObjectMetadatum', __args__, opts=opts, typ=GetIntegrationRuntimeObjectMetadatumResult).value
 
     return AwaitableGetIntegrationRuntimeObjectMetadatumResult(
