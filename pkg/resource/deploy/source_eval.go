@@ -1206,11 +1206,33 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"The option 'ignoreChanges' has no effect on component resources.",
 		))
 	}
+	// Timeouts are no recognized on component resources.
+	if !custom && customTimeouts != nil {
+		rm.ctx.Diag.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'customTimeouts' has no effect on components.",
+		))
+	}
+
 	// additionalSecretOutputs are ignored on components.
 	if !custom && len(additionalSecretOutputs) > 0 {
 		rm.diagostics.Warningf(diag.Message(
 			result.State.URN,
 			"The option 'additionalSecretOutputs' has no effect on component resources.",
+		))
+	}
+
+	if !custom && len(replaceOnChanges) > 0 {
+		rm.ctx.Diag.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'replaceOnChanges' has no effect on components.",
+		))
+	}
+
+	if !custom && retainOnDelete {
+		rm.ctx.Diag.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'retainOnDelete' has no effect on components.",
 		))
 	}
 
