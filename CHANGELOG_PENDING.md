@@ -1,5 +1,8 @@
 ### Improvements
 
+- [auto/*] Add `--policy-pack` and `--policy-pack-configs` options to automation API.
+  [#9872](https://github.com/pulumi/pulumi/pull/9872)
+
 - [sdk/python] Changed `Output[T].__str__()` to return an informative message rather than "<pulumi.output.Output object at 0x012345ABCDEF>".
   [#9848](https://github.com/pulumi/pulumi/pull/9848)
 

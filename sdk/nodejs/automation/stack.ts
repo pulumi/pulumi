@@ -175,6 +175,16 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--target", tURN);
                 }
             }
+            if (opts.policyPacks) {
+                for (const pack of opts.policyPacks) {
+                    args.push("--policy-pack", pack);
+                }
+            }
+            if (opts.policyPackConfigs) {
+                for (const packConfig of opts.policyPackConfigs) {
+                    args.push("--policy-pack-config", packConfig);
+                }
+            }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
@@ -288,6 +298,16 @@ Event: ${line}\n${e.toString()}`);
             if (opts.target) {
                 for (const tURN of opts.target) {
                     args.push("--target", tURN);
+                }
+            }
+            if (opts.policyPacks) {
+                for (const pack of opts.policyPacks) {
+                    args.push("--policy-pack", pack);
+                }
+            }
+            if (opts.policyPackConfigs) {
+                for (const packConfig of opts.policyPackConfigs) {
+                    args.push("--policy-pack-config", packConfig);
                 }
             }
             if (opts.targetDependents) {
@@ -746,6 +766,8 @@ export interface UpOptions {
     expectNoChanges?: boolean;
     diff?: boolean;
     replace?: string[];
+    policyPacks?: string[];
+    policyPackConfigs?: string[];
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
@@ -768,6 +790,8 @@ export interface PreviewOptions {
     expectNoChanges?: boolean;
     diff?: boolean;
     replace?: string[];
+    policyPacks?: string[];
+    policyPackConfigs?: string[];
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
