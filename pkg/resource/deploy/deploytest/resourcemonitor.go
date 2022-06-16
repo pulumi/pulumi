@@ -145,19 +145,19 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	aliasObjects := []*pulumirpc.Alias{}
 	for _, a := range opts.Aliases {
-		alias := &pulumirpc.Alias_SmartAlias{
+		alias := &pulumirpc.Alias_Spec{
 			Name:    a.Name,
 			Type:    a.Type,
 			Project: a.Project,
 			Stack:   a.Stack,
 		}
 		if a.NoParent {
-			alias.Parent = &pulumirpc.Alias_SmartAlias_NoParent{NoParent: a.NoParent}
+			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
 		} else if a.Parent != "" {
-			alias.Parent = &pulumirpc.Alias_SmartAlias_ParentUrn{ParentUrn: string(a.Parent)}
+			alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
 		}
 
-		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_SmartAlias_{SmartAlias: alias}}
+		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
 		aliasObjects = append(aliasObjects, obj)
 	}
 

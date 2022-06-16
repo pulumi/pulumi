@@ -46,7 +46,7 @@ message SupportsFeatureResponse {
 // Alias is a description of an alias.
 message Alias {
 
-    message SmartAlias {
+    message Spec {
         string name = 1; // The previous name of the resource. If not set, the current name of the resource is used.
         string type = 2; // The previous type of the resource. If not set, the current type of the resource is used.
         string stack = 3; // The previous stack of the resource. If not set, the current stack of the resource is used.
@@ -61,7 +61,7 @@ message Alias {
 
     oneof alias {
         string urn = 1; // The previous urn to alias to.
-        SmartAlias smartAlias = 2;
+        Spec spec = 2; // An alias specification.
     }
 }
 

@@ -150,7 +150,7 @@ namespace Pulumi
                         // Just a simple URN alias
                         rpcAlias.Urn = aliasVal.Urn;
                     } else {
-                        // A "SmartAlias", wait for all the component parts
+                        // A "aliasSpec", wait for all the component parts
                         async Task<string?> MaybeAwait(Input<string>? input) {
                             if (input == null) {
                                 return null;
@@ -159,11 +159,11 @@ namespace Pulumi
                             return result;
                         }
 
-                        var smartAlias = new Pulumirpc.Alias.Types.SmartAlias();
-                        smartAlias.Name = await MaybeAwait(aliasVal.Name);
-                        smartAlias.Type = await MaybeAwait(aliasVal.Type);
-                        smartAlias.Stack= await MaybeAwait(aliasVal.Stack);
-                        smartAlias.Project = await MaybeAwait(aliasVal.Project);
+                        var aliasSpec = new Pulumirpc.Alias.Types.Spec();
+                        aliasSpec.Name = await MaybeAwait(aliasVal.Name);
+                        aliasSpec.Type = await MaybeAwait(aliasVal.Type);
+                        aliasSpec.Stack= await MaybeAwait(aliasVal.Stack);
+                        aliasSpec.Project = await MaybeAwait(aliasVal.Project);
 
                         var parentCount =
                             (aliasVal.Parent != null ? 1 : 0) +
@@ -175,10 +175,10 @@ namespace Pulumi
                             $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(Alias.NoParent)}' in an {nameof(Alias)}");
                         }
 
-                        smartAlias.ParentUrn =  aliasVal.Parent == null ? await MaybeAwait(aliasVal.ParentUrn) : await MaybeAwait(aliasVal.Parent.Urn);
-                        smartAlias.NoParent = aliasVal.NoParent;
+                        aliasSpec.ParentUrn =  aliasVal.Parent == null ? await MaybeAwait(aliasVal.ParentUrn) : await MaybeAwait(aliasVal.Parent.Urn);
+                        aliasSpec.NoParent = aliasVal.NoParent;
 
-                        rpcAlias.SmartAlias = smartAlias;
+                        rpcAlias.Spec = aliasSpec;
                     }
 
                     aliases.Add(rpcAlias);

@@ -986,16 +986,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
 	}
 	for _, aliasObject := range req.GetAliases() {
-		smartAlias := aliasObject.GetSmartAlias()
+		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
-		if smartAlias != nil {
+		if aliasSpec != nil {
 			alias = resource.Alias{
-				Name:     smartAlias.GetName(),
-				Type:     smartAlias.GetType(),
-				Stack:    smartAlias.GetStack(),
-				Project:  smartAlias.GetProject(),
-				Parent:   resource.URN(smartAlias.GetParentUrn()),
-				NoParent: smartAlias.GetNoParent(),
+				Name:     aliasSpec.GetName(),
+				Type:     aliasSpec.GetType(),
+				Stack:    aliasSpec.GetStack(),
+				Project:  aliasSpec.GetProject(),
+				Parent:   resource.URN(aliasSpec.GetParentUrn()),
+				NoParent: aliasSpec.GetNoParent(),
 			}
 		} else {
 			alias = resource.Alias{
