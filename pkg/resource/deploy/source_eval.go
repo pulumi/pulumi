@@ -1180,7 +1180,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if !custom && len(ignoreChanges) > 0 {
 		rm.ctx.Diag.Warningf(diag.Message(
 			result.State.URN,
-			"The option 'ignoreChanges' has no effect on components. This may be changed in a future version.",
+			"The option 'ignoreChanges' has no effect on component resources.",
 		))
 	}
 
