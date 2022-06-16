@@ -624,7 +624,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableResourceReferences
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
-	case "smartAliases":
+	case "aliasSpecs":
 		hasSupport = true
 	}
 

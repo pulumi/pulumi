@@ -213,11 +213,11 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Check if the monitor supports the "smartAliases" feature.
+        /// Check if the monitor supports the "aliasSpecs" feature.
         /// </summary>
-        internal Task<bool> MonitorSupportsSmartAliases()
+        internal Task<bool> MonitorSupportsAliasSpecs()
         {
-            return MonitorSupportsFeature("smartAliases");
+            return MonitorSupportsFeature("aliasSpecs");
         }
 
         // Because the secrets feature predates the Pulumi .NET SDK, we assume

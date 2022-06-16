@@ -128,7 +128,7 @@ namespace Pulumi
 
             List<string>? urnAliases = null;
             List<Pulumirpc.Alias>? aliases = null;
-            if (await MonitorSupportsSmartAliases()) {
+            if (await MonitorSupportsAliasSpecs()) {
                 // The engine supports smart aliases so send a list of smart aliases rather than our manually crafted alias list.
 
                 aliases = new List<Pulumirpc.Alias>();
