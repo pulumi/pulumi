@@ -126,12 +126,12 @@ namespace Pulumi
                 propertyToDirectDependencyUrns[propertyName] = urns;
             }
 
-            List<string>? aliases = null;
-            List<Pulumirpc.Alias>? smartAliases = null;
+            List<string>? urnAliases = null;
+            List<Pulumirpc.Alias>? aliases = null;
             if (await MonitorSupportsSmartAliases()) {
                 // The engine supports smart aliases so send a list of smart aliases rather than our manually crafted alias list.
 
-                smartAliases = new List<Pulumirpc.Alias>();
+                aliases = new List<Pulumirpc.Alias>();
                 foreach (var alias in options.Aliases)
                 {
                     var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: null!).ConfigureAwait(false);
@@ -181,21 +181,21 @@ namespace Pulumi
                         rpcAlias.SmartAlias = smartAlias;
                     }
 
-                    smartAliases.Add(rpcAlias);
+                    aliases.Add(rpcAlias);
                 }
             } else {
                 // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
                 // the former has been processed in the Resource constructor prior to calling
                 // 'registerResource' - both adding new inherited aliases and simplifying aliases down
                 // to URNs.
-                aliases = new List<string>();
+                urnAliases = new List<string>();
                 var uniqueAliases = new HashSet<string>();
                 foreach (var alias in res._aliases)
                 {
                     var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
                     if (aliasVal != "" && uniqueAliases.Add(aliasVal))
                     {
-                        aliases.Add(aliasVal);
+                        urnAliases.Add(aliasVal);
                     }
                 }
             }
@@ -207,8 +207,8 @@ namespace Pulumi
                 providerRefs,
                 allDirectDependencyUrns,
                 propertyToDirectDependencyUrns,
-                aliases,
-                smartAliases);
+                urnAliases,
+                aliases);
 
             void LogExcessive(string message)
             {
@@ -302,10 +302,10 @@ namespace Pulumi
             public readonly Dictionary<string, string> ProviderRefs;
             public readonly HashSet<string> AllDirectDependencyUrns;
             public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyUrns;
-            public readonly List<string>? Aliases;
-            public readonly List<Pulumirpc.Alias>? SmartAliases;
+            public readonly List<string>? UrnAliases;
+            public readonly List<Pulumirpc.Alias>? Aliases;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string>? aliases, List<Pulumirpc.Alias>? smartAliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string>? urnAliases, List<Pulumirpc.Alias>? aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
@@ -313,8 +313,8 @@ namespace Pulumi
                 ProviderRefs = providerRefs;
                 AllDirectDependencyUrns = allDirectDependencyUrns;
                 PropertyToDirectDependencyUrns = propertyToDirectDependencyUrns;
+                UrnAliases = urnAliases;
                 Aliases = aliases;
-                SmartAliases = smartAliases;
             }
         }
     }

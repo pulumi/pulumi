@@ -139,7 +139,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.Aliases {
+	for _, a := range opts.UrnAliases {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 

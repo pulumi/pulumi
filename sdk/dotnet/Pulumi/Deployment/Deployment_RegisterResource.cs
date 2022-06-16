@@ -56,11 +56,11 @@ namespace Pulumi
             if (prepareResult.Aliases != null) {
                 #pragma warning disable 612
                 // UrnAliases is marked obsolete, but it does still work and is needed for old engines.
-                request.UrnAliases.Add(prepareResult.Aliases);
+                request.UrnAliases.Add(prepareResult.UrnAliases);
                 #pragma warning restore 612
             } else {
-                System.Diagnostics.Debug.Assert(prepareResult.SmartAliases != null, "Aliases and SmartAliases were both null");
-                request.Aliases.Add(prepareResult.SmartAliases);
+                System.Diagnostics.Debug.Assert(prepareResult.Aliases != null, "UrnAliases and Aliases were both null");
+                request.Aliases.Add(prepareResult.Aliases);
             }
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
