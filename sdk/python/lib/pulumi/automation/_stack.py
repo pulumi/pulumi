@@ -212,6 +212,7 @@ class Stack:
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
+        show_secrets: bool = False,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -232,6 +233,7 @@ class Stack:
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param plan: Plan specifies the path to an update plan to use for the update.
+        :param show_secrets: Inclode config secrets in the UpResult summary.
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -287,7 +289,7 @@ class Stack:
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
-            summary = self.info()
+            summary = self.info(show_secrets)
             assert summary is not None
         finally:
             _cleanup(temp_dir, log_watcher_thread, on_exit)
@@ -415,6 +417,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        show_secrets: bool = False,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -428,6 +431,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param show_secrets: Inclode config secrets in the RefreshResult summary.
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -454,7 +458,7 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        summary = self.info(show_secrets)
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
@@ -469,6 +473,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        show_secrets: bool = False,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -481,6 +486,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param show_secrets: Inclode config secrets in the DestroyResult summary.
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -507,7 +513,7 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        summary = self.info(show_secrets)
         assert summary is not None
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
@@ -576,7 +582,10 @@ class Stack:
         return self.workspace.stack_outputs(self.name)
 
     def history(
-        self, page_size: Optional[int] = None, page: Optional[int] = None
+        self,
+        page_size: Optional[int] = None,
+        page: Optional[int] = None,
+        show_secrets: bool = False,
     ) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
@@ -584,10 +593,13 @@ class Stack:
 
         :param page_size: Paginate history entries (used in combination with page), defaults to all.
         :param page: Paginate history entries (used in combination with page_size), defaults to all.
+        :param show_secrets: Show config secrets when they appear in history.
 
         :returns: List[UpdateSummary]
         """
-        args = ["stack", "history", "--json", "--show-secrets"]
+        args = ["stack", "history", "--json"]
+        if show_secrets:
+            args.append("--show-secrets")
         if page_size is not None:
             # default page=1 when page_size is set
             if page is None:
@@ -619,13 +631,13 @@ class Stack:
             summaries.append(summary)
         return summaries
 
-    def info(self) -> Optional[UpdateSummary]:
+    def info(self, show_secrets=False) -> Optional[UpdateSummary]:
         """
         Returns the current results from Stack lifecycle operations.
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history(page_size=1)
+        history = self.history(page_size=1, show_secrets=show_secrets)
         if not history:
             return None
         return history[0]
