@@ -201,6 +201,8 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        policy_packs: Optional[List[str]] = None,
+        policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
@@ -220,6 +222,8 @@ class Stack:
         :param message: Message (optional) to associate with the update operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param policy_packs: Run one or more policy packs as part of this update.
+        :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
@@ -300,6 +304,8 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        policy_packs: Optional[List[str]] = None,
+        policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
@@ -318,6 +324,8 @@ class Stack:
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
+        :param policy_packs: Run one or more policy packs as part of this update.
+        :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
@@ -673,6 +681,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
     diff = kwargs.get("diff")
     replace = kwargs.get("replace")
     target = kwargs.get("target")
+    policy_packs = kwargs.get("policy_packs")
+    policy_pack_configs = kwargs.get("policy_pack_configs")
     target_dependents = kwargs.get("target_dependents")
     parallel = kwargs.get("parallel")
     color = kwargs.get("color")
@@ -689,6 +699,12 @@ def _parse_extra_args(**kwargs) -> List[str]:
     if target:
         for t in target:
             extra_args.extend(["--target", t])
+    if policy_packs:
+        for p in policy_packs:
+            extra_args.extend(["--policy-pack", p])
+    if policy_pack_configs:
+        for p in policy_pack_configs:
+            extra_args.extend(["--policy-pack-config", p])
     if target_dependents:
         extra_args.append("--target-dependents")
     if parallel:

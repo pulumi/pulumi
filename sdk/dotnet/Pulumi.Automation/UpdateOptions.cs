@@ -18,6 +18,10 @@ namespace Pulumi.Automation
 
         public List<string>? Target { get; set; }
 
+        public List<string>? PolicyPacks { get; set; }
+
+        public List<string>? PolicyPackConfigs { get; set; }
+
         /// <summary>
         /// Optional callback which is invoked whenever StandardOutput is written into
         /// </summary>

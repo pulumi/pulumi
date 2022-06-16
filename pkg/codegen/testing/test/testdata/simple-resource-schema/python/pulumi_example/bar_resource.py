@@ -69,16 +69,9 @@ class BarResource(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  foo: Optional[pulumi.Input['Resource']] = None,
                  __props__=None):
-        if opts is None:
-            opts = pulumi.ResourceOptions()
-        else:
-            opts = copy.copy(opts)
+        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
-        if opts.version is None:
-            opts.version = _utilities.get_version()
-        if opts.plugin_download_url is None:
-            opts.plugin_download_url = _utilities.get_plugin_download_url()
         if opts.id is not None:
             raise ValueError('ComponentResource classes do not support opts.id')
         else:

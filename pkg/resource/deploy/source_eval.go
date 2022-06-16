@@ -470,6 +470,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
+	diagostics                diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
@@ -504,6 +505,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
+		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
 		regChan:                   regChan,
@@ -1014,6 +1016,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
+
+		// Make sure that an explicit provider which doesn't specify its plugin gets the
+		// same plugin as the default provider for the package.
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+			if defaultProvider.Version != nil {
+				providers.SetProviderVersion(props, defaultProvider.Version)
+			}
+			if defaultProvider.PluginDownloadURL != "" {
+				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+			}
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
@@ -1097,6 +1111,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -1157,6 +1172,16 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 		outputs = filtered
+	}
+
+	// TODO(@platform): Currently component resources ignore the "ignoreChanges" option.
+	// Revisit these semantics in Pulumi v4.0
+	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
+	if !custom && len(ignoreChanges) > 0 {
+		rm.diagostics.Warningf(diag.Message(
+			result.State.URN,
+			"The option 'ignoreChanges' has no effect on component resources.",
+		))
 	}
 
 	logging.V(5).Infof(

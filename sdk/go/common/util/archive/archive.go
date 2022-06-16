@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -214,10 +215,13 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 			}
 			// no defer because we want to close file as soon as possible (right after we call Copy)
 
-			_, err = io.Copy(writer, file)
+			n, err := io.Copy(writer, file)
 			contract.IgnoreClose(file)
 			if err != nil {
 				return err
+			}
+			if n != header.Size {
+				return fmt.Errorf("failed to copy all bytes from %v to tar file", fullName)
 			}
 		} else {
 			logging.V(9).Infof("ignoring special file %v with mode %v", fullName, info.Mode())

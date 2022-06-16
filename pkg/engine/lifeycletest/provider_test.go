@@ -1335,3 +1335,131 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderVersionAssignment(t *testing.T) {
+	t.Parallel()
+
+	prog := func(opts ...deploytest.ResourceOptions) deploytest.ProgramFunc {
+
+		return func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:r:typA", "resA", true, opts...)
+			if err != nil {
+				return err
+			}
+			_, _, _, err = monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, opts...)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	cases := []struct {
+		name     string
+		plugins  []workspace.PluginInfo
+		snapshot *deploy.Snapshot
+		validate func(t *testing.T, r *resource.State)
+		versions []string
+		prog     deploytest.ProgramFunc
+	}{
+		{
+			name:     "empty",
+			versions: []string{"1.0.0"},
+			validate: func(*testing.T, *resource.State) {},
+			prog:     prog(),
+		},
+		{
+			name:     "default-version",
+			versions: []string{"1.0.0", "1.1.0"},
+			plugins: []workspace.PluginInfo{{
+				Name:              "pkgA",
+				Version:           &semver.Version{Major: 1, Minor: 1},
+				PluginDownloadURL: "example.com/default",
+				Kind:              workspace.ResourcePlugin,
+			}},
+			validate: func(t *testing.T, r *resource.State) {
+				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
+					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
+					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/default")
+				}
+			},
+			prog: prog(),
+		},
+		{
+			name:     "specified-provider",
+			versions: []string{"1.0.0", "1.1.0"},
+			plugins: []workspace.PluginInfo{{
+				Name:    "pkgA",
+				Version: &semver.Version{Major: 1, Minor: 1},
+				Kind:    workspace.ResourcePlugin,
+			}},
+			validate: func(t *testing.T, r *resource.State) {
+				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
+					_, hasVersion := r.Inputs["version"]
+					assert.False(t, hasVersion)
+					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/download")
+				}
+			},
+			prog: prog(deploytest.ResourceOptions{PluginDownloadURL: "example.com/download"}),
+		},
+		{
+			name:     "higher-in-snapshot",
+			versions: []string{"1.3.0", "1.1.0"},
+			prog:     prog(),
+			plugins: []workspace.PluginInfo{{
+				Name:    "pkgA",
+				Version: &semver.Version{Major: 1, Minor: 1},
+				Kind:    workspace.ResourcePlugin,
+			}},
+			snapshot: &deploy.Snapshot{
+				Resources: []*resource.State{
+					{
+						Type: "providers:pulumi:pkgA",
+						URN:  "this:is:a:urn::ofaei",
+						Inputs: map[resource.PropertyKey]resource.PropertyValue{
+							"version": resource.NewPropertyValue("1.3.0"),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, r *resource.State) {
+				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
+					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
+				}
+			},
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			program := deploytest.NewLanguageRuntime(c.prog, c.plugins...)
+			loaders := []*deploytest.ProviderLoader{}
+			for _, v := range c.versions {
+				loaders = append(loaders,
+					deploytest.NewProviderLoader("pkgA", semver.MustParse(v), func() (plugin.Provider, error) {
+						return &deploytest.Provider{}, nil
+					}))
+			}
+			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+			update := []TestStep{{Op: Update, Validate: func(
+				project workspace.Project, target deploy.Target, entries JournalEntries,
+				events []Event, res result.Result) result.Result {
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, 3)
+				for _, r := range snap.Resources {
+					c.validate(t, r)
+				}
+				return nil
+			}}}
+
+			p := &TestPlan{
+				Options: UpdateOptions{Host: host},
+				Steps:   update,
+			}
+			p.Run(t, &deploy.Snapshot{})
+		})
+	}
+}

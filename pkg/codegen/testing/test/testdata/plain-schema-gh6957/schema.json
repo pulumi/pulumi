@@ -27,7 +27,7 @@
       "requiredInputs": ["indexContent"],
       "properties": {
         "bucket": {
-          "$ref": "/aws/v4.0.0/schema.json#/resources/aws:s3%2Fbucket:Bucket",
+          "$ref": "/aws/v4.36.0/schema.json#/resources/aws:s3%2Fbucket:Bucket",
           "description": "The bucket resource."
         },
         "websiteUrl": {

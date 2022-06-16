@@ -144,6 +144,10 @@ type Options struct {
 	Color string
 	// Use the update plan at the given path.
 	Plan string
+	// Run one or more policy packs as part of this update
+	PolicyPacks []string
+	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+	PolicyPackConfigs []string
 }
 
 type optionFunc func(*Options)
