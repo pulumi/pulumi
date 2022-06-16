@@ -4,6 +4,9 @@ go 1.17
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
+// Working around https://github.com/sergi/go-diff/issues/123
+replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
+
 require (
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.22.0
