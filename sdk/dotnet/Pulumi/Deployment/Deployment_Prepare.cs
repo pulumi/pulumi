@@ -10,6 +10,17 @@ namespace Pulumi
 {
     public partial class Deployment
     {
+        private static void CheckNull<T>(T? value, string name) where T : class
+        {
+            if (value != null)
+            {
+                ThrowAliasPropertyConflict(name);
+            }
+        }
+
+        private static void ThrowAliasPropertyConflict(string name)
+            => throw new System.ArgumentException($"{nameof(Alias)} should not specify both {nameof(Alias.Urn)} and {name}");
+
         private async Task<PrepareResult> PrepareResourceAsync(
             string label, Resource res, bool custom, bool remote,
             ResourceArgs args, ResourceOptions options)
@@ -115,18 +126,77 @@ namespace Pulumi
                 propertyToDirectDependencyUrns[propertyName] = urns;
             }
 
-            // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
-            // the former has been processed in the Resource constructor prior to calling
-            // 'registerResource' - both adding new inherited aliases and simplifying aliases down
-            // to URNs.
-            var aliases = new List<string>();
-            var uniqueAliases = new HashSet<string>();
-            foreach (var alias in res._aliases)
-            {
-                var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
-                if (aliasVal != "" && uniqueAliases.Add(aliasVal))
+            List<string>? urnAliases = null;
+            List<Pulumirpc.Alias>? aliases = null;
+            if (await MonitorSupportsAliasSpecs()) {
+                // The engine supports smart aliases so send a list of smart aliases rather than our manually crafted alias list.
+
+                aliases = new List<Pulumirpc.Alias>();
+                foreach (var alias in options.Aliases)
                 {
-                    aliases.Add(aliasVal);
+                    var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: null!).ConfigureAwait(false);
+                    var rpcAlias = new Pulumirpc.Alias();
+                    if (aliasVal.Urn != null) {
+                        CheckNull(aliasVal.Name, nameof(aliasVal.Name));
+                        CheckNull(aliasVal.Type, nameof(aliasVal.Type));
+                        CheckNull(aliasVal.Project, nameof(aliasVal.Project));
+                        CheckNull(aliasVal.Stack, nameof(aliasVal.Stack));
+                        CheckNull(aliasVal.Parent, nameof(aliasVal.Parent));
+                        CheckNull(aliasVal.ParentUrn, nameof(aliasVal.ParentUrn));
+                        if (aliasVal.NoParent) {
+                            ThrowAliasPropertyConflict(nameof(aliasVal.NoParent));
+                        }
+
+                        // Just a simple URN alias
+                        rpcAlias.Urn = aliasVal.Urn;
+                    } else {
+                        // A "aliasSpec", wait for all the component parts
+                        async Task<string?> MaybeAwait(Input<string>? input) {
+                            if (input == null) {
+                                return null;
+                            }
+                            var result = await input.ToOutput().GetValueAsync(whenUnknown: null!).ConfigureAwait(false);
+                            return result;
+                        }
+
+                        var aliasSpec = new Pulumirpc.Alias.Types.Spec();
+                        aliasSpec.Name = await MaybeAwait(aliasVal.Name);
+                        aliasSpec.Type = await MaybeAwait(aliasVal.Type);
+                        aliasSpec.Stack= await MaybeAwait(aliasVal.Stack);
+                        aliasSpec.Project = await MaybeAwait(aliasVal.Project);
+
+                        var parentCount =
+                            (aliasVal.Parent != null ? 1 : 0) +
+                            (aliasVal.ParentUrn != null ? 1 : 0) +
+                            (aliasVal.NoParent ? 1 : 0);
+
+                        if (parentCount >= 2) {
+                            throw new System.ArgumentException(
+                            $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(Alias.NoParent)}' in an {nameof(Alias)}");
+                        }
+
+                        aliasSpec.ParentUrn =  aliasVal.Parent == null ? await MaybeAwait(aliasVal.ParentUrn) : await MaybeAwait(aliasVal.Parent.Urn);
+                        aliasSpec.NoParent = aliasVal.NoParent;
+
+                        rpcAlias.Spec = aliasSpec;
+                    }
+
+                    aliases.Add(rpcAlias);
+                }
+            } else {
+                // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
+                // the former has been processed in the Resource constructor prior to calling
+                // 'registerResource' - both adding new inherited aliases and simplifying aliases down
+                // to URNs.
+                urnAliases = new List<string>();
+                var uniqueAliases = new HashSet<string>();
+                foreach (var alias in res._aliases)
+                {
+                    var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
+                    if (aliasVal != "" && uniqueAliases.Add(aliasVal))
+                    {
+                        urnAliases.Add(aliasVal);
+                    }
                 }
             }
 
@@ -137,6 +207,7 @@ namespace Pulumi
                 providerRefs,
                 allDirectDependencyUrns,
                 propertyToDirectDependencyUrns,
+                urnAliases,
                 aliases);
 
             void LogExcessive(string message)
@@ -231,9 +302,10 @@ namespace Pulumi
             public readonly Dictionary<string, string> ProviderRefs;
             public readonly HashSet<string> AllDirectDependencyUrns;
             public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyUrns;
-            public readonly List<string> Aliases;
+            public readonly List<string>? UrnAliases;
+            public readonly List<Pulumirpc.Alias>? Aliases;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string>? urnAliases, List<Pulumirpc.Alias>? aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
@@ -241,6 +313,7 @@ namespace Pulumi
                 ProviderRefs = providerRefs;
                 AllDirectDependencyUrns = allDirectDependencyUrns;
                 PropertyToDirectDependencyUrns = propertyToDirectDependencyUrns;
+                UrnAliases = urnAliases;
                 Aliases = aliases;
             }
         }

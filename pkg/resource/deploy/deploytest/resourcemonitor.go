@@ -96,7 +96,7 @@ type ResourceOptions struct {
 	PluginDownloadURL       string
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	Aliases                 []resource.URN
+	UrnAliases              []resource.URN
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
@@ -104,6 +104,7 @@ type ResourceOptions struct {
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
+	Aliases                 []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -138,8 +139,26 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.Aliases {
+	for _, a := range opts.UrnAliases {
 		aliasStrings = append(aliasStrings, string(a))
+	}
+
+	aliasObjects := []*pulumirpc.Alias{}
+	for _, a := range opts.Aliases {
+		alias := &pulumirpc.Alias_Spec{
+			Name:    a.Name,
+			Type:    a.Type,
+			Project: a.Project,
+			Stack:   a.Stack,
+		}
+		if a.NoParent {
+			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
+		} else if a.Parent != "" {
+			alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
+		}
+
+		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
+		aliasObjects = append(aliasObjects, obj)
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
@@ -188,7 +207,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		Aliases:                    aliasStrings,
+		UrnAliases:                 aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
@@ -198,6 +217,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
+		Aliases:                    aliasObjects,
 	}
 
 	// submit request

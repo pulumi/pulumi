@@ -579,7 +579,7 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=resolver.aliases,
+                urnAliases=resolver.aliases,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,

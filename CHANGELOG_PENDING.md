@@ -18,6 +18,12 @@
 - [sdk/go] Added `NewUniqueName` for providers to use for generating autonames.
   [#9852](https://github.com/pulumi/pulumi/pull/9852)
 
+- [engine] The engine now understands alias objects which it can resolve to URNs, requiring less logic in SDKs.
+  [#9731](https://github.com/pulumi/pulumi/pull/9731)
+
+- [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
+  [#9731](https://github.com/pulumi/pulumi/pull/9731)
+
 ### Bug Fixes
 
 - [engine] Explicit providers use the same plugin as default providers unless otherwise requested.
