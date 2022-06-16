@@ -470,7 +470,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	ctx                       *plugin.Context                    // the plugin context
+	diagostics                diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
@@ -505,7 +505,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		ctx:                       src.plugctx,
+		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
 		regChan:                   regChan,
@@ -1178,7 +1178,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom && len(ignoreChanges) > 0 {
-		rm.ctx.Diag.Warningf(diag.Message(
+		rm.diagostics.Warningf(diag.Message(
 			result.State.URN,
 			"The option 'ignoreChanges' has no effect on component resources.",
 		))
