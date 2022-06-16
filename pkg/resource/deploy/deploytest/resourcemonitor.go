@@ -96,7 +96,7 @@ type ResourceOptions struct {
 	PluginDownloadURL       string
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	Aliases                 []resource.URN
+	UrnAliases              []resource.URN
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
@@ -104,7 +104,7 @@ type ResourceOptions struct {
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
-	SmartAliases            []resource.Alias
+	Aliases                 []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -144,7 +144,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	aliasObjects := []*pulumirpc.Alias{}
-	for _, a := range opts.SmartAliases {
+	for _, a := range opts.Aliases {
 		alias := &pulumirpc.Alias_SmartAlias{
 			Name:    a.Name,
 			Type:    a.Type,

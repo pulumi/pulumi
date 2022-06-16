@@ -1430,8 +1430,8 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			Dependencies:        r.dependencies,
 			Inputs:              r.props,
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
-			Aliases:             r.aliases,
-			SmartAliases:        r.smartAliases,
+			UrnAliases:          r.aliases,
+			Aliases:             r.smartAliases,
 		})
 		if err != nil {
 			return err
