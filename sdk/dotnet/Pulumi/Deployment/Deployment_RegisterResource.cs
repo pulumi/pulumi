@@ -53,7 +53,7 @@ namespace Pulumi
             request.Parent = prepareResult.ParentUrn;
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
-            if (prepareResult.Aliases != null) {
+            if (prepareResult.UrnAliases != null) {
                 #pragma warning disable 612
                 // UrnAliases is marked obsolete, but it does still work and is needed for old engines.
                 request.UrnAliases.Add(prepareResult.UrnAliases);
