@@ -279,6 +279,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Generate a resource that accepts a plain input type",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "go-nested-collections",
+		Description: "Generate a resource that outputs [][]Foo",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool

@@ -3563,21 +3563,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				pkg.getImports(t, importsAndAliases)
 				hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
 			}
-			var goImports []string
-			if hasOutputs {
-				goImports = []string{"context", "reflect"}
-				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-			}
-
-			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, goImports, importsAndAliases)
-
-			for _, t := range pkg.types {
-				if err := pkg.genType(buffer, t); err != nil {
-					return nil, err
-				}
-				delete(knownTypes, t)
-			}
 
 			sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
 			for k := range knownTypes {
@@ -3593,6 +3578,27 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				case *schema.ArrayType, *schema.MapType:
 					pkg.collectNestedCollectionTypes(collectionTypes, typ)
 				}
+			}
+
+			// All collection types have Outputs
+			if len(collectionTypes) > 0 {
+				hasOutputs = true
+			}
+
+			var goImports []string
+			if hasOutputs {
+				goImports = []string{"context", "reflect"}
+				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+			}
+
+			buffer := &bytes.Buffer{}
+			pkg.genHeader(buffer, goImports, importsAndAliases)
+
+			for _, t := range pkg.types {
+				if err := pkg.genType(buffer, t); err != nil {
+					return nil, err
+				}
+				delete(knownTypes, t)
 			}
 
 			types := pkg.genNestedCollectionTypes(buffer, collectionTypes)
