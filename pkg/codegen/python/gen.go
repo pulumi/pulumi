@@ -1128,7 +1128,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Produce an args class.
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false)
+	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false, false)
 	if err != nil {
 		return "", err
 	}
@@ -1141,7 +1141,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		len(res.StateInputs.Properties) > 0
 	if hasStateInputs {
 		stateComment := fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name)
-		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, true, false)
+		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, true, false, false)
 		if err != nil {
 			return "", err
 		}
@@ -2392,10 +2392,10 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
-	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType)
+	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType, false)
 }
 
-func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, input, resourceOutput bool) error {
+func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, input, resourceOutput, typeAssert bool) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -2485,6 +2485,30 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
+
+	if typeAssert {
+		for _, prop := range props {
+			pname := PyName(prop.Name)
+			w := NewWriter(w).IncrIndent(8)
+			ty := mod.typeString(prop.Type, input, false)
+			switch t := codegen.UnwrapType(prop.Type).(type) {
+			case *schema.ArrayType:
+				w.Printf("\nif isinstance(%s, list):", pname)
+				w.IncrIndent(4).Printf("\nfor i, _element in %s:", pname)
+				ty := mod.typeString(t.ElementType, input, false)
+				w.IncrIndent(8).Printf("\nif _is_prompt(_element) and not isinstance(_element, %s):", ty)
+				w.IncrIndent(12).Printf("\n"+`raise TypeError(f"Expected '%[1]s[{i}]' to be of type '%[2]s', but found type {type(_element)}")`, pname, ty)
+			case *schema.MapType:
+			default:
+				tyPlain := mod.typeString(codegen.UnwrapType(prop.Type), input, false)
+				w.Printf("\nif %[1]s and _is_prompt(%[1]s) and not isinstance(%[1]s, %[2]s):", pname, tyPlain)
+				w.IncrIndent(4).Printf("\n"+`raise TypeError(f"Expected '%[1]s' to be of type '%[2]s', but found type {type(%[1]s)}")`, pname, ty)
+
+			}
+		}
+		fmt.Fprint(w, "\n\n")
+	}
+
 	for _, prop := range props {
 		pname := PyName(prop.Name)
 		var arg interface{}
@@ -2526,6 +2550,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
 	}
+
 	fmt.Fprintf(w, "\n")
 
 	// Generate properties. Input types have getters and setters, output types only have getters.

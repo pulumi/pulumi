@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per
@@ -184,4 +185,31 @@ func pypiVersion(v semver.Version) string {
 		local = "+" + strings.Join(localList, ".")
 	}
 	return fmt.Sprintf("%d.%d.%d%s%s%s%s", v.Major, v.Minor, v.Patch, release, dev, post, local)
+}
+
+type Writer struct {
+	inner  io.Writer
+	indent int
+}
+
+func NewWriter(w io.Writer) Writer {
+	return Writer{
+		inner:  w,
+		indent: 0,
+	}
+}
+
+func (w Writer) Printf(format string, a ...interface{}) {
+	s := fmt.Sprintf(format, a...)
+	s = strings.ReplaceAll(s, "\n", "\n"+strings.Repeat(" ", w.indent))
+	n, err := w.inner.Write([]byte(s))
+	contract.AssertNoError(err)
+	contract.Assert(n == len(s))
+}
+
+func (w Writer) IncrIndent(incr int) Writer {
+	return Writer{
+		inner:  w.inner,
+		indent: w.indent + incr,
+	}
 }
