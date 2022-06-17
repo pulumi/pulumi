@@ -20,7 +20,7 @@
         }
     },
     "types": {
-        "repro:index:bar": {
+        "repro:index:Bar": {
             "type": "object",
             "properties": {
                 "prop": { "type": "string" }

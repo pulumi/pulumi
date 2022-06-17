@@ -281,7 +281,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	},
 	{
 		Directory:   "go-nested-collections",
-		Description: "Generate a resource that outputs [][]Foo",
+		Description: "Generate a resource that outputs [][][]Foo",
 		Skip:        allLanguages.Except("go/any"),
 	},
 }

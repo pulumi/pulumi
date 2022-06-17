@@ -2314,7 +2314,13 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Array"
+
+		// We make sure that subsidiary elements are marked for array as well
+		details := pkg.detailsForType(t)
+		pkg.detailsForType(t.ElementType).markArray(details.arrayInput, details.arrayOutput)
+
 		names = pkg.addSuffixesToName(t, elementTypeName)
+		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
 		if schema.IsPrimitiveType(t.ElementType) {
@@ -2322,9 +2328,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Map"
+
+		// We make sure that subsidiary elements are marked for map as well
+		details := pkg.detailsForType(t)
+		pkg.detailsForType(t.ElementType).markMap(details.mapInput, details.mapOutput)
+
 		names = pkg.addSuffixesToName(t, elementTypeName)
+		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	default:
-		contract.Failf("unexpected type %T in collectNestedCollectionTypes", t)
+		return
 	}
 	nti, ok := types[elementTypeName]
 	if !ok {
@@ -2389,9 +2401,9 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	switch t := codegen.UnwrapType(typ).(type) {
 	case *schema.ArrayType:
-		return pkg.nestedTypeToType(t.ElementType)
+		return pkg.nestedTypeToType(t.ElementType) + "Array"
 	case *schema.MapType:
-		return pkg.nestedTypeToType(t.ElementType)
+		return pkg.nestedTypeToType(t.ElementType) + "Map"
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
 	}
@@ -3574,10 +3586,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			collectionTypes := map[string]*nestedTypeInfo{}
 			for _, t := range sortedKnownTypes {
-				switch typ := t.(type) {
-				case *schema.ArrayType, *schema.MapType:
-					pkg.collectNestedCollectionTypes(collectionTypes, typ)
-				}
+				pkg.collectNestedCollectionTypes(collectionTypes, t)
 			}
 
 			// All collection types have Outputs
