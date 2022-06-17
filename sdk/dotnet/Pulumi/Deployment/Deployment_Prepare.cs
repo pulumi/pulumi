@@ -160,10 +160,14 @@ namespace Pulumi
                         }
 
                         var aliasSpec = new Pulumirpc.Alias.Types.Spec();
-                        aliasSpec.Name = await MaybeAwait(aliasVal.Name);
-                        aliasSpec.Type = await MaybeAwait(aliasVal.Type);
-                        aliasSpec.Stack= await MaybeAwait(aliasVal.Stack);
-                        aliasSpec.Project = await MaybeAwait(aliasVal.Project);
+                        var aliasName = await MaybeAwait(aliasVal.Name);
+                        if (aliasName != null) { aliasSpec.Name = aliasName; }
+                        var aliasType = await MaybeAwait(aliasVal.Type);
+                        if (aliasType != null) { aliasSpec.Type = aliasType; }
+                        var aliasStack= await MaybeAwait(aliasVal.Stack);
+                        if (aliasStack != null) { aliasSpec.Stack = aliasStack; }
+                        var aliasProject = await MaybeAwait(aliasVal.Project);
+                        if (aliasProject != null) { aliasSpec.Project = aliasProject; }
 
                         var parentCount =
                             (aliasVal.Parent != null ? 1 : 0) +
@@ -180,7 +184,7 @@ namespace Pulumi
                         if (aliasVal.NoParent) {
                             aliasSpec.NoParent = true;
                         }
-                        else if (parentUrn != null) {
+                        else if (alaisParentUrn != null) {
                             aliasSpec.ParentUrn = alaisParentUrn;
                         }
 
