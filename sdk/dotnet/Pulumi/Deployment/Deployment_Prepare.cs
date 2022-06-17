@@ -175,8 +175,14 @@ namespace Pulumi
                             $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '{nameof(Alias.NoParent)}' in an {nameof(Alias)}");
                         }
 
-                        aliasSpec.ParentUrn =  aliasVal.Parent == null ? await MaybeAwait(aliasVal.ParentUrn) : await MaybeAwait(aliasVal.Parent.Urn);
-                        aliasSpec.NoParent = aliasVal.NoParent;
+                        var alaisParentUrn = aliasVal.Parent == null ? await MaybeAwait(aliasVal.ParentUrn) : await MaybeAwait(aliasVal.Parent.Urn);
+                        // Setting either of NoParent or ParentUrn will reset the other so only set the one (if any) that has a value.
+                        if (aliasVal.NoParent) {
+                            aliasSpec.NoParent = true;
+                        }
+                        else if (parentUrn != null) {
+                            aliasSpec.ParentUrn = alaisParentUrn;
+                        }
 
                         rpcAlias.Spec = aliasSpec;
                     }
