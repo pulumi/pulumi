@@ -108,6 +108,10 @@ func (b *expressionBinder) bindExpression(syntax hclsyntax.Node) (Expression, hc
 		return b.bindTupleConsExpression(syntax)
 	case *hclsyntax.UnaryOpExpr:
 		return b.bindUnaryOpExpression(syntax)
+	case *hclsyntax.ParenthesesExpr:
+		// This provides the scoped range for the parentheses, but does not effect the
+		// precedence. That is handled elsewhere. We can just pass through.
+		return b.bindExpression(syntax.Expression)
 	default:
 		contract.Failf("unexpected expression node of type %T (%v)", syntax, syntax.Range())
 		return nil, nil
