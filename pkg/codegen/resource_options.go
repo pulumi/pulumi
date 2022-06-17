@@ -7,6 +7,9 @@ type ResourceOptions struct {
 	Properties []*schema.Property
 }
 
+var pulumiResourceType = &schema.ResourceType{Token: "pulumi:index:Resource"}
+var pulumiProviderType = &schema.ResourceType{Token: "pulumi:index:ProviderResource"}
+
 // This is the single source of truth for resource options
 var PulumiResourceOptions ResourceOptions = ResourceOptions{
 	DocComment: "ResourceOptions is a bag of optional settings that control a resources behavior.",
@@ -15,10 +18,39 @@ var PulumiResourceOptions ResourceOptions = ResourceOptions{
 			Name:    "parent",
 			Comment: "If provided, the currently-constructing resource should be the child of the provided parent resource.",
 			Type: &schema.OptionalType{
-				ElementType: &schema.ResourceType{
-					Token: "pulumi:index:Resource",
+				ElementType: pulumiResourceType,
+			},
+		},
+		{
+			Name:    "dependsOn",
+			Comment: "If provided, declares that the currently-constructing resource depends on the given resources.",
+			Type: &schema.OptionalType{
+				ElementType: &schema.InputType{
+					ElementType: &schema.UnionType{
+						ElementTypes: []schema.Type{
+							pulumiResourceType,
+							&schema.InputType{ElementType: pulumiResourceType},
+						},
+					},
 				},
 			},
+		},
+		{
+			Name:    "protect",
+			Comment: "If provided and True, this resource is not allowed to be deleted.",
+			Type:    &schema.OptionalType{ElementType: schema.BoolType},
+		},
+		{
+			Name:    "deleteBeforeReplace",
+			Comment: "If provided and True, this resource must be deleted before it is replaced.",
+			Type:    &schema.OptionalType{ElementType: schema.BoolType},
+		},
+		{
+			Name: "provider",
+			Comment: `An optional provider to use for this resource's CRUD operations. If no provider is supplied, the
+default provider for the resource's package will be used. The default provider is pulled from
+the parent's provider bag (see also ResourceOptions.providers).`,
+			Type: &schema.OptionalType{ElementType: pulumiProviderType},
 		},
 		{
 			Name:    "additionalSecretOutputs",
