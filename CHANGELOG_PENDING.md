@@ -1,5 +1,8 @@
 ### Improvements
 
+- [sdk/go] Added `PreviewDigest` for third party tools to be able to ingest the preview json
+  [#9886](https://github.com/pulumi/pulumi/pull/9886)
+
 - [auto/*] Add `--policy-pack` and `--policy-pack-configs` options to automation API.
   [#9872](https://github.com/pulumi/pulumi/pull/9872)
 
