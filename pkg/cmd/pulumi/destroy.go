@@ -151,7 +151,6 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 
 			}
-
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)

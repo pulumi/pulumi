@@ -477,8 +477,8 @@ func readProject() (*workspace.Project, string, error) {
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
 		logging.Warningf("failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w"+
-			"continuing with an empty project", pwd, err)
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %s"+
+			"continuing with an empty project", pwd, err.Error())
 		return &workspace.Project{}, "", nil
 	}
 	proj, err := workspace.LoadProject(path)
