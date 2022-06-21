@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -60,6 +61,8 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case langPython:
 				projectGenerator = python.GenerateProject
+			case "java":
+				projectGenerator = javagen.GenerateProject
 			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject
 			default:
