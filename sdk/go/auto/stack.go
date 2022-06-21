@@ -555,7 +555,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
 		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
 	}
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -581,7 +581,8 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
-func (s *Stack) History(ctx context.Context, pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
+func (s *Stack) History(ctx context.Context,
+	pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")

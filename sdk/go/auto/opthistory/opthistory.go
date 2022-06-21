@@ -16,8 +16,6 @@
 // github.com/sdk/v3/go/x/auto Stack.History(ctx, pageSize, page, ...opthistory.Option)
 package opthistory
 
-import "github.com/pulumi/pulumi/sdk/v3/go/auto/internal/options"
-
 // Show config secrets when they appear.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {

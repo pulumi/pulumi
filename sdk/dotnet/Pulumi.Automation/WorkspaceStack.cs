@@ -708,7 +708,7 @@ namespace Pulumi.Automation
             return await GetInfoAsync(cancellationToken, true);
         }
 
-        public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default, bool? showSecrets = default)
+        private async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default, bool? showSecrets = default)
         {
             var history = await this.GetHistoryAsync(
                 new HistoryOptions
