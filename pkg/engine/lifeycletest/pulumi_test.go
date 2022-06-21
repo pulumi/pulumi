@@ -5430,9 +5430,11 @@ func TestIdempotentReplacement(t *testing.T) {
 		for i := range events {
 			if events[i].Type == "diag" {
 				payload := events[i].Payload().(engine.DiagEventPayload)
+				expectedMessage := "<{%reset%}>provider returned existing ID (idempotent-id) " +
+					"for replacement resource<{%reset%}>\n"
 				if payload.Severity == "error" &&
 					payload.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" &&
-					payload.Message == "<{%reset%}>provider returned existing ID (idempotent-id) for replacement resource<{%reset%}>\n" {
+					payload.Message == expectedMessage {
 					// Found the message we expected
 					return nil
 				}
