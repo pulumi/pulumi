@@ -92,15 +92,15 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	ResourceLocalAlias                *awsec2.Instance                                                      `pulumi:"resourceLocalAlias"`
-	ResourceLocalInsteadOfRemoteAlias *gcpiamv1.Key                                                         `pulumi:"resourceLocalInsteadOfRemoteAlias"`
-	ResourceNoAlias                   *s3.Bucket                                                            `pulumi:"resourceNoAlias"`
-	ResourceRemoteAlias               *dns.Policy                                                           `pulumi:"resourceRemoteAlias"`
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplate                                         `pulumi:"typeLocalAlias"`
-	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfig                                                  `pulumi:"typeLocalInsteadOfRemoteAlias"`
-	TypeNoAlias                       s3.BucketWebsite                                                      `pulumi:"typeNoAlias"`
-	TypeRemoteAlias                   dns.DnsKeySpec                                                        `pulumi:"typeRemoteAlias"`
-	TypeRemoteEnum                    *accesscontextmanagerv1.DevicePolicyAllowedDeviceManagementLevelsItem `pulumi:"typeRemoteEnum"`
+	ResourceLocalAlias                *awsec2.Instance                                                    `pulumi:"resourceLocalAlias"`
+	ResourceLocalInsteadOfRemoteAlias *gcpiamv1.Key                                                       `pulumi:"resourceLocalInsteadOfRemoteAlias"`
+	ResourceNoAlias                   *s3.Bucket                                                          `pulumi:"resourceNoAlias"`
+	ResourceRemoteAlias               *dns.Policy                                                         `pulumi:"resourceRemoteAlias"`
+	TypeLocalAlias                    awsec2.InstanceLaunchTemplate                                       `pulumi:"typeLocalAlias"`
+	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfig                                                `pulumi:"typeLocalInsteadOfRemoteAlias"`
+	TypeNoAlias                       s3.BucketWebsite                                                    `pulumi:"typeNoAlias"`
+	TypeRemoteAlias                   dns.DnsKeySpec                                                      `pulumi:"typeRemoteAlias"`
+	TypeRemoteEnum                    *accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItem `pulumi:"typeRemoteEnum"`
 }
 
 // The set of arguments for constructing a Component resource.
@@ -113,7 +113,7 @@ type ComponentArgs struct {
 	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfigInput
 	TypeNoAlias                       s3.BucketWebsiteInput
 	TypeRemoteAlias                   dns.DnsKeySpecInput
-	TypeRemoteEnum                    accesscontextmanagerv1.DevicePolicyAllowedDeviceManagementLevelsItemPtrInput
+	TypeRemoteEnum                    accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItemPtrInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {

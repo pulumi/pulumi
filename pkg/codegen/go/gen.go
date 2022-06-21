@@ -218,6 +218,20 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	return strings.ReplaceAll(importPath+"."+name, "-provider", "")
 }
 
+// Resolve a enum type to its name.
+func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
+	if !pkg.isExternalReference(t) {
+		return pkg.tokenToResource(t.Token)
+	}
+
+	extPkgCtx := pkg.contextForExternalReference(t)
+	enumType := extPkgCtx.tokenToEnum(t.Token)
+	if !strings.Contains(enumType, ".") {
+		enumType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, enumType)
+	}
+	return enumType
+}
+
 func (pkg *pkgContext) tokenToEnum(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -234,6 +248,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
 	name = Title(name)
+
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
@@ -251,7 +266,15 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	if mod == "" {
 		mod = components[0]
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + name
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+	}
+
+	return importPath + "." + name
 }
 
 func (pkg *pkgContext) tokenToResource(tok string) string {
@@ -360,7 +383,7 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token) + "Input"
+		return pkg.resolveEnumType(t) + "Input"
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
@@ -422,7 +445,7 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		return pkg.argsTypeImpl(t.ElementType)
 	case *schema.EnumType:
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token)
+		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		en := pkg.argsTypeImpl(t.ElementType)
 		return strings.TrimSuffix(en, "Args") + "Array"
@@ -501,7 +524,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		}
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
-		return pkg.tokenToEnum(t.Token)
+		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		typ := "[]"
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
@@ -674,7 +697,7 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		}
 		return strings.TrimSuffix(elem, "Output") + "PtrOutput"
 	case *schema.EnumType:
-		return pkg.tokenToEnum(t.Token) + "Output"
+		return pkg.resolveEnumType(t) + "Output"
 	case *schema.ArrayType:
 		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
 		if en == "pulumi.Any" {
