@@ -75,7 +75,6 @@ class Stack extends ComponentResource<Inputs> {
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
-        // Back compat for old SDKs that used the engine to roundtrip the stack URN.
         await setRootResource(this);
 
         // Set the global reference to the stack resource before invoking this init() function
