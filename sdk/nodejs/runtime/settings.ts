@@ -15,7 +15,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
-import { Resource, ComponentResource } from "../resource";
+import { ComponentResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
@@ -79,7 +79,6 @@ export function resetOptions(
 
     monitor = undefined;
     engine = undefined;
-    globalThis.rootResource = undefined;
     rpcDone = Promise.resolve();
     featureSupport = {};
 
@@ -429,26 +428,10 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
-// The root resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded
-// they all resolve to the same variable.
-declare global {
-    var rootResource: Resource | undefined; // eslint-disable-line no-var
-}
-
-/**
- * getRootResource returns a root resource URN that will automatically become the default parent of all resources.  This
- * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
- */
-export function getRootResource(): Resource | undefined {
-    return globalThis.rootResource;
-}
-
 /**
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
 export async function setRootResource(res: ComponentResource): Promise<void> {
-    globalThis.rootResource = res;
-
     const engineRef: any = getEngine();
     if (!engineRef) {
         return Promise.resolve();
