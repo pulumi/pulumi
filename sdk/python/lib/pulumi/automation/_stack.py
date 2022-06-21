@@ -473,7 +473,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
-        show_secrets: bool = False,
+        show_secrets: bool = True,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -585,7 +585,7 @@ class Stack:
         self,
         page_size: Optional[int] = None,
         page: Optional[int] = None,
-        show_secrets: bool = False,
+        show_secrets: bool = True,
     ) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
@@ -631,7 +631,7 @@ class Stack:
             summaries.append(summary)
         return summaries
 
-    def info(self, show_secrets=False) -> Optional[UpdateSummary]:
+    def info(self, show_secrets=True) -> Optional[UpdateSummary]:
         """
         Returns the current results from Stack lifecycle operations.
 

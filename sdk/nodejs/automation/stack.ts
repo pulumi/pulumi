@@ -573,7 +573,7 @@ Event: ${line}\n${e.toString()}`);
      */
     async history(pageSize?: number, page?: number, showSecrets?: boolean): Promise<UpdateSummary[]> {
         const args = ["stack", "history", "--json"];
-        if (showSecrets) {
+        if (showSecrets ?? true) {
             args.push("--show-secrets");
         }
         if (pageSize) {
@@ -782,7 +782,9 @@ export interface UpOptions {
      * Plan specifies the path to an update plan to use for the update.
      */
     plan?: string;
-    // Include secrets in the UpSummary
+    /**
+     * Include secrets in the UpSummary.
+     */
     showSecrets?: boolean;
 }
 
