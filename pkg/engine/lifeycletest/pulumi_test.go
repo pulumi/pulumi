@@ -1271,6 +1271,8 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 	t.Run(name, func(t *testing.T) {
 		t.Parallel()
 
+		id := 0
+
 		loaders := []*deploytest.ProviderLoader{
 			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 				return &deploytest.Provider{
@@ -1281,7 +1283,8 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					},
 					CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
 						preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-						return resource.ID("id123"), inputs, resource.StatusOK, nil
+						id = id + 1
+						return resource.ID(fmt.Sprintf("id%d", id)), inputs, resource.StatusOK, nil
 					},
 				}, nil
 			}),
@@ -3248,6 +3251,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 	var generatedName resource.PropertyValue
 
+	id := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -3285,7 +3289,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+					id = id + 1
+					return resource.ID(fmt.Sprintf("id%d", id)), news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
 					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
@@ -3359,6 +3364,7 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 		1: resource.NewStringProperty("Sequence"),
 	}
 
+	id := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -3385,7 +3391,8 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+					id = id + 1
+					return resource.ID(fmt.Sprintf("id%d", id)), news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
 					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {

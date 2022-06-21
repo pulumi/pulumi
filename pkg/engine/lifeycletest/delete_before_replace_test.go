@@ -2,6 +2,7 @@
 package lifecycletest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -493,6 +494,7 @@ func TestDependencyChangeDBR(t *testing.T) {
 
 	p := &TestPlan{}
 
+	id := 0
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -514,8 +516,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
-					return "created-id", news, resource.StatusOK, nil
+					id = id + 1
+					return resource.ID(fmt.Sprintf("id%d", id)), news, resource.StatusOK, nil
 				},
 			}, nil
 		}),
