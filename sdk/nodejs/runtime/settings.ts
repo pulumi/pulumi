@@ -453,13 +453,15 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
         return Promise.resolve();
     }
 
+    // Back-compat case - Try to set the root URN for SxS old SDKs that expect the engine to roundtrip the
+    // stack URN.
     const req = new engproto.SetRootResourceRequest();
     const urn = await res.urn.promise();
     req.setUrn(urn);
     return new Promise<void>((resolve, reject) => {
         engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
             // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
-            // resources, fall back to the old behavior.
+            // resources, just ignore there's nothing we can do.
             if (err && err.code === grpc.status.UNIMPLEMENTED) {
                 return resolve();
             }

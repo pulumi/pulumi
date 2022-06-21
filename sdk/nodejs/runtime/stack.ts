@@ -71,7 +71,7 @@ class Stack extends ComponentResource<Inputs> {
      * @param init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
-        const parent = await getRootResource();
+        const parent = getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
