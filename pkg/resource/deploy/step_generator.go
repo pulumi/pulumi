@@ -1462,7 +1462,7 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
-	// TODO: Note that currently we have to always return DeleteBeforeReplace for targetted replaces and
+	// TODO: Note that currently we have to always return DeleteBeforeReplace for targeted replaces and
 	// provider diffs. This is because we don't currently have any interface into the provider to ask if it's
 	// safe to do a create first. For a normal replace we call the provider Diff method which gives the
 	// provider a chance to do checks such as "this resource needs a replace, but its new and old name are the
