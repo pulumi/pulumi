@@ -907,6 +907,35 @@ func TestDestroyStackRef(t *testing.T) {
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
 }
 
+//nolint:paralleltest // uses parallel programtest
+func TestAccMinimal(t *testing.T) {
+	baseOptions := integration.ProgramTestOptions{
+		Dir:          "minimal",
+		Dependencies: []string{"@pulumi/pulumi"},
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.FailNow()
+	}
+	test := baseOptions.
+		With(integration.ProgramTestOptions{
+			Dir: filepath.Join(cwd, "minimal"),
+			Config: map[string]string{
+				"name": "Pulumi",
+			},
+			Secrets: map[string]string{
+				"secret": "this is my secret message",
+			},
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				// Simple runtime validation that just ensures the checkpoint was written and read.
+				assert.NotNil(t, stackInfo.Deployment)
+			},
+			RunBuild: true,
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
 //nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
