@@ -139,6 +139,19 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
+
+			sm, err := getStackSecretsManager(s)
+			if err != nil {
+				// fallback on snapshot SecretsManager
+				sm = snap.SecretsManager
+			}
+
+			cfg, err := getStackConfiguration(s, sm)
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+
+			}
+
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
@@ -148,11 +161,6 @@ func newDestroyCmd() *cobra.Command {
 					fmt.Printf("There were no resources matching the wildcards provided.\n")
 				}
 				return nil
-			}
-
-			cfg, err := getStackConfiguration(s, snap.SecretsManager)
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
@@ -200,7 +208,7 @@ func newDestroyCmd() *cobra.Command {
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
-				SecretsManager:     snap.SecretsManager,
+				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
 			if res == nil && protectedCount > 0 && !jsonDisplay {
