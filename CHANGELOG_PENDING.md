@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [auto/*] Add a option to control `--show-secrets` in the automation API.
+  [#9879](https://github.com/pulumi/pulumi/pull/9879)
+
 ### Bug Fixes
 
 - [engine] Explicit providers use the same plugin as default providers unless otherwise requested.
