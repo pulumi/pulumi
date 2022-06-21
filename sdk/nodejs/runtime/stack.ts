@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { isDryRun, isQueryMode, setRootResource } from "./settings";
+import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -27,9 +27,7 @@ export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
 // The stack resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded they all resolve to the same variable.
 declare global {
-    // globals have to be vars
-    // eslint-disable-next-line no-var
-    var stackResource: Stack | undefined;
+    var stackResource: Stack | undefined; // eslint-disable-line no-var
 }
 
 // Get the root stack resource for the current stack deployment
@@ -73,7 +71,7 @@ class Stack extends ComponentResource<Inputs> {
      * @param init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
-        const parent = await getStackResource();
+        const parent = await getRootResource();
         if (parent) {
             throw new Error("Only one root Pulumi Stack may be active at once");
         }
