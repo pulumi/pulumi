@@ -1462,9 +1462,27 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
+	// TODO: Note that currently we have to always return DeleteBeforeReplace for targetted replaces and
+	// provider diffs. This is because we don't currently have any interface into the provider to ask if it's
+	// safe to do a create first. For a normal replace we call the provider Diff method which gives the
+	// provider a chance to do checks such as "this resource needs a replace, but its new and old name are the
+	// same so it needs to be deleted first". We can't reuse Diff here because olds and news may be exactly
+	// the same resulting in provider Diff just returning that there is no diff (and so leaving
+	// DeleteBeforeReplace at it's default false). To fix this we need a new interface to call into providers
+	// with something like: "Given old state, new state could new be created before old" (i.e. check if names
+	// and other required unique fields aren't the same). We _might_ also care about old provider config for
+	// this, imagine a resource that is namespaced per region. If you just gave the provider old and new state
+	// with the name being the same it would have to assume that a create first is unsafe, but if you also
+	// gave it the old provider config that showed that the old and new resource were going to be created in
+	// different the regions the provider could return that its safe to create first.
+
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn) {
-		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil
+		return plugin.DiffResult{
+			Changes:             plugin.DiffSome,
+			ReplaceKeys:         []resource.PropertyKey{"id"},
+			DeleteBeforeReplace: true,
+		}, nil
 	}
 
 	// Before diffing the resource, diff the provider field. If the provider field changes, we may or may
@@ -1473,7 +1491,11 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 	if err != nil {
 		return plugin.DiffResult{}, err
 	} else if providerChanged {
-		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"provider"}}, nil
+		return plugin.DiffResult{
+			Changes:             plugin.DiffSome,
+			ReplaceKeys:         []resource.PropertyKey{"provider"},
+			DeleteBeforeReplace: true,
+		}, nil
 	}
 
 	// Apply legacy diffing behavior if requested. In this mode, if the provider-calculated inputs for a resource did
