@@ -47,6 +47,10 @@ type Resource struct {
 
 	syntax *hclsyntax.Block
 
+	// Represents whether this was a regular resource (false), or a Terraform Child Module call
+	// that will be transformed into a Pulumi ComponentResource (true).
+	IsComponentResource bool
+
 	// The name visible to API calls related to the resource. Used as the Name argument in resource
 	// constructors, and through those calls to RegisterResource. Must not be modified during code
 	// generation to ensure that resources are not renamed (deleted and recreated).

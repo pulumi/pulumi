@@ -281,15 +281,23 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
-			pkg, _, _, _ := r.DecomposeToken()
-			pkgName := "@pulumi/" + pkg
-			if r.Schema != nil && r.Schema.Package != nil {
-				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
-					pkgName = info.PackageName
+			if r.IsComponentResource {
+				// Resource is a call to a Terraform Child module. Its "package" is the source path attribute which we added as a label earlier
+				sourcePath := r.Definition.Labels[1]
+				importSet.Add(sourcePath)
+			} else {
+				// Resource is ordinary, importing package normally
+				pkg, _, _, _ := r.DecomposeToken()
+				pkgName := "@pulumi/" + pkg
+				if r.Schema != nil && r.Schema.Package != nil {
+					if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+						pkgName = info.PackageName
+					}
 				}
+				importSet.Add(pkgName)
 			}
-			importSet.Add(pkgName)
 		}
+
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
@@ -361,7 +369,20 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := r.DecomposeToken()
+	var pkg, module, member string
+	var diagnostics hcl.Diagnostics
+
+	if r.IsComponentResource {
+		// Terraform child modules are only differentiated by a local path. Creating a unique identifier out it.
+		pkg = makeValidIdentifier(path.Base(r.Definition.Labels[1]))
+		member = "Index"
+	} else {
+		pkg, module, member, diagnostics = r.DecomposeToken()
+	}
+
+	if pkg == "pulumi" && module == "providers" {
+		pkg, module, member = member, "", "Provider"
+	}
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.Package)
@@ -477,8 +498,15 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-				g.diagnostics = append(g.diagnostics, diagnostics...)
+				var destType model.Traversable
+				if r.IsComponentResource {
+					// Attribute belonged to a Module with custom types not listed in any offcial schema. Defaulting to DynamicType
+					destType = model.DynamicType
+				} else {
+					// Attribute belings to a typical resource, which has all its possible types coneniently listed
+					destType, diagnostics = r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+					g.diagnostics = append(g.diagnostics, diagnostics...)
+				}
 				g.Fgenf(w, fmtString, propertyName,
 					g.lowerExpression(attr.Value, destType.(model.Type)))
 			}
