@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [engine] The engine will default to delete before create for replacements when it has no information from the provider that create before delete is safe.
+  [#9909](https://github.com/pulumi/pulumi/pull/9909)
+
 ### Bug Fixes
 
 - [sdk/go] Handle nils in mapper encoding.
