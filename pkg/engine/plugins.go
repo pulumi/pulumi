@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -56,6 +57,43 @@ func (p pluginSet) Union(other pluginSet) pluginSet {
 	return newSet
 }
 
+// Removes less specific entries.
+//
+// For example, the plugin aws would be removed if there was an already existing plugin
+// aws-5.4.0.
+func (p pluginSet) Deduplicate() pluginSet {
+	existing := map[string]workspace.PluginInfo{}
+	newSet := newPluginSet()
+	add := func(p workspace.PluginInfo) {
+		prev, ok := existing[p.Name]
+		if ok {
+			// If either `pluginDownloadURL`, `Version` or both are set we consider the
+			// plugin fully specified and keep it. It is ok to keep `pkg v1.2.3` `pkg
+			// v2.3.4` and `pkg example.com` in a single set. What we don't want to do is
+			// keep `pkg` in that same set since there are more specific versions used. In
+			// general, there will be a `pky vX.Y.Y` in the plugin set because the user
+			// depended on a language package `pulumi-pkg` with version `x.y.z`.
+
+			if p.Version == nil && p.PluginDownloadURL == "" {
+				// no new information
+				return
+			}
+
+			if prev.Version == nil && prev.PluginDownloadURL == "" {
+				// New plugin is more specific then the old one
+				delete(newSet, prev.String())
+			}
+		}
+
+		newSet.Add(p)
+		existing[p.Name] = p
+	}
+	for _, value := range p {
+		add(value)
+	}
+	return newSet
+}
+
 // Values returns a slice of all of the plugins contained within this set.
 func (p pluginSet) Values() []workspace.PluginInfo {
 	var plugins []workspace.PluginInfo
@@ -66,8 +104,12 @@ func (p pluginSet) Values() []workspace.PluginInfo {
 }
 
 // newPluginSet creates a new empty pluginSet.
-func newPluginSet() pluginSet {
-	return make(map[string]workspace.PluginInfo)
+func newPluginSet(plugins ...workspace.PluginInfo) pluginSet {
+	var s pluginSet = make(map[string]workspace.PluginInfo, len(plugins))
+	for _, p := range plugins {
+		s.Add(p)
+	}
+	return s
 }
 
 // gatherPluginsFromProgram inspects the given program and returns the set of plugins that the program requires to
@@ -133,7 +175,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
@@ -149,7 +191,7 @@ func ensurePluginsAreInstalled(plugins pluginSet) error {
 		installTasks.Go(func() error {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
-			return installPlugin(info)
+			return installPlugin(ctx, info)
 		})
 	}
 
@@ -165,7 +207,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(plugin workspace.PluginInfo) error {
+func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 	if plugin.Kind == workspace.LanguagePlugin {
 		logging.V(preparePluginLog).Infof(
@@ -197,7 +239,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.Install(stream, false); err != nil {
+	if err := plugin.InstallWithContext(ctx, stream, false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 
@@ -273,7 +315,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 			}
 
 			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
-			if p.Version != nil && p.Version.GT(*seenPlugin.Version) {
+			if p.Version != nil && p.Version.GTE(*seenPlugin.Version) {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
 					p, p.Name, seenPlugin.Version)

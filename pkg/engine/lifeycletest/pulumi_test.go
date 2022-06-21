@@ -1416,7 +1416,8 @@ type Resource struct {
 	name                string
 	children            []Resource
 	props               resource.PropertyMap
-	aliases             []resource.URN
+	urnAliases          []resource.URN
+	aliases             []resource.Alias
 	dependencies        []resource.URN
 	parent              resource.URN
 	deleteBeforeReplace bool
@@ -1429,6 +1430,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			Dependencies:        r.dependencies,
 			Inputs:              r.props,
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
+			UrnAliases:          r.urnAliases,
 			Aliases:             r.aliases,
 		})
 		if err != nil {
@@ -1442,7 +1444,309 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 	return nil
 }
 
+func TestUrnAliases(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// The `forcesReplacement` key forces replacement and all other keys can update in place
+				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+
+					replaceKeys := []resource.PropertyKey{}
+					old, hasOld := olds["forcesReplacement"]
+					new, hasNew := news["forcesReplacement"]
+					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
+						replaceKeys = append(replaceKeys, "forcesReplacement")
+					}
+					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
+				},
+			}, nil
+		}),
+	}
+
+	updateProgramWithResource := func(
+		snap *deploy.Snapshot, resources []Resource, allowedOps []deploy.StepOp, expectFailure bool) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			err := registerResources(t, monitor, resources)
+			return err
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{Host: host},
+			Steps: []TestStep{
+				{
+					Op:            Update,
+					ExpectFailure: expectFailure,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						events []Event, res result.Result) result.Result {
+						for _, event := range events {
+							if event.Type == ResourcePreEvent {
+								payload := event.Payload().(ResourcePreEventPayload)
+								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
+							}
+						}
+
+						for _, entry := range entries {
+							if entry.Step.Type() == "pulumi:providers:pkgA" {
+								continue
+							}
+							switch entry.Kind {
+							case JournalEntrySuccess:
+								assert.Subset(t, allowedOps, []deploy.StepOp{entry.Step.Op()})
+							case JournalEntryFailure:
+								assert.Fail(t, "unexpected failure in journal")
+							case JournalEntryBegin:
+							case JournalEntryOutputs:
+							}
+						}
+
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, snap)
+	}
+
+	snap := updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
+
+	// Ensure that rename produces Same
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:          "pkgA:index:t1",
+		name:       "n2",
+		urnAliases: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that rename produces Same with multiple aliases
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n3",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+			"urn:pulumi:test::test::pkgA:index:t1::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that rename produces Same with multiple aliases (reversed)
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n3",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n2",
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that aliasing back to original name is okay
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n3",
+			"urn:pulumi:test::test::pkgA:index:t1::n2",
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that changing the type works
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t2",
+		name: "n1",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that changing the type again works
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:othermod:t3",
+		name: "n1",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+			"urn:pulumi:test::test::pkgA:index:t2::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that order of aliases doesn't matter
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:othermod:t3",
+		name: "n1",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
+			"urn:pulumi:test::test::pkgA:index:t2::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:othermod:t3",
+		name: "n1",
+	}}, []deploy.StepOp{deploy.OpSame}, false)
+
+	// Ensure that changing everything (including props) leads to update not delete and re-create
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t4",
+		name: "n2",
+		props: resource.PropertyMap{
+			resource.PropertyKey("x"): resource.NewNumberProperty(42),
+		},
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
+
+	// Ensure that changing everything again (including props) leads to update not delete and re-create
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t5",
+		name: "n3",
+		props: resource.PropertyMap{
+			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
+		},
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t4::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
+
+	// Ensure that changing a forceNew property while also changing type and name leads to replacement not delete+create
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t6",
+		name: "n4",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
+		},
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t5::n3",
+		},
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
+
+	// Ensure that changing a forceNew property and deleteBeforeReplace while also changing type and name leads to
+	// replacement not delete+create
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t7",
+		name: "n5",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
+		},
+		deleteBeforeReplace: true,
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t6::n4",
+		},
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
+
+	// Start again - this time with two resources with depends on relationship
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+		},
+		deleteBeforeReplace: true,
+	}, {
+		t:            "pkgA:index:t2",
+		name:         "n2",
+		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
+
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1-new",
+		name: "n1-new",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+		},
+		deleteBeforeReplace: true,
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:            "pkgA:index:t2-new",
+		name:         "n2-new",
+		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t2::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
+
+	// Start again - this time with two resources with parent relationship
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1),
+		},
+		deleteBeforeReplace: true,
+	}, {
+		t:      "pkgA:index:t2",
+		name:   "n2",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
+
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1-new",
+		name: "n1-new",
+		props: resource.PropertyMap{
+			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
+		},
+		deleteBeforeReplace: true,
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:      "pkgA:index:t2-new",
+		name:   "n2-new",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
+
+	// ensure failure when different resources use duplicate aliases
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n2",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:    "pkgA:index:t2",
+		name: "n3",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate}, true)
+
+	// ensure different resources can use different aliases
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}, {
+		t:    "pkgA:index:t2",
+		name: "n2",
+		urnAliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
+
+	err := snap.NormalizeURNReferences()
+	assert.Nil(t, err)
+}
+
 func TestAliases(t *testing.T) {
+	// This is pretty much a copy of TestUrnAliases above but using the alias objects rather than URNs.
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1517,16 +1821,16 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
-		aliases: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+		aliases: []resource.Alias{{Name: "n1"}},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n3",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
-			"urn:pulumi:test::test::pkgA:index:t1::n2",
+		aliases: []resource.Alias{
+			{Name: "n1"},
+			{Name: "n2"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1534,9 +1838,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n3",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n2",
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n2"},
+			{Name: "n1"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1544,10 +1848,10 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n3",
-			"urn:pulumi:test::test::pkgA:index:t1::n2",
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n3"},
+			{Name: "n2"},
+			{Name: "n1"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1561,8 +1865,8 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t2",
 		name: "n1",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Type: "pkgA:index:t1"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1570,9 +1874,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
-			"urn:pulumi:test::test::pkgA:index:t2::n1",
+		aliases: []resource.Alias{
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1580,10 +1884,10 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
-			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
-			"urn:pulumi:test::test::pkgA:index:t2::n1",
+		aliases: []resource.Alias{
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:othermod:t3"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame}, false)
 
@@ -1600,8 +1904,8 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("x"): resource.NewNumberProperty(42),
 		},
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:othermod:t3"},
 		},
 	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
@@ -1612,8 +1916,8 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
 		},
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t4::n2",
+		aliases: []resource.Alias{
+			{Name: "n2", Type: "pkgA:index:t4"},
 		},
 	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
@@ -1624,8 +1928,8 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
 		},
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t5::n3",
+		aliases: []resource.Alias{
+			{Name: "n3", Type: "pkgA:index:t5"},
 		},
 	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1638,8 +1942,8 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t6::n4",
+		aliases: []resource.Alias{
+			{Name: "n4", Type: "pkgA:index:t6"},
 		},
 	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1664,15 +1968,15 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:            "pkgA:index:t2-new",
 		name:         "n2-new",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t2::n2",
+		aliases: []resource.Alias{
+			{Name: "n2", Type: "pkgA:index:t2"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1697,15 +2001,15 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:      "pkgA:index:t2-new",
 		name:   "n2-new",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
+		aliases: []resource.Alias{
+			{Name: "n2", Type: "pkgA:index:t2"},
 		},
 	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1713,14 +2017,14 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n2",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n3",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}}, []deploy.StepOp{deploy.OpCreate}, true)
 
@@ -1728,14 +2032,14 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n2",
-		aliases: []resource.URN{
-			"urn:pulumi:test::test::pkgA:index:t1::n2",
+		aliases: []resource.Alias{
+			{Name: "n2", Type: "pkgA:index:t1"},
 		},
 	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
@@ -2320,9 +2624,9 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
 
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
-					Parent:  parent,
-					Aliases: options.Aliases,
-					Protect: options.Protect,
+					Parent:     parent,
+					UrnAliases: options.Aliases,
+					Protect:    options.Protect,
 				})
 				assert.NoError(t, err)
 
@@ -2499,7 +2803,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:       parent,
 					Protect:      options.Protect,
-					Aliases:      options.Aliases,
+					UrnAliases:   options.Aliases,
 					Dependencies: options.Dependencies,
 				})
 				assert.NoError(t, err)
@@ -2648,9 +2952,9 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
-					Parent:  parent,
-					Aliases: options.Aliases,
-					Protect: options.Protect,
+					Parent:     parent,
+					UrnAliases: options.Aliases,
+					Protect:    options.Protect,
 				})
 				assert.NoError(t, err)
 
@@ -2741,9 +3045,9 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
-					Parent:  parent,
-					Aliases: options.Aliases,
-					Protect: options.Protect,
+					Parent:     parent,
+					UrnAliases: options.Aliases,
+					Protect:    options.Protect,
 				})
 				assert.NoError(t, err)
 
@@ -4322,8 +4626,8 @@ func TestAliasWithPlans(t *testing.T) {
 	})
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resourceName, true, deploytest.ResourceOptions{
-			Inputs:  ins,
-			Aliases: aliases,
+			Inputs:     ins,
+			UrnAliases: aliases,
 		})
 		assert.NoError(t, err)
 
@@ -4943,4 +5247,127 @@ func TestPluginsAreDownloaded(t *testing.T) {
 	assert.NotNil(t, plan)
 	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
 	assert.Nil(t, res)
+}
+
+func TestAdditionalSecretOutputs(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("id123"), inputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var inputs resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:                  inputs,
+			AdditionalSecretOutputs: []resource.PropertyKey{"a", "b"},
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	inputs = resource.PropertyMap{
+		"a": resource.NewStringProperty("testA"),
+		// b is missing
+		"c": resource.MakeSecret(resource.NewStringProperty("testC")),
+	}
+
+	// Run an update to create the resource and check we warn about b
+	validate := func(
+		project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
+		if res != nil {
+			return res
+		}
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				if payload.Severity == "warning" &&
+					payload.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" &&
+					payload.Message == "<{%reset%}>Could not find property 'b' listed in additional secret outputs.<{%reset%}>\n" {
+					// Found the message we expected
+					return nil
+				}
+			}
+		}
+		return result.Error("Expected a diagnostic message, got none")
+	}
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+
+	// Should have the provider and resA
+	assert.Len(t, snap.Resources, 2)
+	resA := snap.Resources[1]
+	assert.Equal(t, []resource.PropertyKey{"a", "b"}, resA.AdditionalSecretOutputs)
+	assert.True(t, resA.Outputs["a"].IsSecret())
+	assert.True(t, resA.Outputs["c"].IsSecret())
+}
+
+func TestDefaultParents(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(
+			resource.RootStackType,
+			info.Project+"-"+info.Stack,
+			false,
+			deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource(
+			"pkgA:m:typA",
+			"resA",
+			true,
+			deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+
+	// Assert that resource 0 is the stack
+	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
+	// Assert that the other 2 resources have the stack as a parent
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[1].Parent)
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
 }

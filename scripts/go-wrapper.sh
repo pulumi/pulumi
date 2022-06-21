@@ -3,14 +3,7 @@
 # To be used with Goreleaser as `gobinary` implementation as a
 # replacement for the `go` toolchain.
 #
-# First function: prebuilt binaries
-#
-# The wrapper detects and returns prebuilt binaries to skip actual go
-# builds. If a binary `-o goreleaser/../some-binary` is requested but
-# `goreleaer-prebuilt/../some-binary` already exists, the prebuilt
-# binary is copied instead of building.
-#
-# Second function: coverage-enabled builds for Pulumi CLI
+# Function: coverage-enabled builds for Pulumi CLI
 #
 # This builds binaries via `go test -c` workaround. Disabled for
 # Windows builds. Only enabled on the Pulumi CLI binaries.
@@ -23,17 +16,20 @@ PKG=github.com/pulumi/pulumi/pkg/v3/...
 SDK=github.com/pulumi/pulumi/sdk/v3/...
 COVERPKG="$PKG,$SDK"
 
+case $(go env GOOS) in
+    darwin)
+        export CGO_ENABLED=1
+        ;;
+    *)
+        export CGO_ENABLED=0
+        ;;
+esac
+
 case "$1" in
     build)
         ARGS=( "$@" )
         BUILDDIR=${ARGS[${#ARGS[@]}-1]}
         OUTPUT=${ARGS[${#ARGS[@]}-2]}
-
-        PREBUILT="${OUTPUT/goreleaser/goreleaser-prebuilt}"
-
-        # Since at least goreleaser 1.8.3 binaries are named
-        # amd64_v1/... but prebuilt to `amd64/...`.
-        PREBUILT="${PREBUILT/amd64_v1/amd64}"
 
         MODE=coverage
 
@@ -54,17 +50,9 @@ case "$1" in
             MODE=normal
         fi
 
-        if [ -f "$PREBUILT" ]; then
-            MODE=prebuilt
-        fi
-
         case "$MODE" in
             normal)
                 go "$@"
-                ;;
-            prebuilt)
-                mkdir -p $(dirname "$OUTPUT")
-                cp "$PREBUILT" "$OUTPUT"
                 ;;
             coverage)
                 shift

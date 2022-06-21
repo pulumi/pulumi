@@ -5,7 +5,7 @@
     "example::Foo": {
       "inputProperties": {
         "auditConfig": {
-          "$ref": "/google-native/v0.11.0/schema.json#/types/google-native:iam/v1:AuditConfig"
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam/v1:AuditConfig"
         }
       },
       "requiredInputs": [

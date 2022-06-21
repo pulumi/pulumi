@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -67,7 +69,7 @@ func TestGeneratePackage(t *testing.T) {
 		// To speed up these tests, we will generate one common
 		// virtual environment for all of them to run in, rather than
 		// having one per test.
-		err := buildVirtualEnv()
+		err := buildVirtualEnv(context.Background())
 		if err != nil {
 			t.Error(err)
 			return
@@ -105,7 +107,7 @@ func virtualEnvPath() (string, error) {
 // tests with `-parallel` causes sproadic failure.
 var venvMutex = &sync.Mutex{}
 
-func buildVirtualEnv() error {
+func buildVirtualEnv(ctx context.Context) error {
 	hereDir, err := absTestsPath()
 	if err != nil {
 		return err
@@ -127,7 +129,7 @@ func buildVirtualEnv() error {
 		}
 	}
 
-	err = python.InstallDependencies(hereDir, venvDir, false /*showOutput*/)
+	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
 	if err != nil {
 		return err
 	}
@@ -142,6 +144,14 @@ func buildVirtualEnv() error {
 		return err
 	}
 
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd.Dir = hereDir
+	err = pyCmd.Run()
+	if err != nil {
+		contract.Failf("failed to link venv against in-source pulumi: %v", err)
+	}
+
 	if !gotSdk {
 		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 	}
@@ -150,6 +160,11 @@ func buildVirtualEnv() error {
 }
 
 func pyTestCheck(t *testing.T, codeDir string) {
+	extraDir := filepath.Join(filepath.Dir(codeDir), "python-extras")
+	if _, err := os.Stat(extraDir); os.IsNotExist(err) {
+		// We won't run any tests since no extra tests were included.
+		return
+	}
 	venvDir, err := virtualEnvPath()
 	if err != nil {
 		t.Error(err)
@@ -160,6 +175,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 		return cmd.Run()
 	}
 

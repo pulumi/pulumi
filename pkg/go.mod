@@ -2,12 +2,10 @@ module github.com/pulumi/pulumi/pkg/v3
 
 go 1.17
 
-replace (
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
-	github.com/hashicorp/hcl/v2 => github.com/hashicorp/hcl/v2 v2.3.0
-	github.com/pulumi/pulumi/sdk/v3 => ../sdk
-	github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
-)
+replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
+
+// Working around https://github.com/sergi/go-diff/issues/123
+replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
 require (
 	cloud.google.com/go/logging v1.0.0
@@ -36,7 +34,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.33.2
+	github.com/pulumi/pulumi/sdk/v3 v3.34.1
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.2.0
@@ -61,7 +59,7 @@ require (
 	google.golang.org/grpc v1.45.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.9-0.20200217094205-6773bdf39b7f
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.0
 	pgregory.net/rapid v0.4.7
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
@@ -122,7 +120,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -152,8 +150,10 @@ require (
 )
 
 require (
+	github.com/edsrzf/mmap-go v1.1.0
+	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.2.0
-	github.com/pulumi/pulumi-yaml v0.3.0
+	github.com/pulumi/pulumi-yaml v0.5.1
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 )
@@ -163,7 +163,7 @@ require (
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/kms v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
-	github.com/apparentlymart/go-textseg v1.0.0 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.9.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.7.0 // indirect
@@ -188,4 +188,5 @@ require (
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	lukechampine.com/frand v1.4.2 // indirect
 )

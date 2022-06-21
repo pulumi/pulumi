@@ -34,7 +34,7 @@ func main() {
 			__res, err := s3.NewBucketObject(ctx, fmt.Sprintf("files-%v", key0), &s3.BucketObjectArgs{
 				Bucket:      siteBucket.ID(),
 				Key:         pulumi.String(val0),
-				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v%v%v", siteDir, "/", val0)),
+				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v/%v", siteDir, val0)),
 				ContentType: pulumi.String(val0),
 			})
 			if err != nil {
@@ -56,7 +56,7 @@ func main() {
 								"s3:GetObject",
 							},
 							"Resource": []string{
-								fmt.Sprintf("%v%v%v", "arn:aws:s3:::", id, "/*"),
+								fmt.Sprintf("arn:aws:s3:::%v/*", id),
 							},
 						},
 					},

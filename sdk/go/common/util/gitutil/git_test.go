@@ -62,6 +62,24 @@ func TestParseGitRepoURL(t *testing.T) {
 		assert.Error(t, err)
 	}
 
+	// GitLab.
+	pre = "https://gitlab.com/my-org/proj/subproj/doot.git/poc/waka-waka"
+	exp = "https://gitlab.com/my-org/proj/subproj/doot.git"
+	test(exp, "poc/waka-waka", pre)
+	test(exp, "poc/waka-waka", pre+"/")
+	pre = "https://gitlab.com/pulumi/platform/templates.git/templates/javascript"
+	exp = "https://gitlab.com/pulumi/platform/templates.git"
+	test(exp, "templates/javascript", pre)
+	test(exp, "templates/javascript", pre+"///")
+	pre = "https://gitlab.com/a/b/c/d/e/f/g/finally.git/1/2/3/4/5"
+	exp = "https://gitlab.com/a/b/c/d/e/f/g/finally.git"
+	test(exp, "1/2/3/4/5", pre)
+	test(exp, "1/2/3/4/5", pre+"/")
+	pre = "https://gitlab.com/dotgit/.git.git"
+	exp = "https://gitlab.com/dotgit/.git.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
+
 	// No owner.
 	testError("https://github.com")
 	testError("https://github.com/")

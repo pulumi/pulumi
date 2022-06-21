@@ -311,7 +311,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setAliasesList(resop.aliases);
+        req.setUrnaliasesList(resop.aliases);
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
         req.setRemote(remote);

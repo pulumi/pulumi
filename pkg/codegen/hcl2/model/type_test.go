@@ -522,32 +522,6 @@ func TestObjectType(t *testing.T) {
 	testTraverse(t, typ, hcl.TraverseIndex{Key: encapsulateType(typ)}, DynamicType, true)
 }
 
-func TestOpaqueType(t *testing.T) {
-	t.Parallel()
-
-	foo, err := NewOpaqueType("foo")
-	assert.NotNil(t, foo)
-	assert.NoError(t, err)
-
-	foo2, ok := GetOpaqueType("foo")
-	assert.EqualValues(t, foo, foo2)
-	assert.True(t, ok)
-
-	foo3, err := NewOpaqueType("foo")
-	assert.Nil(t, foo3)
-	assert.Error(t, err)
-
-	bar, ok := GetOpaqueType("bar")
-	assert.Nil(t, bar)
-	assert.False(t, ok)
-
-	bar, err = NewOpaqueType("bar")
-	assert.NotNil(t, bar)
-	assert.NoError(t, err)
-
-	assert.NotEqual(t, foo, bar)
-}
-
 func TestInputType(t *testing.T) {
 	t.Parallel()
 

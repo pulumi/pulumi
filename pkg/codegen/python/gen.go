@@ -353,6 +353,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 		relRoot := path.Dir(rel)
 		relImport := relPathToRelImport(relRoot)
 
+		fmt.Fprintf(w, "import copy\n")
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
@@ -394,13 +395,15 @@ func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
 	fmt.Fprintf(buffer, utilitiesFile)
+	optionalURL := "None"
 	if url := mod.pkg.PluginDownloadURL; url != "" {
-		_, err := fmt.Fprintf(buffer, `
-def get_plugin_download_url():
-	return %q
-`, url)
-		contract.AssertNoError(err)
+		optionalURL = fmt.Sprintf("%q", url)
 	}
+	_, err := fmt.Fprintf(buffer, `
+def get_plugin_download_url():
+	return %s
+`, optionalURL)
+	contract.AssertNoError(err)
 	return buffer.Bytes()
 }
 
@@ -1223,17 +1226,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "        if opts is None:\n")
-	fmt.Fprintf(w, "            opts = pulumi.ResourceOptions()\n")
+	fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
-	fmt.Fprintf(w, "        if opts.version is None:\n")
-	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
-	if mod.pkg.PluginDownloadURL != "" {
-		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
-		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
-	}
-
 	if res.IsComponent {
 		fmt.Fprintf(w, "        if opts.id is not None:\n")
 		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
@@ -1708,14 +1703,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-	fmt.Fprintf(w, "    if opts is None:\n")
-	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
-	fmt.Fprintf(w, "    if opts.version is None:\n")
-	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
-	if mod.pkg.PluginDownloadURL != "" {
-		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
-		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
-	}
+	fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string
@@ -2964,6 +2952,17 @@ _version_str = str(_version)
 def get_version():
     return _version_str
 
+def get_resource_opts_defaults() -> pulumi.ResourceOptions:
+    return pulumi.ResourceOptions(
+        version=get_version(),
+        plugin_download_url=get_plugin_download_url(),
+    )
+
+def get_invoke_opts_defaults() -> pulumi.InvokeOptions:
+    return pulumi.InvokeOptions(
+        version=get_version(),
+        plugin_download_url=get_plugin_download_url(),
+    )
 
 def get_resource_args_opts(resource_args_type, resource_options_type, *args, **kwargs):
     """

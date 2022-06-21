@@ -149,6 +149,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host, target,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 	if err != nil {
 		return nil, err
 	}

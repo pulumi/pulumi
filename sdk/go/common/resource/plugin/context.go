@@ -36,6 +36,9 @@ type Context struct {
 	Root       string    // the root directory of the project.
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
+
+	cancelFuncs []context.CancelFunc
+	baseContext context.Context
 }
 
 // NewContext allocates a new context with a given sink and host. Note
@@ -81,12 +84,23 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	// TODO[pulumi/pulumi#143]: support cancellation.
-	return opentracing.ContextWithSpan(context.Background(), ctx.tracingSpan)
+	c := ctx.baseContext
+	if c == nil {
+		c = context.Background()
+	}
+	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
+	c, cancel := context.WithCancel(c)
+	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
+	return c
 }
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
+	defer func() {
+		for _, cancel := range ctx.cancelFuncs {
+			cancel()
+		}
+	}()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
 	}
@@ -95,4 +109,19 @@ func (ctx *Context) Close() error {
 		return err
 	}
 	return nil
+}
+
+// WithCancelChannel registers a close channel which will close the returned Context when
+// the channel is closed.
+//
+// WARNING: Calling this function without ever closing `c` will leak go routines.
+func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
+	copy := *ctx
+	go func() {
+		select {
+		case _, _ = <-c:
+			copy.Close()
+		}
+	}()
+	return &copy
 }

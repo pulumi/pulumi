@@ -71,11 +71,12 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) ListPlugins() []workspace.PluginInfo {
-	return nil
-}
 func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
+}
+func (host *testPluginHost) ResolvePlugin(
+	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	return nil, nil
 }
 func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {

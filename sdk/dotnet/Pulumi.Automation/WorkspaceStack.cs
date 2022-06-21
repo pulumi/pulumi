@@ -261,6 +261,24 @@ namespace Pulumi.Automation
                     }
                 }
 
+                if (options.PolicyPacks?.Any() == true)
+                {
+                    foreach (var item in options.PolicyPacks)
+                    {
+                        args.Add("--policy-pack");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.PolicyPackConfigs?.Any() == true)
+                {
+                    foreach (var item in options.PolicyPackConfigs)
+                    {
+                        args.Add("--policy-pack-configs");
+                        args.Add(item);
+                    }
+                }
+
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
@@ -386,6 +404,24 @@ namespace Pulumi.Automation
                     foreach (var item in options.Target)
                     {
                         args.Add("--target");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.PolicyPacks?.Any() == true)
+                {
+                    foreach (var item in options.PolicyPacks)
+                    {
+                        args.Add("--policy-pack");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.PolicyPackConfigs?.Any() == true)
+                {
+                    foreach (var item in options.PolicyPackConfigs)
+                    {
+                        args.Add("--policy-pack-configs");
                         args.Add(item);
                     }
                 }

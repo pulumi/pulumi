@@ -23,7 +23,7 @@ namespace Pulumi
     /// static Task&lt;int&gt; Main(string[] args)
     /// {
     ///     // program initialization code ...
-    ///     
+    ///
     ///     return Deployment.Run(async () =>
     ///     {
     ///         // Code that creates resources.
@@ -210,6 +210,14 @@ namespace Pulumi
         internal Task<bool> MonitorSupportsOutputValues()
         {
             return MonitorSupportsFeature("outputValues");
+        }
+
+        /// <summary>
+        /// Check if the monitor supports the "aliasSpecs" feature.
+        /// </summary>
+        internal Task<bool> MonitorSupportsAliasSpecs()
+        {
+            return MonitorSupportsFeature("aliasSpecs");
         }
 
         // Because the secrets feature predates the Pulumi .NET SDK, we assume

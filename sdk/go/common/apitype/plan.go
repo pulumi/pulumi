@@ -50,7 +50,7 @@ type GoalV1 struct {
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty"`
 	// additional URNs that should be aliased to this resource.
-	Aliases []resource.URN `json:"aliases,omitempty"`
+	Aliases []resource.Alias `json:"aliases,omitempty"`
 	// the expected ID of the resource, if any.
 	ID resource.ID `json:"id,omitempty"`
 	// an optional config object for resource options
