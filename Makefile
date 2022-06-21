@@ -30,14 +30,16 @@ ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
 	cd tests && go mod download
 	@touch .ensure.phony
 
+PROTO_FILES := $(wildcard sdk/proto/*.proto) sdk/proto/generate.sh \
+               $(wildcard sdk/proto/build-container/scripts/*) sdk/proto/build-container/Dockerfile
 build-proto:
 	@printf "Rebuild protobuffers ............. "
-	@if [ "$$(cat sdk/proto/.checksum.txt)" = "$$(cksum $(wildcard sdk/proto/*.proto))" ]; then \
+	@if [ "$$(cat sdk/proto/.checksum.txt)" = "$$(cksum $(PROTO_FILES))" ]; then \
 		printf "\033[0;32mno\033[0m\n"; \
 	else \
 		printf "\033[0;34myes\033[0m\n"; \
 		cd sdk/proto && ./generate.sh || exit 1; \
-		cd ../.. && cksum $(wildcard sdk/proto/*.proto) > sdk/proto/.checksum.txt; \
+		cd ../.. && cksum $(PROTO_FILES) > sdk/proto/.checksum.txt; \
 	fi
 
 .PHONY: generate
