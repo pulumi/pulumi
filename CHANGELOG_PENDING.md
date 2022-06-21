@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [cli] Add java to `pulumi convert`
+  [#9917](https://github.com/pulumi/pulumi/pull/9917)
+
 ### Bug Fixes
 
 - [sdk/go] Handle nils in mapper encoding.
