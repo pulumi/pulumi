@@ -5371,3 +5371,77 @@ func TestDefaultParents(t *testing.T) {
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[1].Parent)
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
 }
+
+func TestIdempotentReplacement(t *testing.T) {
+	t.Parallel()
+
+	// This is to test that if we trigger a replace of a resource and we try to do a create-before-delete
+	// replacement that if the provider does an idempotent create and just returns the existing object we need
+	// to recognize and error out. See https://github.com/pulumi/pulumi-aws/issues/2009.
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "idempotent-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(
+			"pkgA:m:typA",
+			"resA",
+			true,
+			deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	// Assert that resource 1 is the A resource
+	assert.Equal(t, tokens.Type("pkgA:m:typA"), snap.Resources[1].Type)
+
+	// Run an update to trigger the replacement of resA, this should error
+	p.Options.ReplaceTargets = []resource.URN{snap.Resources[1].URN}
+	validate := func(
+		project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
+		if res == nil {
+			return result.Error("Expected an error to be returned")
+		}
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				if payload.Severity == "error" &&
+					payload.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" &&
+					payload.Message == "<{%reset%}>provider returned existing ID (idempotent-id) for replacement resource<{%reset%}>\n" {
+					// Found the message we expected
+					return nil
+				}
+			}
+		}
+		return result.Error("Expected a diagnostic message, got none")
+	}
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+}
