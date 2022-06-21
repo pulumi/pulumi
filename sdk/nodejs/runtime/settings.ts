@@ -429,7 +429,8 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
-// The root resource URN needs to be a a true global, so that if we end up with multiple Pulumi modules loaded they all resolve to the same variable.
+// The root resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded
+// they all resolve to the same variable.
 declare global {
     var rootResource: Resource | undefined; // eslint-disable-line no-var
 }

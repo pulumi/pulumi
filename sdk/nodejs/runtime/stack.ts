@@ -25,7 +25,8 @@ import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./setti
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
-// The stack resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded they all resolve to the same variable.
+// The stack resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded
+// they all resolve to the same variable.
 declare global {
     var stackResource: Stack | undefined; // eslint-disable-line no-var
 }
