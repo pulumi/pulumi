@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [engine] The engine will now error if replacement creates don't create a new resource.
+  [#9903](https://github.com/pulumi/pulumi/pull/9903)
+
 ### Bug Fixes
 
 - [sdk/go] Handle nils in mapper encoding.
