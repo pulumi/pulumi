@@ -566,6 +566,7 @@ func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
 	return isExternal
 }
 
+// Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
 func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
@@ -578,6 +579,12 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal
 		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
 		if isExternal {
 			extPkg = typ.Resource.Package
+		}
+		return
+	case *schema.EnumType:
+		isExternal = pkg.pkg != nil && typ.Package != pkg.pkg
+		if isExternal {
+			extPkg = typ.Package
 		}
 		return
 	}
@@ -2550,12 +2557,30 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 		return
 	}
 	seen[t] = struct{}{}
+
+	// Import an external type with `token` and return true.
+	// If the type is not external, return false.
+	importExternal := func(token string) bool {
+		if pkg.isExternalReference(t) {
+			extPkgCtx := pkg.contextForExternalReference(t)
+			mod := extPkgCtx.tokenToPackage(token)
+			imp := path.Join(extPkgCtx.importBasePath, mod)
+			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+			return true
+		}
+		return false
+	}
+
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.InputType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.EnumType:
+		if importExternal(t.Token) {
+			break
+		}
+
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
@@ -2566,13 +2591,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	case *schema.MapType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.ObjectType:
-		if pkg.isExternalReference(t) {
-			extPkgCtx := pkg.contextForExternalReference(t)
-			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(extPkgCtx.importBasePath, mod)
-			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+		if importExternal(t.Token) {
 			break
 		}
+
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
@@ -2588,11 +2610,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 			}
 		}
 	case *schema.ResourceType:
-		if pkg.isExternalReference(t) {
-			extPkgCtx := pkg.contextForExternalReference(t)
-			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(extPkgCtx.importBasePath, mod)
-			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+		if importExternal(t.Token) {
 			break
 		}
 		mod := pkg.tokenToPackage(t.Token)
@@ -2660,7 +2678,6 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 		for _, p := range member {
 			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 		}
-	case *schema.EnumType: // Just need pulumi sdk, see below
 	default:
 		return
 	}
