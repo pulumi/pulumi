@@ -8,5 +8,10 @@ namespace Pulumi.Automation
     public sealed class RefreshOptions : UpdateOptions
     {
         public bool? ExpectNoChanges { get; set; }
+
+        /// <summary>
+        /// Show config secrets when they appear.
+        /// </summary>
+        public bool? ShowSecrets { get; set; }
     }
 }
