@@ -40,3 +40,6 @@
 
 - [sdk/go] Precisely mark values obtained via stack reference `Get...Output(key)` methods as secret or not.
   [#9842](https://github.com/pulumi/pulumi/pull/9842)
+
+- [codegen/go] Import external Enum types as external.
+  [#9920](https://github.com/pulumi/pulumi/pull/9920)
