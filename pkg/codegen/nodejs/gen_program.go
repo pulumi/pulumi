@@ -47,6 +47,14 @@ type generator struct {
 	configCreated bool
 }
 
+func GenerateCode(program *pcl.Program, convertToComponentResource bool) (map[string][]byte, hcl.Diagnostics, error) {
+	if convertToComponentResource {
+		return GenerateComponentResource(program)
+	} else {
+		return GenerateProgram(program)
+	}
+}
+
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
@@ -96,41 +104,33 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 	indenter(func() {
 		for _, n := range nodes {
-			g.genNode(&index, n)
+			g.genNode(&index, n, false)
 		}
-
-		if g.asyncMain {
-			var result *model.ObjectConsExpression
-			for _, n := range nodes {
-				if o, ok := n.(*pcl.OutputVariable); ok {
-					if result == nil {
-						result = &model.ObjectConsExpression{}
-					}
-					name := o.LogicalName()
-					nameVar := makeValidIdentifier(o.Name())
-					result.Items = append(result.Items, model.ObjectConsItem{
-						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
-						Value: &model.ScopeTraversalExpression{
-							RootName:  nameVar,
-							Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
-							Parts: []model.Traversable{&model.Variable{
-								Name:         nameVar,
-								VariableType: o.Type(),
-							}},
-						},
-					})
-				}
-			}
-			if result != nil {
-				g.Fgenf(&index, "%sreturn %v;\n", g.Indent, result)
-			}
-		}
-
+		g.genAsync(&index, &nodes)
 	})
 
 	if g.asyncMain {
 		g.Fgenf(&index, "}\n")
 	}
+
+	files := map[string][]byte{
+		"index.ts": index.Bytes(),
+	}
+	return files, g.diagnostics, nil
+}
+
+func GenerateComponentResource(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	// Setting up nodes, generator, and determining if async
+	nodes, g, err := linearizeAndSetupGenerator(program)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Beginning code generation
+	var index bytes.Buffer
+	g.genPreamble(&index, program, codegen.NewStringSet())
+	g.genComponentResourceClass(&index, &nodes)
+	g.genComponentResourceArgs(&index, &nodes)
 
 	files := map[string][]byte{
 		"index.ts": index.Bytes(),
@@ -336,10 +336,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 }
 
-func (g *generator) genNode(w io.Writer, n pcl.Node) {
+func (g *generator) genNode(w io.Writer, n pcl.Node, alreadyDeclared bool) {
 	switch n := n.(type) {
 	case *pcl.Resource:
-		g.genResource(w, n)
+		g.genResource(w, n, alreadyDeclared)
 	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
@@ -459,7 +459,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
-func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
+func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bool) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
 
@@ -498,17 +498,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				var destType model.Traversable
-				if r.IsComponentResource {
-					// Attribute belonged to a Module with custom types not listed in any offcial schema. Defaulting to DynamicType
-					destType = model.DynamicType
-				} else {
-					// Attribute belings to a typical resource, which has all its possible types coneniently listed
-					destType, diagnostics = r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-					g.diagnostics = append(g.diagnostics, diagnostics...)
-				}
+				destinationType := g.getModelDestType(r, attr)
 				g.Fgenf(w, fmtString, propertyName,
-					g.lowerExpression(attr.Value, destType.(model.Type)))
+					g.lowerExpression(attr.Value, destinationType.(model.Type)))
 			}
 		})
 		if len(r.Inputs) > 1 {
@@ -531,7 +523,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
+			if !alreadyDeclared {
+				g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
+			}
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -547,14 +541,22 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
+				if alreadyDeclared {
+					g.Fgenf(w, "%sthis.%s.push(", g.Indent, variableName)
+				} else {
+					g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
+				}
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
-		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
+		if alreadyDeclared {
+			g.Fgenf(w, "%sthis.%s = ", g.Indent, variableName)
+		} else {
+			g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
+		}
 		instantiate(g.makeResourceName(name, ""))
 		g.Fgenf(w, ";\n")
 	}
@@ -615,4 +617,119 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 		Detail:   message,
 	})
 	g.Fgenf(w, "(() => throw new Error(%q))()", fmt.Sprintf(reason, vs...))
+}
+
+func (g *generator) genComponentResourceClass(w io.Writer, nodes *[]pcl.Node) {
+	g.Fgenf(w, "export class Index extends pulumi.ComponentResource {\n")
+
+	g.Indented(func() {
+		g.genDeclareResourcesAndLocals(&w, nodes)
+		g.genConstructor(&w, nodes)
+	})
+
+	g.Fgenf(w, "}\n")
+}
+
+func (g *generator) genDeclareResourcesAndLocals(w *io.Writer, nodes *[]pcl.Node) {
+	for _, n := range *nodes {
+		switch n := n.(type) {
+		case *pcl.Resource:
+			typeName := g.getResourceTypeName(n)
+			g.Fgenf(*w, "%spublic readonly %s: %s;\n", g.Indent, n.LogicalName(), typeName)
+		}
+	}
+	g.Fgenf(*w, "\n")
+}
+
+func (g *generator) genConstructor(w *io.Writer, nodes *[]pcl.Node) {
+	g.Fgenf(*w, "%sconstructor(name: string, args: IndexArgs) {\n", g.Indent)
+
+	g.Indented(func() {
+		g.Fgenf(*w, "%ssuper(\"pkg:index:component\", name);\n", g.Indent)
+		g.genInitializeResourcesAndLocals(w, nodes)
+		g.genRegisterOutputs(w, nodes)
+	})
+
+	g.Fgenf(*w, "%s}\n", g.Indent)
+}
+
+func (g *generator) genInitializeResourcesAndLocals(w *io.Writer, nodes *[]pcl.Node) {
+	indenter := func(f func()) { f() }
+	if g.asyncMain {
+		indenter = g.Indented
+		g.Fgenf(*w, "%sexport = async () => {\n", g.Indent)
+	}
+
+	indenter(func() {
+		for _, n := range *nodes {
+			switch n := n.(type) {
+			case *pcl.Resource:
+				g.genNode(*w, n, true) // TODO: MAKE IT DO args.variableName rather than just variableName for all the resource attributes. If config, do `args.` If local or resource, do `this.`
+			}
+		}
+		g.genAsync(*w, nodes)
+	})
+
+	if g.asyncMain {
+		g.Fgenf(*w, "%s}\n", g.Indent)
+	}
+}
+
+func (g *generator) genAsync(w io.Writer, nodes *[]pcl.Node) {
+	if g.asyncMain {
+		var result *model.ObjectConsExpression
+		for _, n := range *nodes {
+			if o, ok := n.(*pcl.OutputVariable); ok {
+				if result == nil {
+					result = &model.ObjectConsExpression{}
+				}
+				name := o.LogicalName()
+				nameVar := makeValidIdentifier(o.Name())
+				result.Items = append(result.Items, model.ObjectConsItem{
+					Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
+					Value: &model.ScopeTraversalExpression{
+						RootName:  nameVar,
+						Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
+						Parts: []model.Traversable{&model.Variable{
+							Name:         nameVar,
+							VariableType: o.Type(),
+						}},
+					},
+				})
+			}
+		}
+		if result != nil {
+			g.Fgenf(w, "%sreturn %v;\n", g.Indent, result)
+		}
+	}
+}
+
+func (g *generator) genRegisterOutputs(w *io.Writer, nodes *[]pcl.Node) {
+	g.Fgenf(*w, "%ssuper.registerOutputs({\n", g.Indent)
+
+	g.Indented(func() {
+		for _, n := range *nodes {
+			switch n := n.(type) {
+			case *pcl.OutputVariable:
+				g.Fgenf(*w, "%s%s: this.%.v,\n", g.Indent, n.Name(), g.lowerExpression(n.Value, n.Type()))
+			}
+		}
+	})
+
+	g.Fgenf(*w, "%s});\n", g.Indent)
+}
+
+func (g *generator) genComponentResourceArgs(w io.Writer, nodes *[]pcl.Node) {
+	g.Fgenf(w, "export interface IndexArgs {\n")
+
+	g.Indented(func() {
+		for _, n := range *nodes {
+			switch n := n.(type) {
+			case *pcl.ConfigVariable:
+				g.Fgenf(w, "%s%s: pulumi.Input<%s>,\n", g.Indent, n.Name(), n.Type().String()) // TODO: GET IT TO CONVERT TO "boolean" LIKE TYPESCRIPT WANTS
+			}
+		}
+	})
+
+	g.Fgenf(w, "}\n")
 }
