@@ -60,6 +60,10 @@ class Stack extends ComponentResource<Inputs> {
     public readonly outputs: Output<Inputs>;
 
     constructor(init: () => Promise<Inputs>) {
+        // Clear the stackResource so that when the Resource constructor runs it gives us no parent, we'll
+        // then set this to ourselves in init before calling the user code that will then create other
+        // resources.
+        globalThis.stackResource = undefined;
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`, { init });
         const data = this.getData();
         this.outputs = output(data);
