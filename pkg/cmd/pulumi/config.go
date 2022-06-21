@@ -913,15 +913,17 @@ func looksLikeSecret(k config.Key, v string) bool {
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+	var cfg config.Map
 	workspaceStack, err := loadProjectStack(stack)
-	cfg := workspaceStack.Config
-	if err != nil {
+	if err != nil || workspaceStack == nil {
 		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
 		cfg, err = backend.GetLatestConfiguration(commandContext(), stack)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
 		}
+	} else {
+		cfg = workspaceStack.Config
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
