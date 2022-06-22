@@ -5326,7 +5326,6 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 // effect on components are attached to a component resource.
 func TestComponentOptionWarnings(t *testing.T) {
 	t.Parallel()
-
 	type testCase struct {
 		optionName string
 		option     deploytest.ResourceOptions
@@ -5361,11 +5360,22 @@ func TestComponentOptionWarnings(t *testing.T) {
 			},
 		},
 	}
+	// This function creates a new language runtime registering a single resource:
+	// a component registered with the provided option.
+	var createRuntimeWithOption = func(t *testing.T, option deploytest.ResourceOptions) plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("component", "resA", false, option)
+			assert.NoError(t, err)
+			return nil
+		})
+	}
 
 	// For each of these scenarios, assert that a component resource
 	// with this option applied produces a warning.
-	for i, testCase := range cases {
-		t.Run(fmt.Sprintf("Option #%d: %s", i, testCase.optionName), func(t *testing.T) {
+	for _, testCase := range cases {
+		testCase := testCase
+		t.Run(testCase.optionName, func(t *testing.T) {
+			t.Parallel()
 			var runtime = createRuntimeWithOption(t, testCase.option)
 			var host = deploytest.NewPluginHost(nil, nil, runtime)
 			var warningText = fmt.Sprintf("The option '%s' has no effect on component resources.", testCase.optionName)
@@ -5401,16 +5411,6 @@ func TestComponentOptionWarnings(t *testing.T) {
 			p.Run(t, nil)
 		})
 	}
-}
-
-// This function creates a new language runtime registering a single resource:
-// a component registered with the provided option.
-func createRuntimeWithOption(t *testing.T, option deploytest.ResourceOptions) plugin.LanguageRuntime {
-	return deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("component", "resA", false, option)
-		assert.NoError(t, err)
-		return nil
-	})
 }
 
 func TestDefaultParents(t *testing.T) {

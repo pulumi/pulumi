@@ -1254,14 +1254,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 }
 
 // checkComponentOption generates a warning message on the resource
-// 'srcURN' if 'check' returns true.
+// 'urn' if 'check' returns true.
 // This function is intended to validate options passed to component resources,
-// so srcURN is expected to refer to a component.
-func (rm *resmon) checkComponentOption(srcURN resource.URN, optName string, check func() bool) {
+// so urn is expected to refer to a component.
+func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
 	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
 	if check() {
 		rm.diagostics.Warningf(diag.Message(
-			srcURN,
+			urn,
 			msg,
 		))
 	}
