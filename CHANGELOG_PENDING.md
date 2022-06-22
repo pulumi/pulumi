@@ -40,3 +40,6 @@
 
 - [sdk/go] Precisely mark values obtained via stack reference `Get...Output(key)` methods as secret or not.
   [#9842](https://github.com/pulumi/pulumi/pull/9842)
+
+- [engine] Revert the additional secret outputs warning until the engine can understand optional outputs.
+  [#9922](https://github.com/pulumi/pulumi/pull/9922)
