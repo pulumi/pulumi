@@ -27,6 +27,9 @@
         },
         "typeRemoteAlias": {
           "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:dns/v1:DnsKeySpec"
+        },
+        "typeRemoteEnum": {
+          "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:accesscontextmanager/v1:DevicePolicyAllowedDeviceManagementLevelsItem"
         }
       },
       "requiredInputs": [
