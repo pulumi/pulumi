@@ -252,7 +252,8 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.Outputs = outs
 	}
 
-	// If we've created a new resource as a replacement for an old one before we've deleted the old one check that the ID is a new ID.
+	// If we've created a new resource as a replacement for an old one before we've deleted the old one check
+	// that the ID is a new ID.
 	if s.replacing && s.pendingDelete && s.new.Custom && s.new.ID == s.old.ID {
 		return resourceStatus, nil, fmt.Errorf("provider returned existing ID (%s) for replacement resource", s.new.ID)
 	}

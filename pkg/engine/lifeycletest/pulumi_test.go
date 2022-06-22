@@ -5503,7 +5503,8 @@ func TestIdempotentReplacement_DeleteBeforeReplace(t *testing.T) {
 	// Assert that resource 1 is the A resource
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), snap.Resources[1].Type)
 
-	// Run an update to trigger the replacement of resA, this should work because we do the delete first so it doesn't matter that we get the same ID back.
+	// Run an update to trigger the replacement of resA, this should work because we do the delete first so it
+	// doesn't matter that we get the same ID back.
 	p.Options.ReplaceTargets = []resource.URN{snap.Resources[1].URN}
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
