@@ -326,11 +326,22 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 					newState.Outputs[k] = resource.MakeSecret(v)
 				} else if !has {
+					// TODO: We want to re-enable this warning but it requires that providers always return
+					// back _every_ output even in preview. We might need to add a new "unset" PropertyValue
+					// to do this as there might be optional secret outputs and the engine needs to be able to
+					// tell the difference between "this isn't a valid output of the resource" and "this value
+					// just hasn't been set in this instance". Arguably for user side additionalSecretOutputs
+					// that distinction probably doesn't matter (if you ask for an optional output to be made
+					// secret but then the provider doesn't return it maybe you want the warning that nothing
+					// is actually being affected?). But for SDK generated we always send the same list and
+					// the user doesn't control it so we need to make sure that if there is an optional output
+					// that this warning doesn't get triggered.
+
 					// User asked us to make k a secret, but we don't have a property k. This is probably a
 					// mistake (mostly likely due to casing, eg my_prop vs myProp) but warn the user so they know
 					// the key didn't do anything.
-					msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
-					se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
+					//msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
+					//se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
 				}
 			}
 		}
