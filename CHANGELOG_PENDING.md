@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [cli] Add java to `pulumi convert`
+  [#9917](https://github.com/pulumi/pulumi/pull/9917)
+
 ### Bug Fixes
 
 - [sdk/go] Handle nils in mapper encoding.
@@ -40,6 +43,9 @@
 
 - [sdk/go] Precisely mark values obtained via stack reference `Get...Output(key)` methods as secret or not.
   [#9842](https://github.com/pulumi/pulumi/pull/9842)
+
+- [codegen/go] Correctly generate nested `Input` and `Ouput` collection types.
+  [#9887](https://github.com/pulumi/pulumi/pull/9887)
 
 - [engine] Revert the additional secret outputs warning until the engine can understand optional outputs.
   [#9922](https://github.com/pulumi/pulumi/pull/9922)
