@@ -30,10 +30,18 @@ ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
 	cd tests && go mod download
 	@touch .ensure.phony
 
-build-proto: sdk/proto/go/*.pb.go
-sdk/proto/go/%.pb.go: $(wildcard sdk/proto/*.proto)
-	$(call STEP_MESSAGE)
-	cd sdk/proto && ./generate.sh
+PROTO_FILES := $(wildcard sdk/proto/*.proto) sdk/proto/generate.sh \
+               $(wildcard sdk/proto/build-container/scripts/*) sdk/proto/build-container/Dockerfile
+build-proto:
+	@printf "Protobuffer interfaces are ....... "
+	@if [ "$$(cat sdk/proto/.checksum.txt)" = "$$(cksum $(PROTO_FILES))" ]; then \
+		printf "\033[0;32mup to date\033[0m\n"; \
+	else \
+		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
+		cd sdk/proto && ./generate.sh || exit 1; \
+		cd ../.. && cksum $(PROTO_FILES) > sdk/proto/.checksum.txt; \
+		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
+	fi
 
 .PHONY: generate
 generate::
