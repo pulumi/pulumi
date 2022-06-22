@@ -212,7 +212,7 @@ class Stack:
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
-        show_secrets: bool = False,
+        show_secrets: bool = True,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -417,7 +417,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
-        show_secrets: bool = False,
+        show_secrets: bool = True,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
