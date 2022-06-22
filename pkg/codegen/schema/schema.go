@@ -149,6 +149,9 @@ func (*ArrayType) isType() {}
 type EnumType struct {
 	// Package is the type's package.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
+
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -213,6 +216,8 @@ func (*UnionType) isType() {}
 type ObjectType struct {
 	// Package is the package that defines the resource.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -376,6 +381,8 @@ type Alias struct {
 type Resource struct {
 	// Package is the package that defines the resource.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
