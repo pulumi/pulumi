@@ -46,3 +46,6 @@
 
 - [codegen/go] Correctly generate nested `Input` and `Ouput` collection types.
   [#9887](https://github.com/pulumi/pulumi/pull/9887)
+
+- [engine] Revert the additional secret outputs warning until the engine can understand optional outputs.
+  [#9922](https://github.com/pulumi/pulumi/pull/9922)
