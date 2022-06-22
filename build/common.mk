@@ -239,8 +239,8 @@ format::
 	exec=$$(echo $@ | sed 's/\.ensure//');                                     \
 	printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
 	if command -v $${exec} > /dev/null ; then                                  \
-	    echo "✓";                                                              \
+	    echo "\033[0;32m✓\033[0m";                                             \
 	else                                                                       \
-	    echo "X";                                                              \
+	    echo "\033[0;31mX\033[0m";                                             \
 	    exit 1;                                                                \
 	fi                                                                         \
