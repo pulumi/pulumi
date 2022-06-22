@@ -22,6 +22,10 @@ namespace Pulumi.Automation
 
         public List<string>? PolicyPackConfigs { get; set; }
 
+        public bool? LogToStdErr { get; set; }
+
+        public int? Verbose { get; set; }
+
         /// <summary>
         /// Optional callback which is invoked whenever StandardOutput is written into
         /// </summary>

@@ -300,6 +300,8 @@ Pulumi.Automation.UpdateKind.Refresh = 2 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateKind.Rename = 3 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateKind.Update = 0 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateOptions
+Pulumi.Automation.UpdateOptions.LogToStdErr.get -> bool?
+Pulumi.Automation.UpdateOptions.LogToStdErr.set -> void
 Pulumi.Automation.UpdateOptions.Message.get -> string
 Pulumi.Automation.UpdateOptions.Message.set -> void
 Pulumi.Automation.UpdateOptions.OnEvent.get -> System.Action<Pulumi.Automation.Events.EngineEvent>
@@ -316,6 +318,8 @@ Pulumi.Automation.UpdateOptions.PolicyPacks.get -> System.Collections.Generic.Li
 Pulumi.Automation.UpdateOptions.PolicyPacks.set -> void
 Pulumi.Automation.UpdateOptions.PolicyPackConfigs.get -> System.Collections.Generic.List<string>
 Pulumi.Automation.UpdateOptions.PolicyPackConfigs.set -> void
+Pulumi.Automation.UpdateOptions.Verbose.get -> int?
+Pulumi.Automation.UpdateOptions.Verbose.set -> void
 Pulumi.Automation.UpdateOptions.UpdateOptions() -> void
 Pulumi.Automation.UpdateResult
 Pulumi.Automation.UpdateResult.StandardError.get -> string

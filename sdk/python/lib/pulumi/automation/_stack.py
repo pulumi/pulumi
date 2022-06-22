@@ -211,6 +211,8 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
+        verbose: Optional[int] = None,
+        log_to_stderr: Optional[bool] = None,
         plan: Optional[str] = None,
     ) -> UpResult:
         """
@@ -231,6 +233,8 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_stderr: Log to stderr instead of to files
         :param plan: Plan specifies the path to an update plan to use for the update.
         :returns: UpResult
         """
@@ -314,6 +318,8 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
+        verbose: Optional[int] = None,
+        log_to_stderr: Optional[bool] = None,
         plan: Optional[str] = None,
     ) -> PreviewResult:
         """
@@ -334,6 +340,8 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_stderr: Log to stderr instead of to files
         :param plan: Plan specifies the path where the update plan should be saved.
         :returns: PreviewResult
         """
@@ -415,6 +423,8 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        verbose: Optional[int] = None,
+        log_to_stderr: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -428,6 +438,8 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_stderr: Log to stderr instead of to files
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -469,6 +481,8 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        verbose: Optional[int] = None,
+        log_to_stderr: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -481,6 +495,8 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_stderr: Log to stderr instead of to files
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -686,6 +702,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
     target_dependents = kwargs.get("target_dependents")
     parallel = kwargs.get("parallel")
     color = kwargs.get("color")
+    verbose = kwargs.get("verbose")
+    log_to_stderr = kwargs.get("log_to_stderr")
 
     if message:
         extra_args.extend(["--message", message])
@@ -711,6 +729,10 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--parallel", str(parallel)])
     if color:
         extra_args.extend(["--color", color])
+    if log_to_stderr:
+        extra_args.extend(["--logtostderr"])
+    if verbose:
+        extra_args.extend(["--verbose", str(verbose)])
     return extra_args
 
 

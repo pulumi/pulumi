@@ -250,6 +250,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
 	}
+	if preOpts.LogToStdErr {
+		sharedArgs = append(sharedArgs, "--logtostderr")
+	}
+	if preOpts.Verbose > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--verbose=%d", preOpts.Verbose))
+	}
 	if preOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
 	}
@@ -363,6 +369,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
 	}
+	if upOpts.LogToStdErr {
+		sharedArgs = append(sharedArgs, "--logtostderr")
+	}
+	if upOpts.Verbose > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--verbose=%d", upOpts.Verbose))
+	}
 	if upOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
 	}
@@ -450,6 +462,13 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if refreshOpts.Color != "" {
 		args = append(args, fmt.Sprintf("--color=%q", refreshOpts.Color))
 	}
+	if refreshOpts.LogToStdErr {
+		args = append(args, "--logtostderr")
+	}
+	if refreshOpts.Verbose > 0 {
+		args = append(args, fmt.Sprintf("--verbose=%d", refreshOpts.Verbose))
+	}
+
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
@@ -520,6 +539,12 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.Color != "" {
 		args = append(args, fmt.Sprintf("--color=%q", destroyOpts.Color))
+	}
+	if destroyOpts.LogToStdErr {
+		args = append(args, "--logtostderr")
+	}
+	if destroyOpts.Verbose > 0 {
+		args = append(args, fmt.Sprintf("--verbose=%d", destroyOpts.Verbose))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {

@@ -279,6 +279,15 @@ namespace Pulumi.Automation
                     }
                 }
 
+                if (options.Verbose.HasValue)
+                {
+                    args.Add("--verbose");
+                    args.Add(options.Verbose.Value.ToString());
+                }
+
+                if (options.LogToStdErr is true)
+                    args.Add("--logtostderr");
+
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
@@ -426,6 +435,15 @@ namespace Pulumi.Automation
                     }
                 }
 
+                if (options.Verbose.HasValue)
+                {
+                    args.Add("--verbose");
+                    args.Add(options.Verbose.Value.ToString());
+                }
+
+                if (options.LogToStdErr is true)
+                    args.Add("--logtostderr");
+
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
@@ -559,6 +577,16 @@ namespace Pulumi.Automation
                     args.Add("--color");
                     args.Add(options.Color);
                 }
+
+                if (options.Verbose.HasValue)
+                {
+                    args.Add("--verbose");
+                    args.Add(options.Verbose.Value.ToString());
+                }
+
+                if (options.LogToStdErr is true)
+                    args.Add("--logtostderr");
+
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -620,6 +648,16 @@ namespace Pulumi.Automation
                     args.Add("--color");
                     args.Add(options.Color);
                 }
+
+                if (options.Verbose.HasValue)
+                {
+                    args.Add("--verbose");
+                    args.Add(options.Verbose.Value.ToString());
+                }
+
+                if (options.LogToStdErr is true)
+                    args.Add("--logtostderr");
+
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;

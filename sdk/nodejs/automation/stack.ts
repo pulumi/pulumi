@@ -197,6 +197,12 @@ Event: ${line}\n${e.toString()}`);
             if (opts.color) {
                 args.push("--color", opts.color);
             }
+            if (opts.verbose) {
+                args.push("--verbose", opts.verbose.toString());
+            }
+            if (opts.logToStdErr) {
+                args.push("--logtostderr");
+            }
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
@@ -322,6 +328,12 @@ Event: ${line}\n${e.toString()}`);
             if (opts.color) {
                 args.push("--color", opts.color);
             }
+            if (opts.verbose) {
+                args.push("--verbose", opts.verbose.toString());
+            }
+            if (opts.logToStdErr) {
+                args.push("--logtostderr");
+            }
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
             }
@@ -421,6 +433,12 @@ Event: ${line}\n${e.toString()}`);
             if (opts.color) {
                 args.push("--color", opts.color);
             }
+            if (opts.verbose) {
+                args.push("--verbose", opts.verbose.toString());
+            }
+            if (opts.logToStdErr) {
+                args.push("--logtostderr");
+            }
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -478,6 +496,12 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.color) {
                 args.push("--color", opts.color);
+            }
+            if (opts.verbose) {
+                args.push("--verbose", opts.verbose.toString());
+            }
+            if (opts.logToStdErr) {
+                args.push("--logtostderr");
             }
         }
 
@@ -775,6 +799,8 @@ export interface UpOptions {
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
     color?: "always" | "never" | "raw" | "auto";
+    logToStdErr?: boolean;
+    verbose?: number;
     /**
      * Plan specifies the path to an update plan to use for the update.
      */
@@ -799,6 +825,8 @@ export interface PreviewOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    logToStdErr?: boolean;
+    verbose?: number;
     /**
      * Plan specifies the path where the update plan should be saved.
      */
@@ -817,6 +845,8 @@ export interface RefreshOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    logToStdErr?: boolean;
+    verbose?: number;
 }
 
 /**
@@ -831,6 +861,8 @@ export interface DestroyOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    logToStdErr?: boolean;
+    verbose?: number;
 }
 
 const execKind = {

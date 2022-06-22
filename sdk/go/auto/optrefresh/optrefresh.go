@@ -108,6 +108,10 @@ type Options struct {
 	UserAgent string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
 	Color string
+	// Enable verbose logging (e.g., v=3); anything >3 is very verbose
+	Verbose int
+	// Log to stderr instead of to files
+	LogToStdErr bool
 }
 
 type optionFunc func(*Options)
