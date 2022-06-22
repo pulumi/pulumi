@@ -1211,7 +1211,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return len(ignoreChanges) > 0
 		})
 		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
-			return customTimeouts != nil
+			if customTimeouts == nil {
+				return false
+			}
+			var hasUpdateTimeout = customTimeouts.Update != ""
+			var hasCreateTimeout = customTimeouts.Create != ""
+			var hasDeleteTimeout = customTimeouts.Delete != ""
+			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
 		})
 		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
 			return len(additionalSecretOutputs) > 0

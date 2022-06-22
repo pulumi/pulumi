@@ -5350,7 +5350,7 @@ func TestComponentOptionWarnings(t *testing.T) {
 				CustomTimeouts: &resource.CustomTimeouts{},
 			},
 		}, {
-			optionName: "replaceOnChange",
+			optionName: "replaceOnChanges",
 			option: deploytest.ResourceOptions{
 				ReplaceOnChanges: []string{"*"},
 			},
@@ -5359,7 +5359,8 @@ func TestComponentOptionWarnings(t *testing.T) {
 			option: deploytest.ResourceOptions{
 				AdditionalSecretOutputs: []resource.PropertyKey{"foobar"},
 			},
-		}}
+		},
+	}
 
 	// For each of these scenarios, assert that a component resource
 	// with this option applied produces a warning.
@@ -5367,18 +5368,17 @@ func TestComponentOptionWarnings(t *testing.T) {
 		t.Run(fmt.Sprintf("Option #%d: %s", i, testCase.optionName), func(t *testing.T) {
 			var runtime = createRuntimeWithOption(t, testCase.option)
 			var host = deploytest.NewPluginHost(nil, nil, runtime)
-			var warningText = fmt.Sprintf("The option '%s'has no effect on component resources.", testCase.optionName)
+			var warningText = fmt.Sprintf("The option '%s' has no effect on component resources.", testCase.optionName)
 			var p = &TestPlan{
 				Options: UpdateOptions{Host: host},
-				// Steps:   MakeBasicLifecycleSteps(t, 1),
 				Steps: []TestStep{{
 					Op:            Update,
 					ExpectFailure: false,
 					SkipPreview:   true,
 					Validate: func(
-						project workspace.Project,
-						target deploy.Target,
-						entries JournalEntries,
+						_ workspace.Project,
+						_ deploy.Target,
+						_ JournalEntries,
 						evts []Event,
 						res result.Result,
 					) result.Result {
@@ -5398,35 +5398,6 @@ func TestComponentOptionWarnings(t *testing.T) {
 					},
 				}},
 			}
-
-			/*
-				Steps: []TestStep{{
-					Op:            Update,
-					ExpectFailure: true,
-					SkipPreview:   true,
-					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						evts []Event, res result.Result) result.Result {
-
-						assertIsErrorOrBailResult(t, res)
-						sawExitCode := false
-						for _, evt := range evts {
-							if evt.Type == DiagEvent {
-								e := evt.Payload().(DiagEventPayload)
-								msg := colors.Never.Colorize(e.Message)
-								sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
-								if sawExitCode {
-									break
-								}
-							}
-						}
-
-						assert.True(t, sawExitCode)
-						return res
-					},
-				}},
-
-			*/
-
 			p.Run(t, nil)
 		})
 	}
