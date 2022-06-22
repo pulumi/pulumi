@@ -191,7 +191,11 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	return pkg, diags, nil
 }
 
-func newBinder(info PackageInfoSpec, spec specSource, loader Loader, bindTo PackageReference) (*types, hcl.Diagnostics, error) {
+// Create a new binder.
+//
+// bindTo overrides the PackageReference field contained in generated types.
+func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
+	bindTo PackageReference) (*types, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
