@@ -38,6 +38,11 @@
             },
             "respectSchemaVersion": true,
             "pluginVersion": "3.2.1"
+        },
+        "go": {
+            "importBasePath": "enum-reference/example",
+            "generateExtraInputTypes": true,
+            "respectSchemaVersion": true
         }
     }
 }

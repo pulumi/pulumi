@@ -507,6 +507,12 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 			if isNilType(input.ElementType) || elem == "pulumi.Input" {
 				return elem
 			}
+			if pkg.isExternalReference(input.ElementType) {
+				extPkgCtx := pkg.contextForExternalReference(input.ElementType)
+				if !extPkgCtx.detailsForType(input.ElementType).ptrInput {
+					return "*" + elem
+				}
+			}
 			if argsType {
 				return elem + "Ptr"
 			}
@@ -585,29 +591,32 @@ func (pkg *pkgContext) typeString(t schema.Type) string {
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
-	isExternal, _ := pkg.isExternalReferenceWithPackage(t)
+	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
 	return isExternal
 }
 
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
-func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package) {
+func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package, token string) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
 		isExternal = typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
 		if isExternal {
 			extPkg = typ.Package
+			token = typ.Token
 		}
 		return
 	case *schema.ResourceType:
 		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
 		if isExternal {
 			extPkg = typ.Resource.Package
+			token = typ.Token
 		}
 		return
 	case *schema.EnumType:
 		isExternal = pkg.pkg != nil && typ.Package != pkg.pkg
 		if isExternal {
 			extPkg = typ.Package
+			token = typ.Token
 		}
 		return
 	}
@@ -646,7 +655,7 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 }
 
 func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
-	isExternal, extPkg := pkg.isExternalReferenceWithPackage(t)
+	isExternal, extPkg, token := pkg.isExternalReferenceWithPackage(t)
 	contract.Assert(isExternal)
 
 	var goInfo GoPackageInfo
@@ -676,12 +685,21 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
 		}
 	}
 
-	extPkgCtx := &pkgContext{
-		pkg:              extPkg,
-		importBasePath:   goInfo.ImportBasePath,
-		pkgImportAliases: pkgImportAliases,
-		modToPkg:         goInfo.ModuleToPackage,
+	mod := ""
+	if !strings.HasPrefix(token, "pulumi:providers:") {
+		parts := strings.Split(token, ":")
+		mod = parts[1]
 	}
+
+	maps := generatePackageContextMap(pkg.tool, extPkg, goInfo)
+	mapKeys := []string{}
+	for k := range maps {
+		mapKeys = append(mapKeys, k)
+	}
+
+	extPkgCtx := maps[mod]
+	extPkgCtx.pkgImportAliases = pkgImportAliases
+
 	return extPkgCtx
 }
 

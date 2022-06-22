@@ -267,7 +267,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "enum-reference",
 		Description: "Ensure referencing external types/resources with referenced enums import correctly",
-		Skip:        codegen.NewStringSet("go/any"),
 	},
 	{
 		Directory:   "internal-dependencies-go",
