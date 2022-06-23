@@ -2,7 +2,7 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version))
 PYPI_VERSION 	 := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language python))
-PROJECT_ROOT     := $(realpath ../..)
+PROJECT_ROOT     := ../..
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
