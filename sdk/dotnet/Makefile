@@ -2,7 +2,7 @@ PROJECT_NAME    := Pulumi .NET Core SDK
 LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-PROJECT_ROOT    := $(realpath ../..)
+PROJECT_ROOT    := ../..
 
 DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language dotnet))
 
