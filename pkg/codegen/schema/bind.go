@@ -142,7 +142,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		diags = diags.Extend(validationDiags)
 	}
 
-	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader)
+	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,7 +191,11 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	return pkg, diags, nil
 }
 
-func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hcl.Diagnostics, error) {
+// Create a new binder.
+//
+// bindTo overrides the PackageReference field contained in generated types.
+func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
+	bindTo PackageReference) (*types, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
@@ -273,6 +277,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
+
+		bindToReference: bindTo,
 	}
 
 	return types, diags, nil
@@ -301,19 +307,19 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 }
 
 func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
-	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader)
+	pkg := &PartialPackage{
+		spec:      &spec,
+		languages: languages,
+	}
+	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader, pkg)
 	if err != nil {
 		return nil, err
 	}
 	if diags.HasErrors() {
 		return nil, diags
 	}
-
-	return &PartialPackage{
-		spec:      &spec,
-		languages: languages,
-		types:     types,
-	}, nil
+	pkg.types = types
+	return pkg, nil
 }
 
 // ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
@@ -419,6 +425,9 @@ type types struct {
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
+
+	// A pointer to the package reference that `types` is a part of if it exists.
+	bindToReference PackageReference
 }
 
 func (t *types) Close() error {
@@ -426,6 +435,14 @@ func (t *types) Close() error {
 		return t.loadCtx.Close()
 	}
 	return nil
+}
+
+// The package which bound types will link back to.
+func (t *types) externalPackage() PackageReference {
+	if t.bindToReference != nil {
+		return t.bindToReference
+	}
+	return t.pkg.Reference()
 }
 
 //nolint: goconst
@@ -1108,6 +1125,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	}
 
 	obj.Package = t.pkg
+	obj.PackageReference = t.externalPackage()
 	obj.Token = token
 	obj.Comment = spec.Description
 	obj.Language = language
@@ -1116,6 +1134,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.IsOverlay = spec.IsOverlay
 
 	obj.InputShape.Package = t.pkg
+	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
 	obj.InputShape.Comment = spec.Description
 	obj.InputShape.Language = language
@@ -1172,12 +1191,13 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}
 
 	return &EnumType{
-		Package:     t.pkg,
-		Token:       token,
-		Elements:    values,
-		ElementType: typ,
-		Comment:     spec.Description,
-		IsOverlay:   spec.IsOverlay,
+		Package:          t.pkg,
+		PackageReference: t.externalPackage(),
+		Token:            token,
+		Elements:         values,
+		ElementType:      typ,
+		Comment:          spec.Description,
+		IsOverlay:        spec.IsOverlay,
 	}, diags
 }
 
@@ -1365,6 +1385,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 
 	*decl = Resource{
 		Package:            t.pkg,
+		PackageReference:   t.externalPackage(),
 		Token:              token,
 		Comment:            spec.Description,
 		InputProperties:    inputProperties,
