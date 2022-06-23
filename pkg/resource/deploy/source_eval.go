@@ -1197,14 +1197,37 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = filtered
 	}
 
-	// TODO(@platform): Currently component resources ignore the "ignoreChanges" option.
+	// TODO(@platform):
+	// Currently component resources ignore these options:
+	// • ignoreChanges
+	// • customTimeouts
+	// • additionalSecretOutputs
+	// • replaceOnChanges
+	// • retainOnDelete
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
-	if !custom && len(ignoreChanges) > 0 {
-		rm.diagostics.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'ignoreChanges' has no effect on component resources.",
-		))
+	if !custom {
+		rm.checkComponentOption(result.State.URN, "ignoreChanges", func() bool {
+			return len(ignoreChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
+			if customTimeouts == nil {
+				return false
+			}
+			var hasUpdateTimeout = customTimeouts.Update != ""
+			var hasCreateTimeout = customTimeouts.Create != ""
+			var hasDeleteTimeout = customTimeouts.Delete != ""
+			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
+		})
+		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
+			return len(additionalSecretOutputs) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "replaceOnChanges", func() bool {
+			return len(replaceOnChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
+			return retainOnDelete
+		})
 	}
 
 	logging.V(5).Infof(
@@ -1228,6 +1251,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 	}, nil
+}
+
+// checkComponentOption generates a warning message on the resource
+// 'urn' if 'check' returns true.
+// This function is intended to validate options passed to component resources,
+// so urn is expected to refer to a component.
+func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
+	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
+	if check() {
+		rm.diagostics.Warningf(diag.Message(
+			urn,
+			msg,
+		))
+	}
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
