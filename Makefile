@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-PROJECT_ROOT := $(realpath .)
+PROJECT_ROOT := ..
 SDKS         := dotnet nodejs python go
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 
