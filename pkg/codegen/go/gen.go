@@ -224,7 +224,7 @@ func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
 		return pkg.tokenToEnum(t.Token)
 	}
 
-	extPkgCtx := pkg.contextForExternalReference(t)
+	extPkgCtx, _ := pkg.contextForExternalReference(t)
 	enumType := extPkgCtx.tokenToEnum(t.Token)
 	if !strings.Contains(enumType, ".") {
 		enumType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, enumType)
@@ -508,9 +508,17 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 				return elem
 			}
 			if pkg.isExternalReference(input.ElementType) {
-				extPkgCtx := pkg.contextForExternalReference(input.ElementType)
-				if !extPkgCtx.detailsForType(input.ElementType).ptrInput {
-					return "*" + elem
+				_, details := pkg.contextForExternalReference(input.ElementType)
+
+				switch input.ElementType.(type) {
+				case *schema.ObjectType:
+					if !details.ptrInput {
+						return "*" + elem
+					}
+				case *schema.EnumType:
+					if !(details.ptrInput || details.input) {
+						return "*" + elem
+					}
 				}
 			}
 			if argsType {
@@ -591,12 +599,13 @@ func (pkg *pkgContext) typeString(t schema.Type) string {
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
-	isExternal, _ := pkg.isExternalReferenceWithPackage(t)
+	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
 	return isExternal
 }
 
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
-func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package) {
+func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
+	isExternal bool, extPkg *schema.Package, token string) {
 	var err error
 	switch typ := t.(type) {
 	case *schema.ObjectType:
@@ -604,6 +613,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal
 		if isExternal {
 			extPkg, err = typ.PackageReference.Definition()
 			contract.AssertNoError(err)
+			token = typ.Token
 		}
 		return
 	case *schema.ResourceType:
@@ -611,6 +621,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal
 		if isExternal {
 			extPkg, err = typ.Resource.PackageReference.Definition()
 			contract.AssertNoError(err)
+			token = typ.Token
 		}
 		return
 	case *schema.EnumType:
@@ -618,6 +629,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal
 		if isExternal {
 			extPkg, err = typ.PackageReference.Definition()
 			contract.AssertNoError(err)
+			token = typ.Token
 		}
 		return
 	}
@@ -632,7 +644,7 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	if !pkg.isExternalReference(t) {
 		return pkg.tokenToResource(t.Token)
 	}
-	extPkgCtx := pkg.contextForExternalReference(t)
+	extPkgCtx, _ := pkg.contextForExternalReference(t)
 	resType := extPkgCtx.tokenToResource(t.Token)
 	if !strings.Contains(resType, ".") {
 		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, resType)
@@ -652,11 +664,12 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 		}
 		return name
 	}
-	return pkg.contextForExternalReference(t).typeString(t)
+	extPkg, _ := pkg.contextForExternalReference(t)
+	return extPkg.typeString(t)
 }
 
-func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
-	isExternal, extPkg := pkg.isExternalReferenceWithPackage(t)
+func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, typeDetails) {
+	isExternal, extPkg, token := pkg.isExternalReferenceWithPackage(t)
 	contract.Assert(isExternal)
 
 	var goInfo GoPackageInfo
@@ -686,10 +699,12 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
 		}
 	}
 
-	extPkgCtx := generatePackageContextMap(pkg.tool, extPkg, goInfo)[""]
+	maps := generatePackageContextMap(pkg.tool, extPkg, goInfo)
+	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
+	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
 
-	return extPkgCtx
+	return extPkgCtx, *maps[mod].detailsForType(t)
 }
 
 // outputTypeImpl does the meat of the generation of output type names from schema types. This function should only be
@@ -2604,7 +2619,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	// If the type is not external, return false.
 	importExternal := func(token string) bool {
 		if pkg.isExternalReference(t) {
-			extPkgCtx := pkg.contextForExternalReference(t)
+			extPkgCtx, _ := pkg.contextForExternalReference(t)
 			mod := extPkgCtx.tokenToPackage(token)
 			imp := path.Join(extPkgCtx.importBasePath, mod)
 			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
