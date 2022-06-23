@@ -7,3 +7,6 @@
 
 - [auto/go] Fix passing of the color option.
   [#9940](https://github.com/pulumi/pulumi/pull/9940)
+
+- [engine] Fix panic from unexpected resource name formats.
+  [#9950](https://github.com/pulumi/pulumi/pull/9950)
