@@ -2,7 +2,6 @@ PROJECT_NAME    := Pulumi .NET Core SDK
 LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-PROJECT_ROOT    := ../..
 
 DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language dotnet))
 
@@ -25,6 +24,9 @@ TEST_COVERAGE_ARGS := -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura 
 else
 TEST_COVERAGE_ARGS := -p:CollectCoverage=false -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 endif
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 build::
 	# From the nuget docs:
