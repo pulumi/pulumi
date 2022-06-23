@@ -5322,6 +5322,97 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	assert.True(t, resA.Outputs["c"].IsSecret())
 }
 
+// This test checks that warnings are emitted when options which have no
+// effect on components are attached to a component resource.
+func TestComponentOptionWarnings(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		optionName string
+		option     deploytest.ResourceOptions
+	}
+
+	// These are the options which have no effect on components.
+	var cases = []testCase{
+		{
+			optionName: "retainOnDelete",
+			option: deploytest.ResourceOptions{
+				RetainOnDelete: true,
+			},
+		}, {
+			optionName: "ignoreChanges",
+			option: deploytest.ResourceOptions{
+				IgnoreChanges: []string{"root"},
+			},
+		}, {
+			optionName: "customTimeouts",
+			option: deploytest.ResourceOptions{
+				CustomTimeouts: &resource.CustomTimeouts{},
+			},
+		}, {
+			optionName: "replaceOnChanges",
+			option: deploytest.ResourceOptions{
+				ReplaceOnChanges: []string{"*"},
+			},
+		}, {
+			optionName: "additionalSecretOutputs",
+			option: deploytest.ResourceOptions{
+				AdditionalSecretOutputs: []resource.PropertyKey{"foobar"},
+			},
+		},
+	}
+	// This function creates a new language runtime registering a single resource:
+	// a component registered with the provided option.
+	var createRuntimeWithOption = func(t *testing.T, option deploytest.ResourceOptions) plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("component", "resA", false, option)
+			assert.NoError(t, err)
+			return nil
+		})
+	}
+
+	// For each of these scenarios, assert that a component resource
+	// with this option applied produces a warning.
+	for _, testCase := range cases {
+		testCase := testCase
+		t.Run(testCase.optionName, func(t *testing.T) {
+			t.Parallel()
+			var runtime = createRuntimeWithOption(t, testCase.option)
+			var host = deploytest.NewPluginHost(nil, nil, runtime)
+			var warningText = fmt.Sprintf("The option '%s' has no effect on component resources.", testCase.optionName)
+			var p = &TestPlan{
+				Options: UpdateOptions{Host: host},
+				Steps: []TestStep{{
+					Op:            Update,
+					ExpectFailure: false,
+					SkipPreview:   true,
+					Validate: func(
+						_ workspace.Project,
+						_ deploy.Target,
+						_ JournalEntries,
+						evts []Event,
+						res result.Result,
+					) result.Result {
+						var foundWarning bool
+						for _, evt := range evts {
+							if evt.Type == DiagEvent {
+								e := evt.Payload().(DiagEventPayload)
+								msg := colors.Never.Colorize(e.Message)
+								foundWarning = strings.Contains(msg, warningText) && e.Severity == diag.Warning
+								if foundWarning {
+									break
+								}
+							}
+						}
+						assert.True(t, foundWarning)
+						return res
+					},
+				}},
+			}
+			p.Run(t, nil)
+		})
+	}
+}
+
 func TestDefaultParents(t *testing.T) {
 	t.Parallel()
 

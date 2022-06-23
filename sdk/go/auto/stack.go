@@ -362,7 +362,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
 	}
 	if upOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", upOpts.Color))
 	}
 	if upOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
@@ -453,7 +453,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
 	}
 	if refreshOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", refreshOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", refreshOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -528,7 +528,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
 	}
 	if destroyOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", destroyOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", destroyOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
