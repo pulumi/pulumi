@@ -459,18 +459,17 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
+// When converting modules to ComponentResources, `r` should have already been
+// declared earlier as a class member and `alreadyDeclared` should be set to true.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bool) {
+	// Setting up names and helper variables for later use
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
-	g.diagnostics = append(g.diagnostics, diagnostics...)
-
 	if module != "" {
 		module = "." + module
 	}
-
+	g.diagnostics = append(g.diagnostics, diagnostics...)
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
-
 	optionsBag := g.genResourceOptions(r.Options)
-
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 
@@ -480,6 +479,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
+	// Setting up a lambda that prints the right side of the initialization: "... = new bar()"
 	instantiate := func(resName string) {
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
@@ -487,46 +487,78 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 			indenter = g.Indented
 		}
 		indenter(func() {
-			fmtString := "%s: %.v"
-			if len(r.Inputs) > 1 {
-				fmtString = "\n" + g.Indent + "%s: %.v,"
-			}
-
+			// Generating all the input parameters
 			for _, attr := range r.Inputs {
 				propertyName := attr.Name
 				if !isLegalIdentifier(propertyName) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
+				fmtString := "%s: %.v"
+				if alreadyDeclared {
+					// We are generating a Component Resource; parameters must have `this.`if they reference
+					// other resources & local variables, or `args.` if they reference config variables
+					part, err := getFirstTraversablePart(attr)
+					if err == nil {
+						switch (*part).(type) {
+						case *pcl.Resource:
+							fmtString = "%s: this.%.v"
+						case *pcl.LocalVariable:
+							fmtString = "%s: this.%.v"
+						case *pcl.ConfigVariable:
+							fmtString = "%s: args.%.v"
+						}
+					}
+				}
+				if len(r.Inputs) > 1 {
+					fmtString = "\n" + g.Indent + fmtString + ","
+				}
+
+				// Printing the attribute to the file
 				destinationType := g.getModelDestType(r, attr)
 				g.Fgenf(w, fmtString, propertyName,
 					g.lowerExpression(attr.Value, destinationType.(model.Type)))
 			}
 		})
+
+		// Closing parentheses and braces
 		if len(r.Inputs) > 1 {
 			g.Fgenf(w, "\n%s", g.Indent)
 		}
 		g.Fgenf(w, "}%s)", optionsBag)
 	}
 
-	if r.Options != nil && r.Options.Range != nil {
+	// Printing left side of the initialization: "const foo = ..."
+	// and activating the lambda that we set up earlier
+	if hasCountAttribute(r) {
+		// Resource may need to be initialized via for loop
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
 		rangeExpr := g.lowerExpression(r.Options.Range, rangeType)
 
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
-			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			// Resource can be safely converted into a special boolean type, no need to generate a loop
+			if !alreadyDeclared {
+				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			}
+
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
+				if alreadyDeclared {
+					g.Fgenf(w, "%sthis.%s = ", g.Indent, variableName)
+				} else {
+					g.Fgenf(w, "%s%s = ", g.Indent, variableName)
+				}
 				instantiate(g.makeResourceName(name, ""))
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
+			// For loop is required for resource generation
 			if !alreadyDeclared {
-				g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
+				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
 
+			// Generating for loop signature
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
@@ -539,6 +571,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
+			// Generating for loop body
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
 				if alreadyDeclared {
@@ -552,6 +585,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
+		// Resource can be initialized without any loops
 		if alreadyDeclared {
 			g.Fgenf(w, "%sthis.%s = ", g.Indent, variableName)
 		} else {
@@ -561,6 +595,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 		g.Fgenf(w, ";\n")
 	}
 
+	// Finishing up resource generation
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
@@ -627,15 +662,22 @@ func (g *generator) genComponentResourceClass(w io.Writer, nodes *[]pcl.Node) {
 		g.genConstructor(&w, nodes)
 	})
 
-	g.Fgenf(w, "}\n")
+	g.Fgenf(w, "}\n\n")
 }
 
 func (g *generator) genDeclareResourcesAndLocals(w *io.Writer, nodes *[]pcl.Node) {
+	// TODO(pdg): trivia
 	for _, n := range *nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
 			typeName := g.getResourceTypeName(n)
-			g.Fgenf(*w, "%spublic readonly %s: %s;\n", g.Indent, n.LogicalName(), typeName)
+			if hasCountAttribute(n) {
+				g.Fgenf(*w, "%spublic readonly %s: %s[] = [];\n", g.Indent, n.LogicalName(), typeName)
+			} else {
+				g.Fgenf(*w, "%spublic readonly %s: %s;\n", g.Indent, n.LogicalName(), typeName)
+			}
+		case *pcl.LocalVariable:
+			g.Fgenf(*w, "%public readonly %s: %.v;\n", g.Indent, n.Name(), g.lowerExpression(n.Definition.Value, n.Type()).Type())
 		}
 	}
 	g.Fgenf(*w, "\n")
@@ -645,7 +687,7 @@ func (g *generator) genConstructor(w *io.Writer, nodes *[]pcl.Node) {
 	g.Fgenf(*w, "%sconstructor(name: string, args: IndexArgs) {\n", g.Indent)
 
 	g.Indented(func() {
-		g.Fgenf(*w, "%ssuper(\"pkg:index:component\", name);\n", g.Indent)
+		g.Fgenf(*w, "%ssuper(\"pkg:index:component\", name);\n\n", g.Indent)
 		g.genInitializeResourcesAndLocals(w, nodes)
 		g.genRegisterOutputs(w, nodes)
 	})
@@ -664,7 +706,7 @@ func (g *generator) genInitializeResourcesAndLocals(w *io.Writer, nodes *[]pcl.N
 		for _, n := range *nodes {
 			switch n := n.(type) {
 			case *pcl.Resource:
-				g.genNode(*w, n, true) // TODO: MAKE IT DO args.variableName rather than just variableName for all the resource attributes. If config, do `args.` If local or resource, do `this.`
+				g.genNode(*w, n, true)
 			}
 		}
 		g.genAsync(*w, nodes)
@@ -705,7 +747,7 @@ func (g *generator) genAsync(w io.Writer, nodes *[]pcl.Node) {
 }
 
 func (g *generator) genRegisterOutputs(w *io.Writer, nodes *[]pcl.Node) {
-	g.Fgenf(*w, "%ssuper.registerOutputs({\n", g.Indent)
+	g.Fgenf(*w, "\n%ssuper.registerOutputs({\n", g.Indent)
 
 	g.Indented(func() {
 		for _, n := range *nodes {
@@ -726,7 +768,7 @@ func (g *generator) genComponentResourceArgs(w io.Writer, nodes *[]pcl.Node) {
 		for _, n := range *nodes {
 			switch n := n.(type) {
 			case *pcl.ConfigVariable:
-				g.Fgenf(w, "%s%s: pulumi.Input<%s>,\n", g.Indent, n.Name(), n.Type().String()) // TODO: GET IT TO CONVERT TO "boolean" LIKE TYPESCRIPT WANTS
+				g.Fgenf(w, "%s%s: pulumi.Input<%s>,\n", g.Indent, n.Name(), getTypescriptTypeName(n.Type().String()))
 			}
 		}
 	})

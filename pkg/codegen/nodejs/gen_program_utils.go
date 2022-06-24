@@ -92,3 +92,31 @@ func (g *generator) getModelDestType(r *pcl.Resource, attr *model.Attribute) mod
 	}
 	return destType
 }
+
+// Checks whether the resource has a `count` attribute, which indicates that a loop is required
+// to fully initialize it.
+func hasCountAttribute(r *pcl.Resource) bool {
+	return r.Options != nil && r.Options.Range != nil
+}
+
+// Takes in an attribute of a resource, and returns the very first traversable part of the value.
+// Example:  `AAA:  BBB.CCC.DDD`  >  BBB is returned
+func getFirstTraversablePart(attr *model.Attribute) (*model.Traversable, error) {
+	scopeTraversalExpression, ok := attr.Value.(*model.ScopeTraversalExpression)
+	if !ok {
+		return nil, fmt.Errorf("Attribute value is not a model.ScopeTraversalExpression")
+	}
+
+	firstPart := &scopeTraversalExpression.Parts[0]
+	return firstPart, nil
+}
+
+// Certain literal types returned by .Type().String() have different spellings in Typescript.
+func getTypescriptTypeName(typeName string) string {
+	switch typeName {
+	case "bool":
+		return "boolean"
+	default:
+		return typeName
+	}
+}
