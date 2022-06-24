@@ -174,6 +174,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "logical-name",
 		Description: "Logical names",
 	},
+	{
+		Directory:   "discriminated-unions",
+		Description: "Discriminated Unions types",
+	},
 }
 
 // Checks that a generated program is correct
