@@ -397,7 +397,7 @@ func (sg *stepGenerator) inheritedChildAlias(
 
 	aliasName := childName
 	if strings.HasPrefix(childName.String(), parentName.String()) {
-		aliasName = tokens.AsQName(
+		aliasName = tokens.QName(
 			parentAlias.Name().String() +
 				strings.TrimPrefix(childName.String(), parentName.String()))
 	}

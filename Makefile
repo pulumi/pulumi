@@ -1,5 +1,4 @@
 PROJECT_NAME := Pulumi SDK
-PROJECT_ROOT := ..
 SDKS         := dotnet nodejs python go
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 
@@ -22,6 +21,9 @@ TESTPARALLELISM ?= 10
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
+
+GO_TEST      = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod

@@ -128,6 +128,7 @@ func TestEnums(t *testing.T) {
 				}
 				result := pkg.Types[0]
 				tt.expected.Package = pkg
+				tt.expected.PackageReference = pkg.Reference()
 				assert.Equal(t, tt.expected, result)
 			}
 		})

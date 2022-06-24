@@ -1,7 +1,7 @@
 ### Improvements
 
 - [sdk/go] Added `PreviewDigest` for third party tools to be able to ingest the preview json
-  [#9886](https://github.com/pulumi/pulumi/pull/9886)1
+  [#9886](https://github.com/pulumi/pulumi/pull/9886)
 
 - [cli] The engine will now warn when a resource option is applied to a Component resource when that option will have no effect. This extends [#9863](https://github.com/pulumi/pulumi/pull/9863) which only warns for the `ignoreChanges` resource options.
   [#9921](https://github.com/pulumi/pulumi/pull/9921)
@@ -10,3 +10,6 @@
 
 - [auto/go] Fix passing of the color option.
   [#9940](https://github.com/pulumi/pulumi/pull/9940)
+
+- [engine] Fix panic from unexpected resource name formats.
+  [#9950](https://github.com/pulumi/pulumi/pull/9950)

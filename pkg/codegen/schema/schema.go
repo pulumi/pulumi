@@ -147,8 +147,11 @@ func (*ArrayType) isType() {}
 
 // EnumType represents an enum.
 type EnumType struct {
-	// Package is the type's package.
+	// Package is the type's package. Package will not be accurate for types loaded by
+	// reference. In that case, use PackageReference instead.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -211,8 +214,11 @@ func (*UnionType) isType() {}
 
 // ObjectType represents schematized maps from strings to particular types.
 type ObjectType struct {
-	// Package is the package that defines the resource.
+	// Package is the package that defines the resource. Package will not be accurate for
+	// types loaded by reference. In that case, use PackageReference instead.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -374,8 +380,11 @@ type Alias struct {
 
 // Resource describes a Pulumi resource.
 type Resource struct {
-	// Package is the package that defines the resource.
+	// Package is the package that defines the resource. Package will not be accurate for
+	// types loaded by reference. In that case, use PackageReference instead.
 	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
