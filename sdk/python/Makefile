@@ -2,7 +2,6 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version))
 PYPI_VERSION 	 := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language python))
-PROJECT_ROOT     := ../..
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -17,6 +16,9 @@ include ../../build/common.mk
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: $(PYTHON).ensure .ensure.phony
 .ensure.phony:
