@@ -887,7 +887,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		}),
 	}
 
-	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedSteps ...display.StepOp) *deploy.Snapshot {
+	runProgram := func(base *deploy.Snapshot, versionA, versionB string,
+		expectedSteps ...display.StepOp) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, deploytest.ResourceOptions{
 				Version: versionA,

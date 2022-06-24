@@ -147,7 +147,8 @@ func (s *cloudStack) Preview(
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
@@ -156,11 +157,13 @@ func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
+func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result) {
 	return backend.DestroyStack(ctx, s, op)
 }
 

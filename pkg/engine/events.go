@@ -400,8 +400,8 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	})
 }
 
-func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration, resourceChanges display.ResourceChanges,
-	policyPacks map[string]string) {
+func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
+	resourceChanges display.ResourceChanges, policyPacks map[string]string) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 

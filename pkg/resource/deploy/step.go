@@ -1051,7 +1051,8 @@ const (
 	OpDiscardReplaced      display.StepOp = "discard-replaced"       // discarding a read resource that was replaced.
 	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               display.StepOp = "import"                 // import an existing resource.
-	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource with an imported resource.
+	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
+	// with an imported resource.
 )
 
 // StepOps contains the full set of step operation types.
