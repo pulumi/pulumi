@@ -717,6 +717,19 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		if isNilType(t.ElementType) || elem == "pulumi.AnyOutput" {
 			return elem
 		}
+		if pkg.isExternalReference(t.ElementType) {
+			_, details := pkg.contextForExternalReference(t.ElementType)
+			switch t.ElementType.(type) {
+			case *schema.ObjectType:
+				if !details.ptrOutput {
+					return "*" + elem
+				}
+			case *schema.EnumType:
+				if !(details.ptrOutput || details.output) {
+					return "*" + elem
+				}
+			}
+		}
 		return strings.TrimSuffix(elem, "Output") + "PtrOutput"
 	case *schema.EnumType:
 		return pkg.resolveEnumType(t) + "Output"
