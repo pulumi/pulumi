@@ -116,6 +116,9 @@ def configure(settings: Settings):
 def is_dry_run() -> bool:
     """
     Returns whether or not we are currently doing a preview.
+
+    When writing unit tests, you can set this flag via `set_mocks` by supplying a value
+    for the argument `preview`.
     """
     return bool(SETTINGS.dry_run)
 
@@ -123,6 +126,11 @@ def is_dry_run() -> bool:
 def is_test_mode_enabled() -> bool:
     """
     Returns true if test mode is enabled (PULUMI_TEST_MODE).
+
+    NB: this test mode has nothing to do with preview/dry_run modality, and it is not
+    automatically enabled by calling `set_mocks`. It is a vestigial mechanism related to
+    testing the runtime itself, and is not relevant to writing or running unit tests for
+    a Pulumi project.
     """
     return bool(SETTINGS.test_mode_enabled)
 
