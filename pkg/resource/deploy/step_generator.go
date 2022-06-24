@@ -537,13 +537,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			logging.V(7).Infof(
 				"Planner decided not to create '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
 			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
-		} else {
-			// If the user requested only specific resources to update, and this resource was not in that set,
-			// then do nothing but create a SameStep for it.
-			logging.V(7).Infof(
-				"Planner decided not to update '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
-			return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 		}
+
+		// If the user requested only specific resources to update, and this resource was not in that set,
+		// then do nothing but create a SameStep for it.
+		logging.V(7).Infof(
+			"Planner decided not to update '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
+		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 	}
 
 	// Fetch the provider for this resource.
