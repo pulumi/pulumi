@@ -12,14 +12,14 @@ class MyStack : Stack
             {
                 ServerVersion = "3.2",
             },
-            BackupPolicy = 
+            BackupPolicy = new AzureNative.DocumentDB.Inputs.PeriodicModeBackupPolicyArgs
             {
-                { "periodicModeProperties", new AzureNative.DocumentDB.Inputs.PeriodicModePropertiesArgs
+                PeriodicModeProperties = new AzureNative.DocumentDB.Inputs.PeriodicModePropertiesArgs
                 {
                     BackupIntervalInMinutes = 240,
                     BackupRetentionIntervalInHours = 8,
-                } },
-                { "type", "Periodic" },
+                },
+                Type = "Periodic",
             },
             DatabaseAccountOfferType = AzureNative.DocumentDB.DatabaseAccountOfferType.Standard,
             Locations = 

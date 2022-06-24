@@ -12,12 +12,12 @@ func main() {
 			ApiProperties: &documentdb.ApiPropertiesArgs{
 				ServerVersion: pulumi.String("3.2"),
 			},
-			BackupPolicy: pulumi.Any{
-				PeriodicModeProperties: &documentdb.PeriodicModePropertiesArgs{
-					BackupIntervalInMinutes:        pulumi.Int(240),
-					BackupRetentionIntervalInHours: pulumi.Int(8),
+			BackupPolicy: documentdb.PeriodicModeBackupPolicy{
+				PeriodicModeProperties: documentdb.PeriodicModeProperties{
+					BackupIntervalInMinutes:        240,
+					BackupRetentionIntervalInHours: 8,
 				},
-				Type: pulumi.String("Periodic"),
+				Type: "Periodic",
 			},
 			DatabaseAccountOfferType: documentdb.DatabaseAccountOfferTypeStandard,
 			Locations: documentdb.LocationArray{
