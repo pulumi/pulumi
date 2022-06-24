@@ -1,0 +1,8 @@
+Pulumi.Automation.HistoryOptions.ShowSecrets.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.DestroyOptions.ShowSecrets.set -> void
+Pulumi.Automation.DestroyOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpOptions.ShowSecrets.set -> void
+Pulumi.Automation.UpOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.RefreshOptions.ShowSecrets.set -> void
+Pulumi.Automation.RefreshOptions.ShowSecrets.get -> bool?

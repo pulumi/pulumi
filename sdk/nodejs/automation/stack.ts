@@ -257,7 +257,7 @@ Event: ${line}\n${e.toString()}`);
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
 
         return {
             stdout: upResult.stdout,
@@ -443,7 +443,7 @@ Event: ${line}\n${e.toString()}`);
         const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
@@ -501,7 +501,7 @@ Event: ${line}\n${e.toString()}`);
         const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
@@ -571,8 +571,11 @@ Event: ${line}\n${e.toString()}`);
      * Returns a list summarizing all previous and current results from Stack lifecycle operations
      * (up/preview/refresh/destroy).
      */
-    async history(pageSize?: number, page?: number): Promise<UpdateSummary[]> {
-        const args = ["stack", "history", "--json", "--show-secrets"];
+    async history(pageSize?: number, page?: number, showSecrets?: boolean): Promise<UpdateSummary[]> {
+        const args = ["stack", "history", "--json"];
+        if (showSecrets ?? true) {
+            args.push("--show-secrets");
+        }
         if (pageSize) {
             if (!page || page < 1) {
                 page = 1;
@@ -588,8 +591,8 @@ Event: ${line}\n${e.toString()}`);
             return value;
         });
     }
-    async info(): Promise<UpdateSummary | undefined> {
-        const history = await this.history(1 /*pageSize*/);
+    async info(showSecrets?: boolean): Promise<UpdateSummary | undefined> {
+        const history = await this.history(1 /*pageSize*/, undefined, showSecrets);
         if (!history || history.length === 0) {
             return undefined;
         }
@@ -779,6 +782,10 @@ export interface UpOptions {
      * Plan specifies the path to an update plan to use for the update.
      */
     plan?: string;
+    /**
+     * Include secrets in the UpSummary.
+     */
+    showSecrets?: boolean;
 }
 
 /**
@@ -817,6 +824,8 @@ export interface RefreshOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    // Include secrets in the RefreshSummary
+    showSecrets?: boolean;
 }
 
 /**
@@ -831,6 +840,8 @@ export interface DestroyOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    // Include secrets in the DestroySummary
+    showSecrets?: boolean;
 }
 
 const execKind = {
