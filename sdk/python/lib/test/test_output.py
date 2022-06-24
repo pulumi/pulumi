@@ -224,7 +224,7 @@ class OutputStrTests(unittest.TestCase):
     @pulumi_test
     async def test_str(self):
         o = Output.from_input(1)
-        self.assertEqual(str(o), """Calling [str] on an [Output<T>] is not supported.
+        self.assertEqual(str(o), """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v => f"prefix{v}suffix")
