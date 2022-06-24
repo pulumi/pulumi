@@ -10,3 +10,6 @@
 
 - [engine] Fix panic from unexpected resource name formats.
   [#9950](https://github.com/pulumi/pulumi/pull/9950)
+
+- [engine] Filter out non-targeted resources much earlier in the engine cycle.
+  [#9960](https://github.com/pulumi/pulumi/pull/9960)
