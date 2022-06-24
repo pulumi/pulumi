@@ -113,9 +113,9 @@ export function _setIsDryRun(val: boolean) {
 }
 
 /**
- * Returns true if we're currently performing a dry-run, or false if this is a true update. Note that we
- * always consider executions in test mode to be "dry-runs", since we will never actually carry out an update,
- * and therefore certain output properties will never be resolved.
+ * Returns whether or not we are currently doing a preview.
+ *
+ * When writing unit tests, you can set this flag via either `setMocks` or `_setIsDryRun`.
  */
 export function isDryRun(): boolean {
     return options().dryRun === true;
@@ -138,6 +138,10 @@ export function _setFeatureSupport(key: string, val: boolean) {
 
 /**
  * Returns true if test mode is enabled (PULUMI_TEST_MODE).
+ *
+ * NB: this test mode has nothing to do with preview/dryRun modality, and it is not automatically
+ * enabled by calling `setMocks`. It is a vestigial mechanism related to testing the runtime itself,
+ * and is not relevant to writing or running unit tests for a Pulumi project.
  */
 export function isTestModeEnabled(): boolean {
     return options().testModeEnabled === true;
