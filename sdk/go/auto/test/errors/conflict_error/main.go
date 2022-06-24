@@ -8,7 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})

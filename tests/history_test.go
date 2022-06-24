@@ -47,8 +47,12 @@ func assertNoResultsOnPage(e *ptesting.Environment) {
 	assert.Equal(e.T, "No stack updates found on page '10000000'\n", out)
 }
 func TestHistoryCommand(t *testing.T) {
+	t.Parallel()
+
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
@@ -60,6 +64,8 @@ func TestHistoryCommand(t *testing.T) {
 
 	// We don't display any history for a stack that has never been updated.
 	t.Run("NoUpdates", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
@@ -70,6 +76,8 @@ func TestHistoryCommand(t *testing.T) {
 
 	// The "history" command uses the currently selected stack.
 	t.Run("CurrentlySelectedStack", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)

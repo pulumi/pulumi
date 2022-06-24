@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/v3/proto/go/pulumirpc";
+
 // PluginInfo is meta-information about a plugin that is used by the system.
 message PluginInfo {
     string version = 1; // the semver for this plugin.
@@ -27,4 +29,13 @@ message PluginDependency {
     string kind = 2;    // the kind of plugin (e.g., language, etc).
     string version = 3; // the semver for this plugin.
     string server = 4; // the URL of a server that can be used to download this plugin, if needed.
+}
+
+// PluginAttach is used to attach an already running plugin to the engine.
+//
+// Normally the engine starts the plugin process itself and passes the engine address as the first argumnent.
+// But when debugging it can be useful to have an already running provider that the engine instead attaches
+// to, this message is used so the provider can still be passed the engine address to communicate with.
+message PluginAttach {
+    string address = 1; // the grpc address for the engine
 }

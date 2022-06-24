@@ -4,15 +4,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -49,8 +49,9 @@ func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
 type Component struct {
 	pulumi.ResourceState
 
-	Echo    pulumi.Input    `pulumi:"echo"`
-	ChildID pulumi.IDOutput `pulumi:"childId"`
+	Echo    pulumi.Input        `pulumi:"echo"`
+	ChildID pulumi.IDOutput     `pulumi:"childId"`
+	Secret  pulumi.StringOutput `pulumi:"secret"`
 }
 
 type ComponentArgs struct {
@@ -62,6 +63,15 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 	if args == nil {
 		return nil, errors.New("args is required")
 	}
+
+	secretKey := "secret"
+	fullSecretKey := fmt.Sprintf("%s:%s", ctx.Project(), secretKey)
+	if !ctx.IsConfigSecret(fullSecretKey) {
+		return nil, fmt.Errorf("expected configuration key to be secret: %s", fullSecretKey)
+	}
+
+	conf := config.New(ctx, "")
+	secret := conf.RequireSecret(secretKey)
 
 	component := &Component{}
 	err := ctx.RegisterComponentResource("testcomponent:index:Component", name, component, opts...)
@@ -76,8 +86,13 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 
 	component.Echo = args.Echo
 	component.ChildID = res.ID()
+	component.Secret = secret
 
-	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{}); err != nil {
+	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
+		"secret":  component.Secret,
+		"echo":    component.Echo,
+		"childId": component.ChildID,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +132,7 @@ func (p *testcomponentProvider) Create(ctx context.Context,
 	urn := resource.URN(req.GetUrn())
 	typ := urn.Type()
 	if typ != "testcomponent:index:Resource" {
-		return nil, errors.Errorf("Unknown resource type '%s'", typ)
+		return nil, fmt.Errorf("Unknown resource type '%s'", typ)
 	}
 
 	id := currentID
@@ -134,17 +149,17 @@ func (p *testcomponentProvider) Construct(ctx context.Context,
 		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 
 		if typ != "testcomponent:index:Component" {
-			return nil, errors.Errorf("unknown resource type %s", typ)
+			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
 
 		args := &ComponentArgs{}
 		if err := inputs.CopyTo(args); err != nil {
-			return nil, errors.Wrap(err, "setting args")
+			return nil, fmt.Errorf("setting args: %w", err)
 		}
 
 		component, err := NewComponent(ctx, name, args, options)
 		if err != nil {
-			return nil, errors.Wrap(err, "creating component")
+			return nil, fmt.Errorf("creating component: %w", err)
 		}
 
 		return pulumiprovider.NewConstructResult(component)
@@ -172,12 +187,17 @@ func (p *testcomponentProvider) Configure(ctx context.Context,
 
 func (p *testcomponentProvider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	return nil, errors.Errorf("Unknown Invoke token '%s'", req.GetTok())
+	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
 	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
-	return errors.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
+	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
+}
+
+func (p *testcomponentProvider) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return nil, fmt.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Check(ctx context.Context,
@@ -211,6 +231,10 @@ func (p *testcomponentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
+}
+
+func (p *testcomponentProvider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
 }
 
 func (p *testcomponentProvider) GetSchema(ctx context.Context,

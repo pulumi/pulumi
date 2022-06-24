@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -30,6 +32,7 @@ import (
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
 // We use this in testing so that tests which log in and out do not impact the local developer's
 // credentials or tests interacting with one another
+//nolint: gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
 // PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
@@ -110,6 +113,7 @@ func StoreAccount(key string, account Account, current bool) error {
 type Account struct {
 	AccessToken     string    `json:"accessToken,omitempty"`     // The access token for this account.
 	Username        string    `json:"username,omitempty"`        // The username for this account.
+	Organizations   []string  `json:"organizations,omitempty"`   // The organizations for this account.
 	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
 }
 
@@ -183,7 +187,7 @@ func GetStoredCredentials() (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	c, err := ioutil.ReadFile(credsFile)
+	c, err := lockedfile.Read(credsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
@@ -228,25 +232,129 @@ func StoreCredentials(creds Credentials) error {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
 
-	// Use a temporary file and atomic os.Rename to ensure the file contents are
-	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
-	tempCredsFile, err := ioutil.TempFile(filepath.Dir(credsFile), "credentials-*.json")
-	if err != nil {
-		return err
-	}
-	_, err = tempCredsFile.Write(raw)
-	if err != nil {
-		return err
-	}
-	err = tempCredsFile.Close()
-	if err != nil {
-		return err
-	}
-	err = os.Rename(tempCredsFile.Name(), credsFile)
-	if err != nil {
-		contract.IgnoreError(os.Remove(tempCredsFile.Name()))
+	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0600); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+type BackendConfig struct {
+	DefaultOrg string `json:"defaultOrg,omitempty"` // The default org for this backend config.
+}
+
+type PulumiConfig struct {
+	BackendConfig map[string]BackendConfig `json:"backends,omitempty"` // a map of arbitrary backends configs.
+}
+
+func getConfigFilePath() (string, error) {
+	// Allow the folder we use to store config in to be overridden by tests
+	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
+	if pulumiFolder == "" {
+		folder, err := GetPulumiHomeDir()
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get the home path")
+		}
+		pulumiFolder = folder
+	}
+
+	err := os.MkdirAll(pulumiFolder, 0700)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
+	}
+
+	return filepath.Join(pulumiFolder, "config.json"), nil
+}
+
+func GetPulumiConfig() (PulumiConfig, error) {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return PulumiConfig{}, err
+	}
+
+	c, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return PulumiConfig{}, nil
+		}
+		return PulumiConfig{}, errors.Wrapf(err, "reading '%s'", configFile)
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(c, &config); err != nil {
+		return PulumiConfig{}, errors.Wrapf(err, "failed to read Pulumi config file")
+	}
+
+	return config, nil
+}
+
+func StorePulumiConfig(config PulumiConfig) error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+
+	raw, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return errors.Wrapf(err, "marshalling config object")
+	}
+
+	// Use a temporary file and atomic os.Rename to ensure the file contents are
+	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
+	tempConfigFile, err := ioutil.TempFile(filepath.Dir(configFile), "config-*.json")
+	if err != nil {
+		return err
+	}
+	_, err = tempConfigFile.Write(raw)
+	if err != nil {
+		return err
+	}
+	err = tempConfigFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempConfigFile.Name(), configFile)
+	if err != nil {
+		contract.IgnoreError(os.Remove(tempConfigFile.Name()))
+		return err
+	}
+
+	return nil
+}
+
+func SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
+	config, err := GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if config.BackendConfig == nil {
+		config.BackendConfig = make(map[string]BackendConfig)
+	}
+
+	config.BackendConfig[backendURL] = BackendConfig{
+		DefaultOrg: defaultOrg,
+	}
+
+	return StorePulumiConfig(config)
+}
+
+func GetBackendConfigDefaultOrg() (string, error) {
+	config, err := GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+
+	backendURL, err := GetCurrentCloudURL()
+	if err != nil {
+		return "", err
+	}
+
+	if beConfig, ok := config.BackendConfig[backendURL]; ok {
+		if beConfig.DefaultOrg != "" {
+			return beConfig.DefaultOrg, nil
+		}
+	}
+
+	return "", nil
 }

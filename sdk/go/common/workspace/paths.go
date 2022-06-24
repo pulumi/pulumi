@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,8 +98,28 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
-		filepath.Ext(projPath))), nil
+	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
+
+	// Back compat: StackConfigDir used to be called Config.
+	configValue, hasConfigValue := proj.Config.(string)
+	hasConfigValue = hasConfigValue && configValue != ""
+
+	if proj.StackConfigDir != "" {
+		// If config and stackConfigDir are both set return an error
+		if hasConfigValue {
+			return "", fmt.Errorf("can not set `config` and `stackConfigDir`, remove the `config` entry")
+		}
+
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+	}
+
+	// Back compat: If StackConfigDir is not present and Config is given and it's a non-empty string use it
+	// for the stacks directory.
+	if hasConfigValue {
+		return filepath.Join(filepath.Dir(projPath), configValue, fileName), nil
+	}
+
+	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
@@ -141,7 +161,8 @@ func DetectProjectAndPath() (*Project, string, error) {
 	if err != nil {
 		return nil, "", err
 	} else if path == "" {
-		return nil, "", errors.Errorf("no Pulumi project found in the current working directory")
+		return nil, "", errors.Errorf("no Pulumi project found in the current working directory. " +
+			"Move to a directory with a Pulumi project or try creating a project first with `pulumi new`.")
 	}
 
 	proj, err := LoadProject(path)

@@ -23,7 +23,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
+func Destroy(
+	u UpdateInfo,
+	ctx *Context,
+	opts UpdateOptions,
+	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
@@ -31,15 +36,18 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer emitter.Close()
+
+	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
@@ -63,7 +71,7 @@ func newDestroySource(
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugins); err != nil {
+	if err := ensurePluginsAreInstalled(plugctx.Request(), plugins.Deduplicate()); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 
@@ -74,5 +82,5 @@ func newDestroySource(
 
 	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
 	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	return deploy.NewNullSource(proj.Name), nil
 }

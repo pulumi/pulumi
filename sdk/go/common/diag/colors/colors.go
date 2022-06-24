@@ -26,6 +26,8 @@ import (
 const colorLeft = "<{%"
 const colorRight = "%}>"
 
+type Color = string
+
 var disableColorization bool
 
 func command(s string) string {
@@ -77,7 +79,7 @@ func writeCodes(w io.StringWriter, codes ...string) {
 	contract.IgnoreError(err)
 }
 
-func writeDirective(w io.StringWriter, c Colorization, directive string) {
+func writeDirective(w io.StringWriter, c Colorization, directive Color) {
 	if disableColorization || c == Never {
 		return
 	}
@@ -126,6 +128,8 @@ func writeDirective(w io.StringWriter, c Colorization, directive string) {
 		writeCodes(w, "48", "5", "4")
 	case Black: // command("fg 0") // Only use with background colors.
 		writeCodes(w, "38", "5", "0")
+	default:
+		contract.Failf("Unrecognized color code: %q", directive)
 	}
 }
 

@@ -37,6 +37,10 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         this.program = program;
 
         this.running = false;
+
+        // set a bit in runtime settings to indicate that we're running in inline mode.
+        // this allows us to detect and fail fast for side by side pulumi scenarios.
+        runtime.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
@@ -70,7 +74,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             const engineAddr = args && args.length > 0 ? args[0] : "";
 
             runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                                 req.getMonitorAddress(), req.getDryrun());
+                req.getMonitorAddress(), req.getDryrun());
 
             const config: {[key: string]: string} = {};
             for (const [k, v] of req.getConfigMap()?.entries() || []) {

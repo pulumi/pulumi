@@ -6,9 +6,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
+// ReSharper disable UnusedMemberInSuper.Global
+// ReSharper disable VirtualMemberNeverOverridden.Global
 
 namespace Pulumi.Automation
 {
@@ -57,6 +60,12 @@ namespace Pulumi.Automation
         /// If none is specified, the stack will refer to <see cref="ProjectSettings"/> for this information.
         /// </summary>
         public abstract PulumiFn? Program { get; set; }
+
+        /// <summary>
+        /// A custom logger instance that will be used for the action. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public abstract ILogger? Logger { get; set; }
 
         /// <summary>
         /// Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
@@ -251,7 +260,18 @@ namespace Pulumi.Automation
         /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default);
+        public Task InstallPluginAsync(string name, string version, PluginKind kind, CancellationToken cancellationToken)
+            => this.InstallPluginAsync(name, version, kind: kind, options: null, cancellationToken: cancellationToken);
+
+        /// <summary>
+        /// Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+        /// </summary>
+        /// <param name="name">The name of the plugin.</param>
+        /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
+        /// <param name="kind">The kind of plugin e.g. "resource".</param>
+        /// <param name="options">Any additional plugin installation options.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public abstract Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, PluginInstallOptions? options = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes a plugin from the Workspace matching the specified name and version.
@@ -276,7 +296,7 @@ namespace Pulumi.Automation
 
         internal async Task<CommandResult> RunStackCommandAsync(
             string stackName,
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
@@ -291,12 +311,12 @@ namespace Pulumi.Automation
         }
 
         internal Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             CancellationToken cancellationToken)
             => this.RunCommandAsync(args, onStandardOutput: null, onStandardError: null, onEngineEvent: null, cancellationToken);
 
         internal Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,

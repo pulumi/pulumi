@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,15 +20,16 @@ from ..util import LanghostTest
 
 long_string = "a" * 1024 * 1024 * 5
 
+
 class LargeResourceTest(LanghostTest):
     def test_large_resource(self):
         self.run_test(
             program=path.join(self.base_path(), "large_resource"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         self.assertEqual(ty, "test:index:MyLargeStringResource")
         self.assertEqual(name, "testResource1")
 

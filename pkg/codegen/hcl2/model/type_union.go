@@ -169,28 +169,52 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 // type is safely convertible, the conversion is safe; if no element is safely convertible but some element is unsafely
 // convertible, the conversion is unsafe.
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
+		var diags []lazyDiagnostics
+
+		// Fast path: see if the source type is equal to any of the element types. Equality checks are generally
+		// less expensive that full convertibility checks.
 		for _, t := range t.ElementTypes {
-			if ck := t.conversionFrom(src, unifying, seen); ck > conversionKind {
-				conversionKind = ck
+			if src.Equals(t) {
+				return SafeConversion, nil
 			}
 		}
-		return conversionKind
+
+		for _, t := range t.ElementTypes {
+			ck, why := t.conversionFrom(src, unifying, seen)
+			if ck > conversionKind {
+				conversionKind = ck
+			} else if why != nil {
+				diags = append(diags, why)
+			}
+		}
+		if conversionKind == NoConversion {
+			return NoConversion, func() hcl.Diagnostics {
+				var all hcl.Diagnostics
+				for _, why := range diags {
+					//nolint:errcheck
+					all.Extend(why())
+				}
+				return all
+			}
+		}
+		return conversionKind, nil
 	})
 }
 
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
-		switch dest.conversionFrom(t, unifying, seen) {
+		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
 		case SafeConversion:
 			exists = true
 		case UnsafeConversion:
@@ -200,9 +224,9 @@ func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{
 		}
 	}
 	if !exists {
-		return NoConversion
+		return NoConversion, nil
 	}
-	return conversionKind
+	return conversionKind, nil
 }
 
 func (t *UnionType) String() string {

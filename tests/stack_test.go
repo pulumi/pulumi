@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,9 +39,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -71,6 +74,8 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -108,7 +113,38 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
+	t.Run("StackUnselect", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "one")
+		e.RunCommand("pulumi", "stack", "init", "two")
+
+		// Last one created is always selected.
+		stacks, current := integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		assert.Equal(t, "two", *current)
+
+		e.RunCommand("pulumi", "stack", "unselect")
+		_, updatedCurrentStack := integration.GetStacks(e)
+		if updatedCurrentStack != nil {
+			t.Fatal("No stack should be selected after unselect was executed")
+		}
+	})
+
 	t.Run("StackRm", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -151,6 +187,8 @@ func TestStackCommands(t *testing.T) {
 	// Test that stack import fails if the version of the deployment we give it is not
 	// one that the CLI supports.
 	t.Run("CheckpointVersioning", func(t *testing.T) {
+		t.Parallel()
+
 		versions := []int{
 			apitype.DeploymentSchemaVersionCurrent + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
@@ -270,8 +308,11 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -350,6 +391,8 @@ func TestStackBackups(t *testing.T) {
 }
 
 func TestStackRenameAfterCreate(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -368,6 +411,8 @@ func TestStackRenameAfterCreate(t *testing.T) {
 // TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
 // stacks owned by organizations in the service backend.
 func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -408,6 +453,8 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 }
 
 func TestLocalStateLocking(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -422,33 +469,155 @@ func TestLocalStateLocking(t *testing.T) {
 	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 
-	// Enable self-managed backend locking
-	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
-
-	// Run 10 concurrent updates
 	count := 10
 	stderrs := make(chan string, count)
+
+	// Run 10 concurrent updates
 	for i := 0; i < count; i++ {
 		go func() {
-			_, stderr, _ := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-			stderrs <- stderr
+			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
 		}()
 	}
 
 	// Ensure that only one of the concurrent updates succeeded, and that failures
 	// were due to locking (and not state file corruption)
 	numsuccess := 0
+	numerrors := 0
+
 	for i := 0; i < count; i++ {
 		stderr := <-stderrs
 		if stderr == "" {
 			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
 			numsuccess++
 		} else {
-			assert.Contains(t, stderr, "the stack is currently locked by 1 lock(s)")
-			t.Log(stderr)
+			phrase := "the stack is currently locked by 1 lock(s)"
+			if !strings.Contains(stderr, phrase) {
+				numerrors++
+				t.Logf("unexplaiend stderr::\n%s", stderr)
+				assert.Lessf(t, numerrors, 2, "More than one unexplained error has occurred")
+			}
 		}
 	}
 
+	// Run 10 concurrent previews
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
+		}()
+	}
+
+	// Ensure that all of the concurrent previews succeed.
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		assert.Equal(t, "", stderr)
+	}
+
+}
+
+// stackFileFormatAsserters returns a function to assert that the current file
+// format is for gzip and plain formats respectively.
+func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName string) (func(), func()) {
+	stacksDir := filepath.Join(".pulumi", "stacks")
+	pathStack := filepath.Join(stacksDir, stackName+".json")
+	pathStackGzip := pathStack + ".gz"
+	pathStackBak := pathStack + ".bak"
+	pathStackBakGzip := pathStack + ".gz.bak"
+	sizeGzip := int64(-1)
+	sizeJSON := int64(-1)
+
+	doAssert := func(gzip bool) {
+		gzipStackInfo, err := os.Stat(filepath.Join(e.CWD, pathStackGzip))
+		if err == nil {
+			sizeGzip = gzipStackInfo.Size()
+		}
+		jsonStackInfo, err := os.Stat(filepath.Join(e.CWD, pathStack))
+		if err == nil {
+			sizeJSON = jsonStackInfo.Size()
+		}
+
+		// We need to make sure that an out of date state file doesn't exist
+		assert.Equal(t, gzip, e.PathExists(pathStackGzip), "gzip stack file ")
+		assert.Equal(t, !gzip, e.PathExists(pathStack), "Raw json stack file")
+		if gzip {
+			assert.True(t, e.PathExists(pathStackBakGzip), "gzip backup")
+		} else {
+			assert.True(t, e.PathExists(pathStackBak), "raw backup")
+		}
+		if sizeGzip != -1 && sizeJSON != -1 {
+			assert.Greater(t, sizeJSON, sizeGzip, "Json file smaller than gzip")
+		}
+		if t.Failed() {
+			fmt.Printf("Stacks dir state at time of failure (gzip: %t):\n", gzip)
+			files, _ := ioutil.ReadDir(e.CWD + "/" + stacksDir)
+			for _, file := range files {
+				fmt.Println(file.Name(), file.Size())
+			}
+		}
+	}
+	return func() { doAssert(true) }, func() { doAssert(false) }
+}
+
+func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	stackName := addRandomSuffix("gzip-state")
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("integration/stack_dependencies")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, stackName)
+	switchGzipOff := func() { e.Setenv(filestate.PulumiFilestateGzipEnvVar, "0") }
+	switchGzipOn := func() { e.Setenv(filestate.PulumiFilestateGzipEnvVar, "1") }
+	pulumiUp := func() { e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview") }
+
+	// Test "pulumi up" with gzip compression on and off.
+	// Running "pulumi up" 2 times is important because normally, first the
+	// `.json` becomes `.json.gz`, then the `.json.bak` becomes `.json.gz.bak`.
+	// Default is no gzip compression
+	switchGzipOff()
+	assertPlainFileFormat()
+
+	// Enable Gzip compression
+	switchGzipOn()
+	pulumiUp()
+	assertGzipFileFormat()
+
+	pulumiUp()
+	assertGzipFileFormat()
+
+	// Disable Gzip compression
+	switchGzipOff()
+	pulumiUp()
+	assertPlainFileFormat()
+
+	pulumiUp()
+	assertPlainFileFormat()
+
+	// Check stack history is still good even with mixed gzip / json files
+	rawHistory, _ := e.RunCommand("pulumi", "stack", "history", "--json")
+	var history []interface{}
+	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
+		t.Fatalf("Can't unmarshall history json")
+	}
+	assert.Equal(t, 5, len(history), "Stack history doesn't match reality")
 }
 
 func getFileNames(infos []os.FileInfo) []string {

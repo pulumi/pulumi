@@ -12,13 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as minimist from "minimist";
-import * as path from "path";
-
 import * as grpc from "@grpc/grpc-js";
 
 import * as dynamic from "../../dynamic";
-import * as resource from "../../resource";
 import * as runtime from "../../runtime";
 import { version } from "../../version";
 
@@ -324,7 +320,7 @@ function resultIncludingProvider(result: any, props: any): any {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}) {
+function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
@@ -365,9 +361,7 @@ export async function main(args: string[]) {
     if (args.length === 0) {
         console.error("fatal: Missing <engine> address");
         process.exit(-1);
-        return;
     }
-    const engineAddr: string = args[0];
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({

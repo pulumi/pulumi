@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,7 +84,10 @@ type Computed struct {
 // encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
 // output property is a special case of computed, but carries additional semantic meaning.
 type Output struct {
-	Element PropertyValue // the eventual value (type) of the output property.
+	Element      PropertyValue // the value of this output if it is resolved.
+	Known        bool          `json:"-"` // true if this output's value is known.
+	Secret       bool          `json:"-"` // true if this output's value is secret.
+	Dependencies []URN         `json:"-"` // the dependencies associated with this output.
 }
 
 // Secret indicates that the underlying value should be persisted securely.
@@ -105,7 +108,7 @@ type Secret struct {
 // - The ID may be unknown (in which case it will be the unknown property value)
 // - Otherwise, the ID must be a string.
 //
-//nolint: golint
+//nolint: revive
 type ResourceReference struct {
 	URN            URN
 	ID             PropertyValue
@@ -330,23 +333,21 @@ func NewPropertyValueRepl(v interface{},
 	case reflect.Map:
 		// If a map, create a new property map, provided the keys and values are okay.
 		obj := PropertyMap{}
-		for _, key := range rv.MapKeys() {
-			var pk PropertyKey
-			switch k := key.Interface().(type) {
-			case string:
-				pk = PropertyKey(k)
-			case PropertyKey:
-				pk = k
-			default:
-				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
+		for iter := rv.MapRange(); iter.Next(); {
+			key := iter.Key()
+			if key.Kind() != reflect.String {
+				contract.Failf("Unrecognized PropertyMap key type %v", key.Type())
 			}
+
+			pk := PropertyKey(key.String())
 			if replk != nil {
 				if rk, repl := replk(string(pk)); repl {
 					pk = rk
 				}
 			}
-			val := rv.MapIndex(key)
-			pv := NewPropertyValueRepl(val.Interface(), replk, replv)
+
+			val := iter.Value().Interface()
+			pv := NewPropertyValueRepl(val, replk, replv)
 			obj[pk] = pv
 		}
 		return NewObjectProperty(obj)
@@ -364,12 +365,15 @@ func NewPropertyValueRepl(v interface{},
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	return !v.IsNull() && !v.IsOutput()
+	if v.IsOutput() {
+		return v.OutputValue().Known
+	}
+	return !v.IsNull()
 }
 
 // ContainsUnknowns returns true if the property value contains at least one unknown (deeply).
 func (v PropertyValue) ContainsUnknowns() bool {
-	if v.IsComputed() || v.IsOutput() {
+	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
 		return true
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
@@ -392,7 +396,7 @@ func (v PropertyValue) ContainsSecrets() bool {
 	} else if v.IsComputed() {
 		return v.Input().Element.ContainsSecrets()
 	} else if v.IsOutput() {
-		return v.OutputValue().Element.ContainsSecrets()
+		return v.OutputValue().Secret || v.OutputValue().Element.ContainsSecrets()
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
 			if e.ContainsSecrets() {
@@ -530,7 +534,12 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsComputed() {
 		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
-		return "output<" + v.OutputValue().Element.TypeString() + ">"
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).TypeString()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).TypeString()
+		}
+		return v.OutputValue().Element.TypeString()
 	} else if v.IsSecret() {
 		return "secret<" + v.SecretValue().Element.TypeString() + ">"
 	} else if v.IsResourceReference() {
@@ -588,9 +597,16 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.
 func (v PropertyValue) String() string {
-	if v.IsComputed() || v.IsOutput() {
-		// For computed and output properties, show their type followed by an empty object string.
+	if v.IsComputed() {
+		// For computed properties, show the type followed by an empty object string.
 		return fmt.Sprintf("%v{}", v.TypeString())
+	} else if v.IsOutput() {
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).String()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).String()
+		}
+		return v.OutputValue().Element.String()
 	}
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
@@ -619,6 +635,9 @@ const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
 
 // ResourceReferenceSig is the unique resource reference signature.
 const ResourceReferenceSig = "5cf8f73096256a8f31e491e813e4eb8e"
+
+// OutputValueSig is the unique output value signature.
+const OutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

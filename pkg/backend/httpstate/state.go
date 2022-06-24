@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -71,6 +70,9 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 				// If we get an error from the backend, leave `err` set and surface it during
 				// the next request for a lease token.
 				if err != nil {
+					logging.V(3).Infof("error renewing lease: %v", err)
+					err = fmt.Errorf("renewing lease: %w", err)
+
 					ticker.Stop()
 				} else {
 					token = newToken
@@ -166,9 +168,9 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
-		apiEvent, convErr := display.ConvertEngineEvent(event)
+		apiEvent, convErr := display.ConvertEngineEvent(event, false /* showSecrets */)
 		if convErr != nil {
-			return errors.Wrap(convErr, "converting engine event")
+			return fmt.Errorf("converting engine event: %w", convErr)
 		}
 
 		// Each event within an update must have a unique sequence number. Any request to
@@ -291,7 +293,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
-			return nil, errors.Wrap(err, "could not deserialize deployment")
+			return nil, fmt.Errorf("could not deserialize deployment: %w", err)
 		}
 	}
 

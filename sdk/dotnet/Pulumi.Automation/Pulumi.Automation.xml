@@ -12,6 +12,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.DestroyOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Events.CancelEvent">
             <summary>
             <see cref="T:Pulumi.Automation.Events.CancelEvent"/> is emitted when the user initiates a cancellation of the update in progress, or
@@ -307,6 +312,11 @@
             Options controlling the behavior of a <see cref="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.HistoryOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.LocalProgramArgs">
             <summary>
             Description of a stack backed by pre-existing local Pulumi CLI program.
@@ -343,6 +353,9 @@
             <inheritdoc/>
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.Program">
+            <inheritdoc/>
+        </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.Logger">
             <inheritdoc/>
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.EnvironmentVariables">
@@ -590,7 +603,7 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
@@ -632,6 +645,12 @@
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for inline programs. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.LocalWorkspaceOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables">
             <summary>
             Environment values scoped to the current workspace. These will be supplied to every
@@ -656,9 +675,32 @@
             <see cref="M:Pulumi.Automation.LocalWorkspace.SaveStackSettingsAsync(System.String,Pulumi.Automation.StackSettings,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ExactVersion">
+            <summary>
+            If <c>true</c>, force installation of an exact version match (usually >= is accepted).
+            <para/>
+            Defaults to <c>false</c>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ServerUrl">
+            <summary>
+            A URL to download plugins from.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.PreviewOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Plan">
+            <summary>
+            Plan specifies the path where the update plan should be saved.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.PreviewOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.ProjectBackend">
@@ -722,6 +764,12 @@
         <member name="T:Pulumi.Automation.PulumiFn">
             <summary>
             A Pulumi program as an inline function (in process).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <summary>
+            Invoke the appropriate run function on the <see cref="T:Pulumi.IRunner"/> instance. The exit code returned
+            from the appropriate run function should be forwarded here as well.
             </summary>
         </member>
         <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
@@ -788,9 +836,23 @@
             <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
             <param name="stackType">The stack type, which must derive from <see cref="T:Pulumi.Stack"/>.</param>
         </member>
+        <member name="M:Pulumi.Automation.PulumiFnInline.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnServiceProvider.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn`1.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RefreshOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.StackDeployment">
@@ -857,9 +919,30 @@
             Optional callback which is invoked with the engine events
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Color">
+            <summary>
+            Colorize output. Choices are: always, never, raw, auto (default "auto")
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Plan">
+            <summary>
+            Plan specifies the path to an update plan to use for the update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.UpOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Workspace">
@@ -899,6 +982,12 @@
             The inline program <see cref="T:Pulumi.Automation.PulumiFn"/> to be used for Preview/Update operations if any.
             <para/>
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Workspace.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.Workspace.Program"/> is also provided.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.EnvironmentVariables">
@@ -1090,6 +1179,16 @@
             <param name="kind">The kind of plugin e.g. "resource".</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
+        <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
+            <summary>
+            Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+            </summary>
+            <param name="name">The name of the plugin.</param>
+            <param name="version">The version of the plugin e.g. "v1.0.0".</param>
+            <param name="kind">The kind of plugin e.g. "resource".</param>
+            <param name="options">Any additional plugin installation options.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
         <member name="M:Pulumi.Automation.Workspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <summary>
             Removes a plugin from the Workspace matching the specified name and version.
@@ -1132,6 +1231,11 @@
         <member name="P:Pulumi.Automation.WorkspaceStack.Workspace">
             <summary>
             The Workspace the Stack was created from.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.WorkspaceStack.State">
+            <summary>
+            A module for editing the Stack's state.
             </summary>
         </member>
         <member name="M:Pulumi.Automation.WorkspaceStack.CreateAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
@@ -1283,6 +1387,38 @@
             pending when the update was canceled. This command is not
             supported for local backends.
             </summary>
+        </member>
+        <member name="T:Pulumi.Automation.WorkspaceStackState">
+            <summary>
+            Module class for manipulating stack state for a given <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.DeleteAsync(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            This command deletes a resource from a stack’s state, as long as it is safe to do so.
+            The resource is specified by its Pulumi URN.
+            <para/>
+            Resources can’t be deleted if there exist other resources that depend on it or are parented to it.
+            Protected resources will not be deleted unless it is specifically requested using the <paramref name="force"/> flag.
+            </summary>
+            <param name="urn">The Pulumi URN of the resource to be deleted.</param>
+            <param name="force">A boolean indicating whether the deletion should be forced.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Unprotect a resource in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
+            </summary>
+            <param name="urn">The Pulumi URN to be unprotected.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAllAsync(System.Threading.CancellationToken)">
+            <summary>
+            Unprotect all resources in a stack's state.
+            This command clears the ‘protect’ bit on all resources in the stack, allowing those resources to be deleted.
+            </summary>
+            <param name="cancellationToken">A cancellation token.</param>
         </member>
     </members>
 </doc>

@@ -1,7 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -32,14 +31,10 @@ namespace Pulumi
         /// </summary>
         public Config(string? name = null)
         {
-            if (name == null)
-            {
-                name = Deployment.Instance.ProjectName;
-            }
-
+            name ??= Deployment.Instance.ProjectName;
             if (name.EndsWith(":config", StringComparison.Ordinal))
             {
-                name = name[0..^":config".Length];
+                name = name[..^":config".Length];
             }
 
             _name = name;
@@ -59,11 +54,12 @@ namespace Pulumi
         private string? GetImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
             var fullKey = FullKey(key);
-            if (use != null && Deployment.InternalInstance.IsConfigSecret(fullKey))
-            {
-                Debug.Assert(insteadOf != null);
-                Log.Warn($"Configuration '{fullKey}' value is a secret; use `{use}` instead of `{insteadOf}`");
-            }
+            // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+            // if (use != null && Deployment.InternalInstance.IsConfigSecret(fullKey))
+            // {
+            //     Debug.Assert(insteadOf != null);
+            //     Log.Warn($"Configuration '{fullKey}' value is a secret; use `{use}` instead of `{insteadOf}`");
+            // }
             return Deployment.InternalInstance.GetConfig(fullKey);
         }
 
@@ -83,9 +79,13 @@ namespace Pulumi
         private bool? GetBooleanImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
             var v = GetImpl(key, use, insteadOf);
-            return v == null ? default(bool?) :
-                   v == "true" ? true :
-                   v == "false" ? false : throw new ConfigTypeException(FullKey(key), v, nameof(Boolean));
+            return v switch
+            {
+                null => default(bool?),
+                "true" => true,
+                "false" => false,
+                _ => throw new ConfigTypeException(FullKey(key), v, nameof(Boolean))
+            };
         }
 
         /// <summary>
@@ -154,8 +154,7 @@ namespace Pulumi
         /// <summary>
         /// Loads an optional configuration value, as an object, by its key, marking it as a secret
         /// or null if it doesn't exist. This works by taking the value associated with <paramref
-        /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string,
-        /// JsonSerializerOptions)"/>.
+        /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
         /// </summary>
         public Output<T>? GetSecretObject<T>(string key)
         {
@@ -237,8 +236,8 @@ namespace Pulumi
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
         /// object, marking it as a secret. If it doesn't exist, or the configuration value cannot
-        /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string,
-        /// JsonSerializerOptions)"/>. an error is thrown.
+        /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>,
+        /// an error is thrown.
         /// </summary>
         public Output<T> RequireSecretObject<T>(string key)
             => Output.CreateSecret(RequireObjectImpl<T>(key));

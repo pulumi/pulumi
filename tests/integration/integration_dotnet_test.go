@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build dotnet || all
 // +build dotnet all
 
 package ints
@@ -13,6 +14,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +24,16 @@ func TestEmptyDotNet(t *testing.T) {
 		Dir:          filepath.Join("empty", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
+	})
+}
+
+// TestPrintfDotNet tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("printf", "dotnet"),
+		Dependencies:           []string{"Pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
 	})
 }
 
@@ -123,6 +135,8 @@ func TestConfigBasicDotNet(t *testing.T) {
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
 func TestConfigSecretsWarnDotNet(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_secrets_warn", "dotnet"),
 		Dependencies: []string{"Pulumi"},
@@ -242,6 +256,7 @@ func TestConfigSecretsWarnDotNet(t *testing.T) {
 
 // Tests that stack references work in .NET.
 func TestStackReferenceDotnet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7869] flaky
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
@@ -308,6 +323,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 
 // Tests a resource with a large (>4mb) string prop in .Net
 func TestLargeResourceDotNet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7832]
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{"Pulumi"},
 		Dir:          filepath.Join("large_resource", "dotnet"),
@@ -316,6 +332,9 @@ func TestLargeResourceDotNet(t *testing.T) {
 
 // Test remote component construction in .NET.
 func TestConstructDotnet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7355] flaky test
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -335,7 +354,6 @@ func TestConstructDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -344,8 +362,11 @@ func TestConstructDotnet(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -357,8 +378,10 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 		Env:          env,
 		Dir:          filepath.Join("construct_component", "dotnet"),
 		Dependencies: []string{"Pulumi"},
-		Quick:        true,
-		NoParallel:   true, // avoid contention for Dir
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -375,12 +398,22 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 
 					urns[string(res.URN.Name())] = res.URN
 					switch res.URN.Name() {
-					case "child-a", "child-b":
+					case "child-a":
 						for _, deps := range res.PropertyDependencies {
 							assert.Empty(t, deps)
 						}
+					case "child-b":
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -420,6 +453,8 @@ func TestConstructSlowDotnet(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainDotnet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -439,7 +474,6 @@ func TestConstructPlainDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -448,8 +482,11 @@ func TestConstructPlainDotnet(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -462,12 +499,92 @@ func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
 		Env:          env,
 		Dir:          filepath.Join("construct_component_plain", "dotnet"),
 		Dependencies: []string{"Pulumi"},
-		NoParallel:   true, // avoid contention for Dir
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownDotnet(t *testing.T) {
+	testConstructUnknown(t, "dotnet", "Pulumi")
+}
+
+// Test methods on remote components.
+func TestConstructMethodsDotnet(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join("construct_component_methods", "dotnet"),
+				Dependencies: []string{"Pulumi"},
+				Quick:        true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownDotnet(t *testing.T) {
+	testConstructMethodsUnknown(t, "dotnet", "Pulumi")
+}
+
+func TestConstructMethodsErrorsDotnet(t *testing.T) {
+	testConstructMethodsErrors(t, "dotnet", "Pulumi")
+}
+
+func TestConstructProviderDotnet(t *testing.T) {
+	t.Parallel()
+
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, "dotnet"),
+				Dependencies: []string{"Pulumi"},
+				Quick:        true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -477,4 +594,26 @@ func TestGetResourceDotnet(t *testing.T) {
 		Dir:                      filepath.Join("get_resource", "dotnet"),
 		AllowEmptyPreviewChanges: true,
 	})
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutDotnet(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join("about", "dotnet")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	_, stderr := e.RunCommand("pulumi", "about")
+	// This one doesn't have a current stack. Assert that we caught it.
+	assert.Contains(t, stderr, "No current stack")
 }

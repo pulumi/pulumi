@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ import {
     OutputMap,
     ProjectSettings,
     Stack,
-    validatePulumiVersion,
+    parseAndValidatePulumiVersion,
 } from "../../automation";
-import { Config } from "../../index";
+import { Config, output } from "../../index";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -131,6 +131,32 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     }));
+    it(`config_flag_like`, asyncTest(async () => {
+        const projectName = "config_flag_like";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+        await stack.setConfig("key", {value: "-value"});
+        await stack.setConfig("secret-key", {value: "-value", secret: true});
+        const values = await stack.getAllConfig();
+        assert.strictEqual(values["config_flag_like:key"].value, "-value");
+        assert.strictEqual(values["config_flag_like:key"].secret, false);
+        assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
+        assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
+        await stack.setAllConfig({
+            "key": {value: "-value2"},
+            "secret-key": {value: "-value2", secret: true},
+        });
+        const values2 = await stack.getAllConfig();
+        assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
+        assert.strictEqual(values2["config_flag_like:key"].secret, false);
+        assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
+        assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
+    }));
     it(`nested_config`, asyncTest(async () => {
         if (getTestOrg() !== "pulumi-test") {
             return;
@@ -194,7 +220,8 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(typeof (info), "undefined");
         await ws.removeStack(stackName);
     }));
-    it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#8220] understand why this test was flaky
+    xit(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj");
         const stack = await LocalWorkspace.createStack({ stackName, workDir });
@@ -340,7 +367,9 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
-    it(`has secret config warnings`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+    // Temporarily skipping test until we've re-enabled the warning.
+    it.skip(`has secret config warnings`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
 
@@ -500,7 +529,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
-    it(`imports and exports stacks`, asyncTest(async() => {
+    it(`imports and exports stacks`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -534,7 +563,8 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     }));
-    it(`supports stack outputs`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#8061] flaky test
+    xit(`supports stack outputs`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -604,6 +634,38 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
+    it(`detects inline programs with side by side pulumi and throws an error`, asyncTest(async () => {
+
+        const program = async () => {
+            // clear pulumi/pulumi from require cache
+            delete require.cache[require.resolve("../../runtime")];
+            delete require.cache[require.resolve("../../runtime/config")];
+            delete require.cache[require.resolve("../../runtime/settings")];
+            // load up a fresh instance of pulumi
+            const p1 = require("../../runtime/settings");
+            // do some work that happens to observe runtime options with the new instance
+            p1.monitorSupportsSecrets();
+            return {
+                // export an output from originally pulumi causing settings to be observed again (boom).
+                test: output("original_pulumi"),
+            };
+        };
+        const projectName = "inline_node_sxs";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await assert.rejects(stack.up(), (err: Error) => {
+            return err.stack!.indexOf("Detected multiple versions of '@pulumi/pulumi'") >= 0;
+        });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
     it(`sets pulumi version`, asyncTest(async () => {
         const ws = await LocalWorkspace.create({});
         assert(ws.pulumiVersion);
@@ -613,8 +675,8 @@ describe("LocalWorkspace", () => {
         const projectName = "correct_project";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
-            {stackName, projectName, program: async() => { return; }},
-            {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
+            { stackName, projectName, program: async () => { return; } },
+            { workDir: upath.joinSafe(__dirname, "data", "correct_project") },
         );
         const projectSettings = await stack.workspace.projectSettings();
         assert.strictEqual(projectSettings.name, "correct_project");
@@ -624,7 +686,7 @@ describe("LocalWorkspace", () => {
     }));
     it(`correctly sets config on multiple stacks concurrently`, asyncTest(async () => {
         const dones = [];
-        const stacks = [ "dev", "dev2", "dev3", "dev4", "dev5" ];
+        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"];
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
         const ws = await LocalWorkspace.create({
             workDir,
@@ -645,7 +707,7 @@ describe("LocalWorkspace", () => {
             const s = stacks[i];
             dones.push((async () => {
                 for (let j = 0; j < 20; j++) {
-                    await ws.setConfig(s, "var-" + j, { value: ((x*20)+j).toString()});
+                    await ws.setConfig(s, "var-" + j, { value: ((x * 20) + j).toString() });
                 }
             })());
         }
@@ -663,84 +725,95 @@ describe("LocalWorkspace", () => {
     }));
 });
 
+const MAJOR = /Major version mismatch./;
+const MINIMUM = /Minimum version requirement failed./;
+const PARSE = /Failed to parse/;
+
 describe(`checkVersionIsValid`, () => {
     const versionTests = [
         {
             name: "higher_major",
             currentVersion: "100.0.0",
-            expectError: true,
+            expectError: MAJOR,
             optOut: false,
         },
         {
             name: "lower_major",
             currentVersion: "1.0.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "higher_minor",
             currentVersion: "v2.22.0",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "lower_minor",
             currentVersion: "v2.1.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "equal_minor_higher_patch",
             currentVersion: "v2.21.2",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "equal_minor_equal_patch",
             currentVersion: "v2.21.1",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "equal_minor_lower_patch",
             currentVersion: "v2.21.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "equal_minor_equal_patch_prerelease",
             // Note that prerelease < release so this case will error
             currentVersion: "v2.21.1-alpha.1234",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "opt_out_of_check_would_fail_otherwise",
             currentVersion: "v2.20.0",
-            expectError: false,
+            expectError: null,
             optOut: true,
         },
         {
             name: "opt_out_of_check_would_succeed_otherwise",
             currentVersion: "v2.22.0",
-            expectError: false,
+            expectError: null,
+            optOut: true,
+        },
+        {
+            name: "invalid_version",
+            currentVersion: "invalid",
+            expectError: PARSE,
+            optOut: false,
+        },
+        {
+            name: "invalid_version_opt_out",
+            currentVersion: "invalid",
+            expectError: null,
             optOut: true,
         },
     ];
     const minVersion = new semver.SemVer("v2.21.1");
 
     versionTests.forEach(test => {
-        it(`validates ${test.currentVersion}`, () => {
-            const currentVersion = new semver.SemVer(test.currentVersion);
-
+        it(`validates ${test.name} (${test.currentVersion})`, () => {
+            const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
             if (test.expectError) {
-                if (minVersion.major < currentVersion.major) {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Major version mismatch./);
-                } else {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Minimum version requirement failed./);
-                }
+                assert.throws(validate, test.expectError);
             } else {
-                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion, test.optOut));
+                assert.doesNotThrow(validate);
             }
         });
     });

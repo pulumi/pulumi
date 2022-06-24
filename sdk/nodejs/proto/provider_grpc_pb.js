@@ -33,6 +33,28 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CallRequest(arg) {
+  if (!(arg instanceof provider_pb.CallRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CallRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CallRequest(buffer_arg) {
+  return provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CallResponse(arg) {
+  if (!(arg instanceof provider_pb.CallResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CallResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CallResponse(buffer_arg) {
+  return provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CheckRequest(arg) {
   if (!(arg instanceof provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
@@ -198,6 +220,17 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_PluginAttach(arg) {
+  if (!(arg instanceof plugin_pb.PluginAttach)) {
+    throw new Error('Expected argument of type pulumirpc.PluginAttach');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PluginAttach(buffer_arg) {
+  return plugin_pb.PluginAttach.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -330,6 +363,18 @@ streamInvoke: {
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
+  // Call dynamically executes a method in the provider associated with a component resource.
+call: {
+    path: '/pulumirpc.ResourceProvider/Call',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.CallRequest,
+    responseType: provider_pb.CallResponse,
+    requestSerialize: serialize_pulumirpc_CallRequest,
+    requestDeserialize: deserialize_pulumirpc_CallRequest,
+    responseSerialize: serialize_pulumirpc_CallResponse,
+    responseDeserialize: deserialize_pulumirpc_CallResponse,
+  },
   // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
 // inputs returned by a call to Check should preserve the original representation of the properties as present in
@@ -420,7 +465,11 @@ construct: {
     responseSerialize: serialize_pulumirpc_ConstructResponse,
     responseDeserialize: deserialize_pulumirpc_ConstructResponse,
   },
-  // Cancel signals the provider to abort all outstanding resource operations.
+  // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
+// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
+// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
+// to the host to decide how long to wait after Cancel is called before (e.g.)
+// hard-closing any gRPC connection.
 cancel: {
     path: '/pulumirpc.ResourceProvider/Cancel',
     requestStream: false,
@@ -443,6 +492,18 @@ getPluginInfo: {
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
     responseDeserialize: deserialize_pulumirpc_PluginInfo,
+  },
+  // Attach sends the engine address to an already running plugin.
+attach: {
+    path: '/pulumirpc.ResourceProvider/Attach',
+    requestStream: false,
+    responseStream: false,
+    requestType: plugin_pb.PluginAttach,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_PluginAttach,
+    requestDeserialize: deserialize_pulumirpc_PluginAttach,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 

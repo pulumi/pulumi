@@ -1,7 +1,6 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf;
 using Pulumirpc;
@@ -22,23 +21,23 @@ namespace Pulumi
         private async Task RegisterResourceOutputsAsync(
             Resource resource, Output<IDictionary<string, object?>> outputs)
         {
-            var opLabel = $"monitor.registerResourceOutputs(...)";
+            var opLabel = "monitor.registerResourceOutputs(...)";
 
             // The registration could very well still be taking place, so we will need to wait for its URN.
             // Additionally, the output properties might have come from other resources, so we must await those too.
-            var urn = await resource.Urn.GetValueAsync().ConfigureAwait(false);
-            var props = await outputs.GetValueAsync().ConfigureAwait(false);
+            var urn = await resource.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+            var props = await outputs.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
 
-            var serialized = await SerializeAllPropertiesAsync(
-                opLabel, props, await MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+            var keepResources = await MonitorSupportsResourceReferences().ConfigureAwait(false);
+            var serialized = await SerializeAllPropertiesAsync(opLabel, props, keepResources).ConfigureAwait(false);
             Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +
-                (_excessiveDebugOutput ? $", outputs ={JsonFormatter.Default.Format(serialized)}" : ""));
+                (_excessiveDebugOutput ? $", outputs={JsonFormatter.Default.Format(serialized)}" : ""));
 
             await Monitor.RegisterResourceOutputsAsync(new RegisterResourceOutputsRequest
             {
                 Urn = urn,
                 Outputs = serialized,
-            });
+            }).ConfigureAwait(false);
         }
     }
 }

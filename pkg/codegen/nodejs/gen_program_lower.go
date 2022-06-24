@@ -3,8 +3,8 @@ package nodejs
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -192,12 +192,12 @@ func (g *generator) lowerProxyApplies(expr model.Expression) (model.Expression, 
 	rewriter := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to the apply intrinsic.
 		apply, ok := expr.(*model.FunctionCallExpression)
-		if !ok || apply.Name != hcl2.IntrinsicApply {
+		if !ok || apply.Name != pcl.IntrinsicApply {
 			return expr, nil
 		}
 
 		// Parse the apply call.
-		args, then := hcl2.ParseApplyCall(apply)
+		args, then := pcl.ParseApplyCall(apply)
 
 		parameters := codegen.Set{}
 		for _, p := range then.Parameters {
@@ -231,7 +231,7 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != hcl2.Invoke {
+		if !ok || call.Name != pcl.Invoke {
 			return x, nil
 		}
 

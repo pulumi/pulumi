@@ -43,17 +43,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ 1.16.x ]
+        go-version: [ 1.17.x ]
         node-version: [ 14.x ]
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Add GOBIN to PATH
-        run: |
-          mkdir -p "$(go env GOPATH)/bin"
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -61,9 +58,11 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.31
+          cache: enable
       - name: Check out source code
         uses: actions/checkout@v2
         with:
@@ -97,8 +96,21 @@ jobs:
           # If generating docs for more providers here, be sure to update
           # the description of the draft PR that is opened in the next step.
           pushd docs
+
+          pushd tools/resourcedocsgen
+          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
+          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
+          popd
+
           ./scripts/gen_resource_docs.sh aws true
           ./scripts/gen_resource_docs.sh kubernetes true
+
+          # Undo the changes to the go.mod and go.sum files since we don't want the PR
+          # to contain local overrides or the PR build in docs repo would fail.
+          pushd tools/resourcedocsgen
+          git checkout .
+          popd
+
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"
@@ -121,8 +133,8 @@ jobs:
           title: Preview resource docs changes for pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
-
             By default, this PR contains regenerated docs for AWS and Kubernetes only.
+            After review, this PR should be manually closed.
           # Assign the draft PR to the author of the current PR.
           assignees: ${{ github.event.pull_request.user.login }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}

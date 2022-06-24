@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -30,7 +31,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
@@ -41,12 +42,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -75,6 +79,10 @@ func disableResourceReferences() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
 }
 
+func disableOutputValues() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_OUTPUT_VALUES"))
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.
@@ -95,7 +103,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		return false, errors.Wrapf(err, "could not get cloud url")
+		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
 	return filestate.IsFileStateBackendURL(url), nil
@@ -108,7 +116,7 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not get cloud url")
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
 	if filestate.IsFileStateBackendURL(url) {
@@ -180,7 +188,7 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
 			parsed, err := url.Parse(secretsProvider)
 			if err != nil {
-				return errors.Wrap(err, "failed to parse secrets provider URL")
+				return fmt.Errorf("failed to parse secrets provider URL: %w", err)
 			}
 
 			if parsed.Query().Get("algorithm") == "" {
@@ -211,7 +219,7 @@ func createStack(
 		if _, ok := err.(*backend.OverStackLimitError); ok {
 			return nil, err
 		}
-		return nil, errors.Wrapf(err, "could not create stack")
+		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
 	if err := createSecretsManager(b, stackRef, secretsProvider,
@@ -268,7 +276,7 @@ func requireStack(
 		return createStack(b, stackRef, nil, setCurrent, "")
 	}
 
-	return nil, errors.Errorf("no stack named '%s' found", stackName)
+	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
 func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
@@ -312,13 +320,27 @@ func chooseStack(
 
 	// List stacks as available options.
 	project := string(proj.Name)
-	summaries, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project})
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not query backend for stacks")
+
+	var (
+		allSummaries []backend.StackSummary
+		inContToken  backend.ContinuationToken
+	)
+	for {
+		summaries, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project}, inContToken)
+		if err != nil {
+			return nil, fmt.Errorf("could not query backend for stacks: %w", err)
+		}
+
+		allSummaries = append(allSummaries, summaries...)
+
+		if outContToken == nil {
+			break
+		}
+		inContToken = outContToken
 	}
 
 	var options []string
-	for _, summary := range summaries {
+	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)
 	}
@@ -386,15 +408,15 @@ func chooseStack(
 	// With the stack name selected, look it up from the backend.
 	stackRef, err := b.ParseStackReference(option)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing selected stack")
+		return nil, fmt.Errorf("parsing selected stack: %w", err)
 	}
 	// GetStack may return (nil, nil) if the stack isn't found.
 	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting selected stack")
+		return nil, fmt.Errorf("getting selected stack: %w", err)
 	}
 	if stack == nil {
-		return nil, errors.Errorf("no stack named '%s' found", stackRef)
+		return nil, fmt.Errorf("no stack named '%s' found", stackRef)
 	}
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
@@ -419,7 +441,7 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 	}
 
 	if err = saveConfig(s, commandLineConfig); err != nil {
-		return errors.Wrap(err, "saving config")
+		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil
 }
@@ -454,8 +476,9 @@ func readProject() (*workspace.Project, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)", pwd)
+		return nil, "", fmt.Errorf("failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w", pwd, err)
+
 	} else if path == "" {
 		return nil, "", fmt.Errorf(
 			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
@@ -463,7 +486,7 @@ func readProject() (*workspace.Project, string, error) {
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "failed to load Pulumi project located at %q", path)
+		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
 	return proj, filepath.Dir(path), nil
@@ -481,14 +504,15 @@ func readPolicyProject() (*workspace.PolicyPackProject, string, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectPolicyPackPathFrom(pwd)
 	if err != nil {
-		return nil, "", "", errors.Wrapf(err, "failed to find current Pulumi project because of "+
-			"an error when searching for the PulumiPolicy.yaml file (searching upwards from %s)", pwd)
+		return nil, "", "", fmt.Errorf("failed to find current Pulumi project because of "+
+			"an error when searching for the PulumiPolicy.yaml file (searching upwards from %s)"+": %w", pwd, err)
+
 	} else if path == "" {
 		return nil, "", "", fmt.Errorf("no PulumiPolicy.yaml project file found (searching upwards from %s)", pwd)
 	}
 	proj, err := workspace.LoadPolicyPack(path)
 	if err != nil {
-		return nil, "", "", errors.Wrapf(err, "failed to load Pulumi policy project located at %q", path)
+		return nil, "", "", fmt.Errorf("failed to load Pulumi policy project located at %q: %w", path, err)
 	}
 
 	return proj, path, filepath.Dir(path), nil
@@ -522,7 +546,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			ee.Stderr = stderr.Bytes()
 		}
-		return false, errors.Wrapf(err, "'git status' failed")
+		return false, fmt.Errorf("'git status' failed: %w", err)
 	}
 
 	return bool(anyOutput), nil
@@ -554,7 +578,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
 	repo, err := gitutil.GetGitRepository(repoRoot)
 	if err != nil {
-		return errors.Wrapf(err, "detecting Git repository")
+		return fmt.Errorf("detecting Git repository: %w", err)
 	}
 	if repo == nil {
 		return nil
@@ -578,7 +602,7 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 	// Get the remote URL for this repo.
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
 	if err != nil {
-		return errors.Wrap(err, "detecting Git remote URL")
+		return fmt.Errorf("detecting Git remote URL: %w", err)
 	}
 	if remoteURL == "" {
 		return nil
@@ -597,7 +621,7 @@ func addVCSMetadataToEnvironment(remoteURL string, env map[string]string) error 
 	// We don't require a cloud-hosted VCS, so swallow errors.
 	vcsInfo, err := gitutil.TryGetVCSInfo(remoteURL)
 	if err != nil {
-		return errors.Wrap(err, "detecting VCS project information")
+		return fmt.Errorf("detecting VCS project information: %w", err)
 	}
 	env[backend.VCSRepoOwner] = vcsInfo.Owner
 	env[backend.VCSRepoName] = vcsInfo.Repo
@@ -615,14 +639,14 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	// Commit at HEAD
 	head, err := repo.Head()
 	if err != nil {
-		return errors.Wrap(err, "getting repository HEAD")
+		return fmt.Errorf("getting repository HEAD: %w", err)
 	}
 
 	hash := head.Hash()
 	m.Environment[backend.GitHead] = hash.String()
 	commit, commitErr := repo.CommitObject(hash)
 	if commitErr != nil {
-		return errors.Wrap(commitErr, "getting HEAD commit info")
+		return fmt.Errorf("getting HEAD commit info: %w", commitErr)
 	}
 
 	// If in detached head, will be "HEAD", and fallback to use value from CI/CD system if possible.
@@ -653,7 +677,7 @@ func addGitCommitMetadata(repo *git.Repository, repoRoot string, m *backend.Upda
 	// If the worktree is dirty, set a bit, as this could be a mistake.
 	isDirty, err := isGitWorkTreeDirty(repoRoot)
 	if err != nil {
-		return errors.Wrapf(err, "checking git worktree dirty state")
+		return fmt.Errorf("checking git worktree dirty state: %w", err)
 	}
 	m.Environment[backend.GitDirty] = strconv.FormatBool(isDirty)
 
@@ -775,13 +799,24 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
+func makeJSONString(v interface{}) (string, error) {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(v); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
-	out, err := json.MarshalIndent(v, "", "  ")
+	jsonStr, err := makeJSONString(v)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(out))
+	fmt.Print(jsonStr)
 	return nil
 }
 
@@ -808,5 +843,107 @@ func checkDeploymentVersionError(err error, stackName string) error {
 		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 			"Please update your version of the Pulumi CLI", stackName)
 	}
-	return errors.Wrap(err, "could not deserialize deployment")
+	return fmt.Errorf("could not deserialize deployment: %w", err)
+}
+
+func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
+	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
+	// refresh is assigned the empty string by default to distinguish the difference between
+	// when the user actually interacted with the cli argument (`NoOptDefVal`)
+	// and the default functionality today
+	if refresh != "" {
+		refreshDetails, boolErr := strconv.ParseBool(refresh)
+		if boolErr != nil {
+			// the user has passed a --refresh but with a random value that we don't support
+			return false, errors.New("unable to determine value for --refresh")
+		}
+		return refreshDetails, nil
+	}
+
+	// the user has not specifically passed an argument on the cli to refresh but has set a Project option to refresh
+	if proj.Options != nil && proj.Options.Refresh == "always" {
+		return true, nil
+	}
+
+	// the default functionality right now is to always skip a refresh
+	return false, nil
+}
+
+func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets bool) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(f)
+
+	deploymentPlan, err := stack.SerializePlan(plan, enc, showSecrets)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "    ")
+	return encoder.Encode(deploymentPlan)
+}
+
+func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(f)
+
+	var deploymentPlan apitype.DeploymentPlanV1
+	if err := json.NewDecoder(f).Decode(&deploymentPlan); err != nil {
+		return nil, err
+	}
+	return stack.DeserializePlan(deploymentPlan, dec, enc)
+}
+
+func buildStackName(stackName string) (string, error) {
+	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
+	if strings.Contains(stackName, "/") {
+		return stackName, nil
+	}
+
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+	if err != nil {
+		return "", err
+	}
+
+	if defaultOrg != "" {
+		return fmt.Sprintf("%s/%s", defaultOrg, stackName), nil
+	}
+
+	return stackName, nil
+}
+
+// we only want to log a secrets decryption for a service backend project
+// we will allow any secrets provider to be used (service or self managed)
+// we will log the message and not worry about the response. The types
+// of messages we will log here will range from single secret decryption events
+// to requesting a list of secrets in an individual event e.g. stack export
+// the logging event will only happen during the `--show-secrets` path within the cli
+func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
+	secretName, commandName string) {
+	if stack, ok := backend.(httpstate.Stack); ok {
+		// we only want to do something if this is a service backend
+		if be, ok := stack.Backend().(httpstate.Backend); ok {
+			client := be.Client()
+			if client != nil {
+				id := backend.(httpstate.Stack).StackIdentifier()
+				// we don't really care if these logging calls fail as they should not stop the execution
+				if secretName != "" {
+					contract.Assert(commandName == "")
+					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
+					contract.IgnoreError(err)
+				}
+
+				if commandName != "" {
+					contract.Assert(secretName == "")
+					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
+					contract.IgnoreError(err)
+				}
+			}
+		}
+	}
 }

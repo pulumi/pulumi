@@ -12,9 +12,8 @@ namespace Pulumi
 {
     internal static class ResourcePackages
     {
-        private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
-            = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
-                () => DiscoverResourceTypes());
+        private static readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> _resourceTypes
+            = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(DiscoverResourceTypes);
 
         internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
         {
@@ -29,7 +28,7 @@ namespace Pulumi
             var constructorInfo = resourceType.GetConstructors().Single(c => c.GetParameters().Length == 3);
 
             var resourceOptions = typeof(CustomResource).IsAssignableFrom(resourceType) ?
-                (ResourceOptions)new CustomResourceOptions { Urn = urn } :
+                new CustomResourceOptions { Urn = urn } :
                 (ResourceOptions)new ComponentResourceOptions { Urn = urn };
 
             resource = (Resource)constructorInfo.Invoke(new[] { urnName, (object?)null, resourceOptions });
@@ -38,8 +37,8 @@ namespace Pulumi
 
         internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
         {
-            var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version) : new SemVersion(0);
-            var yes = ResourceTypes.Value.TryGetValue(name, out var types);
+            var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version, SemVersionStyles.Any) : new SemVersion(0);
+            var yes = _resourceTypes.Value.TryGetValue(name, out var types);
             if (!yes)
             {
                 type = null;
@@ -48,7 +47,7 @@ namespace Pulumi
 
             var matches =
                     from vt in types
-                    let resourceVersion = !string.IsNullOrEmpty(vt.Item1) ? SemVersion.Parse(vt.Item1) : minimalVersion
+                    let resourceVersion = !string.IsNullOrEmpty(vt.Item1) ? SemVersion.Parse(vt.Item1, SemVersionStyles.Any) : minimalVersion
                     where resourceVersion >= minimalVersion
                     where (string.IsNullOrEmpty(version) || vt.Item1 == null || minimalVersion.Major == resourceVersion.Major)
                     orderby resourceVersion descending
@@ -93,7 +92,7 @@ namespace Pulumi
 
             while (assembliesToCheck.Any())
             {
-                Assembly assemblyToCheck = assembliesToCheck.Dequeue();
+                var assemblyToCheck = assembliesToCheck.Dequeue();
                 if (yieldedAssemblies.Contains(assemblyToCheck.FullName!))
                     continue;
 

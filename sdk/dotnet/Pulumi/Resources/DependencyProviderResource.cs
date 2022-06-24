@@ -14,15 +14,9 @@ namespace Pulumi
     internal sealed class DependencyProviderResource : ProviderResource
     {
         public DependencyProviderResource(string reference)
-            : base(package: "", name: "", args: ResourceArgs.Empty, dependency: true)
+            : base(package: GetPackage(reference), name: "", args: ResourceArgs.Empty, dependency: true)
         {
-            int lastSep = reference.LastIndexOf("::", StringComparison.Ordinal);
-            if (lastSep == -1)
-            {
-                throw new ArgumentException($"Expected \"::\" in provider reference ${reference}.");
-            }
-            string urn = reference.Substring(0, lastSep);
-            string id = reference.Substring(lastSep + 2);
+            var (urn, id) = ParseReference(reference);
 
             var resources = ImmutableHashSet.Create<Resource>(this);
 
@@ -31,6 +25,30 @@ namespace Pulumi
 
             var idData = OutputData.Create(resources, id, isKnown: true, isSecret: false);
             this.Id = new Output<string>(Task.FromResult(idData));
+        }
+
+        private static string GetPackage(string reference)
+        {
+            var (urn, _) = ParseReference(reference);
+            var urnParts = urn.Split("::");
+            var qualifiedType = urnParts[2];
+            var qualifiedTypeParts = qualifiedType.Split('$');
+            var type = qualifiedTypeParts[^1];
+            var typeParts = type.Split(':');
+            // type will be "pulumi:providers:<package>" and we want the last part.
+            return typeParts.Length > 2 ? typeParts[2] : "";
+        }
+
+        private static (string Urn, string Id) ParseReference(string reference)
+        {
+            var lastSep = reference.LastIndexOf("::", StringComparison.Ordinal);
+            if (lastSep == -1)
+            {
+                throw new ArgumentException($"Expected \"::\" in provider reference ${reference}.");
+            }
+            var urn = reference[..lastSep];
+            var id = reference[(lastSep + 2)..];
+            return (urn, id);
         }
     }
 }

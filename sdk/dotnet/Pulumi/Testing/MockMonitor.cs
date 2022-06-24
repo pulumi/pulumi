@@ -30,7 +30,7 @@ namespace Pulumi.Testing
             return Task.FromResult(new SupportsFeatureResponse { HasSupport = hasSupport });
         }
 
-        public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
+        public async Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request)
         {
             var args = ToDictionary(request.Args);
 
@@ -47,7 +47,7 @@ namespace Pulumi.Testing
                 }
                 return new InvokeResponse { Return = await SerializeAsync(registeredResource).ConfigureAwait(false) };
             }
-            
+
             var result = await _mocks.CallAsync(new MockCallArgs
                 {
                     Token = request.Tok,
@@ -56,6 +56,21 @@ namespace Pulumi.Testing
                 })
                 .ConfigureAwait(false);
             return new InvokeResponse { Return = await SerializeAsync(result).ConfigureAwait(false) };
+        }
+
+        public async Task<CallResponse> CallAsync(CallRequest request)
+        {
+            // For now, we'll route both Invoke and Call through IMocks.CallAsync.
+            var args = ToDictionary(request.Args);
+
+            var result = await _mocks.CallAsync(new MockCallArgs
+                {
+                    Token = request.Tok,
+                    Args = args,
+                    Provider = request.Provider,
+                })
+                .ConfigureAwait(false);
+            return new CallResponse { Return = await SerializeAsync(result).ConfigureAwait(false) };
         }
 
         public async Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request)
@@ -151,7 +166,7 @@ namespace Pulumi.Testing
                 var parentType = qualifiedType.Split("$").First();
                 type = parentType + "$" + type;
             }
-            return "urn:pulumi:" + string.Join("::", new[] { Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name });
+            return "urn:pulumi:" + string.Join("::", Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name);
         }
 
         private static ImmutableDictionary<string, object> ToDictionary(Struct s)

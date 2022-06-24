@@ -31,13 +31,15 @@ import (
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type     tokens.Type     // The type token for the resource. Required.
-	Name     tokens.QName    // The name of the resource. Required.
-	ID       resource.ID     // The ID of the resource. Required.
-	Parent   resource.URN    // The parent of the resource, if any.
-	Provider resource.URN    // The specific provider to use for the resource, if any.
-	Version  *semver.Version // The provider version to use for the resource, if any.
-	Protect  bool            // Whether to mark the resource as protected after import
+	Type              tokens.Type     // The type token for the resource. Required.
+	Name              tokens.QName    // The name of the resource. Required.
+	ID                resource.ID     // The ID of the resource. Required.
+	Parent            resource.URN    // The parent of the resource, if any.
+	Provider          resource.URN    // The specific provider to use for the resource, if any.
+	Version           *semver.Version // The provider version to use for the resource, if any.
+	PluginDownloadURL string          // The provider PluginDownloadURL to use for the resource, if any.
+	Protect           bool            // Whether to mark the resource as protected after import
+	Properties        []string        // Which properties to include (Defaults to required properties)
 }
 
 // ImportOptions controls the import process.
@@ -97,6 +99,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		source:       NewErrorSource(projectName),
 		preview:      preview,
 		providers:    reg,
+		newPlans:     newResourcePlan(target.Config),
 	}, nil
 }
 
@@ -163,9 +166,10 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
-	urn := resource.NewURN(stackName, projectName, "", typ, tokens.QName(name))
+	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "")
+		nil, false, nil, nil, nil, "", 0, false)
+	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
 	}
@@ -199,7 +203,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, result.Error("incorrect package type specified"), false
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
+		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -239,15 +243,19 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {
-			inputs["version"] = resource.NewStringProperty(v.String())
+			providers.SetProviderVersion(inputs, v)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false)
+		if url := req.PluginDownloadURL(); url != "" {
+			providers.SetProviderURL(inputs, url)
+		}
+		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, 0)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "")
+			nil, nil, nil, "", 0, false)
+		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, nil, false
 		}
@@ -322,7 +330,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		providerURN := imp.Provider
 		if providerURN == "" {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
+			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
@@ -333,7 +341,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "")
+			false, nil, nil, provider, nil, false, nil, nil, nil, "", 1, false)
 		steps = append(steps, newImportDeploymentStep(i.deployment, new))
 	}
 

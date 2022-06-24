@@ -1,16 +1,17 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using Semver;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
+using Semver;
 
 namespace Pulumi.Automation
 {
@@ -35,7 +36,7 @@ namespace Pulumi.Automation
         private readonly LocalSerializer _serializer = new LocalSerializer();
         private readonly bool _ownsWorkingDir;
         private readonly Task _readyTask;
-        private static readonly SemVersion _minimumVersion = SemVersion.Parse("3.1.0");
+        private static readonly SemVersion _minimumVersion = new SemVersion(3, 1, 0);
 
         /// <inheritdoc/>
         public override string WorkDir { get; }
@@ -43,15 +44,18 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override string? PulumiHome { get; }
 
-        private SemVersion? pulumiVersion;
+        private SemVersion? _pulumiVersion;
         /// <inheritdoc/>
-        public override string PulumiVersion => pulumiVersion?.ToString() ?? throw new InvalidOperationException("Failed to get Pulumi version.");
+        public override string PulumiVersion => _pulumiVersion?.ToString() ?? throw new InvalidOperationException("Failed to get Pulumi version.");
 
         /// <inheritdoc/>
         public override string? SecretsProvider { get; }
 
         /// <inheritdoc/>
         public override PulumiFn? Program { get; set; }
+
+        /// <inheritdoc/>
+        public override ILogger? Logger { get; set; }
 
         /// <inheritdoc/>
         public override IDictionary<string, string?>? EnvironmentVariables { get; set; }
@@ -260,6 +264,8 @@ namespace Pulumi.Automation
         public static Task<WorkspaceStack> CreateOrSelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
             => CreateStackHelperAsync(args, WorkspaceStack.CreateOrSelectAsync, cancellationToken);
 
+        private static string SkipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
+
         private static async Task<WorkspaceStack> CreateStackHelperAsync(
             InlineProgramArgs args,
             Func<string, Workspace, CancellationToken, Task<WorkspaceStack>> initFunc,
@@ -307,6 +313,7 @@ namespace Pulumi.Automation
 
                 this.PulumiHome = options.PulumiHome;
                 this.Program = options.Program;
+                this.Logger = options.Logger;
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)
@@ -349,51 +356,55 @@ namespace Pulumi.Automation
             // the working dir. We do not want to override existing
             // settings with default settings though.
 
-            var existingSettings = await this.GetProjectSettingsAsync(cancellationToken);
+            var existingSettings = await this.GetProjectSettingsAsync(cancellationToken).ConfigureAwait(false);
             if (existingSettings == null)
             {
-                await this.SaveProjectSettingsAsync(projectSettings, cancellationToken);
+                await this.SaveProjectSettingsAsync(projectSettings, cancellationToken).ConfigureAwait(false);
             }
             else if (!projectSettings.IsDefault &&
                      !ProjectSettings.Comparer.Equals(projectSettings, existingSettings))
             {
                 var path = this.FindSettingsFile();
-                throw new Exceptions.ProjectSettingsConflictException(path);
+                throw new ProjectSettingsConflictException(path);
             }
         }
 
-        private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
+        private static readonly string[] _settingsExtensions = { ".yaml", ".yml", ".json" };
 
         private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken)
         {
             var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
             var versionString = result.StandardOutput.Trim();
             versionString = versionString.TrimStart('v');
-            if (!SemVersion.TryParse(versionString, out var version))
-            {
-                throw new InvalidOperationException("Failed to get Pulumi version.");
-            }
-            var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
-            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
-            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
-            LocalWorkspace.ValidatePulumiVersion(LocalWorkspace._minimumVersion, version, optOut);
-            this.pulumiVersion = version;
+
+            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
+            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
+            this._pulumiVersion = ParseAndValidatePulumiVersion(_minimumVersion, versionString, optOut);
         }
 
-        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion, bool optOut)
+        internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
         {
+            if (!SemVersion.TryParse(currentVersion, SemVersionStyles.Any, out SemVersion? version))
+            {
+                version = null;
+            }
             if (optOut)
             {
-                return;
+                return version;
             }
-            if (minVersion.Major < currentVersion.Major)
+            if (version == null)
             {
-                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");
+                throw new InvalidOperationException("Failed to get Pulumi version. This is probably a pulumi error. You can override by version checking by setting {SkipVersionCheckVar}=true.");
             }
-            if (minVersion > currentVersion)
+            if (minVersion.Major < version.Major)
             {
-                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {currentVersion}. Please update the Pulumi CLI.");
+                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {version} with Automation SDK v{minVersion.Major}. Please update the SDK.");
             }
+            if (minVersion > version)
+            {
+                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {version}. Please update the Pulumi CLI.");
+            }
+            return version;
         }
 
         /// <inheritdoc/>
@@ -410,12 +421,8 @@ namespace Pulumi.Automation
             {
                 return this._serializer.DeserializeJson<ProjectSettings>(content);
             }
-            else
-            {
-
-                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
-                return model.Convert();
-            }
+            var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+            return model.Convert();
         }
 
         /// <inheritdoc/>
@@ -429,7 +436,7 @@ namespace Pulumi.Automation
 
         private string FindSettingsFile()
         {
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var testPath = Path.Combine(this.WorkDir, $"Pulumi{ext}");
                 if (File.Exists(testPath))
@@ -455,7 +462,7 @@ namespace Pulumi.Automation
         {
             var settingsName = GetStackSettingsName(stackName);
 
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var isJson = ext == ".json";
                 var path = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
@@ -475,7 +482,7 @@ namespace Pulumi.Automation
             var settingsName = GetStackSettingsName(stackName);
 
             var foundExt = ".yaml";
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var testPath = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
                 if (File.Exists(testPath))
@@ -520,7 +527,7 @@ namespace Pulumi.Automation
         public override async Task SetConfigAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default)
         {
             var secretArg = value.IsSecret ? "--secret" : "--plaintext";
-            await this.RunCommandAsync(new[] { "config", "set", key, value.Value, secretArg, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
+            await this.RunCommandAsync(new[] { "config", "set", key, secretArg, "--stack", stackName, "--non-interactive", "--", value.Value }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -538,9 +545,7 @@ namespace Pulumi.Automation
 
         /// <inheritdoc/>
         public override async Task RemoveConfigAsync(string stackName, string key, CancellationToken cancellationToken = default)
-        {
-            await this.RunCommandAsync(new[] { "config", "rm", key, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
-        }
+            => await this.RunCommandAsync(new[] { "config", "rm", key, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
 
         /// <inheritdoc/>
         public override async Task RemoveAllConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
@@ -567,7 +572,7 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override Task CreateStackAsync(string stackName, CancellationToken cancellationToken)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "init",
@@ -614,7 +619,7 @@ namespace Pulumi.Automation
             var tempFileName = Path.GetTempFileName();
             try
             {
-                File.WriteAllText(tempFileName, state.Json.GetRawText());
+                await File.WriteAllTextAsync(tempFileName, state.Json.GetRawText(), cancellationToken).ConfigureAwait(false);
                 await this.RunCommandAsync(new[] { "stack", "import", "--file", tempFileName, "--stack", stackName },
                                            cancellationToken).ConfigureAwait(false);
             }
@@ -625,13 +630,36 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
-            => this.RunCommandAsync(new[] { "plugin", "install", kind.ToString().ToLower(), name, version }, cancellationToken);
+        public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, PluginInstallOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            var args = new List<string>
+            {
+                "plugin",
+                "install",
+                kind.ToString().ToLowerInvariant(),
+                name,
+                version
+            };
+
+            if (options != null)
+            {
+                if (options.ExactVersion)
+                    args.Add("--exact");
+
+                if (!string.IsNullOrWhiteSpace(options.ServerUrl))
+                {
+                    args.Add("--server");
+                    args.Add(options.ServerUrl);
+                }
+            }
+
+            return this.RunCommandAsync(args, cancellationToken);
+        }
 
         /// <inheritdoc/>
         public override Task RemovePluginAsync(string? name = null, string? versionRange = null, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "plugin",
                 "rm",

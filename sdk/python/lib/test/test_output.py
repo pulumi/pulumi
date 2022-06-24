@@ -55,6 +55,12 @@ class OutputSecretTests(unittest.TestCase):
 
 class OutputFromInputTests(unittest.TestCase):
     @pulumi_test
+    async def test_unwrap_empty_dict(self):
+        x = Output.from_input({})
+        x_val = await x.future()
+        self.assertEqual(x_val, {})
+
+    @pulumi_test
     async def test_unwrap_dict(self):
         x = Output.from_input({"hello": Output.from_input("world")})
         x_val = await x.future()
@@ -79,6 +85,12 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertEqual(x_val, {"hello": ["foo", "bar"]})
 
     @pulumi_test
+    async def test_unwrap_empty_list(self):
+        x = Output.from_input([])
+        x_val = await x.future()
+        self.assertEqual(x_val, [])
+
+    @pulumi_test
     async def test_unwrap_list(self):
         x = Output.from_input(["hello", Output.from_input("world")])
         x_val = await x.future()
@@ -95,6 +107,14 @@ class OutputFromInputTests(unittest.TestCase):
         x = Output.from_input(["hello", {"foo": Output.from_input("bar")}])
         x_val = await x.future()
         self.assertEqual(x_val, ["hello", {"foo": "bar"}])
+
+    @pulumi_test
+    async def test_deeply_nested_objects(self):
+        o1 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": Output.from_input("a")}}}}}}}}}}}
+        o2 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": "a"}}}}}}}}}}}
+        x = Output.from_input(o1)
+        x_val = await x.future()
+        self.assertEqual(x_val, o2)
 
     @pulumi.input_type
     class FooArgs:
@@ -173,3 +193,41 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertIsInstance(x_val, OutputFromInputTests.FooArgs)
         self.assertIsInstance(x_val.nested, OutputFromInputTests.NestedArgs)
         self.assertEqual(x_val.nested.hello, "world")
+
+class Obj:
+    def __init__(self, x: str):
+        self.x = x
+
+class OutputHoistingTests(unittest.TestCase):
+    @pulumi_test
+    async def test_item(self):
+        o = Output.from_input([1,2,3])
+        x = o[0]
+        x_val = await x.future()
+        self.assertEqual(x_val, 1)
+
+    @pulumi_test
+    async def test_attr(self):
+        o = Output.from_input(Obj("hello"))
+        x = o.x
+        x_val = await x.future()
+        self.assertEqual(x_val, "hello")
+
+    @pulumi_test
+    async def test_no_iter(self):
+        x = Output.from_input([1,2,3])
+        with self.assertRaises(TypeError):
+            for i in x:
+                print(i)
+
+class OutputStrTests(unittest.TestCase):
+    @pulumi_test
+    async def test_str(self):
+        o = Output.from_input(1)
+        self.assertEqual(str(o), """Calling [str] on an [Output<T>] is not supported.
+
+To get the value of an Output[T] as an Output[str] consider:
+1. o.apply(lambda v => f"prefix{v}suffix")
+
+See https://pulumi.io/help/outputs for more details.
+This function may throw in a future version of Pulumi.""")

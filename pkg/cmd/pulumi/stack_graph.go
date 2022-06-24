@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -50,7 +50,7 @@ func newStackGraphCmd() *cobra.Command {
 		Long: "Export a stack's dependency graph to a file.\n" +
 			"\n" +
 			"This command can be used to view the dependency graph that a Pulumi program\n" +
-			"admitted when it was ran. This graph is output in the DOT format. This command operates\n" +
+			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -68,7 +68,7 @@ func newStackGraphCmd() *cobra.Command {
 
 			// This will prevent a panic when trying to assemble a dependencyGraph when no snapshot is found
 			if snap == nil {
-				return errors.Errorf("unable to find snapshot for stack %q", stackName)
+				return fmt.Errorf("unable to find snapshot for stack %q", stackName)
 			}
 
 			dg := makeDependencyGraph(snap)

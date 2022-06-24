@@ -1,21 +1,27 @@
 package gen
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"path/filepath"
-	"sync"
+	"regexp"
+	"sort"
+	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
-	tree "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestInputUsage(t *testing.T) {
+	t.Parallel()
+
 	pkg := &pkgContext{}
 	arrayUsage := pkg.getInputUsage("FooArray")
 	assert.Equal(
@@ -47,233 +53,353 @@ func TestInputUsage(t *testing.T) {
 }
 
 func TestGoPackageName(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "aws", goPackage("aws"))
-	assert.Equal(t, "azure", goPackage("azure-nextgen"))
-	assert.Equal(t, "plant", goPackage("plant-provider"))
+	assert.Equal(t, "azurenextgen", goPackage("azure-nextgen"))
+	assert.Equal(t, "plantprovider", goPackage("plant-provider"))
 	assert.Equal(t, "", goPackage(""))
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name                      string
-		schemaDir                 string
-		expectedFiles             []string
-		genResourceContainerTypes bool
+	t.Parallel()
+
+	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+
+		for f := range files {
+			t.Logf("Ignoring extraFile %s", f)
+		}
+
+		return GeneratePackage(tool, pkg)
+	}
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "go",
+		GenPackage: generatePackage,
+		Checks: map[string]test.CodegenCheck{
+			"go/compile": typeCheckGeneratedPackage,
+			"go/test":    testGeneratedPackage,
+		},
+		TestCases: test.PulumiPulumiSDKTests,
+	})
+}
+
+func inferModuleName(codeDir string) string {
+	// For example for this path:
+	//
+	// codeDir = "../testing/test/testdata/external-resource-schema/go/"
+	//
+	// We will generate "$codeDir/go.mod" using
+	// `external-resource-schema` as the module name so that it
+	// can compile independently.
+	return filepath.Base(filepath.Dir(codeDir))
+}
+
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
+	require.NoError(t, err)
+
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	goMod := filepath.Join(codeDir, "go.mod")
+	alreadyHaveGoMod, err := test.PathExists(goMod)
+	require.NoError(t, err)
+
+	if alreadyHaveGoMod {
+		t.Logf("Found an existing go.mod, leaving as is")
+	} else {
+		test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
+		replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
+		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+	}
+
+	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
+	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+}
+
+func testGeneratedPackage(t *testing.T, codeDir string) {
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	test.RunCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
+}
+
+func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
+	test.TestTypeNameCodegen(t, "go", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer})
+		require.NoError(t, err)
+
+		var goPkgInfo GoPackageInfo
+		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			goPkgInfo = goInfo
+		}
+		packages := generatePackageContextMap("test", pkg, goPkgInfo)
+
+		root, ok := packages[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t)
+		}
+	})
+}
+
+func readSchemaFile(file string) *schema.Package {
+	// Read in, decode, and import the schema.
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	if err != nil {
+		panic(err)
+	}
+	var pkgSpec schema.PackageSpec
+	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+		panic(err)
+	}
+	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"go": Importer})
+	if err != nil {
+		panic(err)
+	}
+
+	return pkg
+}
+
+// We test the naming/module structure of generated packages.
+func TestPackageNaming(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		importBasePath  string
+		rootPackageName string
+		name            string
+		expectedRoot    string
 	}{
 		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				filepath.Join("example", "argFunction.go"),
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "otherResource.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-				filepath.Join("example", "resource.go"),
-			},
-			false,
+			importBasePath: "github.com/pulumi/pulumi-azure-quickstart-acr-geo-replication/sdk/go/acr",
+			expectedRoot:   "acr",
 		},
 		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				filepath.Join("plant", "doc.go"),
-				filepath.Join("plant", "init.go"),
-				filepath.Join("plant", "provider.go"),
-				filepath.Join("plant", "pulumiTypes.go"),
-				filepath.Join("plant", "pulumiUtilities.go"),
-				filepath.Join("plant", "pulumiEnums.go"),
-				filepath.Join("plant", "provider.go"),
-				filepath.Join("plant", "tree", "v1", "init.go"),
-				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
-				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
-				filepath.Join("plant", "tree", "v1", "nursery.go"),
-			},
-			false,
+			importBasePath:  "github.com/ihave/animport",
+			rootPackageName: "root",
+			expectedRoot:    "",
 		},
 		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "argFunction.go"),
-				filepath.Join("example", "cat.go"),
-				filepath.Join("example", "component.go"),
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-				filepath.Join("example", "workload.go"),
-			},
-			true,
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "component.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-			},
-			false,
-		},
-		{
-			"Simple schema with root package set",
-			"simple-plain-schema-with-root-package",
-			[]string{
-				filepath.Join("doc.go"),
-				filepath.Join("init.go"),
-				filepath.Join("component.go"),
-				filepath.Join("provider.go"),
-				filepath.Join("pulumiTypes.go"),
-				filepath.Join("pulumiUtilities.go"),
-			},
-			false,
+			name:         "named-package",
+			expectedRoot: "namedpackage",
 		},
 	}
-	testDir := filepath.Join("..", "internal", "test", "testdata")
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"),
-				func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
-					return GeneratePackage(tool, pkg)
-				})
-			assert.NoError(t, err)
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.expectedRoot, func(t *testing.T) {
+			t.Parallel()
 
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
-			assert.NoError(t, err)
-			test.ValidateFileEquality(t, files, expectedFiles)
-			test.CheckAllFilesGenerated(t, files, expectedFiles)
+			// This schema is arbitrary. We just needed a filled out schema. All
+			// path decisions should be made based off of the Name and
+			// Language[go] fields (which we set after import).
+			schema := readSchemaFile(filepath.Join("schema", "good-enum-1.json"))
+			if tt.name != "" {
+				// We want there to be a name, so if one isn't provided we
+				// default to the schema.
+				schema.Name = tt.name
+			}
+			schema.Language = map[string]interface{}{
+				"go": GoPackageInfo{
+					ImportBasePath:  tt.importBasePath,
+					RootPackageName: tt.rootPackageName,
+				},
+			}
+			files, err := GeneratePackage("test", schema)
+			require.NoError(t, err)
+			ordering := make([]string, len(files))
+			var i int
+			for k := range files {
+				ordering[i] = k
+				i++
+			}
+			ordering = sort.StringSlice(ordering)
+			require.NotEmpty(t, files, "This test only works when files are generated")
+			for _, k := range ordering {
+				root := strings.Split(k, "/")[0]
+				if tt.expectedRoot != "" {
+					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)
+				}
+				// We should work on a way to assert this is one level higher then it otherwise would be.
+			}
 		})
 	}
 }
 
-type mocks int
+func TestTokenToType(t *testing.T) {
+	t.Parallel()
 
-func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
-	return args.Name + "_id", args.Inputs, nil
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "s3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "awss3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:DnsKeySpec",
+			expected: "dns.DnsKeySpec",
+		},
+	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
+			actual := tt.pkg.tokenToType(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
-func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	return args.Args, nil
+func TestTokenToResource(t *testing.T) {
+	t.Parallel()
+
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "s3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "awss3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:Policy",
+			expected: "dns.Policy",
+		},
+	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
+			actual := tt.pkg.tokenToResource(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
-func TestEnumUsage(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: &plant.ContainerArgs{
-					Color:    plant.ContainerColorRed,
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSizeFourInch,
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: tree.RubberTreeVarietyRuby,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, tree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				tree.URN(),
-				tree.Container.Material(),
-				tree.Container.Color(),
-				tree.Container.Size(),
-				tree.Container.Brightness(),
-				tree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*int)
-				brightness := all[4].(*float64)
-				typ := all[5].(string)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "red", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, 4, "unexpected size on resource: %v", urn)
-				assert.Nil(t, brightness)
-				assert.Equal(t, typ, "Ruby", "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(0))))
-	})
+func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
+	assert.NoError(t, err)
+	return importedPkg
+}
 
-	t.Run("StringsForRelaxedEnum", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    pulumi.String("Magenta"),
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSize(22),
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: tree.RubberTreeVarietyRuby,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, tree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*int)
-				typ := all[4].(string)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, 22, "unexpected size on resource: %v", urn)
-				assert.Equal(t, typ, "Ruby", "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(1))))
-	})
+func TestGenHeader(t *testing.T) {
+	t.Parallel()
 
-	t.Run("StringsForStrictEnum", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    pulumi.String("Magenta"),
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSize(22),
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: "Burgundy",
-			})
-			require.NoError(t, err)
-			require.NotNil(t, tree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*int)
-				typ := all[4].(string)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, 22, "unexpected size on resource: %v", urn)
-				assert.Equal(t, typ, "Burgundy", "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(1))))
-	})
+	pkg := &pkgContext{
+		tool: "a tool",
+		pkg:  &schema.Package{Name: "test-pkg"},
+	}
+
+	s := func() string {
+		b := &bytes.Buffer{}
+		pkg.genHeader(b, []string{"pkg1", "example.com/foo/123-foo"}, nil)
+		return b.String()
+	}()
+	assert.Equal(t, `// Code generated by a tool DO NOT EDIT.
+// *** WARNING: Do not edit by hand unless you're certain you know what you are doing! ***
+
+package testpkg
+
+import (
+	"pkg1"
+	"example.com/foo/123-foo"
+)
+
+`, s)
+
+	// Compliance is defined by https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
+	autogenerated := regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
+	found := false
+	for _, l := range strings.Split(s, "\n") {
+		switch {
+		case autogenerated.Match([]byte(l)):
+			found = true
+			break
+		case l == "" || strings.HasPrefix(l, "//"):
+		default:
+			break
+		}
+	}
+	assert.Truef(t, found, `Didn't find a line that complies with "%v"`, autogenerated)
 }

@@ -19,13 +19,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -56,7 +54,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
+			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 			if err != nil {
 				return err
 			}
@@ -67,7 +65,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name().Q())
 			if err != nil {
 				return err
 			}
@@ -79,15 +77,15 @@ func newStackRenameCmd() *cobra.Command {
 				// Stack doesn't have any configuration, ignore.
 			case configStatErr == nil:
 				if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
-					return errors.Wrapf(err, "renaming configuration file to %s", filepath.Base(newConfigPath))
+					return fmt.Errorf("renaming configuration file to %s: %w", filepath.Base(newConfigPath), err)
 				}
 			default:
-				return errors.Wrapf(err, "checking current configuration file %v", oldConfigPath)
+				return fmt.Errorf("checking current configuration file %v: %w", oldConfigPath, err)
 			}
 
 			// Update the current workspace state to have selected the new stack.
 			if err := state.SetCurrentStack(newStackName); err != nil {
-				return errors.Wrap(err, "setting current stack")
+				return fmt.Errorf("setting current stack: %w", err)
 			}
 
 			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())

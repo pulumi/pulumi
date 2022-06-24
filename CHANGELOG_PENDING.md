@@ -1,12 +1,15 @@
 ### Improvements
 
-- [auto/dotnet] - Make StackDeployment.FromJsonString public
-  [#7067](https://github.com/pulumi/pulumi/pull/7067)
+- [cli] The engine will now warn when a resource option is applied to a Component resource when that option will have no effect. This extends [#9863](https://github.com/pulumi/pulumi/pull/9863) which only warns for the `ignoreChanges` resource options.
+  [#9921](https://github.com/pulumi/pulumi/pull/9921)
 
-- [sdk/python] - Generated SDKs may now be installed from in-tree source.
-  [#7097](https://github.com/pulumi/pulumi/pull/7097)
+- [auto/*] Add a option to control the `--show-secrets` flag in the automation API.
+  [#9879](https://github.com/pulumi/pulumi/pull/9879)
 
 ### Bug Fixes
 
-- [auto/dotnet] Fix deserialization of CancelEvent in .NET 5
-  [#7051](https://github.com/pulumi/pulumi/pull/7051)
+- [auto/go] Fix passing of the color option.
+  [#9940](https://github.com/pulumi/pulumi/pull/9940)
+
+- [engine] Fix panic from unexpected resource name formats.
+  [#9950](https://github.com/pulumi/pulumi/pull/9950)

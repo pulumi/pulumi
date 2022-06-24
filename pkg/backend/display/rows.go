@@ -277,7 +277,7 @@ func (data *resourceRowData) ColorizedSuffix() string {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-			return op.Color() + ellipses + colors.Reset
+			return op.ColorProgress() + ellipses + colors.Reset
 		}
 	}
 
@@ -290,19 +290,21 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	urn := data.step.URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
-		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
+		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())
 
+	done := data.IsDone()
+
 	columns := make([]string, 5)
-	columns[opColumn] = data.display.getStepOpLabel(step)
+	columns[opColumn] = data.display.getStepOpLabel(step, done)
 	columns[typeColumn] = typ
 	columns[nameColumn] = name
 
 	diagInfo := data.diagInfo
 
-	if data.IsDone() {
+	if done {
 		failed := data.failed || diagInfo.ErrorCount > 0
 		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 	} else {
@@ -404,7 +406,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if step.DetailedDiff != nil {
-			diff = translateDetailedDiff(step)
+			diff = engine.TranslateDetailedDiff(&step)
 		} else if diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)
@@ -478,7 +480,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 
 func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
 	if len(keys) > 0 {
-		writeString(b, strings.Trim(op.Prefix(), " "))
+		writeString(b, strings.Trim(op.Prefix(true /*done*/), " "))
 
 		sort.Strings(keys)
 

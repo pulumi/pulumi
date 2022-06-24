@@ -25,6 +25,7 @@ type Component struct {
 
 	Echo    pulumi.AnyOutput    `pulumi:"echo"`
 	ChildID pulumi.StringOutput `pulumi:"childId"`
+	Secret  pulumi.StringOutput `pulumi:"secret"`
 }
 
 func NewComponent(

@@ -15,6 +15,10 @@
 package main
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,51 +30,63 @@ import (
 func TestArgumentConstruction(t *testing.T) {
 	t.Parallel()
 
-	t.Run("DryRun-NoArguments", func(tt *testing.T) {
+	t.Run("DryRun-NoArguments", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{DryRun: true}
-		args := host.constructArguments(rr, "", "")
-		assert.Contains(tt, args, "--dry-run")
-		assert.NotContains(tt, args, "true")
+		args := host.constructArguments(rr, "", "", "")
+		assert.Contains(t, args, "--dry-run")
+		assert.NotContains(t, args, "true")
 	})
 
-	t.Run("OptionalArgs-PassedIfSpecified", func(tt *testing.T) {
+	t.Run("OptionalArgs-PassedIfSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, "--project foo")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
+		assert.Contains(t, args, "--project foo")
 	})
 
-	t.Run("OptionalArgs-NotPassedIfNotSpecified", func(tt *testing.T) {
+	t.Run("OptionalArgs-NotPassedIfNotSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.NotContains(tt, args, "--stack")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
+		assert.NotContains(t, args, "--stack")
 	})
 
-	t.Run("DotIfProgramNotSpecified", func(tt *testing.T) {
+	t.Run("DotIfProgramNotSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, ".")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
+		assert.Contains(t, args, ".")
 	})
 
-	t.Run("ProgramIfProgramSpecified", func(tt *testing.T) {
+	t.Run("ProgramIfProgramSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Program: "foobar"}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, "foobar")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
+		assert.Contains(t, args, "foobar")
 	})
 }
 
 func TestConfig(t *testing.T) {
 	t.Parallel()
-	t.Run("Config-Empty", func(tt *testing.T) {
+	t.Run("Config-Empty", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
 		str, err := host.constructConfig(rr)
-		assert.NoError(tt, err)
-		assert.JSONEq(tt, "{}", str)
+		assert.NoError(t, err)
+		assert.JSONEq(t, "{}", str)
 	})
 }
 
@@ -102,4 +118,55 @@ func TestCompatibleVersions(t *testing.T) {
 		assert.Equal(t, c.errmsg, errmsg)
 		assert.Equal(t, c.compatible, compatible)
 	}
+}
+
+func TestGetRequiredPlugins(t *testing.T) {
+	t.Parallel()
+
+	dir, err := ioutil.TempDir("", "test-dir")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	files := []struct {
+		path    string
+		content string
+	}{
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "foo", "package.json"),
+			`{ "name": "@pulumi/foo", "version": "1.2.3", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "bar", "package.json"),
+			`{ "name": "@pulumi/bar", "version": "4.5.6", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "baz", "package.json"),
+			`{ "name": "@pulumi/baz", "version": "4.5.6", "pulumi": { "resource": false } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "malformed_test", "package.json"),
+			`{`,
+		},
+	}
+	for _, file := range files {
+		err := os.MkdirAll(filepath.Dir(file.path), 0755)
+		assert.NoError(t, err)
+		err = os.WriteFile(file.path, []byte(file.content), 0600)
+		assert.NoError(t, err)
+	}
+
+	host := &nodeLanguageHost{}
+	resp, err := host.GetRequiredPlugins(context.TODO(), &pulumirpc.GetRequiredPluginsRequest{
+		Program: dir,
+	})
+	assert.NoError(t, err)
+
+	actual := make(map[string]string)
+	for _, plugin := range resp.GetPlugins() {
+		actual[plugin.Name] = plugin.Version
+	}
+	assert.Equal(t, map[string]string{
+		"foo": "v1.2.3",
+		"bar": "v4.5.6",
+	}, actual)
 }

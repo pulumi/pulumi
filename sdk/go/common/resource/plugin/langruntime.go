@@ -38,6 +38,9 @@ type LanguageRuntime interface {
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+
+	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+	InstallDependencies(directory string) error
 }
 
 // ProgInfo contains minimal information about the program to be run.

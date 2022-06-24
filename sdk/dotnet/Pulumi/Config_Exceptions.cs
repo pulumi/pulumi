@@ -11,12 +11,7 @@ namespace Pulumi
         /// </summary>
         private class ConfigTypeException : RunException
         {
-            public ConfigTypeException(string key, object? v, string expectedType)
-                : this(key, v, expectedType, innerException: null)
-            {
-            }
-
-            public ConfigTypeException(string key, object? v, string expectedType, Exception? innerException)
+            public ConfigTypeException(string key, object? v, string expectedType, Exception? innerException = null)
                 : base($"Configuration '{key}' value '{v}' is not a valid {expectedType}", innerException)
             {
             }

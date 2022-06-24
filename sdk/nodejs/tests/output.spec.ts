@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable
+/* eslint-disable */
 
 import * as assert from "assert";
 import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret } from "../output";

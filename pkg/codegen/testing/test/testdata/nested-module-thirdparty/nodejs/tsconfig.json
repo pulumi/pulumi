@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "outDir": "bin",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
+    },
+    "files": [
+        "deeply/index.ts",
+        "deeply/nested/index.ts",
+        "deeply/nested/module/index.ts",
+        "deeply/nested/module/resource.ts",
+        "index.ts",
+        "provider.ts",
+        "utilities.ts"
+    ]
+}

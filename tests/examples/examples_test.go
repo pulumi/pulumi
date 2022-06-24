@@ -4,6 +4,7 @@ package examples
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccMinimal(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -40,6 +41,7 @@ func TestAccMinimal(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccMinimal_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -61,6 +63,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -75,6 +78,7 @@ func TestAccDynamicProviderSimple(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -90,6 +94,7 @@ func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderClassWithComments(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -99,6 +104,7 @@ func TestAccDynamicProviderClassWithComments(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -109,6 +115,7 @@ func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -126,6 +133,7 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -144,6 +152,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -153,6 +162,7 @@ func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -163,6 +173,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -172,6 +183,7 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -182,6 +194,7 @@ func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccFormattable(t *testing.T) {
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
@@ -199,6 +212,7 @@ func TestAccFormattable(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccFormattable_withLocalState(t *testing.T) {
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
@@ -217,6 +231,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccSecrets(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -227,6 +242,7 @@ func TestAccSecrets(t *testing.T) {
 			Secrets: map[string]string{
 				"apiKey": "FAKE_API_KEY_FOR_TESTING",
 			},
+			Quick: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 				assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
 
@@ -306,6 +322,7 @@ func TestAccSecrets(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestAccNodeCompatTests(t *testing.T) {
 	skipIfNotNode610(t)
 	test := getBaseOptions().
@@ -337,14 +354,6 @@ func getBaseOptions() integration.ProgramTestOptions {
 	}
 }
 
-func getPythonBaseOptions() integration.ProgramTestOptions {
-	return integration.ProgramTestOptions{
-		Dependencies: []string{
-			filepath.Join("..", "sdk", "python", "env", "src"),
-		},
-	}
-}
-
 func skipIfNotNode610(t *testing.T) {
 	nodeVer, err := getNodeVersion()
 	if err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
@@ -358,7 +367,7 @@ func getNodeVersion() (semver.Version, error) {
 	nodeVersionCmd := exec.Command("node", "--version")
 	nodeVersionCmd.Stdout = &buf
 	if err := nodeVersionCmd.Run(); err != nil {
-		return semver.Version{}, errors.Wrap(err, "running node --version")
+		return semver.Version{}, fmt.Errorf("running node --version: %w", err)
 	}
 
 	return semver.ParseTolerant(buf.String())

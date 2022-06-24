@@ -1,4 +1,5 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build python || all
 // +build python all
 
 package ints
@@ -32,6 +33,18 @@ func TestEmptyPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
+	})
+}
+
+// TestPrintfPython tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("printf", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
 	})
 }
 
@@ -91,6 +104,8 @@ func TestConfigBasicPython(t *testing.T) {
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
 func TestConfigSecretsWarnPython(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_secrets_warn", "python"),
 		Dependencies: []string{
@@ -264,6 +279,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
+	t.Parallel()
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
@@ -275,28 +291,10 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
-		NoParallel: true,
+		DestroyOnCleanup: true,
 	}
-
-	// we're going to manually initialize and then defer the deletion of this stack
-	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
-	exporterPt.TestFinished = false
-	err := exporterPt.TestLifeCyclePrepare()
-	assert.NoError(t, err)
-	err = exporterPt.TestLifeCycleInitialize()
-	assert.NoError(t, err)
-
-	defer func() {
-		destroyErr := exporterPt.TestLifeCycleDestroy()
-		assert.NoError(t, destroyErr)
-		exporterPt.TestFinished = true
-		exporterPt.TestCleanUp()
-	}()
-
-	err = exporterPt.TestPreviewUpdateAndEdits()
-	assert.NoError(t, err)
-
 	exporterStackName := exporterOpts.GetStackName().String()
+	integration.ProgramTest(t, exporterOpts)
 
 	importerOpts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
@@ -308,7 +306,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
 			"exporter_stack_name": exporterStackName,
 		},
-		NoParallel: true,
+		DestroyOnCleanup: true,
 	}
 	integration.ProgramTest(t, importerOpts)
 }
@@ -356,6 +354,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
@@ -401,6 +400,22 @@ func TestDynamicPython(t *testing.T) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
 			},
 		}},
+	})
+}
+
+// Tests custom resource type name of dynamic provider in Python.
+func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-resource-type-name"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urnOut := stack.Outputs["urn"].(string)
+			urn := resource.URN(urnOut)
+			typ := urn.Type().String()
+			assert.Equal(t, "pulumi-python:dynamic/custom-provider:CustomResource", typ)
+		},
 	})
 }
 
@@ -515,6 +530,7 @@ func TestPythonResourceArgs(t *testing.T) {
 
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -534,7 +550,6 @@ func TestConstructPython(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -543,8 +558,11 @@ func TestConstructPython(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -558,8 +576,10 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -581,10 +601,17 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 							assert.Empty(t, deps)
 						}
 					case "child-b":
-						assert.Equal(t, []resource.URN{urns["a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
-							res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -626,6 +653,7 @@ func TestConstructSlowPython(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainPython(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -645,7 +673,6 @@ func TestConstructPlainPython(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -654,8 +681,11 @@ func TestConstructPlainPython(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -670,12 +700,98 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownPython(t *testing.T) {
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+// Test methods on remote components.
+func TestConstructMethodsPython(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownPython(t *testing.T) {
+	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructMethodsResourcesPython(t *testing.T) {
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructMethodsErrorsPython(t *testing.T) {
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructProviderPython(t *testing.T) {
+	t.Parallel()
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join(testDir, "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -694,11 +810,14 @@ func TestGetResourcePython(t *testing.T) {
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
+	t.Parallel()
+
 	// Do not use integration.ProgramTest to avoid automatic venv
 	// handling by test harness; we actually are testing venv
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
+		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -766,6 +885,8 @@ func TestAutomaticVenvCreation(t *testing.T) {
 }
 
 func TestPythonAwaitOutputs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("SuccessSimple", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "success"),
@@ -977,5 +1098,29 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		path += ".cmd"
 	}
-	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+	testComponentProviderSchema(t, path)
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutPython(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join("about", "python")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	stdout, _ := e.RunCommand("pulumi", "about", "--json")
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "pulumi-kubernetes")
+}
+
+func TestConstructOutputValuesPython(t *testing.T) {
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }

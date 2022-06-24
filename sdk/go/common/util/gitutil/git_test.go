@@ -25,7 +25,9 @@ import (
 )
 
 func TestParseGitRepoURL(t *testing.T) {
-	test := func(expectedURL string, expectedURLPath string, rawurl string) {
+	t.Parallel()
+
+	test := func(expectedURL, expectedURLPath string, rawurl string) {
 		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)
@@ -60,6 +62,24 @@ func TestParseGitRepoURL(t *testing.T) {
 		assert.Error(t, err)
 	}
 
+	// GitLab.
+	pre = "https://gitlab.com/my-org/proj/subproj/doot.git/poc/waka-waka"
+	exp = "https://gitlab.com/my-org/proj/subproj/doot.git"
+	test(exp, "poc/waka-waka", pre)
+	test(exp, "poc/waka-waka", pre+"/")
+	pre = "https://gitlab.com/pulumi/platform/templates.git/templates/javascript"
+	exp = "https://gitlab.com/pulumi/platform/templates.git"
+	test(exp, "templates/javascript", pre)
+	test(exp, "templates/javascript", pre+"///")
+	pre = "https://gitlab.com/a/b/c/d/e/f/g/finally.git/1/2/3/4/5"
+	exp = "https://gitlab.com/a/b/c/d/e/f/g/finally.git"
+	test(exp, "1/2/3/4/5", pre)
+	test(exp, "1/2/3/4/5", pre+"/")
+	pre = "https://gitlab.com/dotgit/.git.git"
+	exp = "https://gitlab.com/dotgit/.git.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
+
 	// No owner.
 	testError("https://github.com")
 	testError("https://github.com/")
@@ -74,6 +94,8 @@ func TestParseGitRepoURL(t *testing.T) {
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -186,7 +208,9 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 }
 
 func createTestRepo(e *ptesting.Environment) {
-	e.RunCommand("git", "init")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.name", "test")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
 
 	e.WriteTestFile("README.md", "test repo")
 	e.RunCommand("git", "add", "*")
@@ -205,6 +229,8 @@ func createTestRepo(e *ptesting.Environment) {
 }
 
 func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
+	t.Parallel()
+
 	gitTests := []struct {
 		Remote      string
 		WantVCSInfo *VCSInfo
@@ -229,6 +255,22 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		{
 			"git@gitlab.com:owner-name/group/sub-group/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "group/sub-group/repo-name", Kind: GitLabHostName},
+		},
+		{
+			"git@github.foo.acme.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo.acme.com"},
+		},
+		{
+			"git@github.foo.acme.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo.acme.org"},
+		},
+		{
+			"git@github.foo-acme.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.com"},
+		},
+		{
+			"git@github.foo-acme.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.org"},
 		},
 
 		//HTTPS remotes

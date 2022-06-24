@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/spf13/cobra"
 )
 
 func newPolicyLsCmd() *cobra.Command {
@@ -45,23 +47,36 @@ func newPolicyLsCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, err = b.CurrentUser()
+				orgName, _, err = b.CurrentUser()
 				if err != nil {
 					return err
 				}
 			}
 
-			// List the Policy Packs for the organization.
+			// Gather all Policy Packs for the organization.
 			ctx := context.Background()
-			policyPacks, err := b.ListPolicyPacks(ctx, orgName)
-			if err != nil {
-				return err
+			var (
+				allPolicyPacks []apitype.PolicyPackWithVersions
+				inContToken    backend.ContinuationToken
+			)
+			for {
+				resp, outContToken, err := b.ListPolicyPacks(ctx, orgName, inContToken)
+				if err != nil {
+					return err
+				}
+
+				allPolicyPacks = append(allPolicyPacks, resp.PolicyPacks...)
+
+				if outContToken == nil {
+					break
+				}
+				inContToken = outContToken
 			}
 
 			if jsonOut {
-				return formatPolicyPacksJSON(policyPacks)
+				return formatPolicyPacksJSON(allPolicyPacks)
 			}
-			return formatPolicyPacksConsole(policyPacks)
+			return formatPolicyPacksConsole(allPolicyPacks)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -69,13 +84,13 @@ func newPolicyLsCmd() *cobra.Command {
 	return cmd
 }
 
-func formatPolicyPacksConsole(policyPacks apitype.ListPolicyPacksResponse) error {
+func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "VERSIONS"}
 
 	rows := []cmdutil.TableRow{}
 
-	for _, packs := range policyPacks.PolicyPacks {
+	for _, packs := range policyPacks {
 		// Name column
 		name := packs.Name
 
@@ -101,9 +116,9 @@ type policyPacksJSON struct {
 	Versions []string `json:"versions"`
 }
 
-func formatPolicyPacksJSON(policyPacks apitype.ListPolicyPacksResponse) error {
-	output := make([]policyPacksJSON, len(policyPacks.PolicyPacks))
-	for i, pack := range policyPacks.PolicyPacks {
+func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
+	output := make([]policyPacksJSON, len(policyPacks))
+	for i, pack := range policyPacks {
 		output[i] = policyPacksJSON{
 			Name:     pack.Name,
 			Versions: pack.VersionTags,

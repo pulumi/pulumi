@@ -261,7 +261,6 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind) (TemplateRepository, error) {
-
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
@@ -287,7 +286,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, err
+		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{
@@ -372,16 +371,35 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 
 	ref, commit, subDirectory, err := gitutil.GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-
 	if ref != "" {
-		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
-			return "", cloneErr
+
+		// Different reference attempts to cycle through
+		// We default to master then main in that order. We need to order them to avoid breaking
+		// already existing processes for repos that already have a master and main branch.
+		refAttempts := []plumbing.ReferenceName{plumbing.Master, plumbing.NewBranchReferenceName("main")}
+
+		if ref != plumbing.HEAD {
+			// If we have a non-default reference, we just use it
+			refAttempts = []plumbing.ReferenceName{ref}
 		}
+
+		var cloneErr error
+		for _, ref := range refAttempts {
+			// Attempt the clone. If it succeeds, break
+			cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
+			if cloneErr == nil {
+				break
+			}
+		}
+		if cloneErr != nil {
+			return "", fmt.Errorf("failed to clone ref '%s': %w", refAttempts[len(refAttempts)-1], cloneErr)
+		}
+
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
-			return "", cloneErr
+			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
 
@@ -477,8 +495,20 @@ func CopyTemplateFiles(
 				result = []byte(transformed)
 			}
 
+			// Originally we just wrote in 0600 mode, but
+			// this does not preserve the executable bit.
+			// With the new logic below, we try to be at
+			// least as permissive as 0600 and whathever
+			// permissions the source file or symlink had.
+			var mode os.FileMode
+			sourceStat, err := os.Lstat(source)
+			if err != nil {
+				return err
+			}
+			mode = sourceStat.Mode().Perm() | 0600
+
 			// Write to the destination file.
-			err = writeAllBytes(dest, result, force)
+			err = writeAllBytes(dest, result, force, mode)
 			if err != nil {
 				// An existing file has shown up in between the dry run and the actual copy operation.
 				if os.IsExist(err) {
@@ -745,7 +775,7 @@ func transform(content string, projectName string, projectDescription string) st
 }
 
 // writeAllBytes writes the bytes to the specified file, with an option to overwrite.
-func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
+func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMode) error {
 	flag := os.O_WRONLY | os.O_CREATE
 	if overwrite {
 		flag = flag | os.O_TRUNC
@@ -753,7 +783,7 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
 		flag = flag | os.O_EXCL
 	}
 
-	f, err := os.OpenFile(filename, flag, 0600)
+	f, err := os.OpenFile(filename, flag, mode)
 	if err != nil {
 		return err
 	}

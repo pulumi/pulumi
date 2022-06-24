@@ -18,6 +18,10 @@ namespace Pulumi.Automation
 
         public List<string>? Target { get; set; }
 
+        public List<string>? PolicyPacks { get; set; }
+
+        public List<string>? PolicyPackConfigs { get; set; }
+
         /// <summary>
         /// Optional callback which is invoked whenever StandardOutput is written into
         /// </summary>
@@ -32,5 +36,10 @@ namespace Pulumi.Automation
         /// Optional callback which is invoked with the engine events
         /// </summary>
         public Action<EngineEvent>? OnEvent { get; set; }
+
+        /// <summary>
+        /// Colorize output. Choices are: always, never, raw, auto (default "auto")
+        /// </summary>
+        public string? Color { get; set; }
     }
 }

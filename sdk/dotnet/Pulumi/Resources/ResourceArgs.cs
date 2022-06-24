@@ -11,10 +11,6 @@ namespace Pulumi
     {
         public static readonly ResourceArgs Empty = new EmptyResourceArgs();
 
-        protected ResourceArgs()
-        {
-        }
-
         private protected override void ValidateMember(Type memberType, string fullName)
         {
             // No validation. A member may or may not be IInput.

@@ -16,6 +16,8 @@ package plugin
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -24,7 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -49,25 +53,14 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.LanguagePlugin,
-			Name: runtime,
-		})
 	}
 
-	var args []string
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
-	}
+	contract.Assert(path != "")
 
-	root, err := filepath.Abs(ctx.Root)
+	args, err := buildArgsForNewPlugin(host, ctx, options)
 	if err != nil {
 		return nil, err
 	}
-	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
-
-	args = append(args, host.ServerAddr())
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
 	if err != nil {
@@ -81,6 +74,29 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
+}
+
+func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return nil, err
+	}
+	var args []string
+
+	for k, v := range options {
+		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+	}
+
+	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+
+	if cmdutil.IsTracingEnabled() {
+		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
+	}
+
+	// NOTE: positional argument for the server addresss must come last
+	args = append(args, host.ServerAddr())
+
+	return args, nil
 }
 
 func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {
@@ -131,10 +147,10 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
-			Name:      info.GetName(),
-			Kind:      workspace.PluginKind(info.GetKind()),
-			Version:   version,
-			ServerURL: info.GetServer(),
+			Name:              info.GetName(),
+			Kind:              workspace.PluginKind(info.GetKind()),
+			Version:           version,
+			PluginDownloadURL: info.GetServer(),
 		})
 	}
 
@@ -222,4 +238,53 @@ func (h *langhost) Close() error {
 		return h.plug.Close()
 	}
 	return nil
+}
+
+func (h *langhost) InstallDependencies(directory string) error {
+	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) executing",
+		h.runtime, directory)
+	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
+		Directory:  directory,
+		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
+	})
+
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
+			h.runtime, directory, rpcError)
+
+		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
+		// method.  In such cases, we will silently error (with the above log left behind).
+		if rpcError.Code() == codes.Unimplemented {
+			return nil
+		}
+
+		return rpcError
+	}
+
+	for {
+		output, err := resp.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
+				h.runtime, directory, rpcError)
+			return rpcError
+		}
+
+		if len(output.Stdout) != 0 {
+			os.Stdout.Write(output.Stdout)
+		}
+
+		if len(output.Stderr) != 0 {
+			os.Stderr.Write(output.Stderr)
+		}
+	}
+
+	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
+		h.runtime, directory)
+	return nil
+
 }

@@ -80,6 +80,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Show config secrets when they appear.
+func ShowSecrets(show bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ShowSecrets = &show
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -106,6 +113,10 @@ type Options struct {
 	DebugLogOpts debug.LoggingOptions
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// Colorize output. Choices are: always, never, raw, auto (default "auto")
+	Color string
+	// Show config secrets when they appear.
+	ShowSecrets *bool
 }
 
 type optionFunc func(*Options)

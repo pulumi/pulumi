@@ -36,6 +36,13 @@ export interface InvokeOptions {
     version?: string;
 
     /**
+     *  An option to specify the URL from which to download this resources
+     * associated plugin. This version overrides the URL information inferred
+     * from the current package and should rarely be used.
+     */
+    pluginDownloadURL?: string;
+
+    /**
      * Invoke this data source function asynchronously.  Defaults to `true` if unspecified.
      *
      * When `true`, only the `Promise<>` side of the invoke result is present.  Explicitly pass in

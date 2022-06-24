@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Optional, Sequence
 
 from pulumi import ResourceOptions, Input, Inputs
 
 
 class ConstructResult:
     """ConstructResult represents the results of a call to
-`Provider.construct`.
+    `Provider.construct`.
 
     """
 
@@ -32,6 +32,38 @@ class ConstructResult:
     def __init__(self, urn: Input[str], state: Inputs) -> None:
         self.urn = urn
         self.state = state
+
+
+class CheckFailure:
+    """CheckFailure represents a single failure in the results of a call to `Provider.call`."""
+
+    property: str
+    """The property that failed validation."""
+
+    reason: str
+    """The reason that the property failed validation."""
+
+    def __init__(
+        self, property: str, reason: str  # pylint: disable=redefined-builtin
+    ) -> None:
+        self.property = property
+        self.reason = reason
+
+
+class CallResult:
+    """CallResult represents the results of a call to `Provider.call`."""
+
+    outputs: Inputs
+    """The outputs returned by the invoked function, if any."""
+
+    failures: Optional[Sequence[CheckFailure]]
+    """Any validation failures that occurred."""
+
+    def __init__(
+        self, outputs: Inputs, failures: Optional[Sequence[CheckFailure]] = None
+    ) -> None:
+        self.outputs = outputs
+        self.failures = failures
 
 
 class Provider:
@@ -51,8 +83,13 @@ class Provider:
         self.version = version
         self.schema = schema
 
-    def construct(self, name: str, resource_type: str, inputs: Inputs,
-                  options: Optional[ResourceOptions] = None) -> ConstructResult:
+    def construct(
+        self,
+        name: str,
+        resource_type: str,
+        inputs: Inputs,
+        options: Optional[ResourceOptions] = None,
+    ) -> ConstructResult:
         """Construct creates a new component resource.
 
         :param str name: The name of the resource to create.
@@ -62,3 +99,12 @@ class Provider:
         """
 
         raise Exception("Subclass of Provider must implement 'construct'")
+
+    def call(self, token: str, args: Inputs) -> CallResult:
+        """Call calls the indicated function.
+
+        :param str token: The token of the function to call.
+        :param Inputs args: The inputs to the function.
+        """
+
+        raise Exception(f"Unknown method {token}")

@@ -16,11 +16,11 @@ package analyzer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -54,7 +54,7 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 
 		el, err := extractEnforcementLevel(props)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing enforcement level for %q", k)
+			return nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
 		}
 		enforcementLevel = el
 		if len(props) > 0 {
@@ -93,21 +93,20 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 		case string:
 			el := apitype.EnforcementLevel(val)
 			if !el.IsValid() {
-				return nil, errors.Errorf(
-					"parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
+				return nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
 			}
 			enforcementLevel = el
 		case map[string]interface{}:
 			el, err := extractEnforcementLevel(val)
 			if err != nil {
-				return nil, errors.Wrapf(err, "parsing enforcement level for %q", k)
+				return nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
 			}
 			enforcementLevel = el
 			if len(val) > 0 {
 				properties = val
 			}
 		default:
-			return nil, errors.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
+			return nil, fmt.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
 		}
 
 		// Don't bother including empty configs.
@@ -132,11 +131,11 @@ func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementL
 	if unknown, ok := props["enforcementLevel"]; ok {
 		enforcementLevelStr, isStr := unknown.(string)
 		if !isStr {
-			return "", errors.Errorf("%v is not a valid enforcement level; must be a string", unknown)
+			return "", fmt.Errorf("%v is not a valid enforcement level; must be a string", unknown)
 		}
 		el := apitype.EnforcementLevel(enforcementLevelStr)
 		if !el.IsValid() {
-			return "", errors.Errorf("%q is not a valid enforcement level", enforcementLevelStr)
+			return "", fmt.Errorf("%q is not a valid enforcement level", enforcementLevelStr)
 		}
 		enforcementLevel = el
 		// Remove enforcementLevel from the map.
@@ -208,7 +207,7 @@ func ValidatePolicyPackConfig(schemaMap map[string]apitype.PolicyConfigSchema,
 		configLoader := gojsonschema.NewBytesLoader(*propertyConfig)
 		result, err := gojsonschema.Validate(schemaLoader, configLoader)
 		if err != nil {
-			return errors.Wrap(err, "unable to validate schema")
+			return fmt.Errorf("unable to validate schema: %w", err)
 		}
 
 		// If the result is invalid, we need to gather the errors to return to the user.

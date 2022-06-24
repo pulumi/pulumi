@@ -13,10 +13,9 @@
 // limitations under the License.
 
 import { RunError } from "./errors";
-import * as log from "./log";
 import { getProject } from "./metadata";
 import { Output } from "./output";
-import { getConfig, isConfigSecret } from "./runtime";
+import { getConfig } from "./runtime";
 
 function makeSecret<T>(value: T): Output<T> {
     return new Output(
@@ -66,10 +65,12 @@ export class Config {
         if (v === undefined) {
             return undefined;
         }
-        if (use && insteadOf && isConfigSecret(fullKey)) {
-            log.warn(`Configuration '${fullKey}' value is a secret; ` +
-                `use \`${use.name}\` instead of \`${insteadOf.name}\``);
-        }
+        // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+        // Temporarily disabling the new warning.
+        // if (use && insteadOf && isConfigSecret(fullKey)) {
+        //     log.warn(`Configuration '${fullKey}' value is a secret; ` +
+        //         `use \`${use.name}\` instead of \`${insteadOf.name}\``);
+        // }
         if (opts) {
             // SAFETY: if allowedValues != null, verifying v ∈ K[]
             if (opts.allowedValues !== undefined && opts.allowedValues.indexOf(v as any) === -1) {
@@ -274,7 +275,7 @@ export class Config {
     }
 
     /**
-     * require loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+     * require loads a configuration value by its given key, marking it as a secret.  If it doesn't exist, an error
      * is thrown.
      *
      * @param key The key to lookup.
@@ -437,7 +438,7 @@ class ConfigTypeError extends RunError {
 class ConfigEnumError extends RunError {
     constructor(key: string, v: any, values: any[]) {
         super(`Configuration '${key}' value '${v}' is not a legal enum value (${JSON.stringify(values)})`);
-   }
+    }
 }
 
 /**
@@ -457,7 +458,7 @@ class ConfigRangeError extends RunError {
             range += " chars";
         }
         super(`Configuration '${key}' value '${v}' is outside of the legal range (${range}, inclusive)`);
-   }
+    }
 }
 
 /**
@@ -466,7 +467,7 @@ class ConfigRangeError extends RunError {
 class ConfigPatternError extends RunError {
     constructor(key: string, v: string, regexp: RegExp) {
         super(`Configuration '${key}' value '${v}' does not match the regular expression ${regexp.toString()}`);
-   }
+    }
 }
 
 /**

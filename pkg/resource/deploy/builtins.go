@@ -2,11 +2,11 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -66,11 +66,11 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
 func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
-	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := urn.Type()
 	if typ != stackReferenceType {
-		return nil, nil, errors.Errorf("unrecognized resource type '%v'", urn.Type())
+		return nil, nil, fmt.Errorf("unrecognized resource type '%v'", urn.Type())
 	}
 
 	var name resource.PropertyValue
@@ -147,7 +147,8 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	outputs, err := p.readStackReference(state)
@@ -193,7 +194,7 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 		}
 		return outs, nil, nil
 	default:
-		return nil, nil, errors.Errorf("unrecognized function name: '%v'", tok)
+		return nil, nil, fmt.Errorf("unrecognized function name: '%v'", tok)
 	}
 }
 
@@ -202,6 +203,12 @@ func (p *builtinProvider) StreamInvoke(
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 
 	return nil, fmt.Errorf("the builtin provider does not implement streaming invokes")
+}
+
+func (p *builtinProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+
+	return plugin.CallResult{}, fmt.Errorf("the builtin provider does not implement call")
 }
 
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
@@ -274,7 +281,7 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 
 	state, ok := p.resources.get(resource.URN(urn.StringValue()))
 	if !ok {
-		return nil, errors.Errorf("unknown resource %v", urn.StringValue())
+		return nil, fmt.Errorf("unknown resource %v", urn.StringValue())
 	}
 
 	return resource.PropertyMap{

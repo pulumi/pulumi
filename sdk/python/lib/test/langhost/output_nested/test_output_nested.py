@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ class OutputNestedTest(LanghostTest):
             program=path.join(self.base_path(), "output_nested"),
             expected_resource_count=3)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         nested_numbers = None
         if name == "testResource1":
             self.assertEqual(ty, "test:index:MyResource")
@@ -46,8 +46,8 @@ class OutputNestedTest(LanghostTest):
             # The source program uses Output.apply to merge outputs from the above two resources.
             # The 10 is produced by adding 9 and 1 in the source program, derived from nested properties of the
             # testResource1 nested_numbers property.
-            self.assertEqual(resource["sum"], 10)
-            nested_numbers = resource["sum"]
+            self.assertEqual(_resource["sum"], 10)
+            nested_numbers = _resource["sum"]
         return {
             "urn": self.make_urn(ty, name),
             "id": name,

@@ -1,4 +1,8 @@
-abstract Pulumi.Automation.Workspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
-override Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
-static Pulumi.Automation.PulumiFn.Create(System.IServiceProvider serviceProvider, System.Type stackType) -> Pulumi.Automation.PulumiFn
-static Pulumi.Automation.StackDeployment.FromJsonString(string jsonString) -> Pulumi.Automation.StackDeployment
+Pulumi.Automation.HistoryOptions.ShowSecrets.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.DestroyOptions.ShowSecrets.set -> void
+Pulumi.Automation.DestroyOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpOptions.ShowSecrets.set -> void
+Pulumi.Automation.UpOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.RefreshOptions.ShowSecrets.set -> void
+Pulumi.Automation.RefreshOptions.ShowSecrets.get -> bool?

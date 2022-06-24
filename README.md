@@ -3,11 +3,12 @@
 </a>
 
 [![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=slack-badge)
+![GitHub Discussions](https://img.shields.io/github/discussions/pulumi/pulumi)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
 [![Python version](https://badge.fury.io/py/pulumi.svg)](https://pypi.org/project/pulumi)
 [![NuGet version](https://badge.fury.io/nu/pulumi.svg)](https://badge.fury.io/nu/pulumi)
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
-[![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/pulumi/pulumi)](LICENSE)
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pulumi/pulumi)
 
 <a href="https://www.pulumi.com/docs/get-started/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=get-started-button" title="Get Started">
@@ -78,22 +79,22 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 <img align="right" width="400" src="https://www.pulumi.com/images/docs/quickstart/console.png" />
 
-* **[Getting Started](#getting-started)**: get up and running quickly.
+* **[Get Started with Pulumi](https://www.pulumi.com/docs/get-started/)**: Deploy a simple application in AWS, Azure, Google Cloud, or Kubernetes using Pulumi.
 
-* **[Tutorials](https://www.pulumi.com/docs/reference/tutorials/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=welcome-tutorials)**: walk through end-to-end workflows for creating containers, serverless
-  functions, and other cloud services and infrastructure.
+* **[Learn](https://www.pulumi.com/learn/)**: Follow Pulumi learning pathways to learn best practices and architectural patterns through authentic examples.
 
-* **[Examples](https://github.com/pulumi/examples)**: browse a number of useful examples across many languages,
+* **[Examples](https://github.com/pulumi/examples)**: Browse several examples across many languages,
   clouds, and scenarios including containers, serverless, and infrastructure.
 
-* **[Reference Docs](https://www.pulumi.com/docs/reference/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=welcome-reference-docs)**: read conceptual documentation, in addition to details on how
-  to configure Pulumi to deploy into your AWS, Azure, or Google Cloud accounts, and/or Kubernetes cluster.
+* **[Docs](https://www.pulumi.com/docs/)**: Learn about Pulumi concepts, follow user-guides, and consult the reference documentation.
 
-* **[Community Slack](https://slack.pulumi.com/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=welcome-slack)**: join us over at our community Slack channel.  Any and all
-  discussion or questions are welcome.
+* **[Registry](https://www.pulumi.com/registry/)**: Find the Pulumi Package with the resources you need. Install the package directly into your project, browse the API documentation, and start building.
 
-* **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi
-  project over the coming months.
+* **[Pulumi Roadmap](https://github.com/orgs/pulumi/projects/44)**: Review the planned work for the upcoming quarter and a selected backlog of issues that are on our mind but not yet scheduled.
+
+* **[Community Slack](https://slack.pulumi.com/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=welcome-slack)**: Join us in Pulumi Community Slack. All conversations and questions are welcome.
+
+* **[GitHub Discussions](https://github.com/pulumi/pulumi/discussions)**: Ask questions or share what you're building with Pulumi.
 
 ## <a name="getting-started"></a>Getting Started
 
@@ -171,8 +172,8 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 | Architecture | Build Status |
 | ------------ | ------------ |
-| Linux/macOS x64 | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)                |
-| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
+| Linux/macOS x64 | [![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi/actions/workflows/master.yml) |
+| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi)   |
 
 ### Languages
 
@@ -186,10 +187,8 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 ### Clouds
 
-See [Supported Clouds](https://www.pulumi.com/docs/reference/clouds/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=clouds) for the
-full list of supported cloud and infrastructure providers.
+Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
-Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md)
-for information on building Pulumi from source or contributing improvements.
+Visit [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md) for information on building Pulumi from source or contributing improvements.

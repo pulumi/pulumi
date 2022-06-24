@@ -25,6 +25,8 @@ import (
 )
 
 func TestQuerySource_Trivial_Wait(t *testing.T) {
+	t.Parallel()
+
 	// Trivial querySource returns immediately with `Wait()`, even with multiple invocations.
 
 	// Success case.
@@ -63,6 +65,8 @@ func TestQuerySource_Trivial_Wait(t *testing.T) {
 }
 
 func TestQuerySource_Async_Wait(t *testing.T) {
+	t.Parallel()
+
 	// `Wait()` executes asynchronously.
 
 	// Success case.
@@ -128,6 +132,8 @@ func TestQuerySource_Async_Wait(t *testing.T) {
 }
 
 func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
+	t.Parallel()
+
 	rm := &queryResmon{}
 
 	_, err := rm.ReadResource(context.TODO(), nil)
@@ -178,7 +184,12 @@ func (rm *mockQueryResmon) Cancel() error {
 	return nil
 }
 func (rm *mockQueryResmon) Invoke(ctx context.Context,
-	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+
+	panic("not implemented")
+}
+func (rm *mockQueryResmon) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 
 	panic("not implemented")
 }

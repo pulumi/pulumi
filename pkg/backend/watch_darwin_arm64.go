@@ -21,6 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {
+func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier, paths []string) result.Result {
 	return result.FromError(errors.New("pulumi watch is not currently supported on darwin/arm64"))
 }

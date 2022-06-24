@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,10 +29,10 @@ class ComponentResourceSingleProviderTest(LanghostTest):
             program=path.join(self.base_path(), "component_resource_single_provider"),
             expected_resource_count=240)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, custom, protect, provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
-        if custom and not ty.startswith("pulumi:providers:"):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
+        if _custom and not ty.startswith("pulumi:providers:"):
             expect_protect = False
             expect_provider_name = ""
 
@@ -59,7 +59,7 @@ class ComponentResourceSingleProviderTest(LanghostTest):
 
             # "provider" is a provider reference. To get the provider name (technically its ID, but this test
             # uses names as IDs), get the first string before the double-colon.
-            provider_name = provider.split("::")[-1]
+            provider_name = _provider.split("::")[-1]
             self.assertEqual(f"{name}.protect: {protect}", f"{name}.protect: {expect_protect}")
             self.assertEqual(f"{name}.provider: {provider_name}", f"{name}.provider: {expect_provider_name}")
 

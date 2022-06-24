@@ -1,11 +1,35 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 var pathTests = []struct {
@@ -23,8 +47,13 @@ var pathTests = []struct {
 }
 
 func TestRelPathToRelImport(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pathTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			result := relPathToRelImport(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
@@ -34,83 +63,179 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
-	}{
-		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				filepath.Join("pulumi_example", "resource.py"),
-				filepath.Join("pulumi_example", "other_resource.py"),
-				filepath.Join("pulumi_example", "arg_function.py"),
-			},
-		},
-		{
-			"Simple schema with local resource properties and custom Python package name",
-			"simple-resource-schema-custom-pypackage-name",
-			[]string{
-				filepath.Join("custom_py_package", "resource.py"),
-				filepath.Join("custom_py_package", "other_resource.py"),
-				filepath.Join("custom_py_package", "arg_function.py"),
-			},
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				filepath.Join("pulumi_example", "_inputs.py"),
-				filepath.Join("pulumi_example", "arg_function.py"),
-				filepath.Join("pulumi_example", "cat.py"),
-				filepath.Join("pulumi_example", "component.py"),
-				filepath.Join("pulumi_example", "workload.py"),
-			},
-		},
-		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				filepath.Join("pulumi_plant", "_enums.py"),
-				filepath.Join("pulumi_plant", "_inputs.py"),
-				filepath.Join("pulumi_plant", "outputs.py"),
-				filepath.Join("pulumi_plant", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "_enums.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "rubber_tree.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "nursery.py"),
-			},
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				filepath.Join("pulumi_example", "_inputs.py"),
-				filepath.Join("pulumi_example", "component.py"),
-				filepath.Join("pulumi_example", "outputs.py"),
-			},
-		},
+	t.Parallel()
+
+	var virtualEnvLock sync.Mutex
+	// If we are running without checks, we mark the env as already built so we don't
+	// build it again.
+	var virtualEnvBuilt = test.NoSDKCodegenChecks()
+
+	// To speed up these tests, we will generate one common virtual environment for all of
+	// them to run in, rather than having one per test. We want to make sure that we only
+	// build the virtual env if we are going to run one of the tests. We thus build the
+	// environment lazily
+	needsEnv := func(testFn test.CodegenCheck) test.CodegenCheck {
+		return func(t *testing.T, codedir string) {
+			func() {
+				virtualEnvLock.Lock()
+				defer virtualEnvLock.Unlock()
+				if !virtualEnvBuilt {
+					err := buildVirtualEnv(context.Background())
+					if err != nil {
+						t.Error(err)
+						t.FailNow()
+					}
+					virtualEnvBuilt = true
+				}
+			}()
+			testFn(t, codedir)
+		}
 	}
 
-	testDir := filepath.Join("..", "internal", "test", "testdata")
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "python",
+		GenPackage: GeneratePackage,
+		Checks: map[string]test.CodegenCheck{
+			"python/py_compile": needsEnv(pyCompileCheck),
+			"python/test":       needsEnv(pyTestCheck),
+		},
+		TestCases: test.PulumiPulumiSDKTests,
+	})
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
-			assert.NoError(t, err)
-
-			dir := filepath.Join(testDir, tt.schemaDir)
-			lang := "python"
-
-			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files)
-
-			expectedFiles, err := test.LoadFiles(dir, lang, tt.expectedFiles)
-			assert.NoError(t, err)
-
-			test.ValidateFileEquality(t, files, expectedFiles)
-		})
+func absTestsPath() (string, error) {
+	hereDir, err := filepath.Abs(".")
+	if err != nil {
+		return "", err
 	}
+	return hereDir, nil
+}
+
+func virtualEnvPath() (string, error) {
+	hereDir, err := absTestsPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(hereDir, "venv"), nil
+}
+
+// To serialize shared `venv` operations; without the lock running
+// tests with `-parallel` causes sproadic failure.
+var venvMutex = &sync.Mutex{}
+
+func buildVirtualEnv(ctx context.Context) error {
+	hereDir, err := absTestsPath()
+	if err != nil {
+		return err
+	}
+	venvDir, err := virtualEnvPath()
+	if err != nil {
+		return err
+	}
+
+	gotVenv, err := test.PathExists(venvDir)
+	if err != nil {
+		return err
+	}
+
+	if gotVenv {
+		err := os.RemoveAll(venvDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
+	if err != nil {
+		return err
+	}
+
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	if err != nil {
+		return err
+	}
+
+	gotSdk, err := test.PathExists(sdkDir)
+	if err != nil {
+		return err
+	}
+
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd.Dir = hereDir
+	err = pyCmd.Run()
+	if err != nil {
+		contract.Failf("failed to link venv against in-source pulumi: %v", err)
+	}
+
+	if !gotSdk {
+		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+	}
+
+	return nil
+}
+
+func pyTestCheck(t *testing.T, codeDir string) {
+	extraDir := filepath.Join(filepath.Dir(codeDir), "python-extras")
+	if _, err := os.Stat(extraDir); os.IsNotExist(err) {
+		// We won't run any tests since no extra tests were included.
+		return
+	}
+	venvDir, err := virtualEnvPath()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	cmd := func(name string, args ...string) error {
+		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
+		cmd := python.VirtualEnvCommand(venvDir, name, args...)
+		cmd.Dir = codeDir
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		return cmd.Run()
+	}
+
+	installPackage := func() error {
+		venvMutex.Lock()
+		defer venvMutex.Unlock()
+		return cmd("python", "-m", "pip", "install", "-e", ".")
+	}
+
+	if err = installPackage(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = cmd("pytest", "."); err != nil {
+		exitError, isExitError := err.(*exec.ExitError)
+		if isExitError && exitError.ExitCode() == 5 {
+			t.Logf("Could not find any pytest tests in %s", codeDir)
+		} else {
+			t.Error(err)
+		}
+		return
+	}
+}
+
+func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
+	test.TestTypeNameCodegen(t, "python", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		// Decode python-specific info
+		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+		require.NoError(t, err)
+
+		info, _ := pkg.Language["python"].(PackageInfo)
+
+		modules, err := generateModuleContextMap("test", pkg, info, nil)
+		require.NoError(t, err)
+
+		root, ok := modules[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t, false, false)
+		}
+	})
 }

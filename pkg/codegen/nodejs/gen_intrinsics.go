@@ -14,7 +14,9 @@
 
 package nodejs
 
-import "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+import (
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+)
 
 const (
 	// intrinsicAwait is the name of the await intrinsic.

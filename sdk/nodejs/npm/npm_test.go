@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,16 +24,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNPMInstall(t *testing.T) {
-	testInstall(t, "npm")
+func chdir(t *testing.T, dir string) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chdir(dir)) // Set directory
+	t.Cleanup(func() {
+		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		restoredDir, err := os.Getwd()
+		assert.NoError(t, err)
+		assert.Equal(t, cwd, restoredDir)
+	})
 }
 
+//nolint:paralleltest // mutates environment variables, changes working directory
+func TestNPMInstall(t *testing.T) {
+	testInstall(t, "npm", false /*production*/)
+	testInstall(t, "npm", true /*production*/)
+}
+
+//nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
 	os.Setenv("PULUMI_PREFER_YARN", "true")
-	testInstall(t, "yarn")
+	testInstall(t, "yarn", false /*production*/)
+	testInstall(t, "yarn", true /*production*/)
 }
 
-func testInstall(t *testing.T, expectedBin string) {
+func testInstall(t *testing.T, expectedBin string, production bool) {
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
@@ -41,7 +58,7 @@ func testInstall(t *testing.T, expectedBin string) {
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")
@@ -59,7 +76,7 @@ func testInstall(t *testing.T, expectedBin string) {
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
-	bin, err := Install(pkgdir, nil, nil)
+	bin, err := Install(context.Background(), pkgdir, production, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBin, bin)
 }

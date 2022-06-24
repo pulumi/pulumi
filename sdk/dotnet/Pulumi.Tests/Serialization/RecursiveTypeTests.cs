@@ -26,7 +26,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void SimpleCase()
         {
-            var data = Converter.ConvertValue<RecursiveType>("", new Value
+            var data = Converter.ConvertValue<RecursiveType>(NoWarn, "", new Value
             {
                 StructValue = new Struct
                 {

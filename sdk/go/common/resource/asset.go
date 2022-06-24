@@ -391,9 +391,12 @@ func (a *Asset) EnsureHash() error {
 		defer contract.IgnoreClose(blob)
 
 		hash := sha256.New()
-		_, err = io.Copy(hash, blob)
+		n, err := io.Copy(hash, blob)
 		if err != nil {
 			return err
+		}
+		if n != blob.Size() {
+			return fmt.Errorf("incorrect blob size: expected %v, got %v", blob.Size(), n)
 		}
 		a.Hash = hex.EncodeToString(hash.Sum(nil))
 	}
@@ -986,6 +989,11 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool
 	if err == tar.ErrWriteTooLong {
 		return errors.Wrap(err, fmt.Sprintf("incorrect blob size for %v: expected %v, got %v", file, sz, n))
 	}
+	// tar expect us to write all the bytes we said we would write. If copy doesn't write Size bytes to the
+	// tar file then we'll get a "missed writing X bytes" error on the next call to WriteHeader or Flush.
+	if n != sz {
+		return fmt.Errorf("incorrect blob size for %v: expected %v, got %v", file, sz, n)
+	}
 	return err
 }
 
@@ -1032,6 +1040,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	}
 	seenFiles[file] = true
 
+	sz := data.Size()
 	fh := &zip.FileHeader{
 		// These are the two fields set by zw.Create()
 		Name:   file,
@@ -1049,8 +1058,14 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(fw, data)
-	return err
+	n, err := io.Copy(fw, data)
+	if err != nil {
+		return err
+	}
+	if n != sz {
+		return fmt.Errorf("incorrect blob size for %v: expected %v, got %v", file, sz, n)
+	}
+	return nil
 }
 
 func (a *Archive) archiveZIP(w io.Writer) error {

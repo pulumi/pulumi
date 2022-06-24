@@ -32,31 +32,32 @@ import (
 //
 
 type MockBackend struct {
-	NameF                   func() string
-	URLF                    func() string
-	GetPolicyPackF          func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
-	SupportsOrganizationsF  func() bool
-	ParseStackReferenceF    func(s string) (StackReference, error)
-	ValidateStackNameF      func(s string) error
-	DoesProjectExistF       func(context.Context, string) (bool, error)
-	GetStackF               func(context.Context, StackReference) (Stack, error)
-	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
-	RemoveStackF            func(context.Context, Stack, bool) (bool, error)
-	ListStacksF             func(context.Context, ListStacksFilter) ([]StackSummary, error)
+	NameF                  func() string
+	URLF                   func() string
+	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+	SupportsTagsF          func() bool
+	SupportsOrganizationsF func() bool
+	ParseStackReferenceF   func(s string) (StackReference, error)
+	ValidateStackNameF     func(s string) error
+	DoesProjectExistF      func(context.Context, string) (bool, error)
+	GetStackF              func(context.Context, StackReference) (Stack, error)
+	CreateStackF           func(context.Context, StackReference, interface{}) (Stack, error)
+	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
+	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
+		[]StackSummary, ContinuationToken, error)
 	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
 	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	GetStackTagsF           func(context.Context, Stack) (map[apitype.StackTagName]string, error)
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
 	LogoutF                 func() error
 	LogoutAllF              func() error
-	CurrentUserF            func() (string, error)
+	CurrentUserF            func() (string, []string, error)
 	PreviewF                func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
+		UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (engine.ResourceChanges, result.Result)
 	ImportF func(context.Context, Stack,
@@ -66,9 +67,11 @@ type MockBackend struct {
 	DestroyF func(context.Context, Stack,
 		UpdateOperation) (engine.ResourceChanges, result.Result)
 	WatchF func(context.Context, Stack,
-		UpdateOperation) result.Result
+		UpdateOperation, []string) result.Result
 	GetLogsF func(context.Context, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
+
+	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -87,11 +90,13 @@ func (be *MockBackend) URL() string {
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyGroups(context.Context, string) (apitype.ListPolicyGroupsResponse, error) {
+func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, ContinuationToken, error) {
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyPacks(context.Context, string) (apitype.ListPolicyPacksResponse, error) {
+func (be *MockBackend) ListPolicyPacks(context.Context, string, ContinuationToken) (
+	apitype.ListPolicyPacksResponse, ContinuationToken, error) {
 	panic("not implemented")
 }
 
@@ -100,6 +105,13 @@ func (be *MockBackend) GetPolicyPack(
 
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) SupportsTags() bool {
+	if be.SupportsTagsF != nil {
+		return be.SupportsTagsF()
 	}
 	panic("not implemented")
 }
@@ -153,9 +165,10 @@ func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool)
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error) {
+func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+	[]StackSummary, ContinuationToken, error) {
 	if be.ListStacksF != nil {
-		return be.ListStacksF(ctx, filter)
+		return be.ListStacksF(ctx, filter, inContToken)
 	}
 	panic("not implemented")
 }
@@ -176,7 +189,7 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 }
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
@@ -221,10 +234,10 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation) result.Result {
+	op UpdateOperation, paths []string) result.Result {
 
 	if be.WatchF != nil {
-		return be.WatchF(ctx, stack, op)
+		return be.WatchF(ctx, stack, op, paths)
 	}
 	panic("not implemented")
 }
@@ -261,15 +274,6 @@ func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 
 	if be.GetLatestConfigurationF != nil {
 		return be.GetLatestConfigurationF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetStackTags(ctx context.Context,
-	stack Stack) (map[apitype.StackTagName]string, error) {
-
-	if be.GetStackTagsF != nil {
-		return be.GetStackTagsF(ctx, stack)
 	}
 	panic("not implemented")
 }
@@ -315,9 +319,16 @@ func (be *MockBackend) LogoutAll() error {
 	panic("not implemented")
 }
 
-func (be *MockBackend) CurrentUser() (string, error) {
+func (be *MockBackend) CurrentUser() (string, []string, error) {
 	if be.CurrentUserF != nil {
 		return be.CurrentUserF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
+	if be.CancelCurrentUpdateF != nil {
+		return be.CancelCurrentUpdateF(ctx, stackRef)
 	}
 	panic("not implemented")
 }
@@ -330,14 +341,15 @@ type MockStack struct {
 	RefF      func() StackReference
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
+	TagsF     func() map[apitype.StackTagName]string
 	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	ImportF   func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (engine.ResourceChanges, result.Result)
 	RefreshF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	DestroyF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	WatchF   func(ctx context.Context, op UpdateOperation) result.Result
+	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) result.Result
 	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
 	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
@@ -370,6 +382,13 @@ func (ms *MockStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	panic("not implemented")
 }
 
+func (ms *MockStack) Tags() map[apitype.StackTagName]string {
+	if ms.TagsF != nil {
+		return ms.TagsF()
+	}
+	panic("not implemented")
+}
+
 func (ms *MockStack) Backend() Backend {
 	if ms.BackendF != nil {
 		return ms.BackendF()
@@ -377,7 +396,10 @@ func (ms *MockStack) Backend() Backend {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Preview(
+	ctx context.Context,
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}
@@ -413,9 +435,9 @@ func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (engine.Re
 	panic("not implemented")
 }
 
-func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation) result.Result {
+func (ms *MockStack) Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result {
 	if ms.WatchF != nil {
-		return ms.WatchF(ctx, op)
+		return ms.WatchF(ctx, op, paths)
 	}
 	panic("not implemented")
 }

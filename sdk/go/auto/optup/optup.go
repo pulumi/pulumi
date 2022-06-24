@@ -101,6 +101,20 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Plan specifies the path to an update plan to use for the update.
+func Plan(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Plan = path
+	})
+}
+
+// Show config secrets when they appear.
+func ShowSecrets(show bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ShowSecrets = &show
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -133,6 +147,16 @@ type Options struct {
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// Colorize output. Choices are: always, never, raw, auto (default "auto")
+	Color string
+	// Use the update plan at the given path.
+	Plan string
+	// Run one or more policy packs as part of this update
+	PolicyPacks []string
+	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+	PolicyPackConfigs []string
+	// Show config secrets when they appear.
+	ShowSecrets *bool
 }
 
 type optionFunc func(*Options)

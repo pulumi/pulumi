@@ -9,13 +9,16 @@
         }
     },
 
-    "runArgs": [
-        "-e",
-        "PULUMI_ACCESS_TOKEN",
-        "-e",
-        "PULUMI_TEST_ORG"
-    ],
+    "containerEnv": {
+        "PULUMI_ACCESS_TOKEN": "${localEnv:PULUMI_ACCESS_TOKEN}",
+        "PULUMI_TEST_ORG": "${localEnv:PULUMI_TEST_ORG}"
+    },
+
     "remoteUser": "user",
+
+    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python", "formulahendry.dotnet-test-explorer"],
+
+    "postCreateCommand": "make ensure",
 
     "settings": {
         "extensions.ignoreRecommendations": true

@@ -2,7 +2,6 @@
 
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Pulumi.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.Core
@@ -17,7 +16,8 @@ namespace Pulumi.Tests.Core
             [Input("array")] private InputList<bool> _array = null!;
             public InputList<bool> Array
             {
-                get => _array ?? (_array = new InputList<bool>());
+                // ReSharper disable once ConstantNullCoalescingCondition
+                get => _array ??= new InputList<bool>();
                 set => _array = value;
             }
         }
@@ -90,14 +90,16 @@ namespace Pulumi.Tests.Core
             [Input("array", json: true)] private InputList<bool> _array = null!;
             public InputList<bool> Array
             {
-                get => _array ?? (_array = new InputList<bool>());
+                // ReSharper disable once ConstantNullCoalescingCondition
+                get => _array ??= new InputList<bool>();
                 set => _array = value;
             }
 
             [Input("map", json: true)] private InputMap<int> _map = null!;
             public InputMap<int> Map
             {
-                get => _map ?? (_map = new InputMap<int>());
+                // ReSharper disable once ConstantNullCoalescingCondition
+                get => _map ??= new InputMap<int>();
                 set => _map = value;
             }
         }

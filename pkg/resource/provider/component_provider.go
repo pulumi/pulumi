@@ -15,7 +15,7 @@
 package provider
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -32,6 +32,33 @@ type componentProvider struct {
 	version   string
 	schema    []byte
 	construct provider.ConstructFunc
+	call      provider.CallFunc
+}
+
+type Options struct {
+	Name      string
+	Version   string
+	Schema    []byte
+	Construct provider.ConstructFunc
+	Call      provider.CallFunc
+}
+
+// MainWithOptions is an entrypoint for a resource provider plugin that implements `Construct` and optionally also
+// `Call` for component resources.
+//
+// Using it isn't required but can cut down significantly on the amount of boilerplate necessary to fire up a new
+// resource provider for components.
+func MainWithOptions(opts Options) error {
+	return Main(opts.Name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
+		return &componentProvider{
+			host:      host,
+			name:      opts.Name,
+			version:   opts.Version,
+			schema:    opts.Schema,
+			construct: opts.Construct,
+			call:      opts.Call,
+		}, nil
+	})
 }
 
 // ComponentMain is an entrypoint for a resource provider plugin that implements `Construct` for component resources.
@@ -60,7 +87,7 @@ func (p *componentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*pul
 func (p *componentProvider) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	if v := req.GetVersion(); v != 0 {
-		return nil, errors.Errorf("unsupported schema version %d", v)
+		return nil, fmt.Errorf("unsupported schema version %d", v)
 	}
 	schema := string(p.schema)
 	if schema == "" {
@@ -76,13 +103,17 @@ func (p *componentProvider) Configure(ctx context.Context,
 		AcceptSecrets:   true,
 		SupportsPreview: true,
 		AcceptResources: true,
+		AcceptOutputs:   true,
 	}, nil
 }
 
 // Construct creates a new instance of the provided component resource and returns its state.
 func (p *componentProvider) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
-	return provider.Construct(ctx, req, p.host.conn, p.construct)
+	if p.construct != nil {
+		return provider.Construct(ctx, req, p.host.conn, p.construct)
+	}
+	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
 // CheckConfig validates the configuration for this provider.
@@ -152,11 +183,31 @@ func (p *componentProvider) Invoke(ctx context.Context,
 	return nil, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
+// Call dynamically executes a method in the provider associated with a component resource.
+func (p *componentProvider) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	if p.call != nil {
+		return provider.Call(ctx, req, p.host.conn, p.call)
+	}
+	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
+}
+
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either a
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
 // to the host to decide how long to wait after Cancel is called before (e.g.)
 // hard-closing any gRPC connection.
 func (p *componentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
+}
+
+// Attach attaches to the engine for an already running provider.
+func (p *componentProvider) Attach(ctx context.Context,
+	req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	host, err := NewHostClient(req.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	p.host = host
 	return &pbempty.Empty{}, nil
 }

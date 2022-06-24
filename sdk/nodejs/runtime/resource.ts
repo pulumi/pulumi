@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,6 @@ import {
 import {
     excessiveDebugOutput,
     getMonitor,
-    getProject,
     getRootResource,
     getStack,
     isDryRun,
@@ -60,7 +59,6 @@ import {
 } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const providerproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
@@ -111,7 +109,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
     debuggablePromise(resopAsync.then(async (resop) => {
         const inputs = await serializeProperties(label, { urn });
 
-        const req = new providerproto.InvokeRequest();
+        const req = new resproto.ResourceInvokeRequest();
         req.setTok("pulumi:pulumi:getResource");
         req.setArgs(gstruct.Struct.fromJavaScript(inputs));
         req.setProvider("");
@@ -205,7 +203,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
-        const resolvedID = await serializeProperty(label, id, new Set());
+        const resolvedID = await serializeProperty(label, id, new Set(), { keepOutputValues: false });
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
@@ -219,6 +217,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
@@ -312,10 +311,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setAliasesList(resop.aliases);
+        req.setUrnaliasesList(resop.aliases);
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
         req.setRemote(remote);
+        req.setReplaceonchangesList(opts.replaceOnChanges || []);
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
+        req.setRetainondelete(opts.retainOnDelete || false);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -419,162 +421,194 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 async function prepareResource(label: string, res: Resource, custom: boolean, remote: boolean,
                                props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
 
-    // Simply initialize the URN property and get prepared to resolve it later on.
-    // Note: a resource urn will always get a value, and thus the output property
-    // for it can always run .apply calls.
-    let resolveURN: (urn: URN, err?: Error) => void;
-    {
-        let resolveValue: (urn: URN) => void;
-        let rejectValue: (err: Error) => void;
-        let resolveIsKnown: (isKnown: boolean) => void;
-        let rejectIsKnown: (err: Error) => void;
-        (res as any).urn = new Output(
-            res,
-            debuggablePromise(
-                new Promise<URN>((resolve, reject) => {
+    // add an entry to the rpc queue while we prepare the request.
+    // automation api inline programs that don't have stack exports can exit quickly. If we don't do this,
+    // sometimes they will exit right after `prepareResource` is called as a part of register resource, but before the
+    // .then() that adds to the queue via `runAsyncResourceOp`.
+    const done: () => void = rpcKeepAlive();
+
+    try {
+        // Simply initialize the URN property and get prepared to resolve it later on.
+        // Note: a resource urn will always get a value, and thus the output property
+        // for it can always run .apply calls.
+        let resolveURN: (urn: URN, err?: Error) => void;
+        {
+            let resolveValue: (urn: URN) => void;
+            let rejectValue: (err: Error) => void;
+            let resolveIsKnown: (isKnown: boolean) => void;
+            let rejectIsKnown: (err: Error) => void;
+            (res as any).urn = new Output(
+                res,
+                debuggablePromise(
+                    new Promise<URN>((resolve, reject) => {
+                        resolveValue = resolve;
+                        rejectValue = reject;
+                    }),
+                    `resolveURN(${label})`),
+                debuggablePromise(
+                    new Promise<boolean>((resolve, reject) => {
+                        resolveIsKnown = resolve;
+                        rejectIsKnown = reject;
+                    }),
+                    `resolveURNIsKnown(${label})`),
+                /*isSecret:*/ Promise.resolve(false),
+                Promise.resolve(res));
+
+            resolveURN = (v, err) => {
+                if (!!err) {
+                    rejectValue(err);
+                    rejectIsKnown(err);
+                } else {
+                    resolveValue(v);
+                    resolveIsKnown(true);
+                }
+            };
+        }
+
+        // If a custom resource, make room for the ID property.
+        let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
+        if (custom) {
+            let resolveValue: (v: ID) => void;
+            let rejectValue: (err: Error) => void;
+            let resolveIsKnown: (v: boolean) => void;
+            let rejectIsKnown: (err: Error) => void;
+
+            (res as any).id = new Output(
+                res,
+                debuggablePromise(new Promise<ID>((resolve, reject) => {
                     resolveValue = resolve;
                     rejectValue = reject;
                 }),
-                `resolveURN(${label})`),
-            debuggablePromise(
-                new Promise<boolean>((resolve, reject) => {
+                `resolveID(${label})`),
+                debuggablePromise(new Promise<boolean>((resolve, reject) => {
                     resolveIsKnown = resolve;
                     rejectIsKnown = reject;
-                }),
-                `resolveURNIsKnown(${label})`),
-            /*isSecret:*/ Promise.resolve(false),
-            Promise.resolve(res));
+                }), `resolveIDIsKnown(${label})`),
+                Promise.resolve(false),
+                Promise.resolve(res));
 
-        resolveURN = (v, err) => {
-            if (!!err) {
-                rejectValue(err);
-                rejectIsKnown(err);
-            } else {
-                resolveValue(v);
-                resolveIsKnown(true);
+            resolveID = (v, isKnown, err) => {
+                if (!!err) {
+                    rejectValue(err);
+                    rejectIsKnown(err);
+                } else {
+                    resolveValue(v);
+                    resolveIsKnown(isKnown);
+                }
+            };
+        }
+
+        // Now "transfer" all input properties into unresolved Promises on res.  This way,
+        // this resource will look like it has all its output properties to anyone it is
+        // passed to.  However, those promises won't actually resolve until the registerResource
+        // RPC returns
+        const resolvers = transferProperties(res, label, props);
+
+        /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
+
+        // Before we can proceed, all our dependencies must be finished.
+        const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
+
+        // Serialize out all our props to their final values.  In doing so, we'll also collect all
+        // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
+            // To initially scope the use of this new feature, we only keep output values when
+            // remote is true (for multi-lang components).
+            keepOutputValues: remote,
+        });
+
+        // Wait for the parent to complete.
+        // If no parent was provided, parent to the root resource.
+        const parentURN = opts.parent
+            ? await opts.parent.urn.promise()
+            : await getRootResource();
+
+        let providerRef: string | undefined;
+        let importID: ID | undefined;
+        if (custom) {
+            const customOpts = <CustomResourceOptions>opts;
+            importID = customOpts.import;
+            providerRef = await ProviderResource.register(opts.provider);
+        }
+
+        const providerRefs: Map<string, string> = new Map<string, string>();
+        if (remote) {
+            const componentOpts = <ComponentResourceOptions>opts;
+            expandProviders(componentOpts);
+            // the <ProviderResource[]> casts are safe because expandProviders
+            // /always/ leaves providers as an array.
+            if (componentOpts.provider !== undefined) {
+                if (componentOpts.providers === undefined) {
+                    // We still want to do the promotion, so we define providers
+                    componentOpts.providers = [componentOpts.provider];
+                } else if ((<ProviderResource[]> componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
+                    const pkg = componentOpts.provider.getPackage();
+                    const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                    const deprecationd = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details";
+                    log.warn(message+deprecationd);
+                } else {
+                    (<ProviderResource[]> componentOpts.providers).push(componentOpts.provider);
+                }
             }
-        };
-    }
-
-    // If a custom resource, make room for the ID property.
-    let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
-    if (custom) {
-        let resolveValue: (v: ID) => void;
-        let rejectValue: (err: Error) => void;
-        let resolveIsKnown: (v: boolean) => void;
-        let rejectIsKnown: (err: Error) => void;
-
-        (res as any).id = new Output(
-            res,
-            debuggablePromise(new Promise<ID>((resolve, reject) => {
-                resolveValue = resolve;
-                rejectValue = reject;
-            }),
-                `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>((resolve, reject) => {
-                resolveIsKnown = resolve;
-                rejectIsKnown = reject;
-            }), `resolveIDIsKnown(${label})`),
-            Promise.resolve(false),
-            Promise.resolve(res));
-
-        resolveID = (v, isKnown, err) => {
-            if (!!err) {
-                rejectValue(err);
-                rejectIsKnown(err);
-            } else {
-                resolveValue(v);
-                resolveIsKnown(isKnown);
-            }
-        };
-    }
-
-    // Now "transfer" all input properties into unresolved Promises on res.  This way,
-    // this resource will look like it has all its output properties to anyone it is
-    // passed to.  However, those promises won't actually resolve until the registerResource
-    // RPC returns
-    const resolvers = transferProperties(res, label, props);
-
-    /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
-
-    // Before we can proceed, all our dependencies must be finished.
-    const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
-
-    // Serialize out all our props to their final values.  In doing so, we'll also collect all
-    // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-    const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props);
-
-    // Wait for the parent to complete.
-    // If no parent was provided, parent to the root resource.
-    const parentURN = opts.parent
-        ? await opts.parent.urn.promise()
-        : await getRootResource();
-
-    let providerRef: string | undefined;
-    let importID: ID | undefined;
-    if (custom) {
-        const customOpts = <CustomResourceOptions>opts;
-        importID = customOpts.import;
-        providerRef = await ProviderResource.register(opts.provider);
-    }
-
-    const providerRefs: Map<string, string> = new Map<string, string>();
-    if (remote) {
-        const componentOpts = <ComponentResourceOptions>opts;
-        expandProviders(componentOpts);
-        if (componentOpts.providers) {
-            for (const provider of componentOpts.providers as ProviderResource[]) {
-                const pref = await ProviderResource.register(provider);
-                if (pref) {
-                    providerRefs.set(provider.getPackage(), pref);
+            if (componentOpts.providers) {
+                for (const provider of componentOpts.providers as ProviderResource[]) {
+                    const pref = await ProviderResource.register(provider);
+                    if (pref) {
+                        providerRefs.set(provider.getPackage(), pref);
+                    }
                 }
             }
         }
-    }
 
-    // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
-    // the dependency graph and optimize operations accordingly.
+        // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
+        // the dependency graph and optimize operations accordingly.
 
-    // The list of all dependencies (implicit or explicit).
-    const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
+        // The list of all dependencies (implicit or explicit).
+        const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await getAllTransitivelyReferencedCustomResourceURNs(explicitDirectDependencies);
-    const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
+        const exclude = new Set<Resource>([res]);
+        const allDirectDependencyURNs = await getAllTransitivelyReferencedResourceURNs(explicitDirectDependencies, exclude);
+        const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
-    for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
-        addAll(allDirectDependencies, directDependencies);
+        for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
+            addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getAllTransitivelyReferencedCustomResourceURNs(directDependencies);
-        addAll(allDirectDependencyURNs, urns);
-        propertyToDirectDependencyURNs.set(propertyName, urns);
-    }
-
-    // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
-    // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
-    // simplifying aliases down to URNs.
-    const aliases = [];
-    const uniqueAliases = new Set<string>();
-    for (const alias of (res.__aliases || [])) {
-        const aliasVal = await output(alias).promise();
-        if (!uniqueAliases.has(aliasVal)) {
-            uniqueAliases.add(aliasVal);
-            aliases.push(aliasVal);
+            const urns = await getAllTransitivelyReferencedResourceURNs(directDependencies, exclude);
+            addAll(allDirectDependencyURNs, urns);
+            propertyToDirectDependencyURNs.set(propertyName, urns);
         }
-    }
 
-    return {
-        resolveURN: resolveURN,
-        resolveID: resolveID,
-        resolvers: resolvers,
-        serializedProps: serializedProps,
-        parentURN: parentURN,
-        providerRef: providerRef,
-        providerRefs: providerRefs,
-        allDirectDependencyURNs: allDirectDependencyURNs,
-        propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
-        aliases: aliases,
-        import: importID,
-    };
+        // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
+        // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
+        // simplifying aliases down to URNs.
+        const aliases = [];
+        const uniqueAliases = new Set<string>();
+        for (const alias of (res.__aliases || [])) {
+            const aliasVal = await output(alias).promise();
+            if (!uniqueAliases.has(aliasVal)) {
+                uniqueAliases.add(aliasVal);
+                aliases.push(aliasVal);
+            }
+        }
+
+        return {
+            resolveURN: resolveURN,
+            resolveID: resolveID,
+            resolvers: resolvers,
+            serializedProps: serializedProps,
+            parentURN: parentURN,
+            providerRef: providerRef,
+            providerRefs: providerRefs,
+            allDirectDependencyURNs: allDirectDependencyURNs,
+            propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
+            aliases: aliases,
+            import: importID,
+        };
+
+    } finally {
+        // free the RPC queue
+        done();
+    }
 }
 
 function addAll<T>(to: Set<T>, from: Set<T>) {
@@ -583,30 +617,42 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Resource>) {
+/** @internal */
+export async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>, exclude: Set<Resource>): Promise<Set<string>> {
     // Go through 'resources', but transitively walk through **Component** resources, collecting any
     // of their child resources.  This way, a Component acts as an aggregation really of all the
-    // reachable custom resources it parents.  This walking will transitively walk through other
-    // child ComponentResources, but will stop when it hits custom resources.  in other words, if we
-    // had:
+    // reachable resources it parents.  This walking will stop when it hits custom resources.
     //
-    //              Comp1
-    //              /   \
-    //          Cust1   Comp2
-    //                  /   \
-    //              Cust2   Cust3
-    //              /
-    //          Cust4
+    // This function also terminates at remote components, whose children are not known to the Node SDK directly.
+    // Remote components will always wait on all of their children, so ensuring we return the remote component
+    // itself here and waiting on it will accomplish waiting on all of it's children regardless of whether they
+    // are returned explicitly here.
     //
-    // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3]. It
-    // will *not* include `Cust4`.
+    // In other words, if we had:
+    //
+    //                  Comp1
+    //              /     |     \
+    //          Cust1   Comp2  Remote1
+    //                  /   \       \
+    //              Cust2   Cust3  Comp3
+    //              /                 \
+    //          Cust4                Cust5
+    //
+    // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
+    // It will *not* include:
+    // * Cust4 because it is a child of a custom resource
+    // * Comp2 because it is a non-remote component resource
+    // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
 
     // To do this, first we just get the transitively reachable set of resources (not diving
     // into custom resources).  In the above picture, if we start with 'Comp1', this will be
     // [Comp1, Cust1, Comp2, Cust2, Cust3]
     const transitivelyReachableResources = await getTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-    const transitivelyReachableCustomResources = [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    // Then we filter to only include Custom and Remote resources.
+    const transitivelyReachableCustomResources =
+        [...transitivelyReachableResources]
+            .filter(r => (CustomResource.isInstance(r) || (r as ComponentResource).__remote) && !exclude.has(r));
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
@@ -696,7 +742,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
                 // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
                 // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
                 // Output values are handled properly w.r.t. unknowns.
-                const inputProp = await serializeProperty(label, props[key], new Set());
+                const inputProp = await serializeProperty(label, props[key], new Set(), { keepOutputValues: false });
                 if (inputProp === undefined) {
                     continue;
                 }
@@ -790,8 +836,8 @@ export function listResourceOutputs<U extends Resource>(
             }).then<any[]>(({ outputs }) => utils.values(outputs)),
         )
         .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
-            return { ...outputs, __pulumiType: typ };
-        })
+        return { ...outputs, __pulumiType: typ };
+    })
         .filter(typeFilter);
 }
 

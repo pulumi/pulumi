@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,8 @@ import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
-const provproto = require("../proto/provider_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
-const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
@@ -32,7 +30,7 @@ const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSiz
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
  */
-export let excessiveDebugOutput: boolean = false;
+export const excessiveDebugOutput: boolean = false;
 
 /**
  * Options is a bag of settings that controls the behavior of previews and deployments
@@ -115,9 +113,9 @@ export function _setIsDryRun(val: boolean) {
 }
 
 /**
- * Returns true if we're currently performing a dry-run, or false if this is a true update. Note that we
- * always consider executions in test mode to be "dry-runs", since we will never actually carry out an update,
- * and therefore certain output properties will never be resolved.
+ * Returns whether or not we are currently doing a preview.
+ *
+ * When writing unit tests, you can set this flag via either `setMocks` or `_setIsDryRun`.
  */
 export function isDryRun(): boolean {
     return options().dryRun === true;
@@ -140,6 +138,10 @@ export function _setFeatureSupport(key: string, val: boolean) {
 
 /**
  * Returns true if test mode is enabled (PULUMI_TEST_MODE).
+ *
+ * NB: this test mode has nothing to do with preview/dryRun modality, and it is not automatically
+ * enabled by calling `setMocks`. It is a vestigial mechanism related to testing the runtime itself,
+ * and is not relevant to writing or running unit tests for a Pulumi project.
  */
 export function isTestModeEnabled(): boolean {
     return options().testModeEnabled === true;
@@ -239,6 +241,8 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object | undefined {
+    // pre-emptive fail fast check for node inline programs
+    runSxSCheck();
     if (monitor === undefined) {
         const addr = options().monitorAddr;
         if (addr) {
@@ -329,6 +333,8 @@ export function serialize(): boolean {
 
  */
 function options(): Options {
+    // pre-emptive fail fast check for node inline programs
+    runSxSCheck();
     // The only option that needs parsing is the parallelism flag.  Ignore any failures.
     let parallel: number | undefined;
     const parallelOpt = process.env[nodeEnvKeys.parallel];
@@ -365,6 +371,11 @@ function options(): Options {
  * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
  */
 export function disconnect(): Promise<void> {
+    return waitForRPCs(/*disconnectFromServers*/ true);
+}
+
+/** @internal */
+export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
         if (done !== rpcDone) {
@@ -372,7 +383,9 @@ export function disconnect(): Promise<void> {
             done = rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        disconnectSync();
+        if (disconnectFromServers) {
+            disconnectSync();
+        }
         return Promise.resolve();
     };
     return closeCallback();
@@ -544,4 +557,47 @@ export function monitorSupportsSecrets(): Promise<boolean> {
  */
 export async function monitorSupportsResourceReferences(): Promise<boolean> {
     return monitorSupportsFeature("resourceReferences");
+}
+
+/**
+ * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
+ * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
+ * in a special way.
+ */
+export async function monitorSupportsOutputValues(): Promise<boolean> {
+    return monitorSupportsFeature("outputValues");
+}
+
+// sxsRandomIdentifier is a module level global that is transfered to process.env.
+// the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
+// and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.
+const sxsRandomIdentifier = Math.random().toString();
+
+// indicates that the current runtime context is via an inline program via automation api.
+let isInline = false;
+
+/** @internal only used by the internal inline language host implementation */
+export function setInline() {
+    isInline = true;
+}
+
+const pulumiSxSEnv = "PULUMI_NODEJS_SXS_FLAG";
+
+/**
+ * runSxSCheck checks an identifier stored in the environment to detect multiple versions of pulumi.
+ * if we're running in inline mode, it will throw an error to fail fast due to global state collisions that can occur.
+ */
+function runSxSCheck() {
+    const envSxS = process.env[pulumiSxSEnv];
+    process.env[pulumiSxSEnv] = sxsRandomIdentifier;
+
+    if (!isInline) {
+        return;
+    }
+
+    // if we see a different identifier, another version of pulumi has been loaded and we should fail.
+    if (!!envSxS && envSxS !== sxsRandomIdentifier) {
+        throw new Error("Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
+            "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.");
+    }
 }

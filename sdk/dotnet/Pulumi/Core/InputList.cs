@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
@@ -57,9 +57,20 @@ namespace Pulumi
 
         public void Add(params Input<T>[] inputs)
         {
-            // Make an Output from the values passed in, mix in with our own Output, and combine
-            // both to produce the final array that we will now point at.
-            _outputValue = Output.Concat(_outputValue, Output.All(inputs));
+            _outputValue = Concat(inputs);
+        }
+
+        /// <summary>
+        /// Note: this is non-standard convenience for use with collection initializers.
+        /// </summary>
+        public void Add(InputList<T> inputs)
+        {
+            AddRange(inputs);
+        }
+
+        public void AddRange(InputList<T> inputs)
+        {
+            _outputValue = Concat(inputs);
         }
 
         /// <summary>
@@ -127,13 +138,13 @@ namespace Pulumi
         #region construct from Output of some list type.
 
         public static implicit operator InputList<T>(Output<T[]> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<List<T>> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<IEnumerable<T>> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<ImmutableArray<T>> values)
             => new InputList<T>(values);
@@ -147,7 +158,8 @@ namespace Pulumi
 
         public async IAsyncEnumerator<Input<T>> GetAsyncEnumerator(CancellationToken cancellationToken)
         {
-            var data = await _outputValue.GetValueAsync().ConfigureAwait(false);
+            var data = await _outputValue.GetValueAsync(whenUnknown: ImmutableArray<T>.Empty)
+                .ConfigureAwait(false);
             foreach (var value in data)
             {
                 yield return value;

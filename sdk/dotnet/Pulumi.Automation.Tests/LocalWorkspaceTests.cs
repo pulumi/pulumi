@@ -1,19 +1,25 @@
 // Copyright 2016-2021, Pulumi Corporation
 
-using Semver;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Pulumi.Automation.Exceptions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
+using Pulumi.Automation.Exceptions;
+using Semver;
+using Serilog;
+using Serilog.Extensions.Logging;
 using Xunit;
-using System.Collections.Immutable;
-using Microsoft.Extensions.DependencyInjection;
+using Xunit.Abstractions;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Pulumi.Automation.Tests
 {
@@ -24,8 +30,8 @@ namespace Pulumi.Automation.Tests
         private static string GetTestSuffix()
         {
             var random = new Random();
-            var result = 100000 + random.Next(0, 900000);
-            return result.ToString();
+            var result = random.Next(); // 31 bits, highest bit will be 0 (signed)
+            return result.ToString("x"); // 8 hex characters
         }
 
         private static string RandomStackName()
@@ -47,6 +53,20 @@ namespace Pulumi.Automation.Tests
                 return $"{projectName}:{key}";
 
             return string.Empty;
+        }
+
+        private ILogger TestLogger { get; }
+
+        public LocalWorkspaceTests(ITestOutputHelper output)
+        {
+            var logger = new LoggerConfiguration()
+                .MinimumLevel.Verbose()
+                .WriteTo.TestOutput(output, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
+            var loggerFactory = new SerilogLoggerFactory(logger);
+
+            TestLogger = loggerFactory.CreateLogger<LocalWorkspaceTests>();
         }
 
         [Theory]
@@ -124,7 +144,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -144,7 +164,7 @@ namespace Pulumi.Automation.Tests
             stacks = await workspace.ListStacksAsync();
             var newStack = stacks.FirstOrDefault(s => s.Name == stackName);
             Assert.NotNull(newStack);
-            Assert.True(newStack.IsCurrent);
+            Assert.True(newStack!.IsCurrent);
 
             await workspace.SelectStackAsync(stackName);
             await workspace.RemoveStackAsync(stackName);
@@ -163,10 +183,12 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
-                ProjectSettings = projectSettings
+                ProjectSettings = projectSettings,
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                }
             });
-
-            StackDeployment deployment;
 
             var stackName = $"{RandomStackName()}";
             try
@@ -178,7 +200,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
                 Assert.Equal(3, upResult.Outputs.Count);
 
-                deployment = await workspace.ExportStackAsync(stackName);
+                var deployment = await workspace.ExportStackAsync(stackName);
                 Assert.True(deployment.Version > 0);
 
                 var previewBeforeDestroy = await stack.PreviewAsync();
@@ -214,7 +236,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -222,12 +244,6 @@ namespace Pulumi.Automation.Tests
 
             var stackName = $"{RandomStackName()}";
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
-
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["plain"] = new ConfigValue("abc"),
-                ["secret"] = new ConfigValue("def", isSecret: true),
-            };
 
             var plainKey = NormalizeConfigKey("plain", projectName);
             var secretKey = NormalizeConfigKey("secret", projectName);
@@ -240,7 +256,13 @@ namespace Pulumi.Automation.Tests
                 var values = await stack.GetAllConfigAsync();
                 Assert.Empty(values);
 
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["plain"] = new ConfigValue("abc"),
+                    ["secret"] = new ConfigValue("def", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
+
                 values = await stack.GetAllConfigAsync();
                 Assert.True(values.TryGetValue(plainKey, out var plainValue));
                 Assert.Equal("abc", plainValue!.Value);
@@ -273,6 +295,40 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
+        public async Task SupportConfigFlagLike()
+        {
+            var projectName = "config_flag_like";
+            var projectSettings = new ProjectSettings(projectName, ProjectRuntimeName.NodeJS);
+
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                ProjectSettings = projectSettings
+            });
+
+            var stackName = $"{RandomStackName()}";
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            var plainKey = NormalizeConfigKey("key", projectName);
+            var secretKey = NormalizeConfigKey("secret-key", projectName);
+
+            try
+            {
+                await stack.SetConfigAsync("key", new ConfigValue("-value"));
+                await stack.SetConfigAsync("secret-key", new ConfigValue("-value", isSecret: true));
+                var values = await stack.GetAllConfigAsync();
+                Assert.True(values.TryGetValue(plainKey, out var plainValue));
+                Assert.Equal("-value", plainValue!.Value);
+                Assert.False(plainValue.IsSecret);
+                Assert.True(values.TryGetValue(secretKey, out var secretValue));
+                Assert.Equal("-value", secretValue!.Value);
+                Assert.True(secretValue.IsSecret);
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
         public async Task ListStackAndCurrentlySelected()
         {
             var projectSettings = new ProjectSettings(
@@ -282,7 +338,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -320,7 +376,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -348,19 +404,19 @@ namespace Pulumi.Automation.Tests
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -410,7 +466,7 @@ namespace Pulumi.Automation.Tests
         {
             var program = PulumiFn.Create(() =>
             {
-                var config = new Pulumi.Config();
+                var config = new Config();
                 return new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
@@ -424,19 +480,19 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -499,20 +555,19 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 var initialOutputs = await stack.GetOutputsAsync();
@@ -565,12 +620,10 @@ namespace Pulumi.Automation.Tests
         public async Task StackReferenceDestroyDiscardsWithTwoInlinePrograms()
         {
             var programA = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
-                };
-            });
+                });
 
             var programB = PulumiFn.Create(() =>
             {
@@ -588,7 +641,7 @@ namespace Pulumi.Automation.Tests
 
             var stackA = await SetupStack(projectName, stackNameA, programA, new Dictionary<string, ConfigValue>());
 
-            var stackB = await SetupStack(projectName, stackNameB, programB, new Dictionary<string, ConfigValue>()
+            var stackB = await SetupStack(projectName, stackNameB, programB, new Dictionary<string, ConfigValue>
             {
                 ["Ref"] = new ConfigValue(FullyQualifiedStackName(_pulumiOrg, projectName, stackNameA)),
             });
@@ -645,7 +698,7 @@ namespace Pulumi.Automation.Tests
             {
                 var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(project, stackName, program)
                 {
-                    EnvironmentVariables = new Dictionary<string, string?>()
+                    EnvironmentVariables = new Dictionary<string, string?>
                     {
                         ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                     }
@@ -661,18 +714,16 @@ namespace Pulumi.Automation.Tests
         public async Task OutputStreamAndDelegateIsWritten()
         {
             var program = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["test"] = "test",
-                };
-            });
+                });
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_output";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -680,29 +731,27 @@ namespace Pulumi.Automation.Tests
 
             try
             {
-                var outputCalled = false;
-
                 // pulumi preview
-                outputCalled = false;
-                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnStandardOutput = (str) => outputCalled = true });
+                var outputCalled = false;
+                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnStandardOutput = str => outputCalled = true });
                 Assert.False(string.IsNullOrEmpty(previewResult.StandardOutput));
                 Assert.True(outputCalled);
 
                 // pulumi up
                 outputCalled = false;
-                var upResult = await stack.UpAsync(new UpOptions { OnStandardOutput = (str) => outputCalled = true });
+                var upResult = await stack.UpAsync(new UpOptions { OnStandardOutput = str => outputCalled = true });
                 Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
                 Assert.True(outputCalled);
 
                 // pulumi refresh
                 outputCalled = false;
-                var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnStandardOutput = (str) => outputCalled = true });
+                var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnStandardOutput = str => outputCalled = true });
                 Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
                 Assert.True(outputCalled);
 
                 // pulumi destroy
                 outputCalled = false;
-                var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnStandardOutput = (str) => outputCalled = true });
+                var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnStandardOutput = str => outputCalled = true });
                 Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
                 Assert.True(outputCalled);
             }
@@ -716,17 +765,15 @@ namespace Pulumi.Automation.Tests
         public async Task HandlesEvents()
         {
             var program = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
-                };
-            });
+                });
             var projectName = "event_test";
             var stackName = $"inline_events{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -735,27 +782,27 @@ namespace Pulumi.Automation.Tests
             try
             {
                 // pulumi preview
-                var previewResult = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                var previewResult = await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
                 Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Create, out var createCount));
                 Assert.Equal(1, createCount);
 
                 // pulumi up
-                var upResult = await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                var upResult = await RunCommand(stack.UpAsync, "up", new UpOptions());
                 Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
 
                 // pulumi preview
-                var previewResultAgain = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                var previewResultAgain = await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
                 Assert.True(previewResultAgain.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
                 Assert.Equal(1, sameCount);
 
                 // pulumi refresh
-                var refreshResult = await RunCommand<UpdateResult, RefreshOptions>(stack.RefreshAsync, "refresh");
+                var refreshResult = await RunCommand(stack.RefreshAsync, "refresh", new RefreshOptions());
                 Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
                 // pulumi destroy
-                var destroyResult = await RunCommand<UpdateResult, DestroyOptions>(stack.DestroyAsync, "destroy");
+                var destroyResult = await RunCommand(stack.DestroyAsync, "destroy", new DestroyOptions());
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
             }
@@ -764,12 +811,12 @@ namespace Pulumi.Automation.Tests
                 await stack.Workspace.RemoveStackAsync(stackName);
             }
 
-            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command, TOptions options)
                 where TOptions : UpdateOptions, new()
             {
                 var events = new List<EngineEvent>();
-
-                var result = await func(new TOptions() { OnEvent = events.Add }, CancellationToken.None);
+                options.OnEvent = events.Add;
+                var result = await func(options, CancellationToken.None);
 
                 var seenSummaryEvent = events.Any(@event => @event.SummaryEvent != null);
                 var seenCancelEvent = events.Any(@event => @event.CancelEvent != null);
@@ -783,7 +830,8 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+        [Fact(Skip="Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")]
         public async Task ConfigSecretWarnings()
         {
             var program = PulumiFn.Create(() =>
@@ -805,10 +853,10 @@ namespace Pulumi.Automation.Tests
                 config.GetSecretInt32("plainint3");
                 config.RequireSecretInt32("plainint4");
 
-                config.GetObject<System.Text.Json.JsonElement>("plainobj1");
-                config.RequireObject<System.Text.Json.JsonElement>("plainobj2");
-                config.GetSecretObject<System.Text.Json.JsonElement>("plainobj3");
-                config.RequireSecretObject<System.Text.Json.JsonElement>("plainobj4");
+                config.GetObject<JsonElement>("plainobj1");
+                config.RequireObject<JsonElement>("plainobj2");
+                config.GetSecretObject<JsonElement>("plainobj3");
+                config.RequireSecretObject<JsonElement>("plainobj4");
 
                 config.Get("str1");
                 config.Require("str2");
@@ -825,76 +873,76 @@ namespace Pulumi.Automation.Tests
                 config.GetSecretInt32("int3");
                 config.RequireSecretInt32("int4");
 
-                config.GetObject<System.Text.Json.JsonElement>("obj1");
-                config.RequireObject<System.Text.Json.JsonElement>("obj2");
-                config.GetSecretObject<System.Text.Json.JsonElement>("obj3");
-                config.RequireSecretObject<System.Text.Json.JsonElement>("obj4");
+                config.GetObject<JsonElement>("obj1");
+                config.RequireObject<JsonElement>("obj2");
+                config.GetSecretObject<JsonElement>("obj3");
+                config.RequireSecretObject<JsonElement>("obj4");
             });
+
             var projectName = "inline_dotnet";
             var stackName = $"inline_dotnet{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                { "plainstr1", new ConfigValue("1") },
-                { "plainstr2", new ConfigValue("2") },
-                { "plainstr3", new ConfigValue("3") },
-                { "plainstr4", new ConfigValue("4") },
-                { "plainbool1", new ConfigValue("true") },
-                { "plainbool2", new ConfigValue("true") },
-                { "plainbool3", new ConfigValue("true") },
-                { "plainbool4", new ConfigValue("true") },
-                { "plainint1", new ConfigValue("1") },
-                { "plainint2", new ConfigValue("2") },
-                { "plainint3", new ConfigValue("3") },
-                { "plainint4", new ConfigValue("4") },
-                { "plainobj1", new ConfigValue("{}") },
-                { "plainobj2", new ConfigValue("{}") },
-                { "plainobj3", new ConfigValue("{}") },
-                { "plainobj4", new ConfigValue("{}") },
-                { "str1", new ConfigValue("1", isSecret: true) },
-                { "str2", new ConfigValue("2", isSecret: true) },
-                { "str3", new ConfigValue("3", isSecret: true) },
-                { "str4", new ConfigValue("4", isSecret: true) },
-                { "bool1", new ConfigValue("true", isSecret: true) },
-                { "bool2", new ConfigValue("true", isSecret: true) },
-                { "bool3", new ConfigValue("true", isSecret: true) },
-                { "bool4", new ConfigValue("true", isSecret: true) },
-                { "int1", new ConfigValue("1", isSecret: true) },
-                { "int2", new ConfigValue("2", isSecret: true) },
-                { "int3", new ConfigValue("3", isSecret: true) },
-                { "int4", new ConfigValue("4", isSecret: true) },
-                { "obj1", new ConfigValue("{}", isSecret: true) },
-                { "obj2", new ConfigValue("{}", isSecret: true) },
-                { "obj3", new ConfigValue("{}", isSecret: true) },
-                { "obj4", new ConfigValue("{}", isSecret: true) },
-            };
-
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    { "plainstr1", new ConfigValue("1") },
+                    { "plainstr2", new ConfigValue("2") },
+                    { "plainstr3", new ConfigValue("3") },
+                    { "plainstr4", new ConfigValue("4") },
+                    { "plainbool1", new ConfigValue("true") },
+                    { "plainbool2", new ConfigValue("true") },
+                    { "plainbool3", new ConfigValue("true") },
+                    { "plainbool4", new ConfigValue("true") },
+                    { "plainint1", new ConfigValue("1") },
+                    { "plainint2", new ConfigValue("2") },
+                    { "plainint3", new ConfigValue("3") },
+                    { "plainint4", new ConfigValue("4") },
+                    { "plainobj1", new ConfigValue("{}") },
+                    { "plainobj2", new ConfigValue("{}") },
+                    { "plainobj3", new ConfigValue("{}") },
+                    { "plainobj4", new ConfigValue("{}") },
+                    { "str1", new ConfigValue("1", isSecret: true) },
+                    { "str2", new ConfigValue("2", isSecret: true) },
+                    { "str3", new ConfigValue("3", isSecret: true) },
+                    { "str4", new ConfigValue("4", isSecret: true) },
+                    { "bool1", new ConfigValue("true", isSecret: true) },
+                    { "bool2", new ConfigValue("true", isSecret: true) },
+                    { "bool3", new ConfigValue("true", isSecret: true) },
+                    { "bool4", new ConfigValue("true", isSecret: true) },
+                    { "int1", new ConfigValue("1", isSecret: true) },
+                    { "int2", new ConfigValue("2", isSecret: true) },
+                    { "int3", new ConfigValue("3", isSecret: true) },
+                    { "int4", new ConfigValue("4", isSecret: true) },
+                    { "obj1", new ConfigValue("{}", isSecret: true) },
+                    { "obj2", new ConfigValue("{}", isSecret: true) },
+                    { "obj3", new ConfigValue("{}", isSecret: true) },
+                    { "obj4", new ConfigValue("{}", isSecret: true) },
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi preview
-                await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
 
                 // pulumi up
-                await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                await RunCommand(stack.UpAsync, "up", new UpOptions());
             }
             finally
             {
                 await stack.Workspace.RemoveStackAsync(stackName);
             }
 
-            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command, TOptions options)
                 where TOptions : UpdateOptions, new()
             {
-                var expectedWarnings = new string[]
+                var expectedWarnings = new[]
                 {
                     "Configuration 'inline_dotnet:str1' value is a secret; use `GetSecret` instead of `Get`",
                     "Configuration 'inline_dotnet:str2' value is a secret; use `RequireSecret` instead of `Require`",
@@ -907,7 +955,7 @@ namespace Pulumi.Automation.Tests
                 };
 
                 // These keys should not be in any warning messages.
-                var unexpectedWarnings = new string[]
+                var unexpectedWarnings = new[]
                 {
                     "plainstr1",
                     "plainstr2",
@@ -936,17 +984,14 @@ namespace Pulumi.Automation.Tests
                 };
 
                 var events = new List<DiagnosticEvent>();
-
-                var result = await func(new TOptions()
+                options.OnEvent = @event =>
                 {
-                    OnEvent = @event =>
+                    if (@event.DiagnosticEvent?.Severity == "warning")
                     {
-                        if (@event.DiagnosticEvent?.Severity == "warning")
-                        {
-                            events.Add(@event.DiagnosticEvent);
-                        }
+                        events.Add(@event.DiagnosticEvent);
                     }
-                }, CancellationToken.None);
+                };
+                var result = await func(options, CancellationToken.None);
 
                 foreach (var expected in expectedWarnings)
                 {
@@ -975,7 +1020,7 @@ namespace Pulumi.Automation.Tests
 
             public ValidStack()
             {
-                var config = new Pulumi.Config();
+                var config = new Config();
                 this.ExpStatic = Output.Create("foo");
                 this.ExpConfig = Output.Create(config.Get("bar")!);
                 this.ExpSecret = config.GetSecret("buzz")!;
@@ -992,19 +1037,19 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_tstack_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -1052,7 +1097,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleInlineProgramWithServiceProvider()
         {
-            using var provider = new ServiceCollection()
+            await using var provider = new ServiceCollection()
                 .AddTransient<ValidStack>() // must be transient so it is instantiated each time
                 .BuildServiceProvider();
 
@@ -1063,19 +1108,19 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_serviceprovider_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -1124,13 +1169,12 @@ namespace Pulumi.Automation.Tests
         public async Task InlineProgramExceptionPropagatesToCaller()
         {
             const string projectName = "exception_inline_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
             Assert.IsType<PulumiFnInline>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -1143,9 +1187,37 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var outputTask = Task.Run((Func<string>)(() => throw new FileNotFoundException()));
+            var programWithOutput = PulumiFn.Create(() =>
+            {
+                var output = Output.Create(outputTask);
+                return new Dictionary<string, object?>
+                {
+                    ["output"] = output,
+                };
+            });
+            Assert.IsType<PulumiFnInline>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
-        private class FileNotFoundStack : Pulumi.Stack
+        private class FileNotFoundStack : Stack
         {
             public FileNotFoundStack()
             {
@@ -1153,17 +1225,29 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        private class FileNotFoundOutputStack : Stack
+        {
+            public FileNotFoundOutputStack()
+            {
+                var outputTask = Task.Run((Func<string>)(() => throw new FileNotFoundException()));
+                var output = Output.Create(outputTask);
+                this.RegisterOutputs(new Dictionary<string, object?>
+                {
+                    ["output"] = output,
+                });
+            }
+        }
+
         [Fact]
         public async Task InlineProgramExceptionPropagatesToCallerWithTStack()
         {
             const string projectName = "exception_inline_tstack_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
             Assert.IsType<PulumiFn<FileNotFoundStack>>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -1176,23 +1260,44 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var programWithOutput = PulumiFn.Create<FileNotFoundOutputStack>();
+            Assert.IsType<PulumiFn<FileNotFoundOutputStack>>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#8228]: fix flakiness
+        [Fact(Skip="flaky")]
         public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
         {
-            using var provider = new ServiceCollection()
+            await using var provider = new ServiceCollection()
                 .AddTransient<FileNotFoundStack>() // must be transient so it is instantiated each time
+                .AddTransient<FileNotFoundOutputStack>()
                 .BuildServiceProvider();
 
             const string projectName = "exception_inline_serviceprovider_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>(provider);
             Assert.IsType<PulumiFnServiceProvider>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -1205,6 +1310,26 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var programWithOutput = PulumiFn.Create<FileNotFoundOutputStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
         [Fact]
@@ -1224,10 +1349,11 @@ namespace Pulumi.Automation.Tests
                 // the semaphore because we want to alternately stutter
                 // programOne and programTwo so we can assert they aren't
                 // touching eachothers instances
-                var config = new Pulumi.Config();
+                var config = new Config();
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
                 hasReachedSemaphoreOne = true;
+                // ReSharper disable once AccessToDisposedClosure
                 semaphoreOne.Wait();
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
@@ -1244,10 +1370,11 @@ namespace Pulumi.Automation.Tests
 
             var programTwo = PulumiFn.Create(() =>
             {
-                var config = new Pulumi.Config();
+                var config = new Config();
                 Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameTwo, Deployment.Instance.StackName);
                 hasReachedSemaphoreTwo = true;
+                // ReSharper disable once AccessToDisposedClosure
                 semaphoreTwo.Wait();
                 Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameTwo, Deployment.Instance.StackName);
@@ -1261,7 +1388,7 @@ namespace Pulumi.Automation.Tests
 
             using var stackOne = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameOne, stackNameOne, programOne)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -1269,19 +1396,19 @@ namespace Pulumi.Automation.Tests
 
             using var stackTwo = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameTwo, stackNameTwo, programTwo)
             {
-                EnvironmentVariables = new Dictionary<string, string?>()
+                EnvironmentVariables = new Dictionary<string, string?>
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            await stackOne.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackOne.SetAllConfigAsync(new Dictionary<string, ConfigValue>
             {
                 ["bar"] = new ConfigValue("1"),
                 ["buzz"] = new ConfigValue("1", isSecret: true),
             });
 
-            await stackTwo.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackTwo.SetAllConfigAsync(new Dictionary<string, ConfigValue>
             {
                 ["bar"] = new ConfigValue("2"),
                 ["buzz"] = new ConfigValue("2", isSecret: true),
@@ -1294,7 +1421,7 @@ namespace Pulumi.Automation.Tests
                 await Task.Delay(TimeSpan.FromSeconds(2));
                 if (upTaskOne.IsFaulted)
                     throw upTaskOne.Exception!;
-                else if (upTaskOne.IsCompleted)
+                if (upTaskOne.IsCompleted)
                     throw new Exception("Never hit semaphore in first UP task.");
             }
 
@@ -1305,7 +1432,7 @@ namespace Pulumi.Automation.Tests
                 await Task.Delay(TimeSpan.FromSeconds(2));
                 if (upTaskTwo.IsFaulted)
                     throw upTaskTwo.Exception!;
-                else if (upTaskTwo.IsCompleted)
+                if (upTaskTwo.IsCompleted)
                     throw new Exception("Never hit semaphore in second UP task.");
             }
 
@@ -1342,7 +1469,8 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#7467]
+        [Fact(Skip = "Flakey test - https://github.com/pulumi/pulumi/issues/7467")]
         public async Task WorkspaceStackSupportsCancel()
         {
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
@@ -1369,7 +1497,7 @@ namespace Pulumi.Automation.Tests
 
                 try
                 {
-                    Task.WaitAll(new Task[] { destroyTask, cancelTask });
+                    Task.WaitAll(destroyTask, cancelTask);
                 }
                 catch (AggregateException)
                 {
@@ -1416,17 +1544,21 @@ namespace Pulumi.Automation.Tests
         [InlineData("2.21.1-alpha.1234", true, false)]
         [InlineData("2.20.0", false, true)]
         [InlineData("2.22.0", false, true)]
+        // Invalid version check
+        [InlineData("invalid", false, true)]
+        [InlineData("invalid", true, false)]
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
-            var testMinVersion = SemVersion.Parse("2.21.1");
+            var testMinVersion = new SemVersion(2, 21, 1);
+
             if (errorExpected)
             {
-                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
-                Assert.Throws<InvalidOperationException>(act);
+                void ValidatePulumiVersion() => LocalWorkspace.ParseAndValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                Assert.Throws<InvalidOperationException>(ValidatePulumiVersion);
             }
             else
             {
-                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                LocalWorkspace.ParseAndValidatePulumiVersion(testMinVersion, currentVersion, optOut);
             }
         }
 
@@ -1443,7 +1575,11 @@ namespace Pulumi.Automation.Tests
             var stack = await LocalWorkspace.CreateStackAsync(
                 new InlineProgramArgs(projectName, stackName, program)
                 {
-                    WorkDir = workdir
+                    WorkDir = workdir,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             var settings = await stack.Workspace.GetProjectSettingsAsync();
@@ -1474,10 +1610,504 @@ namespace Pulumi.Automation.Tests
             );
         }
 
+        [Fact]
+        public async Task InlineProgramLoggerCanBeOverridden()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                Log.Debug("test");
+            });
+
+            var loggerWasInvoked = false;
+            var logger = new CustomLogger(() => loggerWasInvoked = true);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_logger_override";
+
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    Logger = logger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
+                });
+
+            // make sure workspace logger is used
+            await stack.PreviewAsync();
+            Assert.True(loggerWasInvoked);
+
+            // preview logger is used
+            loggerWasInvoked = false;
+            stack.Workspace.Logger = null;
+            await stack.PreviewAsync(new PreviewOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            // up logger is used
+            loggerWasInvoked = false;
+            await stack.UpAsync(new UpOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            await stack.DestroyAsync();
+        }
+
+        [Fact]
+        public async Task InlineProgramLoggerCanRedirectToTestOutput()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                Log.Info("Pulumi.Log calls appear in test output");
+            });
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_logger_test_output";
+
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    Logger = TestLogger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
+                });
+
+            TestLogger.LogInformation("Previewing stack...");
+            await stack.PreviewAsync();
+
+            TestLogger.LogInformation("Updating stack...");
+            await stack.UpAsync();
+
+            TestLogger.LogInformation("Destroying stack...");
+            await stack.DestroyAsync();
+        }
+
+        [Fact]
+        public async Task InlineProgramExceptionDuringUpShouldNotDeleteResources()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource("test:res:a", "a");
+
+                if (config.GetBoolean("ShouldFail") == true)
+                    throw new FileNotFoundException("ShouldFail");
+
+                new ComponentResource("test:res:b", "b");
+                new ComponentResource("test:res:c", "c");
+            });
+            Assert.IsType<PulumiFnInline>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "test_optionally_failing_stack";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            try
+            {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["ShouldFail"] = new ConfigValue("false"),
+                };
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(4, upCount);
+
+                config["ShouldFail"] = new ConfigValue("true");
+
+                await stack.SetAllConfigAsync(config);
+                var sb = new System.Text.StringBuilder();
+
+                await Assert.ThrowsAsync<FileNotFoundException>(
+                    () => stack.UpAsync(new UpOptions()
+                    {
+                        OnStandardOutput = msg => sb.AppendLine(msg),
+                    }));
+
+                var upOutput = sb.ToString();
+                Assert.DoesNotContain("test:res:b b deleted", upOutput);
+                Assert.DoesNotContain("test:res:c c deleted", upOutput);
+
+                config["ShouldFail"] = new ConfigValue("false");
+
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync(new PreviewOptions() { OnStandardOutput = Console.WriteLine });
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(4, sameCount);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateDelete()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a");
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_delete";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+
+                // pulumi state delete
+                await stack.State.DeleteAsync(resource.Urn);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Single(state.Deployment.Resources);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateDeleteForce()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_delete_force";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+
+                // pulumi state delete
+                await Assert.ThrowsAsync<CommandException>(() => stack.State.DeleteAsync(resource.Urn));
+
+                // pulumi state delete force
+                await stack.State.DeleteAsync(resource.Urn, force: true);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Single(state.Deployment.Resources);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateUnprotect()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_unprotect";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+                Assert.True(resource.Protect);
+
+                // pulumi state unprotect
+                await stack.State.UnprotectAsync(resource.Urn);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+                Assert.False(resource.Protect);
+            }
+            finally
+            {
+                await stack.State.UnprotectAllAsync();
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateUnprotectAll()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+
+                new ComponentResource(
+                    type,
+                    "b",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_unprotect_all";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(3, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(3, state.Deployment.Resources.Count);
+                var resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
+                Assert.Equal(2, resources.Count);
+                Assert.True(resources.All(x => x.Protect));
+
+                // pulumi state unprotect
+                await stack.State.UnprotectAllAsync();
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(3, state.Deployment.Resources.Count);
+                resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
+                Assert.Equal(2, resources.Count);
+                Assert.DoesNotContain(resources, x => x.Protect);
+            }
+            finally
+            {
+                await stack.State.UnprotectAllAsync();
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task TestUpdatePlans()
+        {
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = workingDir
+            });
+            var stackName = $"{RandomStackName()}";
+
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            try
+            {
+                var planFile = System.IO.Path.GetTempFileName();
+
+                await stack.PreviewAsync(new PreviewOptions {
+                    Plan = planFile,
+                });
+
+                var planFileStream = System.IO.File.OpenRead(planFile);
+                Assert.NotEqual(0, planFileStream.Length);
+
+                await stack.UpAsync(new UpOptions {
+                    Plan = planFile,
+                });
+
+                await stack.DestroyAsync();
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";
             return Path.Combine(dir, path);
+        }
+
+        private class CustomLogger : ILogger
+        {
+            private readonly Action _action;
+
+            public CustomLogger(Action action)
+            {
+                _action = action;
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+                => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+                => _action();
+        }
+
+        private class StackState
+        {
+            public StackStateDeployment Deployment { get; set; } = new StackStateDeployment();
+        }
+
+        private class StackStateDeployment
+        {
+            public List<StackStateResource> Resources { get; set; } = new List<StackStateResource>();
+        }
+
+        private class StackStateResource
+        {
+            public string Urn { get; set; } = null!;
+
+            public bool Protect { get; set; }
         }
     }
 }

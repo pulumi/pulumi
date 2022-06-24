@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"strings"
 
 	zxcvbn "github.com/nbutton23/zxcvbn-go"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -152,7 +153,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	var decrypter config.Decrypter
 	key, err := parseConfigKey(configKey)
 	if err != nil {
-		return errors.Wrap(err, "invalid configuration key")
+		return fmt.Errorf("invalid configuration key: %w", err)
 	}
 
 	v, ok, err := currentProjectStack.Config.Get(key, path)
@@ -163,7 +164,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		if v.Secure() {
 			var err error
 			if decrypter, err = getStackDecrypter(currentStack); err != nil {
-				return errors.Wrap(err, "could not create a decrypter")
+				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 		} else {
 			decrypter = config.NewPanicCrypter()
@@ -187,8 +188,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		return saveProjectStack(destinationStack, destinationProjectStack)
 	}
 
-	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,
@@ -264,7 +264,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			return getConfig(s, key, path, jsonOut)
@@ -305,7 +305,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			ps, err := loadProjectStack(s)
@@ -359,7 +359,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			for _, arg := range args {
 				key, err := parseConfigKey(arg)
 				if err != nil {
-					return errors.Wrap(err, "invalid configuration key")
+					return fmt.Errorf("invalid configuration key: %w", err)
 				}
 
 				err = ps.Config.Remove(key, path)
@@ -424,13 +424,13 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				_, err = os.Stat(backupFile)
 				if os.IsNotExist(err) {
 					if err = os.Rename(configPath, backupFile); err != nil {
-						return errors.Wrap(err, "backing up existing configuration file")
+						return fmt.Errorf("backing up existing configuration file: %w", err)
 					}
 
 					fmt.Printf("backed up existing configuration file to %s\n", backupFile)
 					break
 				} else if err != nil {
-					return errors.Wrap(err, "backing up existing configuration file")
+					return fmt.Errorf("backing up existing configuration file: %w", err)
 				}
 
 				backupFile = backupFile + ".bak"
@@ -481,7 +481,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			var value string
@@ -525,10 +525,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
 				if !plaintext && looksLikeSecret(key, value) {
-					return errors.Errorf(
-						"config value '%s' looks like a secret; "+
-							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
-						value)
+					return fmt.Errorf("config value for '%s' looks like a secret; "+
+						"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+						key)
 				}
 			}
 
@@ -662,7 +661,7 @@ func parseKeyValuePair(pair string) (config.Key, string, error) {
 	}
 	key, err := parseConfigKey(splitArg[0])
 	if err != nil {
-		return config.Key{}, "", errors.Wrap(err, "invalid configuration key")
+		return config.Key{}, "", fmt.Errorf("invalid configuration key: %w", err)
 	}
 
 	value := splitArg[1]
@@ -673,21 +672,21 @@ var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStackPath(stack.Ref().Name())
+		return workspace.DetectProjectStackPath(stack.Ref().Name().Q())
 	}
 	return stackConfigFile, nil
 }
 
 func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stack.Ref().Name())
+		return workspace.DetectProjectStack(stack.Ref().Name().Q())
 	}
 	return workspace.LoadProjectStack(stackConfigFile)
 }
 
 func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
 	if stackConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name(), ps)
+		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 	}
 	return ps.Save(stackConfigFile)
 }
@@ -769,7 +768,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 
 			decrypted, err := cfg[key].Value(decrypter)
 			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuration value")
+				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
 			entry.Value = &decrypted
 
@@ -791,17 +790,16 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 
 			configValues[key.String()] = entry
 		}
-		out, err := json.MarshalIndent(configValues, "", "  ")
+		err := printJSON(configValues)
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(out))
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
 			decrypted, err := cfg[key].Value(decrypter)
 			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuration value")
+				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
 
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
@@ -811,6 +809,10 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
 		})
+	}
+
+	if showSecrets {
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, "", "pulumi config")
 	}
 
 	return nil
@@ -833,14 +835,14 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 		if v.Secure() {
 			var err error
 			if d, err = getStackDecrypter(stack); err != nil {
-				return errors.Wrap(err, "could not create a decrypter")
+				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 		} else {
 			d = config.NewPanicCrypter()
 		}
 		raw, err := v.Value(d)
 		if err != nil {
-			return errors.Wrap(err, "could not decrypt configuration value")
+			return fmt.Errorf("could not decrypt configuration value: %w", err)
 		}
 
 		if jsonOut {
@@ -866,11 +868,12 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 			fmt.Printf("%v\n", raw)
 		}
 
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, key.Name(), "")
+
 		return nil
 	}
 
-	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
+	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
 }
 
 var (
@@ -912,7 +915,7 @@ func looksLikeSecret(k config.Key, v string) bool {
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
 	workspaceStack, err := loadProjectStack(stack)
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
+		return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
@@ -927,7 +930,7 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
+		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
 
 	return backend.StackConfiguration{

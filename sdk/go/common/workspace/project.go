@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,6 +58,11 @@ type ProjectBackend struct {
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
+type ProjectOptions struct {
+	// Refresh is the ability to always run a refresh as part of a pulumi update / preview / destroy
+	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -82,14 +87,21 @@ type Project struct {
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
-	Config string `json:"config,omitempty" yaml:"config,omitempty"`
+	// Config has been renamed to StackConfigDir.
+	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+
+	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
+	// Pulumi.yaml is in.
+	StackConfigDir string `json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
 	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
 
 	// Backend is an optional backend configuration
 	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+
+	// Options is an optional set of project options
+	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 }
 
 func (proj *Project) Validate() error {
@@ -305,7 +317,6 @@ func save(path string, value interface{}, mkDirAll bool) error {
 		}
 	}
 
-	// Changing the permissions on these file is ~ a breaking change, so disable golint.
 	//nolint: gosec
 	return ioutil.WriteFile(path, b, 0644)
 }

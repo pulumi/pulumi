@@ -55,6 +55,7 @@ func (s *localStack) Ref() backend.StackReference                            { r
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
 func (s *localStack) Path() string                                           { return s.path }
+func (s *localStack) Tags() map[apitype.StackTagName]string                  { return nil }
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
@@ -64,7 +65,10 @@ func (s *localStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *localStack) Preview(
+	ctx context.Context,
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return backend.PreviewStack(ctx, s, op)
 }
 
@@ -85,8 +89,8 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.WatchStack(ctx, s, op)
+func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+	return backend.WatchStack(ctx, s, op, paths)
 }
 
 func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
@@ -103,21 +107,21 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 type localStackSummary struct {
-	s *localStack
+	name backend.StackReference
+	chk  *apitype.CheckpointV3
 }
 
-func newLocalStackSummary(s *localStack) localStackSummary {
-	return localStackSummary{s}
+func newLocalStackSummary(name backend.StackReference, chk *apitype.CheckpointV3) localStackSummary {
+	return localStackSummary{name: name, chk: chk}
 }
 
 func (lss localStackSummary) Name() backend.StackReference {
-	return lss.s.Ref()
+	return lss.name
 }
 
 func (lss localStackSummary) LastUpdate() *time.Time {
-	snap := lss.s.snapshot
-	if snap != nil {
-		if t := snap.Manifest.Time; !t.IsZero() {
+	if lss.chk != nil && lss.chk.Latest != nil {
+		if t := lss.chk.Latest.Manifest.Time; !t.IsZero() {
 			return &t
 		}
 	}
@@ -125,9 +129,8 @@ func (lss localStackSummary) LastUpdate() *time.Time {
 }
 
 func (lss localStackSummary) ResourceCount() *int {
-	snap := lss.s.snapshot
-	if snap != nil {
-		count := len(snap.Resources)
+	if lss.chk != nil && lss.chk.Latest != nil {
+		count := len(lss.chk.Latest.Resources)
 		return &count
 	}
 	return nil

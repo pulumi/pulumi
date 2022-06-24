@@ -34,9 +34,39 @@ namespace Pulumi
         Task<T> InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options = null);
 
         /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
+        /// The result of <see cref="Invoke"/> will be a <see cref="Output"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        Output<T> Invoke<T>(string token, InvokeArgs args, InvokeOptions? options = null);
+
+        /// <summary>
         /// Same as <see cref="InvokeAsync{T}(string, InvokeArgs, InvokeOptions)"/>, however the
         /// return value is ignored.
         /// </summary>
         Task InvokeAsync(string token, InvokeArgs args, InvokeOptions? options = null);
+
+        /// <summary>
+        /// Dynamically calls the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin. <see cref="Call{T}"/> returns immediately while the operation takes
+        /// place asynchronously in the background, similar to Resource constructors.
+        /// <para/>
+        /// The result of <see cref="Call{T}"/> will be a <see cref="Output{T}"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        Output<T> Call<T>(string token, CallArgs args, Resource? self = null, CallOptions? options = null);
+
+        /// <summary>
+        /// Same as <see cref="Call{T}"/>, however the return value is ignored.
+        /// </summary>
+        void Call(string token, CallArgs args, Resource? self = null, CallOptions? options = null);
     }
 }

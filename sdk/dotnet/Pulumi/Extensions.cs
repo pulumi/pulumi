@@ -21,7 +21,7 @@ namespace Pulumi
             return result;
         }
 
-        public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)
+        public static void Deconstruct<TKey, TValue>(this KeyValuePair<TKey, TValue> pair, out TKey key, out TValue value)
         {
             key = pair.Key;
             value = pair.Value;
@@ -37,29 +37,5 @@ namespace Pulumi
 
         public static ImmutableArray<TResult> SelectAsArray<TItem, TResult>(this ImmutableArray<TItem> items, Func<TItem, TResult> map)
             => ImmutableArray.CreateRange(items, map);
-
-        public static void Assign<X, Y>(
-            this Task<X> response, TaskCompletionSource<Y> tcs, Func<X, Y> extract)
-        {
-            _ = response.ContinueWith(t =>
-            {
-                switch (t.Status)
-                {
-                    default: throw new InvalidOperationException("Task was not complete: " + t.Status);
-                    case TaskStatus.Canceled: tcs.SetCanceled(); return;
-                    case TaskStatus.Faulted: tcs.SetException(t.Exception!.InnerExceptions); return;
-                    case TaskStatus.RanToCompletion:
-                        try
-                        {
-                            tcs.SetResult(extract(t.Result));
-                        }
-                        catch (Exception e)
-                        {
-                            tcs.TrySetException(e);
-                        }
-                        return;
-                }
-            }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
-        }
     }
 }

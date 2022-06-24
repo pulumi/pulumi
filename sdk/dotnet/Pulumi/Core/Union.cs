@@ -1,7 +1,9 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
 using OneOf;
+
+// ReSharper disable PossiblyImpureMethodCallOnReadonlyVariable
 
 namespace Pulumi
 {
@@ -26,7 +28,7 @@ namespace Pulumi
     /// or a <see cref="string"/> can be represented as <c>Output&lt;int, string&gt;</c>.  The <see
     /// cref="Input{T}"/> version of this is <see cref="InputUnion{T0, T1}"/>.
     /// </summary>
-    public struct Union<T0, T1> : IEquatable<Union<T0, T1>>, IUnion
+    public readonly struct Union<T0, T1> : IEquatable<Union<T0, T1>>, IUnion
     {
         private readonly OneOf<T0, T1> _data;
 
@@ -52,6 +54,7 @@ namespace Pulumi
 
         public Union<TResult, T1> MapT0<TResult>(Func<T0, TResult> mapFunc) => From(_data.MapT0(mapFunc));
         public Union<T0, TResult> MapT1<TResult>(Func<T1, TResult> mapFunc) => From(_data.MapT1(mapFunc));
+        public Union<TResult0, TResult1> Bimap<TResult0, TResult1>(Func<T0, TResult0> mapFunc0, Func<T1, TResult1> mapFunc1) => _data.Match<Union<TResult0, TResult1>>(t0 => mapFunc0(t0), t1 => mapFunc1(t1));
 
         public TResult Match<TResult>(Func<T0, TResult> f0, Func<T1, TResult> f1) => _data.Match(f0, f1);
         public void Switch(Action<T0> f0, Action<T1> f1) => _data.Switch(f0, f1);

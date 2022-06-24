@@ -18,7 +18,6 @@ package pulumi
 
 import (
 	"strings"
-	"sync"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
@@ -37,7 +36,7 @@ type Log interface {
 type logState struct {
 	engine pulumirpc.EngineClient
 	ctx    context.Context
-	join   *sync.WaitGroup
+	join   *workGroup
 }
 
 // LogArgs may be used to specify arguments to be used for logging.

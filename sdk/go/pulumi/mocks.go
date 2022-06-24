@@ -51,6 +51,10 @@ type MockResourceArgs struct {
 	ID string
 	// Custom specifies whether or not the resource is Custom (i.e. managed by a resource provider).
 	Custom bool
+	// Full register RPC call, if available.
+	RegisterRPC *pulumirpc.RegisterResourceRequest
+	// Full read RPC call, if available
+	ReadRPC *pulumirpc.ReadResourceRequest
 }
 
 type mockMonitor struct {
@@ -73,12 +77,18 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,
 	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
 
+	id := in.GetId()
+
+	// Support for "outputValues" is deliberately disabled for the mock monitor so
+	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
+	hasSupport := id == "secrets" || id == "resourceReferences" || id == "aliasSpecs"
+
 	return &pulumirpc.SupportsFeatureResponse{
-		HasSupport: true,
+		HasSupport: hasSupport,
 	}, nil
 }
 
-func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
+func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
@@ -118,7 +128,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
 		KeepSecrets:   true,
-		KeepResources: true,
+		KeepResources: in.GetAcceptResources(),
 	})
 	if err != nil {
 		return nil, err
@@ -129,8 +139,14 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 	}, nil
 }
 
-func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.InvokeRequest,
+func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
+
+	panic("not implemented")
+}
+
+func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
+	opts ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
 
 	panic("not implemented")
 }
@@ -153,6 +169,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 		Provider:  in.GetProvider(),
 		ID:        in.GetId(),
 		Custom:    false,
+		ReadRPC:   in,
 	})
 	if err != nil {
 		return nil, err
@@ -198,12 +215,13 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}
 
 	id, state, err := m.mocks.NewResource(MockResourceArgs{
-		TypeToken: in.GetType(),
-		Name:      in.GetName(),
-		Inputs:    inputs,
-		Provider:  in.GetProvider(),
-		ID:        in.GetImportId(),
-		Custom:    in.GetCustom(),
+		TypeToken:   in.GetType(),
+		Name:        in.GetName(),
+		Inputs:      inputs,
+		Provider:    in.GetProvider(),
+		ID:          in.GetImportId(),
+		Custom:      in.GetCustom(),
+		RegisterRPC: in,
 	})
 	if err != nil {
 		return nil, err

@@ -1,13 +1,13 @@
 package goversion
 
 import (
-	"github.com/blang/semver"
+	goVersion "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	"os/exec"
 	"strings"
 )
 
-var minGoVersion = semver.MustParse("1.14.0")
+var minGoVersion = goVersion.Must(goVersion.NewVersion("1.14.0"))
 
 // CheckMinimumGoVersion checks to make sure we are running at least minGoVersion
 func CheckMinimumGoVersion(gobin string) error {
@@ -33,12 +33,12 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 		version = version[2:]
 	}
 
-	currVersion, err := semver.ParseTolerant(version)
+	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {
 		return errors.Wrap(err, "parsing go version")
 	}
 
-	if currVersion.LT(minGoVersion) {
+	if currVersion.LessThan(minGoVersion) {
 		return errors.Errorf("go version must be %s or higher (%s detected)", minGoVersion.String(), version)
 	}
 	return nil

@@ -1,0 +1,21 @@
+# Packages needed by the library.
+# Keep this list in sync with setup.py.
+protobuf~=3.6
+grpcio~=1.33
+dill~=0.3
+six~=1.12
+semver~=2.8
+pyyaml~=5.3
+
+# Dev packages only needed during development.
+pylint
+mypy>=0.78
+pytest
+pytest-timeout
+types-six
+types-pyyaml
+types-protobuf
+pytest-asyncio
+coverage>=6.0.2
+wheel
+black>=1.0.0

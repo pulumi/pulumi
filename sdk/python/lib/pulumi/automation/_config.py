@@ -22,6 +22,7 @@ class ConfigValue:
     ConfigValue is the input/output of a `pulumi config` command.
     It has a plaintext value, and an option boolean indicating secretness.
     """
+
     value: str
     secret: bool = False
 

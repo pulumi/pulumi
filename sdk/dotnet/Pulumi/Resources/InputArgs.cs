@@ -35,14 +35,15 @@ namespace Pulumi
 
             var all = fieldQuery.Concat(propQuery).ToList();
 
-            foreach (var (attr, memberName, memberType, getValue) in all)
+            foreach (var (_, memberName, memberType, _) in all)
             {
                 var fullName = $"[Input] {this.GetType().FullName}.{memberName}";
+                // ReSharper disable once VirtualMemberCallInConstructor
                 ValidateMember(memberType, fullName);
             }
 
             _inputInfos = all.Select(t =>
-                new InputInfo(t.attr, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
+                new InputInfo(t.attr!, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
         }
 
         internal virtual async Task<ImmutableDictionary<string, object?>> ToDictionaryAsync()
@@ -80,14 +81,15 @@ namespace Pulumi
             return JsonFormatter.Default.Format(value);
         }
 
-        private struct InputInfo
+        private readonly struct InputInfo
         {
             public readonly InputAttribute Attribute;
+            // ReSharper disable once NotAccessedField.Local
             public readonly Type MemberType;
             public readonly string MemberName;
-            public Func<object, object?> GetValue;
+            public readonly Func<object, object?> GetValue;
 
-            public InputInfo(InputAttribute attribute, string memberName, Type memberType, Func<object, object> getValue) : this()
+            public InputInfo(InputAttribute attribute, string memberName, Type memberType, Func<object, object?> getValue) : this()
             {
                 Attribute = attribute;
                 MemberName = memberName;

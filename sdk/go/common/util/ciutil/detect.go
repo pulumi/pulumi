@@ -48,9 +48,11 @@ var detectors = map[SystemName]system{
 			EnvVarsToDetect: []string{"TF_BUILD"},
 		},
 	},
-	Buildkite: baseCI{
-		Name:            Buildkite,
-		EnvVarsToDetect: []string{"BUILDKITE"},
+	Buildkite: buildkiteCI{
+		baseCI: baseCI{
+			Name:            Buildkite,
+			EnvVarsToDetect: []string{"BUILDKITE"},
+		},
 	},
 	CircleCI: circleCICI{
 		baseCI: baseCI{
@@ -117,6 +119,13 @@ var detectors = map[SystemName]system{
 	Semaphore: baseCI{
 		Name:            Semaphore,
 		EnvVarsToDetect: []string{"SEMAPHORE"},
+	},
+	Spacelift: baseCI{
+		Name: Spacelift,
+		EnvVarsToDetect: []string{
+			"SPACELIFT_MAX_REQUESTS_BURST", "TF_VAR_spacelift_run_trigger", "SPACELIFT_STORE_HOOKS_ENV_VARS",
+			"TF_VAR_spacelift_commit_branch", "SPACELIFT_WORKER_TRACING_ENABLED",
+		},
 	},
 	TaskCluster: baseCI{
 		Name:            TaskCluster,

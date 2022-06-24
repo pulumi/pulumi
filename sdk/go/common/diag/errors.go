@@ -38,7 +38,7 @@ func GetResourceInvalidError(urn resource.URN) *Diag {
 }
 
 func GetResourcePropertyInvalidValueError(urn resource.URN) *Diag {
-	return newError(urn, 2003, "%v resource '%v's property '%v' value %v has a problem: %v")
+	return newError(urn, 2003, "%v resource '%v': property %v value %v has a problem: %v")
 }
 
 func GetPreviewFailedError(urn resource.URN) *Diag {
@@ -79,4 +79,12 @@ func GetResourceWillBeCreatedButWasNotSpecifiedInTargetList(urn resource.URN) *D
 func GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn resource.URN) *Diag {
 	return newError(urn, 2014, `Resource '%v' will be destroyed but was not specified in --target list.
 Either include resource in --target list or pass --target-dependents to proceed.`)
+}
+
+func GetDefaultProviderDenied(urn resource.URN) *Diag {
+	return newError(urn, 2015, `Default provider for '%v' disabled. '%v' must use an explicit provider.`)
+}
+
+func GetBadAlias(urn resource.URN) *Diag {
+	return newError(urn, 2001, "Duplicate resource URN '%v'; try giving it a unique name")
 }

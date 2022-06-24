@@ -1,8 +1,9 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -101,7 +102,7 @@ namespace Pulumi
         }
 
         internal static Output<ImmutableArray<T>> Concat<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
-            => Tuple(values1, values2).Apply(a => a.Item1.AddRange(a.Item2));
+            => Tuple(values1, values2).Apply(tuple => tuple.Item1.AddRange(tuple.Item2));
     }
 
     /// <summary>
@@ -126,8 +127,8 @@ namespace Pulumi
     /// created, these are represented using the special <see cref="Output{T}"/>s type, which
     /// internally represents two things:
     /// <list type="number">
-    /// <item>An eventually available value of the output</item>
-    /// <item>The dependency on the source(s) of the output value</item>
+    /// <item><description>An eventually available value of the output</description></item>
+    /// <item><description>The dependency on the source(s) of the output value</description></item>
     /// </list>
     /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
     /// Additionally, they carry along dependency information.
@@ -143,14 +144,14 @@ namespace Pulumi
 
             if (Deployment.TryGetInternalInstance(out var instance))
             {
-                instance.Runner.RegisterTask("Output<>", dataTask);
+                instance.Runner.RegisterTask(TypeNameHelper.GetTypeDisplayName(GetType(), false), dataTask);
             }
         }
 
-        internal async Task<T> GetValueAsync()
+        internal async Task<T> GetValueAsync(T whenUnknown)
         {
             var data = await DataTask.ConfigureAwait(false);
-            return data.Value;
+            return data.IsKnown ? data.Value : whenUnknown;
         }
 
         async Task<ImmutableHashSet<Resource>> IOutput.GetResourcesAsync()
@@ -186,25 +187,34 @@ namespace Pulumi
                 throw new ArgumentNullException(nameof(value));
             }
 
-            var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => OutputData.Create(ImmutableHashSet<Resource>.Empty, t, isKnown: true, isSecret: isSecret));
-            return new Output<T>(tcs.Task);
+            async Task<OutputData<T>> GetData()
+            {
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, await value.ConfigureAwait(false), isKnown: true, isSecret);
+            }
+
+            return new Output<T>(GetData());
         }
 
+        internal static Output<T> CreateUnknown(T value)
+            => Unknown(value);
+
+        internal static Output<T> CreateUnknown(Func<Task<T>> valueFactory)
+            => Unknown(default!).Apply(_ => valueFactory());
+
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, U> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Task<U>> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Input<U>?> func)
             => Apply(t => func(t).ToOutput());
@@ -303,6 +313,7 @@ namespace Pulumi
             var isKnown = true;
             var isSecret = false;
 
+#pragma warning disable 8601
             Update(await GetData(item1).ConfigureAwait(false), ref tuple.Item1);
             Update(await GetData(item2).ConfigureAwait(false), ref tuple.Item2);
             Update(await GetData(item3).ConfigureAwait(false), ref tuple.Item3);
@@ -311,6 +322,7 @@ namespace Pulumi
             Update(await GetData(item6).ConfigureAwait(false), ref tuple.Item6);
             Update(await GetData(item7).ConfigureAwait(false), ref tuple.Item7);
             Update(await GetData(item8).ConfigureAwait(false), ref tuple.Item8);
+#pragma warning restore 8601
 
             return OutputData.Create(resources.ToImmutable(), tuple, isKnown, isSecret);
 
@@ -326,6 +338,27 @@ namespace Pulumi
                 location = data.Value;
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
+        }
+
+        internal static Output<T> Unknown(T value) => new Output<T>(UnknownHelperAsync(value));
+
+        private static Task<OutputData<T>> UnknownHelperAsync(T value)
+            => Task.FromResult(new OutputData<T>(ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false));
+
+        public override string ToString()
+        {
+            var message = string.Join(Environment.NewLine, new string[] {
+                "Calling [ToString] on an [Output<T>] is not supported.",
+                "",
+                "To get the value of an Output<T> as an Output<string> consider:",
+                "1. o.Apply(v => $\"prefix{v}suffix\")",
+                "2. Output.Format($\"prefix{hostname}suffix\");",
+                "",
+                "See https://pulumi.io/help/outputs for more details.",
+                "This function may throw in a future version of Pulumi.",
+            });
+
+            return message;
         }
     }
 }

@@ -1,18 +1,23 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build go || all
 // +build go all
 
 package ints
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"sourcegraph.com/sourcegraph/appdash"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -48,6 +53,18 @@ func TestEmptyGoRunMain(t *testing.T) {
 	})
 }
 
+// TestPrintfGo tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("printf", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -80,6 +97,8 @@ func TestConfigBasicGo(t *testing.T) {
 
 // Tests that accessing config secrets using non-secret APIs results in warnings being logged.
 func TestConfigSecretsWarnGo(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_secrets_warn", "go"),
 		Dependencies: []string{
@@ -401,6 +420,8 @@ func TestLargeResourceGo(t *testing.T) {
 
 // Test remote component construction in Go.
 func TestConstructGo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -420,7 +441,6 @@ func TestConstructGo(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -429,8 +449,11 @@ func TestConstructGo(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
 	}
@@ -443,8 +466,10 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -466,10 +491,17 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 							assert.Empty(t, deps)
 						}
 					case "child-b":
-						assert.Equal(t, []resource.URN{urns["a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
-							res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -511,6 +543,8 @@ func TestConstructSlowGo(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainGo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -530,7 +564,6 @@ func TestConstructPlainGo(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -539,8 +572,11 @@ func TestConstructPlainGo(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -554,12 +590,100 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v2",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownGo(t *testing.T) {
+	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsGo(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: append(test.env, pathEnv),
+				Dir: filepath.Join("construct_component_methods", "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownGo(t *testing.T) {
+	testConstructMethodsUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsResourcesGo(t *testing.T) {
+	testConstructMethodsResources(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsErrorsGo(t *testing.T) {
+	testConstructMethodsErrors(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructProviderGo(t *testing.T) {
+	t.Parallel()
+
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join(testDir, "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -583,4 +707,91 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 		path += ".exe"
 	}
 	testComponentProviderSchema(t, path)
+}
+
+// TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
+func TestTracePropagationGo(t *testing.T) {
+
+	// Detect a special trace coming from Go language plugin.
+	isGoListTrace := func(t *appdash.Trace) bool {
+		m := t.Span.Annotations.StringMap()
+
+		isGoCmd := strings.HasSuffix(m["command"], "go") ||
+			strings.HasSuffix(m["command"], "go.exe")
+
+		if m["component"] == "exec.Command" &&
+			m["args"] == "[list -m -json -mod=mod all]" &&
+			isGoCmd {
+			return true
+		}
+
+		return false
+	}
+
+	var foundTrace *appdash.Trace
+
+	// Look for trace mathching `isGoListTrace` in the trace file
+	// and store to `foundTrace`.
+	searchForGoListTrace := func(dir string) error {
+
+		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
+		if err != nil {
+			return err
+		}
+
+		foundTrace, err = FindTrace(store, isGoListTrace)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("empty", "go"),
+		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
+		SkipRefresh:            true,
+		SkipPreview:            false,
+		SkipUpdate:             true,
+		SkipExportImport:       true,
+		SkipEmptyPreviewUpdate: true,
+		Quick:                  false,
+		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
+		PreviewCompletedHook:   searchForGoListTrace,
+	}
+
+	integration.ProgramTest(t, opts)
+
+	if foundTrace == nil {
+		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
+	}
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutGo(t *testing.T) {
+	t.Parallel()
+
+	dir := filepath.Join("about", "go")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-stack")
+	e.RunCommand("pulumi", "stack", "select", "about-stack")
+	stdout, _ := e.RunCommand("pulumi", "about", "-t")
+
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
+}
+
+func TestConstructOutputValuesGo(t *testing.T) {
+	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }

@@ -11,7 +11,7 @@ namespace Pulumi.Automation.Commands
     internal interface IPulumiCmd
     {
         Task<CommandResult> RunAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
             IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,

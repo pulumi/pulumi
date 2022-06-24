@@ -29,8 +29,13 @@ var pyNameTests = []struct {
 }
 
 func TestPyName(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pyNameTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			// TODO[pulumi/pulumi#5201]: Once the assertion has been removed, we can remove this `if` block.
 			// Prevent this input from panic'ing.
 			if tt.input == "someTHINGsAREWeird" {
@@ -46,9 +51,14 @@ func TestPyName(t *testing.T) {
 }
 
 func TestPyNameLegacy(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pyNameTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
-			result := PyNameLegacy(tt.input)
+			t.Parallel()
+
+			result := pyName(tt.input, true /*legacy*/)
 			assert.Equal(t, tt.legacy, result)
 		})
 	}

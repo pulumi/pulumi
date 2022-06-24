@@ -2,11 +2,11 @@ package filestate
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
@@ -77,7 +77,7 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "could not list bucket")
+			return nil, fmt.Errorf("could not list bucket: %w", err)
 		}
 		files = append(files, file)
 	}
@@ -95,7 +95,7 @@ func objectName(obj *blob.ListObject) string {
 func removeAllByPrefix(bucket Bucket, dir string) error {
 	files, err := listBucket(bucket, dir)
 	if err != nil {
-		return errors.Wrap(err, "unable to list bucket objects for removal")
+		return fmt.Errorf("unable to list bucket objects for removal: %w", err)
 	}
 
 	for _, file := range files {
@@ -103,22 +103,6 @@ func removeAllByPrefix(bucket Bucket, dir string) error {
 		if err != nil {
 			logging.V(5).Infof("error deleting object: %v (%v) skipping", file.Key, err)
 		}
-	}
-
-	return nil
-}
-
-// renameObject renames an object in a bucket. the rename requires a download/upload of the object
-// due to a go-cloud API limitation
-func renameObject(bucket Bucket, source string, dest string) error {
-	err := bucket.Copy(context.TODO(), dest, source, nil)
-	if err != nil {
-		return errors.Wrapf(err, "copying %s to %s", source, dest)
-	}
-
-	err = bucket.Delete(context.TODO(), source)
-	if err != nil {
-		logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", source, err)
 	}
 
 	return nil

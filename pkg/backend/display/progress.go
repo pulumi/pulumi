@@ -18,7 +18,6 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"sort"
@@ -27,7 +26,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -93,7 +92,7 @@ type ProgressDisplay struct {
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.QName
+	stack tokens.Name
 	// proj is the project this progress pertains to.
 	proj tokens.PackageName
 
@@ -270,7 +269,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout
@@ -287,10 +286,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	// let the user know what is still being worked on.
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+	if stdout == os.Stdout && stderr == os.Stderr {
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-			nil, 1 /*timesPerSecond*/)
+			nil, opts.Color, 1 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -434,10 +433,14 @@ func (display *ProgressDisplay) refreshColumns(
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
-	if display.isTerminal {
-		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
-	} else {
-		display.writeSimpleMessage(msg)
+	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
+	// asserts in later display functions if we try to show it
+	if msg != "" {
+		if display.isTerminal {
+			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+		} else {
+			display.writeSimpleMessage(msg)
+		}
 	}
 }
 
@@ -898,7 +901,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := engine.GetResourceOutputsPropertiesString(
+	props := getResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
@@ -914,7 +917,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 	display.writeSimpleMessage(msg)
 }
 
@@ -1390,8 +1393,8 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 	return op
 }
 
-func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata) string {
-	return display.getStepOp(step).Prefix() + colors.Reset
+func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
+	return display.getStepOp(step).Prefix(done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -1442,10 +1445,5 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.Color() + getDescription() + colors.Reset
-}
-
-func writeString(b io.StringWriter, s string) {
-	_, err := b.WriteString(s)
-	contract.IgnoreError(err)
+	return op.ColorProgress() + getDescription() + colors.Reset
 }

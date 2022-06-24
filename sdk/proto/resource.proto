@@ -20,11 +20,14 @@ import "provider.proto";
 
 package pulumirpc;
 
+option go_package = "github.com/pulumi/pulumi/v3/proto/go/pulumirpc";
+
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
-    rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
-    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+    rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
+    rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
+    rpc Call(CallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
@@ -38,6 +41,28 @@ message SupportsFeatureRequest {
 
 message SupportsFeatureResponse {
     bool hasSupport = 1; // true when the resource monitor supports this feature.
+}
+
+// Alias is a description of an alias.
+message Alias {
+
+    message Spec {
+        string name = 1; // The previous name of the resource. If not set, the current name of the resource is used.
+        string type = 2; // The previous type of the resource. If not set, the current type of the resource is used.
+        string stack = 3; // The previous stack of the resource. If not set, the current stack of the resource is used.
+        string project = 4; // The previous project of the resource. If not set, the current project of the resource is used.
+
+        // The previous parent of the resource. If not set, the current parent of the resource is used.
+        oneof parent {
+            string parentUrn = 5; // The urn of the previous parent.
+            bool noParent = 6; // Used to indicate the resource previously had no parent.  If false this property is ignored.
+        }
+    }
+
+    oneof alias {
+        string urn = 1; // The previous urn to alias to.
+        Spec spec = 2; // An alias specification.
+    }
 }
 
 // There is a clear distinction here between the "properties" bag sent across the wire as part of these RPCs and
@@ -57,9 +82,15 @@ message ReadResourceRequest {
     string provider = 7;                   // an optional reference to the provider to use for this read.
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
-    repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
+    repeated string additionalSecretOutputs = 10;      // a list of output properties that should also be treated as secret, in addition to ones we detect.
+
+    // We used to declare an alias field here, but nothing ever used it. But to ensure we don't confuse any
+    // old plugins/monitors making sure that field doesn't get reused.
+    reserved 11;
+    reserved "aliases";
+
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -95,7 +126,7 @@ message RegisterResourceRequest {
     repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
     bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 15;                               // a list of additional URNs that shoud be considered the same.
+    repeated string urnAliases = 15 [deprecated=true];          // a list of additional URNs that should be considered the same.
     string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
     CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
     bool deleteBeforeReplaceDefined = 18;                       // true if the deleteBeforeReplace property should be treated as defined even if it is false.
@@ -103,6 +134,10 @@ message RegisterResourceRequest {
     bool remote = 20;                                           // true if the resource is a plugin-managed component resource.
     bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
     map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
+    repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
+    string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
+    bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
+    repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -125,4 +160,13 @@ message RegisterResourceResponse {
 message RegisterResourceOutputsRequest {
     string urn = 1;                     // the URN for the resource to attach output properties to.
     google.protobuf.Struct outputs = 2; // additional output properties to add to the existing resource.
+}
+
+message ResourceInvokeRequest {
+    string tok = 1;                  // the function token to invoke.
+    google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider version to use for this invoke.
+    string version = 4;              // the version of the provider to use when servicing this request.
+    bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
 }

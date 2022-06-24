@@ -30,7 +30,7 @@ const (
 	DisplayDiff
 	// DisplayQuery displays query output.
 	DisplayQuery
-	// DisplayQuery displays query output.
+	// DisplayWatch displays watch output.
 	DisplayWatch
 )
 
@@ -42,7 +42,7 @@ type Options struct {
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
 	ShowReads            bool                // true to show resources that are being read in
 	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
-	SuppressPermaLink    bool                // true to suppress state permalink
+	SuppressPermalink    bool                // true to suppress state permalink
 	SummaryDiff          bool                // true if diff display should be summarized.
 	IsInteractive        bool                // true if we should display things interactively.
 	Type                 Type                // type of display (rich diff, progress, or query).

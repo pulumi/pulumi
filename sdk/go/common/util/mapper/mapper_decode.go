@@ -94,7 +94,7 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 
 			// So long as the target element is a pointer, we have a pointer to pointer; dig through until we bottom out
 			// on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-			contract.Assert(vsrc.Type().Kind() != reflect.Ptr)
+			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a pointer")
 			for vdstType.Kind() == reflect.Ptr {
 				vdst = vdst.Elem()
 				vdstType = vdstType.Elem()

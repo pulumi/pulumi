@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -32,10 +33,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
+	"time"
+	"unicode"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -60,6 +63,15 @@ const (
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint: gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+)
+
+var (
+	// The minimum python version that Pulumi supports
+	minimumSupportedPythonVersion = semver.MustParse("3.6.0")
+	// Any version less then `eolPythonVersion` is EOL.
+	eolPythonVersion = semver.MustParse("3.7.0")
+	// An url to the issue discussing EOL.
+	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -116,11 +128,24 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err = rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
+	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
@@ -181,15 +206,14 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}
 
 	// Now, determine which Pulumi packages are installed.
-	pulumiPackages, err := determinePulumiPackages(host.virtualenvPath, host.cwd)
+	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
 	if err != nil {
 		return nil, err
 	}
 
 	plugins := []*pulumirpc.PluginDependency{}
 	for _, pkg := range pulumiPackages {
-
-		plugin, err := determinePluginDependency(host.virtualenvPath, host.cwd, pkg.Name, pkg.Version)
+		plugin, err := determinePluginDependency(host.virtualenvPath, host.cwd, pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +299,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		if err := python.InstallDependenciesWithWriters(
+		if err := python.InstallDependenciesWithWriters(ctx,
 			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return err
 		}
@@ -311,38 +335,79 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 }
 
 // These packages are known not to have any plugins.
-// TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumiplugin.json`
+// TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumi-plugin.json`
 // file that indicates the package does not have an associated plugin, and enough time has passed.
 var packagesWithoutPlugins = map[string]struct{}{
 	"pulumi-policy": {},
 }
 
 type pythonPackage struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name     string                   `json:"name"`
+	Version  string                   `json:"version"`
+	Location string                   `json:"location"`
+	plugin   *plugin.PulumiPluginJSON `json:"-"`
 }
 
-func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
-	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
-
-	// Run the `python -m pip list --format json` command.
-	args := []string{"-m", "pip", "list", "--format", "json"}
-	output, err := runPythonCommand(virtualenv, cwd, args...)
-	if err != nil {
-		return nil, err
+// Returns if pkg is a pulumi package.
+//
+// We check:
+// 1. If there is a pulumi-plugin.json file.
+// 2. If the first segment is "pulumi". This implies a first party package.
+func (pkg *pythonPackage) isPulumiPackage() bool {
+	plugin, err := pkg.readPulumiPluginJSON()
+	if err == nil && plugin != nil {
+		return true
 	}
 
-	// Parse the JSON output.
+	return strings.HasPrefix(pkg.Name, "pulumi-")
+}
+
+func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
+	if pkg.plugin != nil {
+		return pkg.plugin, nil
+	}
+
+	// The name of the module inside the package can be different from the package name.
+	// However, our convention is to always use the same name, e.g. a package name of
+	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
+	// by replacing hyphens with underscores.
+	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
+	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumi-plugin.json")
+	logging.V(5).Infof("readPulumiPluginJSON: pulumi-plugin.json file path: %s", pulumiPluginFilePath)
+
+	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	pkg.plugin = plugin
+	return plugin, nil
+}
+
+func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pythonPackage, error) {
+	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
+
+	// Run the `python -m pip list -v --format json` command.
+	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
+	output, err := runPythonCommand(ctx, virtualenv, cwd, args...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "calling `python %s`", strings.Join(args, " "))
+	}
+
+	// Parse the JSON output; on some systems pip -v verbose mode
+	// follows JSON with non-JSON trailer, so we need to be
+	// careful when parsing and ignore the trailer.
 	var packages []pythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
+	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
+	if err := jsonDecoder.Decode(&packages); err != nil {
 		return nil, errors.Wrapf(err, "parsing `python %s` output", strings.Join(args, " "))
 	}
 
 	// Only return Pulumi packages.
 	var pulumiPackages []pythonPackage
 	for _, pkg := range packages {
-		// We're only interested in packages that start with "pulumi-".
-		if !strings.HasPrefix(pkg.Name, "pulumi-") {
+		if !pkg.isPulumiPackage() {
 			continue
 		}
 
@@ -360,50 +425,31 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 }
 
 // determinePluginDependency attempts to determine a plugin associated with a package. It checks to see if the package
-// contains a pulumiplugin.json file and uses the information in that file to determine the plugin. If `resource` in
-// pulumiplugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these values
-// are derived from the package name and version. If the plugin version cannot be determined from the package version,
-// nil is returned.
+// contains a pulumi-plugin.json file and uses the information in that file to determine the plugin. If `resource` in
+// pulumi-plugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these
+// values are derived from the package name and version. If the plugin version cannot be determined from the package
+// version, nil is returned.
 func determinePluginDependency(
-	virtualenv, cwd, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
-
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v", packageName, packageVersion)
-
-	// Determine the location of the installed package.
-	packageLocation, err := determinePackageLocation(virtualenv, cwd, packageName)
-	if err != nil {
-		return nil, err
-	}
-
-	// The name of the module inside the package can be different from the package name.
-	// However, our convention is to always use the same name, e.g. a package name of
-	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
-	// by replacing hyphens with underscores.
-	packageModuleName := strings.ReplaceAll(packageName, "-", "_")
-
-	pulumiPluginFilePath := filepath.Join(packageLocation, packageModuleName, "pulumiplugin.json")
-	logging.V(5).Infof("GetRequiredPlugins: pulumiplugin.json file path: %s", pulumiPluginFilePath)
+	virtualenv, cwd string, pkg pythonPackage) (*pulumirpc.PluginDependency, error) {
 
 	var name, version, server string
-	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
-	if err == nil {
+	plugin, err := pkg.readPulumiPluginJSON()
+	if plugin != nil && err == nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
 		if !plugin.Resource {
-			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", packageName)
+			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", pkg.Name)
 			return nil, nil
 		}
 
 		name, version, server = plugin.Name, plugin.Version, plugin.Server
-	} else if !os.IsNotExist(err) {
-		// If the file doesn't exist, the name and version of the plugin will attempt to be determined from the
-		// packageName and packageVersion. If it's some other error, report it.
+	} else if err != nil {
 		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
 		return nil, err
 	}
 
 	if name == "" {
-		name = strings.TrimPrefix(packageName, "pulumi-")
+		name = strings.TrimPrefix(pkg.Name, "pulumi-")
 	}
 
 	if version == "" {
@@ -413,11 +459,11 @@ func determinePluginDependency(
 		// "3.31.0a1605189729" will have an associated plugin with a version of "3.31.0-alpha.1605189729+42435656".
 		// The "+42435656" suffix cannot be determined so the plugin version cannot be determined. In such cases,
 		// log the issue and skip the package.
-		version, err = determinePluginVersion(packageVersion)
+		version, err = determinePluginVersion(pkg.Version)
 		if err != nil {
 			logging.V(5).Infof(
-				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s",
-				packageName, packageVersion)
+				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s: %s",
+				pkg.Name, pkg.Version, err.Error())
 			return nil, nil
 		}
 	}
@@ -426,7 +472,7 @@ func determinePluginDependency(
 		version = fmt.Sprintf("v%s", version)
 	}
 
-	result := pulumirpc.PluginDependency{
+	result := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
@@ -434,71 +480,133 @@ func determinePluginDependency(
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
-	return &result, nil
-}
-
-// determinePackageLocation determines the location on disk of the package by running `python -m pip show <package>`
-// and parsing the output.
-func determinePackageLocation(virtualenv, cwd, packageName string) (string, error) {
-	b, err := runPythonCommand(virtualenv, cwd, "-m", "pip", "show", packageName)
-	if err != nil {
-		return "", err
-	}
-	return parseLocation(packageName, string(b))
-}
-
-func parseLocation(packageName, pipShowOutput string) (string, error) {
-	// We want the value of Location from the following output of `python -m pip show <packageName>`:
-	// $ python -m pip show pulumi-aws
-	// Name: pulumi-aws
-	// Version: 3.12.2
-	// Summary: A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.
-	// Home-page: https://pulumi.io
-	// Author: None
-	// Author-email: None
-	// License: Apache-2.0
-	// Location: /Users/user/proj/venv/lib/python3.8/site-packages
-	// Requires: parver, pulumi, semver
-	// Required-by:
-	lines := strings.Split(pipShowOutput, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "Location:") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "Location:")), nil
-		}
-	}
-
-	return "", errors.Errorf("determining location of package %s", packageName)
+	return result, nil
 }
 
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.
-// The package version must have only major.minor.patch components and each must be integers only.
-// If there are any other characters in the component (e.g. pre-release tags), an error is returned
-// because there isn't enough information to determine the plugin version from a pre-release tag.
+//
+// Supported versions:
+//   PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
+//   determinePluginVersion only supports a subset of that. Translations are provided for
+//   `N(.N)*[{a|b|rc}N][.postN][.devN]`.
+//
+// Translations:
+//   We ensure that there are at least 3 version segments. Missing segments are `0`
+//   padded.
+//   Example: 1.0 => 1.0.0
+//
+//   We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
+//   Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//
+//   We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
+//   and `.dev` are present, only one separator is used.
+//   Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
+//
+// Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
-	components := strings.Split(packageVersion, ".")
-	if len(components) < 2 || len(components) > 3 {
-		return "", errors.Errorf("unexpected number of components in version %q", packageVersion)
+	if len(packageVersion) == 0 {
+		return "", fmt.Errorf("Cannot parse empty string")
 	}
-
-	// Ensure each component is an integer.
-	for i := range components {
-		if _, err := strconv.ParseInt(components[i], 10, 64); err != nil {
-			names := []string{"major", "minor", "patch"}
-			return "", errors.Errorf("parsing %s: %q", names[i], components[i])
+	// Verify ASCII
+	for i := 0; i < len(packageVersion); i++ {
+		c := packageVersion[i]
+		if c > unicode.MaxASCII {
+			return "", fmt.Errorf("byte %d is not ascii", i)
 		}
 	}
 
-	return packageVersion, nil
+	parseNumber := func(s string) (string, string) {
+		i := 0
+		for _, c := range []rune(s) {
+			if c > '9' || c < '0' {
+				break
+			}
+			i++
+		}
+		return s[:i], s[i:]
+	}
+
+	// Explicitly err on epochs
+	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
+		return "", fmt.Errorf("Epochs are not supported")
+	}
+
+	segments := []string{}
+	num, rest := "", packageVersion
+	foundDot := false
+	for {
+		if num, rest = parseNumber(rest); num != "" {
+			foundDot = false
+			segments = append(segments, num)
+			if strings.HasPrefix(rest, ".") {
+				rest = rest[1:]
+				foundDot = true
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	if foundDot {
+		rest = "." + rest
+	}
+
+	for len(segments) < 3 {
+		segments = append(segments, "0")
+	}
+
+	if rest == "" {
+		r := strings.Join(segments, ".")
+		return r, nil
+	}
+
+	var preRelease string
+
+	switch {
+	case rest[0] == 'a':
+		preRelease, rest = parseNumber(rest[1:])
+		preRelease = "-alpha." + preRelease
+	case rest[0] == 'b':
+		preRelease, rest = parseNumber(rest[1:])
+		preRelease = "-beta." + preRelease
+	case strings.HasPrefix(rest, "rc"):
+		preRelease, rest = parseNumber(rest[2:])
+		preRelease = "-rc." + preRelease
+	}
+
+	var postRelease string
+	if strings.HasPrefix(rest, ".post") {
+		postRelease, rest = parseNumber(rest[5:])
+		postRelease = "+post" + postRelease
+	}
+
+	var developmentRelease string
+	if strings.HasPrefix(rest, ".dev") {
+		developmentRelease, rest = parseNumber(rest[4:])
+		join := ""
+		if postRelease == "" {
+			join = "+"
+		}
+		developmentRelease = join + "dev" + developmentRelease
+	}
+
+	if rest != "" {
+		return "", fmt.Errorf("'%s' still unparsed", rest)
+	}
+
+	result := strings.Join(segments, ".") + preRelease + postRelease + developmentRelease
+
+	return result, nil
 }
 
-func runPythonCommand(virtualenv, cwd string, arg ...string) ([]byte, error) {
+func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string) ([]byte, error) {
 	var err error
 	var cmd *exec.Cmd
 	if virtualenv != "" {
 		cmd = python.VirtualEnvCommand(virtualenv, "python", arg...)
 	} else {
-		cmd, err = python.Command(arg...)
+		cmd, err = python.Command(ctx, arg...)
 		if err != nil {
 			return nil, err
 		}
@@ -554,7 +662,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
 	} else {
-		cmd, err = python.Command(args...)
+		cmd, err = python.Command(ctx, args...)
 		if err != nil {
 			return nil, err
 		}
@@ -670,4 +778,64 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+// validateVersion checks that python is running a valid version. If a version
+// is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
+// by the Pulumi CLI program.
+func validateVersion(ctx context.Context, virtualEnvPath string) {
+	var versionCmd *exec.Cmd
+	var err error
+	versionArgs := []string{"--version"}
+	if virtualEnvPath != "" {
+		versionCmd = python.VirtualEnvCommand(virtualEnvPath, "python", versionArgs...)
+	} else if versionCmd, err = python.Command(ctx, versionArgs...); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to find python executable\n")
+		return
+	}
+	var out []byte
+	if out, err = versionCmd.Output(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err.Error())
+		return
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	parsed, err := semver.Parse(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
+		return
+	}
+	if parsed.LT(minimumSupportedPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Pulumi does not support Python %s."+
+			" Please upgrade to at least %s\n", parsed, minimumSupportedPythonVersion)
+	} else if parsed.LT(eolPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
+			" Check %s for more details\n", parsed.Major,
+			parsed.Minor, eolPythonVersionIssue)
+	}
+}
+
+func (host *pythonLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	if err := python.InstallDependenciesWithWriters(server.Context(),
+		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+		return err
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

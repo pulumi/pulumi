@@ -101,6 +101,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Plan specifies the path where the update plan should be saved.
+func Plan(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Plan = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -133,6 +140,14 @@ type Options struct {
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// Colorize output. Choices are: always, never, raw, auto (default "auto")
+	Color string
+	// Save an update plan to the given path.
+	Plan string
+	// Run one or more policy packs as part of this update
+	PolicyPacks []string
+	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+	PolicyPackConfigs []string
 }
 
 type optionFunc func(*Options)

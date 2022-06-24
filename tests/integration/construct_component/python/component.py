@@ -12,4 +12,5 @@ class Component(pulumi.ComponentResource):
         props = dict()
         props["echo"] = echo
         props["childId"] = None
+        props["secret"] = None
         super().__init__("testcomponent:index:Component", name, props, opts, True)

@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,16 +29,16 @@ class ResourceThensTest(LanghostTest):
             program=path.join(self.base_path(), "resource_thens"),
             expected_resource_count=2)
 
-    def register_resource(self, _ctx, dry_run, ty, name, res, deps,
-                          _parent, custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
-            self.assertDictEqual(res, {"inprop": 777, "inprop_2": 42})
+            self.assertDictEqual(_resource, {"inprop": 777, "inprop_2": 42})
             urn = self.make_urn(ty, name)
             res_id = ""
             props = {}
-            if not dry_run:
+            if not _dry_run:
                 res_id = name
                 props["outprop"] = "output yeah"
 
@@ -50,22 +50,22 @@ class ResourceThensTest(LanghostTest):
 
         if ty == "test:index:ResourceB":
             self.assertEqual(name, "resourceB")
-            self.assertListEqual(deps, ["test:index:ResourceA::resourceA"])
-            if dry_run:
-                self.assertDictEqual(res, {
+            self.assertListEqual(_dependencies, ["test:index:ResourceA::resourceA"])
+            if _dry_run:
+                self.assertDictEqual(_resource, {
                     # other_in is unknown, so it is not in the dictionary.
                     # other_out is unknown, so it is not in the dictionary.
                     # other_id is also unknown so it is not in the dictionary
                 })
             else:
-                self.assertDictEqual(res, {
+                self.assertDictEqual(_resource, {
                     "other_in": 777,
                     "other_out": "output yeah",
                     "other_id": "resourceA",
                 })
 
             res_id = ""
-            if not dry_run:
+            if not _dry_run:
                 res_id = name
 
             return {

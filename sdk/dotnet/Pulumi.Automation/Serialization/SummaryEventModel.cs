@@ -1,8 +1,8 @@
 // Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
-using Pulumi.Automation.Serialization.Json;
 using Pulumi.Automation.Events;
+using Pulumi.Automation.Serialization.Json;
 
 // NOTE: The classes in this file are intended to align with the serialized
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
@@ -22,7 +22,9 @@ namespace Pulumi.Automation.Serialization
             new SummaryEvent(
                 this.MaybeCorrupt,
                 this.DurationSeconds,
+                // ReSharper disable once ConstantNullCoalescingCondition
                 this.ResourceChanges ?? new Dictionary<OperationType, int>(),
+                // ReSharper disable once ConstantNullCoalescingCondition
                 this.PolicyPacks ?? new Dictionary<string, string>());
     }
 }

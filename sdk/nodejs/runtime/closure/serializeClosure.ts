@@ -92,8 +92,8 @@ export interface SerializedFunction {
  * @param args Arguments to use to control the serialization of the JavaScript function.
  */
 export async function serializeFunction(
-        func: Function,
-        args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
+    func: Function,
+    args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
 
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
@@ -110,8 +110,8 @@ export async function serializeFunction(
  * @deprecated Please use 'serializeFunction' instead.
  */
 export async function serializeFunctionAsync(
-        func: Function,
-        serialize?: (o: any) => boolean): Promise<string> {
+    func: Function,
+    serialize?: (o: any) => boolean): Promise<string> {
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
 
     serialize = serialize || (_ => true);
@@ -129,9 +129,9 @@ export async function serializeFunctionAsync(
  * @param c The FunctionInfo to be serialized into a module string.
  */
 function serializeJavaScriptText(
-        outerClosure: closure.ClosureInfo,
-        exportName: string,
-        isFactoryFunction: boolean): SerializedFunction {
+    outerClosure: closure.ClosureInfo,
+    exportName: string,
+    isFactoryFunction: boolean): SerializedFunction {
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
@@ -257,7 +257,7 @@ function serializeJavaScriptText(
     }
 
     function simpleEnvEntryToString(
-            envEntry: closure.Entry, varName: string): string {
+        envEntry: closure.Entry, varName: string): string {
 
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
@@ -285,7 +285,7 @@ function serializeJavaScriptText(
     }
 
     function complexEnvEntryToString(
-            envEntry: closure.Entry, varName: string): string {
+        envEntry: closure.Entry, varName: string): string {
         // Call all environment variables __e<num> to make them unique.  But suffix
         // them with the original name of the property to help provide context when
         // looking at the source.
@@ -401,7 +401,7 @@ function serializeJavaScriptText(
     }
 
     function emitComplexObjectProperties(
-            envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
+        envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
 
         for (const [keyEntry, { info, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
@@ -451,7 +451,7 @@ function serializeJavaScriptText(
     }
 
     function emitArray(
-            envVar: string, arr: closure.Entry[], varName: string): void {
+        envVar: string, arr: closure.Entry[], varName: string): void {
         if (arr.some(deepContainsObjOrArrayOrRegExp) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
@@ -461,13 +461,11 @@ function serializeJavaScriptText(
             // Walk the names of the array properties directly. This ensures we work efficiently
             // with sparse arrays.  i.e. if the array has length 1k, but only has one value in it
             // set, we can just set htat value, instead of setting 999 undefineds.
-            let length = 0;
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
                     const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);
                     environmentText += `${envVar}${
                         isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
-                    length++;
                 }
             }
         }

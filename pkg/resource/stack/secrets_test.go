@@ -2,14 +2,18 @@ package stack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testSecretsManager struct {
@@ -43,6 +47,10 @@ func (t *testSecretsManager) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext[i+1:], nil
 }
 
+func (t *testSecretsManager) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return config.DefaultBulkDecrypt(t, ciphertexts)
+}
+
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -55,6 +63,8 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 }
 
 func TestCachingCrypter(t *testing.T) {
+	t.Parallel()
+
 	sm := &testSecretsManager{}
 	csm := NewCachingSecretsManager(sm)
 
@@ -171,4 +181,76 @@ func TestCachingCrypter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, sm.encryptCalls)
 	assert.Equal(t, barSer, barSer2)
+}
+
+type mapTestSecretsProvider struct {
+	m *mapTestSecretsManager
+}
+
+func (p *mapTestSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+	m, err := DefaultSecretsProvider.OfType(ty, state)
+	if err != nil {
+		return nil, err
+	}
+	p.m = &mapTestSecretsManager{sm: m}
+	return p.m, nil
+}
+
+type mapTestSecretsManager struct {
+	sm secrets.Manager
+
+	d *mapTestDecrypter
+}
+
+func (t *mapTestSecretsManager) Type() string { return t.sm.Type() }
+
+func (t *mapTestSecretsManager) State() interface{} { return t.sm.State() }
+
+func (t *mapTestSecretsManager) Encrypter() (config.Encrypter, error) {
+	return t.sm.Encrypter()
+}
+
+func (t *mapTestSecretsManager) Decrypter() (config.Decrypter, error) {
+	d, err := t.sm.Decrypter()
+	if err != nil {
+		return nil, err
+	}
+	t.d = &mapTestDecrypter{d: d}
+	return t.d, nil
+}
+
+type mapTestDecrypter struct {
+	d config.Decrypter
+
+	decryptCalls     int
+	bulkDecryptCalls int
+}
+
+func (t *mapTestDecrypter) DecryptValue(ciphertext string) (string, error) {
+	t.decryptCalls++
+	return t.d.DecryptValue(ciphertext)
+}
+
+func (t *mapTestDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	t.bulkDecryptCalls++
+	return config.DefaultBulkDecrypt(t.d, ciphertexts)
+}
+
+func TestMapCrypter(t *testing.T) {
+	t.Parallel()
+
+	bytes, err := ioutil.ReadFile("testdata/checkpoint-secrets.json")
+	require.NoError(t, err)
+
+	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
+	require.NoError(t, err)
+
+	var prov mapTestSecretsProvider
+
+	_, err = DeserializeDeploymentV3(*chk.Latest, &prov)
+	require.NoError(t, err)
+
+	d := prov.m.d
+	assert.Equal(t, 1, d.bulkDecryptCalls)
+	assert.Equal(t, 0, d.decryptCalls)
 }

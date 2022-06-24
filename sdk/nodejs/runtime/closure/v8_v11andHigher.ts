@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 
 import * as inspector from "inspector";
 import * as util from "util";
@@ -120,7 +120,14 @@ type InflightContext = {
 };
 // Isolated singleton context accessible from the inspector.
 // Used instead of `global` object to support executions with multiple V8 vm contexts as, e.g., done by Jest.
-const inflightContext = createContext();
+let inflightContextCache: Promise<InflightContext> | undefined;
+function inflightContext() {
+    if (inflightContextCache) {
+        return inflightContextCache;
+    }
+    inflightContextCache = createContext();
+    return inflightContextCache;
+}
 async function createContext(): Promise<InflightContext> {
     const context: InflightContext = {
         contextId: 0,
@@ -163,7 +170,7 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
     const post = util.promisify(session.post);
 
     // Place the function in a unique location
-    const context = await inflightContext;
+    const context = await inflightContext();
     const currentFunctionName = "id" + context.currentFunctionId++;
     context.functions[currentFunctionName] = func;
     const contextId = context.contextId;
@@ -193,8 +200,8 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
 }
 
 async function runtimeGetPropertiesAsync(
-        objectId: inspector.Runtime.RemoteObjectId,
-        ownProperties: boolean | undefined) {
+    objectId: inspector.Runtime.RemoteObjectId,
+    ownProperties: boolean | undefined) {
     const session = <GetPropertiesSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
 
@@ -221,7 +228,7 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
 
     const session = <CallFunctionSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
-    const context = await inflightContext;
+    const context = await inflightContext();
 
     // Get an id for an unused location in the global table.
     const tableId = "id" + context.currentCallId++;

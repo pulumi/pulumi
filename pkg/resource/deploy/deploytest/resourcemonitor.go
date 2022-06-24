@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,7 +43,7 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
 	}
 	resmon := pulumirpc.NewResourceMonitorClient(conn)
 
@@ -86,20 +85,26 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 }
 
 type ResourceOptions struct {
-	Parent                resource.URN
-	Protect               bool
-	Dependencies          []resource.URN
-	Provider              string
-	Inputs                resource.PropertyMap
-	PropertyDeps          map[resource.PropertyKey][]resource.URN
-	DeleteBeforeReplace   *bool
-	Version               string
-	IgnoreChanges         []string
-	Aliases               []resource.URN
-	ImportID              resource.ID
-	CustomTimeouts        *resource.CustomTimeouts
-	SupportsPartialValues *bool
-	Remote                bool
+	Parent                  resource.URN
+	Protect                 bool
+	Dependencies            []resource.URN
+	Provider                string
+	Inputs                  resource.PropertyMap
+	PropertyDeps            map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace     *bool
+	Version                 string
+	PluginDownloadURL       string
+	IgnoreChanges           []string
+	ReplaceOnChanges        []string
+	UrnAliases              []resource.URN
+	ImportID                resource.ID
+	CustomTimeouts          *resource.CustomTimeouts
+	RetainOnDelete          bool
+	SupportsPartialValues   *bool
+	Remote                  bool
+	Providers               map[string]string
+	AdditionalSecretOutputs []resource.PropertyKey
+	Aliases                 []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -134,8 +139,26 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.Aliases {
+	for _, a := range opts.UrnAliases {
 		aliasStrings = append(aliasStrings, string(a))
+	}
+
+	aliasObjects := []*pulumirpc.Alias{}
+	for _, a := range opts.Aliases {
+		alias := &pulumirpc.Alias_Spec{
+			Name:    a.Name,
+			Type:    a.Type,
+			Project: a.Project,
+			Stack:   a.Stack,
+		}
+		if a.NoParent {
+			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
+		} else if a.Parent != "" {
+			alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
+		}
+
+		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
+		aliasObjects = append(aliasObjects, obj)
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
@@ -164,6 +187,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.SupportsPartialValues != nil {
 		supportsPartialValues = *opts.SupportsPartialValues
 	}
+	additionalSecretOutputs := make([]string, len(opts.AdditionalSecretOutputs))
+	for i, v := range opts.AdditionalSecretOutputs {
+		additionalSecretOutputs[i] = string(v)
+	}
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -180,11 +207,17 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		Aliases:                    aliasStrings,
+		UrnAliases:                 aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
+		ReplaceOnChanges:           opts.ReplaceOnChanges,
+		Providers:                  opts.Providers,
+		PluginDownloadURL:          opts.PluginDownloadURL,
+		RetainOnDelete:             opts.RetainOnDelete,
+		AdditionalSecretOutputs:    additionalSecretOutputs,
+		Aliases:                    aliasObjects,
 	}
 
 	// submit request
@@ -277,7 +310,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// submit request
-	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.InvokeRequest{
+	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 		Tok:      string(tok),
 		Provider: provider,
 		Args:     ins,
@@ -302,6 +335,56 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	return outs, nil, nil
+}
+
+func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.PropertyMap,
+	provider string, version string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
+	[]*pulumirpc.CheckFailure, error) {
+
+	// marshal inputs
+	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// submit request
+	resp, err := rm.resmon.Call(context.Background(), &pulumirpc.CallRequest{
+		Tok:      string(tok),
+		Provider: provider,
+		Args:     ins,
+		Version:  version,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// handle failures
+	if len(resp.Failures) != 0 {
+		return nil, nil, resp.Failures, nil
+	}
+
+	// unmarshal outputs
+	outs, err := plugin.UnmarshalProperties(resp.Return, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// unmarshal return deps
+	deps := make(map[resource.PropertyKey][]resource.URN)
+	for _, p := range resp.ReturnDependencies {
+		var urns []resource.URN
+		for _, urn := range p.Urns {
+			urns = append(urns, resource.URN(urn))
+		}
+	}
+
+	return outs, deps, nil, nil
 }
 
 func prepareTestTimeout(timeout float64) string {

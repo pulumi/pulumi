@@ -1,10 +1,11 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
 dist: goreleaser
+
 project_name: pulumi
+
 before:
   hooks:
     - ./scripts/prep-for-goreleaser.sh
+
 blobs:
 - bucket: get.pulumi.com
   folder: releases/sdk/
@@ -13,124 +14,140 @@ blobs:
     - pulumi-windows
   provider: s3
   region: us-west-2
+
 release:
   disable: true
+
 changelog:
   skip: true
+
 builds:
-# Windows builds
-- id: pulumi-windows
-  binary: pulumi
-  dir: pkg
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./cmd/pulumi
-- id: pulumi-language-nodejs-windows
-  binary: pulumi-language-nodejs
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./nodejs/cmd/pulumi-language-nodejs
-- id: pulumi-language-python-windows
-  binary: pulumi-language-python
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./python/cmd/pulumi-language-python
-- id: pulumi-language-dotnet-windows
-  binary: pulumi-language-dotnet
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./dotnet/cmd/pulumi-language-dotnet
-- id: pulumi-language-go-windows
-  binary: pulumi-language-go
-  dir: sdk
-  goarch:
-    - amd64
-  goos:
-    - windows
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./go/pulumi-language-go
-# UNIX builds
 - id: pulumi-unix
   binary: pulumi
-  dir: pkg
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./cmd/pulumi
-- id: pulumi-language-nodejs-unix
-  binary: pulumi-language-nodejs
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./nodejs/cmd/pulumi-language-nodejs
-- id: pulumi-language-python-unix
-  binary: pulumi-language-python
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./python/cmd/pulumi-language-python
-- id: pulumi-language-dotnet-unix
-  binary: pulumi-language-dotnet
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./dotnet/cmd/pulumi-language-dotnet
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-windows
+  binary: pulumi
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
 - id: pulumi-language-go-unix
   binary: pulumi-language-go
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./go/pulumi-language-go
-
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-go_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-go-windows
+  binary: pulumi-language-go
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-go_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-go.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-nodejs-unix
+  binary: pulumi-language-nodejs
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-nodejs_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-nodejs-windows
+  binary: pulumi-language-nodejs
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-nodejs_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-nodejs.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-python-unix
+  binary: pulumi-language-python
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-python_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-python-windows
+  binary: pulumi-language-python
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-python_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-python.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-dotnet-unix
+  binary: pulumi-language-dotnet
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-dotnet_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-dotnet-windows
+  binary: pulumi-language-dotnet
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-{{ .Os }}/pulumi-language-dotnet_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/pulumi-language-dotnet.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-java-unix
+  binary: pulumi-language-java
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/pulumi-language-java
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-java-windows
+  binary: pulumi-language-java
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/pulumi-language-java.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-yaml-unix
+  binary: pulumi-language-yaml
+  builder: prebuilt
+  goos: ['linux', 'darwin']
+  goarch: ['amd64', 'arm64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/pulumi-language-yaml
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-yaml-windows
+  binary: pulumi-language-yaml
+  builder: prebuilt
+  goos: ['windows']
+  goarch: ['amd64']
+  goamd64: ['v1']
+  prebuilt:
+    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/pulumi-language-yaml.exe
+  mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
 - id: pulumi-unix
@@ -140,6 +157,8 @@ archives:
     - pulumi-language-go-unix
     - pulumi-language-python-unix
     - pulumi-language-nodejs-unix
+    - pulumi-language-java-unix
+    - pulumi-language-yaml-unix
     - pulumi-unix
   replacements:
     amd64: x64
@@ -157,6 +176,8 @@ archives:
     - pulumi-language-go-windows
     - pulumi-language-python-windows
     - pulumi-language-nodejs-windows
+    - pulumi-language-java-windows
+    - pulumi-language-yaml-windows
     - pulumi-windows
   replacements:
     amd64: x64
@@ -170,7 +191,9 @@ archives:
     - pulumi-analyzer-policy-python.cmd
     - pulumi-language-python-exec
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
-checksum: 
+
+checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"

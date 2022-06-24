@@ -15,17 +15,19 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
@@ -64,7 +66,7 @@ func newPolicyNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
-			return runNewPolicyPack(args)
+			return runNewPolicyPack(context.Background(), args)
 		}),
 	}
 
@@ -84,7 +86,7 @@ func newPolicyNewCmd() *cobra.Command {
 	return cmd
 }
 
-func runNewPolicyPack(args newPolicyArgs) error {
+func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -98,7 +100,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	// Get the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
-		return errors.Wrap(err, "getting the working directory")
+		return fmt.Errorf("getting the working directory: %w", err)
 	}
 
 	// If dir was specified, ensure it exists and use it as the
@@ -147,7 +149,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	if !args.force {
 		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
 			if os.IsNotExist(err) {
-				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
 			return err
 		}
@@ -156,7 +158,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	// Actually copy the files.
 	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, "", ""); err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
 		return err
 	}
@@ -170,7 +172,7 @@ func runNewPolicyPack(args newPolicyArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(proj, projPath, root); err != nil {
+		if err := installPolicyPackDependencies(ctx, proj, projPath, root); err != nil {
 			return err
 		}
 	}
@@ -186,22 +188,30 @@ func runNewPolicyPack(args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, root string) error {
+func installPolicyPackDependencies(ctx context.Context,
+	proj *workspace.PolicyPackProject, projPath, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if bin, err := nodeInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)
+		fmt.Println("Installing dependencies...")
+		fmt.Println()
+
+		bin, err := npm.Install(ctx, "", false /*production*/, os.Stdout, os.Stderr)
+		if err != nil {
+			return fmt.Errorf("`%s install` failed; rerun manually to try again.: %w", bin, err)
 		}
+
+		fmt.Println("Finished installing dependencies")
+		fmt.Println()
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		const venvDir = "venv"
-		if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
+		if err := python.InstallDependencies(ctx, root, venvDir, true /*showOutput*/); err != nil {
 			return err
 		}
 
 		// Save project with venv info.
 		proj.Runtime.SetOption("virtualenv", venvDir)
 		if err := proj.Save(projPath); err != nil {
-			return errors.Wrapf(err, "saving project at %s", projPath)
+			return fmt.Errorf("saving project at %s: %w", projPath, err)
 		}
 	}
 	return nil

@@ -15,10 +15,9 @@
 package engine
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -59,7 +58,7 @@ func getPwdMain(root, main string) (string, string, error) {
 		// of the main program's parent directory.  How we do this depends on if the target is a dir or not.
 		maininfo, err := os.Stat(main)
 		if err != nil {
-			return "", "", errors.Wrapf(err, "project 'main' could not be read")
+			return "", "", fmt.Errorf("project 'main' could not be read: %w", err)
 		}
 		if maininfo.IsDir() {
 			pwd = main

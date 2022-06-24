@@ -72,7 +72,7 @@ export class PushableAsyncIterable<T> implements AsyncIterable<T | undefined> {
     [Symbol.asyncIterator]() {
         const t = this;
         return {
-            async next(): Promise<{ done: boolean; value: T | undefined; }> {
+            async next(): Promise<{ done: boolean; value: T | undefined }> {
                 const value = await t.shift();
                 if (value === closeValue) {
                     return { value: undefined, done: true };

@@ -16,6 +16,9 @@ class Component : Pulumi.ComponentResource
     [Output("childId")]
     public Output<string> ChildId { get; private set; } = null!;
 
+    [Output("secret")]
+    public Output<string> Secret { get; private set; } = null!;
+
     public Component(string name, ComponentArgs args, ComponentResourceOptions opts = null)
         : base("testcomponent:index:Component", name, args, opts, remote: true)
     {

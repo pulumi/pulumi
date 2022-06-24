@@ -1,9 +1,9 @@
 // Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
-using System;
 using Pulumi.Automation.Events;
 using Xunit;
 
@@ -37,12 +37,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task PropagatesUserExceptionsToCaller()
         {
-            using var fx = new Fixture();
-
-            fx.Action = ev =>
-            {
-                throw new MyException();
-            };
+            using var fx = new Fixture { Action = ev => throw new MyException() };
 
             await fx.Write("{}");
 
@@ -62,7 +57,7 @@ namespace Pulumi.Automation.Tests
 
         private class MyException : Exception { }
 
-        private class Fixture : IDisposable
+        private sealed class Fixture : IDisposable
         {
             public int EventCounter;
             public string LogFileName { get; }

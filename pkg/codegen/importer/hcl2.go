@@ -19,6 +19,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -37,12 +38,15 @@ var Null = &model.Variable{
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
 func GenerateHCL2Definition(loader schema.Loader, state *resource.State, names NameTable) (*model.Block, error) {
 	// TODO: pull the package version from the resource's provider
-	pkg, err := loader.LoadPackage(string(state.Type.Package()), nil)
+	pkg, err := schema.LoadPackageReference(loader, string(state.Type.Package()), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	r, ok := pkg.GetResource(string(state.Type))
+	r, ok, err := pkg.Resources().Get(string(state.Type))
+	if err != nil {
+		return nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
+	}
 	if !ok {
 		return nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
@@ -168,7 +172,7 @@ func typeRank(t schema.Type) int {
 	case schema.AnyType:
 		return 13
 	default:
-		switch t.(type) {
+		switch t := t.(type) {
 		case *schema.TokenType:
 			return 8
 		case *schema.ArrayType:
@@ -179,6 +183,10 @@ func typeRank(t schema.Type) int {
 			return 11
 		case *schema.UnionType:
 			return 12
+		case *schema.InputType:
+			return typeRank(t.ElementType)
+		case *schema.OptionalType:
+			return typeRank(t.ElementType)
 		default:
 			return int(math.MaxInt32)
 		}
@@ -206,6 +214,8 @@ func simplerType(t, u schema.Type) bool {
 		return false
 	}
 
+	t, u = codegen.UnwrapType(t), codegen.UnwrapType(u)
+
 	// At this point we know that t and u have the same concrete type.
 	switch t := t.(type) {
 	case *schema.TokenType:
@@ -223,10 +233,10 @@ func simplerType(t, u schema.Type) bool {
 		uu := u.(*schema.ObjectType)
 		tscore, nt, uscore := 0, 0, 0
 		for _, p := range t.Properties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				nt++
 				for _, q := range uu.Properties {
-					if q.IsRequired {
+					if q.IsRequired() {
 						if simplerType(p.Type, q.Type) {
 							tscore++
 						}
@@ -250,7 +260,7 @@ func simplerType(t, u schema.Type) bool {
 		// If the above counts are equal, T is simpler if it has fewer required properties.
 		nu := 0
 		for _, q := range uu.Properties {
-			if q.IsRequired {
+			if q.IsRequired() {
 				nu++
 			}
 		}
@@ -278,6 +288,10 @@ func simplerType(t, u schema.Type) bool {
 // zeroValue constructs a zero value of the given type.
 func zeroValue(t schema.Type) model.Expression {
 	switch t := t.(type) {
+	case *schema.OptionalType:
+		return model.VariableReference(Null)
+	case *schema.InputType:
+		return zeroValue(t.ElementType)
 	case *schema.MapType:
 		return &model.ObjectConsExpression{}
 	case *schema.ArrayType:
@@ -298,7 +312,7 @@ func zeroValue(t schema.Type) model.Expression {
 	case *schema.ObjectType:
 		var items []model.ObjectConsItem
 		for _, p := range t.Properties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
 						Value: cty.StringVal(p.Name),
@@ -342,7 +356,7 @@ func zeroValue(t schema.Type) model.Expression {
 // required, no value is generated (i.e. this function returns nil).
 func generatePropertyValue(property *schema.Property, value resource.PropertyValue) (model.Expression, error) {
 	if !value.HasValue() {
-		if !property.IsRequired {
+		if !property.IsRequired() {
 			return nil, nil
 		}
 		return zeroValue(property.Type), nil
@@ -354,6 +368,8 @@ func generatePropertyValue(property *schema.Property, value resource.PropertyVal
 // generateValue generates a value from the given property value. The given type may or may not match the shape of the
 // given value.
 func generateValue(typ schema.Type, value resource.PropertyValue) (model.Expression, error) {
+	typ = codegen.UnwrapType(typ)
+
 	switch {
 	case value.IsArchive():
 		return nil, fmt.Errorf("NYI: archives")
@@ -426,12 +442,8 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 					return nil, err
 				}
 
-				// we need to take into account when we have a complex key - without this
-				// we will return key as an array as the / will show as 2 parts
-				propKey := string(k)
-				if strings.Contains(string(k), "/") {
-					propKey = fmt.Sprintf("%q", string(k))
-				}
+				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
+				propKey := fmt.Sprintf("%q", string(k))
 
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
@@ -462,13 +474,27 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 			Args: []model.Expression{arg},
 		}, nil
 	case value.IsString():
-		return &model.TemplateExpression{
+		x := &model.TemplateExpression{
 			Parts: []model.Expression{
 				&model.LiteralValueExpression{
 					Value: cty.StringVal(value.StringValue()),
 				},
 			},
-		}, nil
+		}
+		switch typ {
+		case schema.ArchiveType:
+			return &model.FunctionCallExpression{
+				Name: "fileArchive",
+				Args: []model.Expression{x},
+			}, nil
+		case schema.AssetType:
+			return &model.FunctionCallExpression{
+				Name: "fileAsset",
+				Args: []model.Expression{x},
+			}, nil
+		default:
+			return x, nil
+		}
 	default:
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil

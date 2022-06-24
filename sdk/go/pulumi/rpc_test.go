@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: unused,deadcode
+// nolint: unused,deadcode,lll
 package pulumi
 
 import (
@@ -22,9 +22,11 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type simpleComponentResource struct {
@@ -169,6 +171,8 @@ func (testInputs) ElementType() reflect.Type {
 
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
+	t.Parallel()
+
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -410,11 +414,13 @@ type testResource struct {
 }
 
 func TestResourceState(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -436,7 +442,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(ctx, false, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -493,6 +499,8 @@ func TestResourceState(t *testing.T) {
 }
 
 func TestUnmarshalSecret(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -510,6 +518,8 @@ func TestUnmarshalSecret(t *testing.T) {
 }
 
 func TestUnmarshalInternalMapValue(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -531,6 +541,8 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 // TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {
+	t.Parallel()
+
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -621,7 +633,9 @@ func (UntypedArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
 }
 
-func TestMapInputMarhsalling(t *testing.T) {
+func TestMapInputMarshalling(t *testing.T) {
+	t.Parallel()
+
 	var theResource simpleCustomResource
 	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
 	out.getState().resolve("outputty", true, false, nil)
@@ -643,17 +657,22 @@ func TestMapInputMarhsalling(t *testing.T) {
 	})
 
 	cases := []struct {
-		inputs  Input
-		depUrns []string
+		inputs            Input
+		depUrns           []string
+		expectOutputValue bool
 	}{
-		{inputs: inputs1, depUrns: []string{""}},
+		{inputs: inputs1, depUrns: []string{""}, expectOutputValue: true},
 		{inputs: inputs2, depUrns: nil},
 	}
 
 	for _, c := range cases {
 		resolved, _, depUrns, err := marshalInputs(c.inputs)
 		assert.NoError(t, err)
-		assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		if c.expectOutputValue {
+			assert.Equal(t, "outputty", resolved["prop"].OutputValue().Element.StringValue())
+		} else {
+			assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		}
 		assert.Equal(t, "foo", resolved["nested"].ObjectValue()["foo"].StringValue())
 		assert.Equal(t, 42.0, resolved["nested"].ObjectValue()["bar"].NumberValue())
 		assert.Equal(t, len(c.depUrns), len(depUrns))
@@ -664,6 +683,8 @@ func TestMapInputMarhsalling(t *testing.T) {
 }
 
 func TestVersionedMap(t *testing.T) {
+	t.Parallel()
+
 	resourceModules := versionedMap{
 		versions: map[string][]Versioned{},
 	}
@@ -730,7 +751,10 @@ func TestVersionedMap(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			pkg, found := resourceModules.Load(tt.pkg, tt.version)
 			assert.Equal(t, tt.expectFound, found)
 			if tt.expectFound {
@@ -741,6 +765,8 @@ func TestVersionedMap(t *testing.T) {
 }
 
 func TestRegisterResourcePackage(t *testing.T) {
+	t.Parallel()
+
 	pkg := "testPkg"
 
 	tests := []struct {
@@ -761,7 +787,10 @@ func TestRegisterResourcePackage(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			RegisterResourcePackage(pkg, tt.resourcePackage)
 			assert.Panics(t, func() {
 				RegisterResourcePackage(pkg, tt.resourcePackage)
@@ -771,6 +800,8 @@ func TestRegisterResourcePackage(t *testing.T) {
 }
 
 func TestRegisterResourceModule(t *testing.T) {
+	t.Parallel()
+
 	pkg := "testPkg"
 	mod := "testMod"
 
@@ -792,11 +823,937 @@ func TestRegisterResourceModule(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			RegisterResourceModule(pkg, mod, tt.resourceModule)
 			assert.Panics(t, func() {
 				RegisterResourceModule(pkg, mod, tt.resourceModule)
 			})
+		})
+	}
+}
+
+func TestInvalidAsset(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Asset
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*asset).invalid)
+
+	_, _, err = marshalInput(d, assetType, true)
+	assert.Error(t, err)
+}
+
+func TestInvalidArchive(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Archive
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*archive).invalid)
+
+	_, _, err = marshalInput(d, archiveType, true)
+	assert.Error(t, err)
+}
+
+func TestDependsOnComponent(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	registerResource := func(name string, res Resource, options ...ResourceOption) (Resource, []string) {
+		opts := merge(options...)
+		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
+		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
+
+		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)
+		require.NoError(t, err)
+
+		return res, inputs.deps
+	}
+
+	newResource := func(name string, options ...ResourceOption) (Resource, []string) {
+		var res testResource
+		return registerResource(name, &res, options...)
+	}
+
+	newComponent := func(name string, options ...ResourceOption) (Resource, []string) {
+		var res simpleComponentResource
+		return registerResource(name, &res, options...)
+	}
+
+	resA, _ := newResource("resA", nil)
+	comp1, _ := newComponent("comp1", nil)
+	resB, _ := newResource("resB", Parent(comp1))
+	newResource("resC", Parent(resB))
+	comp2, _ := newComponent("comp2", Parent(comp1))
+
+	resD, deps := newResource("resD", DependsOn([]Resource{resA}), Parent(comp2))
+	assert.Equal(t, []string{"resA"}, deps)
+
+	_, deps = newResource("resE", DependsOn([]Resource{resD}), Parent(comp2))
+	assert.Equal(t, []string{"resD"}, deps)
+
+	_, deps = newResource("resF", DependsOn([]Resource{resA}))
+	assert.Equal(t, []string{"resA"}, deps)
+
+	resG, deps := newResource("resG", DependsOn([]Resource{comp1}))
+	assert.Equal(t, []string{"resB", "resD", "resE"}, deps)
+
+	_, deps = newResource("resH", DependsOn([]Resource{comp2}))
+	assert.Equal(t, []string{"resD", "resE"}, deps)
+
+	_, deps = newResource("resI", DependsOn([]Resource{resG}))
+	assert.Equal(t, []string{"resG"}, deps)
+}
+
+func TestOutputValueMarshalling(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	values := []struct {
+		value    interface{}
+		expected resource.PropertyValue
+	}{
+		{value: nil, expected: resource.NewNullProperty()},
+		{value: 0, expected: resource.NewNumberProperty(0)},
+		{value: 1, expected: resource.NewNumberProperty(1)},
+		{value: "", expected: resource.NewStringProperty("")},
+		{value: "hi", expected: resource.NewStringProperty("hi")},
+		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
+		{value: []string{}, expected: resource.NewArrayProperty(nil)},
+	}
+	//nolint:paralleltest // parallel parent, would require refactor to silence lint
+	for _, value := range values {
+		for _, deps := range [][]resource.URN{nil, {"fakeURN1", "fakeURN2"}} {
+			for _, known := range []bool{true, false} {
+				for _, secret := range []bool{true, false} {
+					var resources []Resource
+					if len(deps) > 0 {
+						for _, dep := range deps {
+							resources = append(resources, ctx.newDependencyResource(URN(dep)))
+						}
+					}
+
+					out := ctx.newOutput(anyOutputType, resources...)
+					out.getState().resolve(value.value, known, secret, nil)
+					inputs := Map{"value": out}
+
+					expectedValue := value.expected
+					if !known || secret || len(deps) > 0 {
+						v := resource.Output{
+							Known:        known,
+							Secret:       secret,
+							Dependencies: deps,
+						}
+						if known {
+							v.Element = value.expected
+						}
+						expectedValue = resource.NewOutputProperty(v)
+					}
+
+					expected := resource.PropertyMap{"value": expectedValue}
+					if value.value == nil && known && !secret && len(deps) == 0 {
+						// marshalInputs excludes plain nil values.
+						expected = resource.PropertyMap{}
+					}
+
+					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
+					//nolint:paralleltest // very small test, parallel parent
+					t.Run(name, func(t *testing.T) {
+						actual, _, _, err := marshalInputs(inputs)
+						assert.NoError(t, err)
+						assert.Equal(t, expected, actual)
+					})
+				}
+			}
+		}
+	}
+}
+
+type foo struct {
+	TemplateOptions *TemplateOptions `pulumi:"templateOptions"`
+}
+
+type fooArgs struct {
+	TemplateOptions TemplateOptionsPtrInput
+}
+
+func (fooArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*foo)(nil)).Elem()
+}
+
+type TemplateOptions struct {
+	Description       *string                    `pulumi:"description"`
+	TagSpecifications []TemplateTagSpecification `pulumi:"tagSpecifications"`
+}
+
+type TemplateOptionsInput interface {
+	Input
+
+	ToTemplateOptionsOutput() TemplateOptionsOutput
+	ToTemplateOptionsOutputWithContext(context.Context) TemplateOptionsOutput
+}
+
+type TemplateOptionsArgs struct {
+	Description       StringPtrInput
+	TagSpecifications TemplateTagSpecificationArrayInput
+}
+
+func (TemplateOptionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return i.ToTemplateOptionsOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput)
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput).ToTemplateOptionsPtrOutputWithContext(ctx)
+}
+
+type TemplateOptionsPtrInput interface {
+	Input
+
+	ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput
+	ToTemplateOptionsPtrOutputWithContext(context.Context) TemplateOptionsPtrOutput
+}
+
+type templateOptionsPtrType TemplateOptionsArgs
+
+func TemplateOptionsPtr(v *TemplateOptionsArgs) TemplateOptionsPtrInput {
+	return (*templateOptionsPtrType)(v)
+}
+
+func (*templateOptionsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsOutput struct{ *OutputState }
+
+func (TemplateOptionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TemplateOptions) *TemplateOptions {
+		return &v
+	}).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsPtrOutput struct{ *OutputState }
+
+func (TemplateOptionsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o
+}
+
+type TemplateTagSpecification struct {
+	Name *string           `pulumi:"name"`
+	Tags map[string]string `pulumi:"tags"`
+}
+
+type TemplateTagSpecificationInput interface {
+	Input
+
+	ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput
+	ToTemplateTagSpecificationOutputWithContext(context.Context) TemplateTagSpecificationOutput
+}
+
+type TemplateTagSpecificationArgs struct {
+	Name StringPtrInput `pulumi:"name"`
+	Tags StringMapInput `pulumi:"tags"`
+}
+
+func (TemplateTagSpecificationArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return i.ToTemplateTagSpecificationOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationOutput)
+}
+
+type TemplateTagSpecificationArrayInput interface {
+	Input
+
+	ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput
+	ToTemplateTagSpecificationArrayOutputWithContext(context.Context) TemplateTagSpecificationArrayOutput
+}
+
+type TemplateTagSpecificationArray []TemplateTagSpecificationInput
+
+func (TemplateTagSpecificationArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return i.ToTemplateTagSpecificationArrayOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationArrayOutput)
+}
+
+type TemplateTagSpecificationOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return o
+}
+
+type TemplateTagSpecificationArrayOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+type bucketObjectArgs struct {
+	Source AssetOrArchive `pulumi:"source"`
+}
+
+type BucketObjectArgs struct {
+	Source AssetOrArchiveInput
+}
+
+func (BucketObjectArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*bucketObjectArgs)(nil)).Elem()
+}
+
+type myResourceArgs struct {
+	Res Resource `pulumi:"res"`
+}
+
+type MyResourceArgs struct {
+	Res ResourceInput
+}
+
+func (MyResourceArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*myResourceArgs)(nil)).Elem()
+}
+
+type myNestedOutputArgs struct {
+	Nested interface{} `pulumi:"nested"`
+}
+
+type MyNestedOutputArgs struct {
+	Nested Input
+}
+
+func (MyNestedOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*myNestedOutputArgs)(nil)).Elem()
+}
+
+func TestOutputValueMarshallingNested(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TemplateOptionsOutput{})
+	RegisterOutputType(TemplateOptionsPtrOutput{})
+	RegisterOutputType(TemplateTagSpecificationOutput{})
+	RegisterOutputType(TemplateTagSpecificationArrayOutput{})
+
+	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
+	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, false /*secret*/, nil)
+
+	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownSecretTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, true /*secret*/, nil)
+
+	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
+	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
+	unknownStringOutput.getState().resolve("", false /*known*/, false /*secret*/, nil)
+
+	assetOutputType := reflect.TypeOf((*AssetOutput)(nil)).Elem()
+	fileAssetOutput := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false /*secret*/, nil)
+	fileAssetSecretOutput := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetSecretOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, true /*secret*/, nil)
+	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetOutputDeps.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false, /*secret*/
+		[]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})
+
+	anyOutputType := reflect.TypeOf((*AnyOutput)(nil)).Elem()
+
+	nestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedOutput.getState().resolve(fileAssetOutput, true /*known*/, false /*secret*/, nil)
+
+	nestedPtrOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedPtrOutput.getState().resolve(&fileAssetOutput, true /*known*/, false /*secret*/, nil)
+
+	nestedNestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedNestedOutput.getState().resolve(nestedOutput, true /*known*/, false /*secret*/, nil)
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name:     "empty",
+			input:    fooArgs{},
+			expected: resource.NewObjectProperty(resource.PropertyMap{}),
+		},
+		{
+			name: "options empty",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{}),
+			}),
+		},
+		{
+			name: "options unknown",
+			input: fooArgs{
+				TemplateOptions: unknownTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{}),
+			}),
+		},
+		{
+			name: "options unknown secret",
+			input: fooArgs{
+				TemplateOptions: unknownSecretTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain known description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: String("hello"),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewStringProperty("hello"),
+				}),
+			}),
+		},
+		{
+			name: "options plain known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{
+						Element: resource.NewStringProperty("hello"),
+						Known:   true,
+						Secret:  true,
+					}),
+				}),
+			}),
+		},
+		{
+			name: "options output known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				}.ToTemplateOptionsOutput(),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewObjectProperty(resource.PropertyMap{
+						"description": resource.NewStringProperty("hello"),
+					}),
+					Known:  true,
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain unknown description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: unknownStringOutput,
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{}),
+				}),
+			}),
+		},
+		{
+			name: "options tag specifications nested unknown",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					TagSpecifications: TemplateTagSpecificationArray{
+						TemplateTagSpecificationArgs{
+							Name: String("hello"),
+							Tags: StringMap{
+								"first": String("second"),
+								"third": unknownStringOutput,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"name": resource.NewStringProperty("hello"),
+							"tags": resource.NewObjectProperty(resource.PropertyMap{
+								"first": resource.NewStringProperty("second"),
+								"third": resource.NewOutputProperty(resource.Output{}),
+							}),
+						}),
+					}),
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset",
+			input: &BucketObjectArgs{
+				Source: NewFileAsset("foo.txt"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file archive",
+			input: &BucketObjectArgs{
+				Source: NewFileArchive("bar.zip"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewArchiveProperty(&resource.Archive{
+					Path: "bar.zip",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset output",
+			input: &BucketObjectArgs{
+				Source: fileAssetOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset secret output",
+			input: &BucketObjectArgs{
+				Source: fileAssetSecretOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewAssetProperty(&resource.Asset{
+						Path: "foo.txt",
+					}),
+					Known:  true,
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset with deps",
+			input: &BucketObjectArgs{
+				Source: fileAssetOutputDeps,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewAssetProperty(&resource.Asset{
+						Path: "foo.txt",
+					}),
+					Known:        true,
+					Dependencies: []resource.URN{"fakeURN"},
+				}),
+			}),
+		},
+		{
+			name: "resource",
+			input: &MyResourceArgs{
+				Res: NewResourceInput(newSimpleCustomResource(ctx, "fakeURN", "fakeID")),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"res": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "fakeURN",
+					ID:  resource.NewStringProperty("fakeID"),
+				}),
+			}),
+		},
+		{
+			name: "nested output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "nested ptr output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "nested nested output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedNestedOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	}
+}
+
+type rubberTreeArgs struct {
+	Size *TreeSize `pulumi:"size"`
+}
+type RubberTreeArgs struct {
+	Size TreeSizePtrInput
+}
+
+func (RubberTreeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*rubberTreeArgs)(nil)).Elem()
+}
+
+type TreeSize string
+
+const (
+	TreeSizeSmall  = TreeSize("small")
+	TreeSizeMedium = TreeSize("medium")
+	TreeSizeLarge  = TreeSize("large")
+)
+
+func (TreeSize) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (e TreeSize) ToTreeSizeOutput() TreeSizeOutput {
+	return ToOutput(e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return ToOutputWithContext(ctx, e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return e.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return e.ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
+}
+
+func (e TreeSize) ToStringOutput() StringOutput {
+	return ToOutput(String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return ToOutputWithContext(ctx, String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringPtrOutput() StringPtrOutput {
+	return String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type TreeSizeOutput struct{ *OutputState }
+
+func (TreeSizeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutput() TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TreeSize) *TreeSize {
+		return &v
+	}).(TreeSizePtrOutput)
+}
+
+func (o TreeSizeOutput) ToStringOutput() StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) string {
+		return string(e)
+	}).(StringOutput)
+}
+
+func (o TreeSizeOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
+		v := string(e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizePtrOutput struct{ *OutputState }
+
+func (TreeSizePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
+	return o.ApplyT(func(v *TreeSize) TreeSize {
+		if v != nil {
+			return *v
+		}
+		var ret TreeSize
+		return ret
+	}).(TreeSizeOutput)
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *TreeSize) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizeInput interface {
+	Input
+
+	ToTreeSizeOutput() TreeSizeOutput
+	ToTreeSizeOutputWithContext(context.Context) TreeSizeOutput
+}
+
+var treeSizePtrType = reflect.TypeOf((**TreeSize)(nil)).Elem()
+
+type TreeSizePtrInput interface {
+	Input
+
+	ToTreeSizePtrOutput() TreeSizePtrOutput
+	ToTreeSizePtrOutputWithContext(context.Context) TreeSizePtrOutput
+}
+
+type treeSizePtr string
+
+func TreeSizePtr(v string) TreeSizePtrInput {
+	return (*treeSizePtr)(&v)
+}
+
+func (*treeSizePtr) ElementType() reflect.Type {
+	return treeSizePtrType
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return ToOutput(in).(TreeSizePtrOutput)
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return ToOutputWithContext(ctx, in).(TreeSizePtrOutput)
+}
+
+type TreeSizeMapInput interface {
+	Input
+
+	ToTreeSizeMapOutput() TreeSizeMapOutput
+	ToTreeSizeMapOutputWithContext(context.Context) TreeSizeMapOutput
+}
+
+type TreeSizeMap map[string]TreeSize
+
+func (TreeSizeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return i.ToTreeSizeMapOutputWithContext(context.Background())
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
+}
+
+type TreeSizeMapOutput struct{ *OutputState }
+
+func (TreeSizeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)]
+	}).(TreeSizeOutput)
+}
+
+func TestOutputValueMarshallingEnums(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TreeSizeOutput{})
+	RegisterOutputType(TreeSizePtrOutput{})
+	RegisterOutputType(TreeSizeMapOutput{})
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name: "empty",
+			input: &RubberTreeArgs{
+				Size: TreeSize("medium"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"size": resource.NewStringProperty("medium"),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
 		})
 	}
 }

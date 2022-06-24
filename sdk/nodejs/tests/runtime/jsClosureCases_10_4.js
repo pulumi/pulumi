@@ -11,7 +11,7 @@ const cases = [];
 
     cases.push({
         title: "Captures bigint",
-        // tslint:disable-next-line
+        // eslint-disable-next-line
         func: function () { console.log(zeroBigInt + smallBigInt + negativeBigInt + largeBigInt + negativeBigInt + negativeLargeBigInt); },
         expectText: `exports.handler = __f0;
 

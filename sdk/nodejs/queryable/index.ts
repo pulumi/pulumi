@@ -25,20 +25,20 @@ export type ResolvedResource<T extends Resource> = Omit<Resolved<T>, "urn" | "ge
 export type Resolved<T> = T extends Promise<infer U1>
     ? ResolvedSimple<U1>
     : T extends OutputInstance<infer U2>
-    ? ResolvedSimple<U2>
-    : ResolvedSimple<T>;
+        ? ResolvedSimple<U2>
+        : ResolvedSimple<T>;
 
 type primitive = string | number | boolean | undefined | null;
 
 type ResolvedSimple<T> = T extends primitive
     ? T
     : T extends Array<infer U>
-    ? ResolvedArray<U>
-    : T extends Function
-    ? never
-    : T extends object
-    ? ResolvedObject<T>
-    : never;
+        ? ResolvedArray<U>
+        : T extends Function
+            ? never
+            : T extends object
+                ? ResolvedObject<T>
+                : never;
 
 interface ResolvedArray<T> extends Array<Resolved<T>> {}
 
@@ -48,4 +48,4 @@ type RequiredKeys<T> = { [P in keyof T]: undefined extends T[P] ? never : P }[ke
 type OptionalKeys<T> = { [P in keyof T]: undefined extends T[P] ? P : never }[keyof T];
 
 type ModifyOptionalProperties<T> = { [P in RequiredKeys<T>]: T[P] } &
-    { [P in OptionalKeys<T>]?: T[P] };
+{ [P in OptionalKeys<T>]?: T[P] };

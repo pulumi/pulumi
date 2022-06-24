@@ -5,7 +5,13 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Testing;
+using Pulumirpc;
+using Serilog;
+using Serilog.Events;
+using Serilog.Extensions.Logging;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Pulumi
 {
@@ -17,7 +23,7 @@ namespace Pulumi
     /// static Task&lt;int&gt; Main(string[] args)
     /// {
     ///     // program initialization code ...
-    ///     
+    ///
     ///     return Deployment.Run(async () =>
     ///     {
     ///         // Code that creates resources.
@@ -27,7 +33,7 @@ namespace Pulumi
     /// </para>
     /// Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
     /// <see cref="Deployment.RunAsync(Action)"/> overloads.  Because cloud Resource construction is
-    /// inherently asynchronous, the result of this function is a <see cref="Task{T}"/> which should
+    /// inherently asynchronous, the result of this function is a <see cref="Task{TResult}"/> which should
     /// then be returned or awaited.  This will ensure that any problems that are encountered during
     /// the running of the program are properly reported.  Failure to do this may lead to the
     /// program ending early before all resources are properly registered.
@@ -35,7 +41,7 @@ namespace Pulumi
     public sealed partial class Deployment : IDeploymentInternal
     {
         private static readonly object _instanceLock = new object();
-        private static AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
+        private static readonly AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function
@@ -82,7 +88,7 @@ namespace Pulumi
         private readonly bool _isDryRun;
         private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
-        private readonly ILogger _logger;
+        private readonly IEngineLogger _logger;
         private readonly IRunner _runner;
 
         internal IEngine Engine { get; }
@@ -97,6 +103,7 @@ namespace Pulumi
 
         private Deployment()
         {
+            // ReSharper disable UnusedVariable
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
             var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
             var project = Environment.GetEnvironmentVariable("PULUMI_PROJECT");
@@ -117,21 +124,24 @@ namespace Pulumi
             {
                 throw new InvalidOperationException("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
             }
+            // ReSharper restore UnusedVariable
 
             _isDryRun = dryRunValue;
             _stackName = stack;
             _projectName = project;
 
-            Serilog.Log.Debug("Creating Deployment Engine.");
+            var deploymentLogger = CreateDefaultLogger();
+
+            deploymentLogger.LogDebug("Creating deployment engine");
             this.Engine = new GrpcEngine(engine);
-            Serilog.Log.Debug("Created Deployment Engine.");
+            deploymentLogger.LogDebug("Created deployment engine");
 
-            Serilog.Log.Debug("Creating Deployment Monitor.");
+            deploymentLogger.LogDebug("Creating deployment monitor");
             this.Monitor = new GrpcMonitor(monitor);
-            Serilog.Log.Debug("Created Deployment Monitor.");
+            deploymentLogger.LogDebug("Created deployment monitor");
 
-            _runner = new Runner(this);
-            _logger = new Logger(this, this.Engine);
+            _runner = new Runner(this, deploymentLogger);
+            _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
         /// <summary>
@@ -143,20 +153,21 @@ namespace Pulumi
         /// </summary>
         internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
+            var deploymentLogger = CreateDefaultLogger();
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
             this.Engine = engine;
             this.Monitor = monitor;
-            _runner = new Runner(this);
-            _logger = new Logger(this, this.Engine);
+            _runner = new Runner(this, deploymentLogger);
+            _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
-        ILogger IDeploymentInternal.Logger => _logger;
+        IEngineLogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 
         Stack IDeploymentInternal.Stack
@@ -165,11 +176,23 @@ namespace Pulumi
             set => Stack = value;
         }
 
+        private ILogger CreateDefaultLogger()
+        {
+            var logger = new LoggerConfiguration()
+                .MinimumLevel.Is(!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE")) ? LogEventLevel.Verbose : LogEventLevel.Fatal)
+                .WriteTo.Console()
+                .CreateLogger();
+
+            var loggerFactory = new SerilogLoggerFactory(logger);
+
+            return loggerFactory.CreateLogger<Deployment>();
+        }
+
         private async Task<bool> MonitorSupportsFeature(string feature)
         {
             if (!this._featureSupport.ContainsKey(feature))
             {
-                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature };
+                var request = new SupportsFeatureRequest { Id = feature };
                 var response = await this.Monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
                 this._featureSupport[feature] = response.HasSupport;
             }
@@ -180,5 +203,24 @@ namespace Pulumi
         {
             return MonitorSupportsFeature("resourceReferences");
         }
+
+        /// <summary>
+        /// Check if the monitor supports the "outputValues" feature.
+        /// </summary>
+        internal Task<bool> MonitorSupportsOutputValues()
+        {
+            return MonitorSupportsFeature("outputValues");
+        }
+
+        /// <summary>
+        /// Check if the monitor supports the "aliasSpecs" feature.
+        /// </summary>
+        internal Task<bool> MonitorSupportsAliasSpecs()
+        {
+            return MonitorSupportsFeature("aliasSpecs");
+        }
+
+        // Because the secrets feature predates the Pulumi .NET SDK, we assume
+        // that the monitor supports secrets.
     }
 }

@@ -15,9 +15,10 @@
 package validation
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -37,10 +38,10 @@ func validateStackTagName(s string) error {
 	const maxTagName = 40
 
 	if len(s) == 0 {
-		return errors.Errorf("invalid stack tag %q", s)
+		return fmt.Errorf("invalid stack tag %q", s)
 	}
 	if len(s) > maxTagName {
-		return errors.Errorf("stack tag %q is too long (max length %d characters)", s, maxTagName)
+		return fmt.Errorf("stack tag %q is too long (max length %d characters)", s, maxTagName)
 	}
 
 	var tagNameRE = regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
@@ -59,7 +60,7 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 			return err
 		}
 		if len(v) > maxTagValue {
-			return errors.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
+			return fmt.Errorf("stack tag %q value is too long (max length %d characters)", t, maxTagValue)
 		}
 	}
 
@@ -71,7 +72,7 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
 	const maxStackName = 100 // Derived from the regex in validateStackName.
 	if len(stack) > maxStackName {
-		return errors.Errorf("stack name too long (max length %d characters)", maxStackName)
+		return fmt.Errorf("stack name too long (max length %d characters)", maxStackName)
 	}
 	if err := validateStackName(stack); err != nil {
 		return err

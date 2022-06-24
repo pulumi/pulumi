@@ -3,133 +3,86 @@ package gen
 import (
 	"bytes"
 	"io/ioutil"
+
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
-func TestGenProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
-	if err != nil {
-		t.Fatalf("could not read test data: %v", err)
-	}
+func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
 
-	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".pp" {
-			continue
-		}
-
-		if filepath.Base(f.Name()) == "azure-native.pp" {
-			// The generated code fails to compile
-			continue
-		}
-
-		t.Run(f.Name(), func(t *testing.T) {
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			expected, err := ioutil.ReadFile(path + ".go")
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path+".go", err)
-			}
-
-			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), f.Name())
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			if parser.Diagnostics.HasErrors() {
-				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-			}
-
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(test.NewHost(testdataPath)))
-			if err != nil {
-				t.Fatalf("could not bind program: %v", err)
-			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
-			}
-
-			files, diags, err := GenerateProgram(program)
-			assert.NoError(t, err)
-			if diags.HasErrors() {
-				t.Fatalf("failed to generate program: %v", diags)
-			}
-			assert.Equal(t, string(expected), string(files["main.go"]))
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "go",
+			Extension:  "go",
+			OutputFile: "main.go",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, "../../../../../../../sdk")
+			},
+			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
-	}
 }
 
 func TestCollectImports(t *testing.T) {
-	g := newTestGenerator(t, "aws-s3-logging.pp")
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
-	g.collectImports(g.program, stdImports, pulumiImports)
+	preambleHelperMethods := codegen.NewStringSet()
+	g.collectImports(g.program, stdImports, pulumiImports, preambleHelperMethods)
 	stdVals := stdImports.SortedValues()
 	pulumiVals := pulumiImports.SortedValues()
 	assert.Equal(t, 0, len(stdVals))
 	assert.Equal(t, 1, len(pulumiVals))
-	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/s3\"", pulumiVals[0])
+	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3\"", pulumiVals[0])
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
-	files, err := ioutil.ReadDir(testdataPath)
+	path := filepath.Join(testdataPath, testFile)
+	contents, err := ioutil.ReadFile(path)
+	require.NoErrorf(t, err, "could not read %v: %v", path, err)
+
+	parser := syntax.NewParser()
+	err = parser.ParseFile(bytes.NewReader(contents), filepath.Base(path))
 	if err != nil {
-		t.Fatalf("could not read test data: %v", err)
+		t.Fatalf("could not read %v: %v", path, err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	for _, f := range files {
-		if filepath.Base(f.Name()) != testFile {
-			continue
-		}
-
-		path := filepath.Join(testdataPath, f.Name())
-		contents, err := ioutil.ReadFile(path)
-		if err != nil {
-			t.Fatalf("could not read %v: %v", path, err)
-		}
-
-		parser := syntax.NewParser()
-		err = parser.ParseFile(bytes.NewReader(contents), f.Name())
-		if err != nil {
-			t.Fatalf("could not read %v: %v", path, err)
-		}
-		if parser.Diagnostics.HasErrors() {
-			t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-		}
-
-		program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(test.NewHost(testdataPath)))
-		if err != nil {
-			t.Fatalf("could not bind program: %v", err)
-		}
-		if diags.HasErrors() {
-			t.Fatalf("failed to bind program: %v", diags)
-		}
-
-		g := &generator{
-			program:             program,
-			jsonTempSpiller:     &jsonSpiller{},
-			ternaryTempSpiller:  &tempSpiller{},
-			readDirTempSpiller:  &readDirSpiller{},
-			splatSpiller:        &splatSpiller{},
-			optionalSpiller:     &optionalSpiller{},
-			scopeTraversalRoots: codegen.NewStringSet(),
-			arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-		}
-		g.Formatter = format.NewFormatter(g)
-		return g
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
 	}
-	t.Fatalf("test file not found")
-	return nil
+	if diags.HasErrors() {
+		t.Fatalf("failed to bind program: %v", diags)
+	}
+
+	g := &generator{
+		program:             program,
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+	}
+	g.Formatter = format.NewFormatter(g)
+	return g
 }

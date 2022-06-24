@@ -29,10 +29,11 @@ import (
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
-		Use:    "gen-completion <SHELL>",
-		Args:   cmdutil.ExactArgs(1),
-		Short:  "Generate completion scripts for the Pulumi CLI",
-		Hidden: true,
+		Use:     "gen-completion <SHELL>",
+		Aliases: []string{"completion"},
+		Args:    cmdutil.ExactArgs(1),
+		Short:   "Generate completion scripts for the Pulumi CLI",
+		Hidden:  true,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			switch {
 			case args[0] == "bash":
@@ -190,7 +191,7 @@ func genZshCompletion(out io.Writer, root *cobra.Command) error {
 		return err
 	}
 
-	if _, err := fmt.Fprint(out, zshHead); err != nil {
+	if _, err := fmt.Fprintf(out, "%s", zshHead); err != nil { //nolint
 		return err
 	}
 

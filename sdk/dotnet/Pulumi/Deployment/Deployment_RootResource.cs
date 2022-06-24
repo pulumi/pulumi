@@ -1,16 +1,12 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
-using Pulumirpc;
 
 namespace Pulumi
 {
     public partial class Deployment
     {
-        private Task<string>? _rootResource;
-        private object _rootResourceLock = new object();
-
         /// <summary>
         /// Returns a root resource URN that will automatically become the default parent of all
         /// resources.  This can be used to ensure that all resources without explicit parents are
@@ -24,28 +20,9 @@ namespace Pulumi
             if (type == Stack._rootPulumiStackTypeName)
                 return null;
 
-            lock (_rootResourceLock)
-            {
-                if (_rootResource == null)
-                {
-                    var stack = InternalInstance.Stack ?? throw new InvalidOperationException($"Calling {nameof(GetRootResourceAsync)} before the stack was registered!");
-                    _rootResource = SetRootResourceWorkerAsync(stack);
-                }
-            }
-
-            return await _rootResource.ConfigureAwait(false);
-        }
-
-        private async Task<string> SetRootResourceWorkerAsync(Stack stack)
-        {
-            var resUrn = await stack.Urn.GetValueAsync().ConfigureAwait(false);
-            await this.Engine.SetRootResourceAsync(new SetRootResourceRequest
-            {
-                Urn = resUrn,
-            });
-
-            var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest());
-            return getResponse.Urn;
+            var stack = InternalInstance.Stack ?? throw new InvalidOperationException($"Calling {nameof(GetRootResourceAsync)} before the stack was registered!");
+            var resUrn = await stack.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+            return resUrn;
         }
     }
 }
