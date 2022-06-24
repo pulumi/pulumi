@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -59,7 +60,7 @@ func createTargetMap(targets []resource.URN) map[resource.URN]bool {
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
-func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) result.Result {
+func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op display.StepOp) result.Result {
 	if len(targets) == 0 {
 		return nil
 	}

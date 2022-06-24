@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -763,7 +764,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 		}),
 	}
 
-	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedStep deploy.StepOp) *deploy.Snapshot {
+	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedStep display.StepOp) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, deploytest.ResourceOptions{
 				Version: versionA,
@@ -886,7 +887,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		}),
 	}
 
-	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedSteps ...deploy.StepOp) *deploy.Snapshot {
+	runProgram := func(base *deploy.Snapshot, versionA, versionB string, expectedSteps ...display.StepOp) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, deploytest.ResourceOptions{
 				Version: versionA,
@@ -913,10 +914,10 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 
 							switch entry.Step.URN().Name().String() {
 							case resName:
-								assert.Subset(t, expectedSteps, []deploy.StepOp{entry.Step.Op()})
+								assert.Subset(t, expectedSteps, []display.StepOp{entry.Step.Op()})
 							case resBName:
 								assert.Subset(t,
-									[]deploy.StepOp{deploy.OpCreate, deploy.OpSame}, []deploy.StepOp{entry.Step.Op()})
+									[]display.StepOp{deploy.OpCreate, deploy.OpSame}, []display.StepOp{entry.Step.Op()})
 							}
 						}
 						return res

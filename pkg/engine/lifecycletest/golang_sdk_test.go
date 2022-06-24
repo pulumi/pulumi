@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -363,7 +364,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
+								assert.Equal(t, []display.StepOp{deploy.OpCreate}, []display.StepOp{payload.Metadata.Op})
 							}
 						}
 						return res
@@ -779,7 +780,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 		})
 	})
 
-	expectedOps := []deploy.StepOp{deploy.OpCreate}
+	expectedOps := []display.StepOp{deploy.OpCreate}
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
@@ -790,7 +791,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 					events []Event, res result.Result) result.Result {
 
-					collectedOps := make([]deploy.StepOp, 0)
+					collectedOps := make([]display.StepOp, 0)
 					for _, event := range events {
 						if event.Type == ResourcePreEvent {
 							payload := event.Payload().(ResourcePreEventPayload)
@@ -815,7 +816,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	resourceProperties = &testResourceInputs{
 		Foo: pulumi.String("baz"),
 	}
-	expectedOps = []deploy.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
+	expectedOps = []display.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
 
 	snap = p.Run(t, snap)
 	assert.NotNil(t, snap)

@@ -265,14 +265,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
-
 				constraint := resourcePlan.Ops[0]
-				if !s.Op().ConstrainedTo(constraint) {
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
@@ -1104,11 +1103,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 				// This op has been attempted, it just might fail its constraint.
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
-				if !s.Op().ConstrainedTo(constraint) {
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}

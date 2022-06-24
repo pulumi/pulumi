@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -126,11 +127,11 @@ type PreludeEventPayload struct {
 }
 
 type SummaryEventPayload struct {
-	IsPreview       bool              // true if this summary is for a plan operation
-	MaybeCorrupt    bool              // true if one or more resources may be corrupt
-	Duration        time.Duration     // the duration of the entire update operation (zero values for previews)
-	ResourceChanges ResourceChanges   // count of changed resources, useful for reporting
-	PolicyPacks     map[string]string // {policy-pack: version} for each policy pack applied
+	IsPreview       bool                    // true if this summary is for a plan operation
+	MaybeCorrupt    bool                    // true if one or more resources may be corrupt
+	Duration        time.Duration           // the duration of the entire update operation (zero values for previews)
+	ResourceChanges display.ResourceChanges // count of changed resources, useful for reporting
+	PolicyPacks     map[string]string       // {policy-pack: version} for each policy pack applied
 }
 
 type ResourceOperationFailedPayload struct {
@@ -153,7 +154,7 @@ type ResourcePreEventPayload struct {
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
-	Op           deploy.StepOp                  // the operation performed by this step.
+	Op           display.StepOp                 // the operation performed by this step.
 	URN          resource.URN                   // the resource URN (for before and after).
 	Type         tokens.Type                    // the type affected by this step.
 	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
@@ -289,7 +290,7 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
-func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
+func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool) StepEventMetadata {
 	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
 
 	var keys, diffs []resource.PropertyKey
@@ -360,7 +361,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	})
 }
 
-func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
+func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.ch <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
@@ -399,7 +400,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	})
 }
 
-func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration, resourceChanges ResourceChanges,
+func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration, resourceChanges display.ResourceChanges,
 	policyPacks map[string]string) {
 
 	contract.Requiref(e != nil, "e", "!= nil")

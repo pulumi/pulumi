@@ -203,7 +203,7 @@ func newPreviewCmd() *cobra.Command {
 			switch {
 			case res != nil:
 				return PrintEngineResult(res)
-			case expectNop && changes != nil && changes.HasChanges():
+			case expectNop && changes != nil && engine.HasChanges(changes):
 				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			default:
 				if planFilePath != "" {

@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -41,13 +42,13 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 
 func ImportOp(imports []deploy.Import) TestOp {
 	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
-		dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+		dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 		return Import(info, ctx, opts, imports, dryRun)
 	})
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, ResourceChanges, result.Result)
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, result.Result)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
