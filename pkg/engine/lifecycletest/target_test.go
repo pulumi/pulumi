@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -885,4 +886,60 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 		Provider:             provider,
 		Parent:               parent,
 	}
+}
+
+// This test is to check that filtering for targeted resource happens early enough that invalid resources that
+// aren't targeted don't matter. See https://github.com/pulumi/pulumi/issues/9869.
+func TestCreateWithInvalidCheck(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					if urn.Type() == "pkgA:m:typB" {
+						return nil, nil, fmt.Errorf("Check failure")
+					}
+
+					return news, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resB", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	resA := p.NewURN("pkgA:m:typA", "resA", "")
+	p.Options.UpdateTargets = []resource.URN{resA}
+	p.Steps = []TestStep{{
+		Op:            Update,
+		ExpectFailure: false,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			assert.True(t, len(entries) > 0)
+
+			for _, entry := range entries {
+				if entry.Step.URN() == resA {
+					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+				}
+			}
+
+			return res
+		},
+	}}
+	p.Run(t, nil)
 }
