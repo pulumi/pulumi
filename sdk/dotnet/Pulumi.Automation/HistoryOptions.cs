@@ -10,5 +10,10 @@ namespace Pulumi.Automation
         public int? Page { get; set; }
 
         public int? PageSize { get; set; }
+
+        /// <summary>
+        /// Show config secrets when they appear.
+        /// </summary>
+        public bool? ShowSecrets { get; set; }
     }
 }
