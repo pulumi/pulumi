@@ -65,14 +65,30 @@ func TestRelPathToRelImport(t *testing.T) {
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
-	if !test.NoSDKCodegenChecks() {
-		// To speed up these tests, we will generate one common
-		// virtual environment for all of them to run in, rather than
-		// having one per test.
-		err := buildVirtualEnv(context.Background())
-		if err != nil {
-			t.Error(err)
-			return
+	var virtualEnvLock sync.Mutex
+	// If we are running without checks, we mark the env as already built so we don't
+	// build it again.
+	var virtualEnvBuilt = test.NoSDKCodegenChecks()
+
+	// To speed up these tests, we will generate one common virtual environment for all of
+	// them to run in, rather than having one per test. We want to make sure that we only
+	// build the virtual env if we are going to run one of the tests. We thus build the
+	// environment lazily
+	needsEnv := func(testFn test.CodegenCheck) test.CodegenCheck {
+		return func(t *testing.T, codedir string) {
+			func() {
+				virtualEnvLock.Lock()
+				defer virtualEnvLock.Unlock()
+				if !virtualEnvBuilt {
+					err := buildVirtualEnv(context.Background())
+					if err != nil {
+						t.Error(err)
+						t.FailNow()
+					}
+					virtualEnvBuilt = true
+				}
+			}()
+			testFn(t, codedir)
 		}
 	}
 
@@ -80,8 +96,8 @@ func TestGeneratePackage(t *testing.T) {
 		Language:   "python",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
-			"python/py_compile": pyCompileCheck,
-			"python/test":       pyTestCheck,
+			"python/py_compile": needsEnv(pyCompileCheck),
+			"python/test":       needsEnv(pyTestCheck),
 		},
 		TestCases: test.PulumiPulumiSDKTests,
 	})

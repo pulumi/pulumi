@@ -1,71 +1,23 @@
 name: Command Dispatch for PR events
 on:
   issue_comment:
-    types: [created, edited]
+    types: [created]
 
 jobs:
-  command-dispatch-for-testing:
+  command-dispatch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
+      - name: Dispatch command
         uses: peter-evans/slash-command-dispatch@v2
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: run-acceptance-tests
           permission: write
           issue-type: pull-request
           repository: pulumi/pulumi
-  command-dispatch-for-integration-testing:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
-        uses: peter-evans/slash-command-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: run-integration-tests
-          permission: write
-          issue-type: pull-request
-          repository: pulumi/pulumi
-  command-dispatch-for-docs-generation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
-        uses: peter-evans/slash-command-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: run-docs-gen
-          permission: write
-          issue-type: pull-request
-          repository: pulumi/pulumi
-  command-dispatch-for-downstream-codegen:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
-        uses: peter-evans/slash-command-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: run-codegen
-          permission: write
-          issue-type: pull-request
-          repository: pulumi/pulumi
-  auto-rebase-command:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
-        uses: peter-evans/slash-command-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: auto-rebase
-          permission: write
-          issue-type: pull-request
-          repository: pulumi/pulumi
+          commands: |
+            run-acceptance-tests
+            run-integration-tests
+            run-docs-gen
+            run-codegen
+            auto-rebase

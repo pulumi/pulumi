@@ -27,6 +27,7 @@ import (
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdk "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -153,7 +154,7 @@ type UpdateOptions struct {
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
-type ResourceChanges map[deploy.StepOp]int
+type ResourceChanges sdk.ResourceChanges
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
 func (changes ResourceChanges) HasChanges() bool {

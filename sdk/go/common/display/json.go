@@ -17,12 +17,16 @@ package display
 import (
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
+
+// StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
+type StepOp string
+
+// ResourceChanges contains the aggregate resource changes by operation type.
+type ResourceChanges map[StepOp]int
 
 // PreviewDigest is a JSON-serializable overview of a preview operation.
 type PreviewDigest struct {
@@ -38,7 +42,7 @@ type PreviewDigest struct {
 	// Duration records the amount of time it took to perform the preview.
 	Duration time.Duration `json:"duration,omitempty"`
 	// ChangeSummary contains a map of count per operation (create, update, etc).
-	ChangeSummary engine.ResourceChanges `json:"changeSummary,omitempty"`
+	ChangeSummary ResourceChanges `json:"changeSummary,omitempty"`
 	// MaybeCorrupt indicates whether one or more resources may be corrupt.
 	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
 }
@@ -54,7 +58,7 @@ type PropertyDiff struct {
 // PreviewStep is a detailed overview of a step the engine intends to take.
 type PreviewStep struct {
 	// Op is the kind of operation being performed.
-	Op deploy.StepOp `json:"op"`
+	Op StepOp `json:"op"`
 	// URN is the resource being affected by this operation.
 	URN resource.URN `json:"urn"`
 	// Provider is the provider that will perform this step.
