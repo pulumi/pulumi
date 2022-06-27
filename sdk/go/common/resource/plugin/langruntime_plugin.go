@@ -89,10 +89,6 @@ func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface
 
 	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
 
-	if cmdutil.IsTracingEnabled() {
-		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
-	}
-
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
 
