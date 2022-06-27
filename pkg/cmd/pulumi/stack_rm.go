@@ -75,10 +75,10 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return result.Errorf(
-						"'%s' still has resources; removal rejected. Possible actions:\n" +
-						"- Make sure the correct stack is selected\n" +
-						"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm` again\n" +
-						"- Run `pulumi stack rm --force` to override this error and remove the stack anyway", s.Ref())
+						"'%s' still has resources; removal rejected. Possible actions:\n"+
+							"- Make sure the correct stack is selected\n"+
+							"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm` again\n"+
+							"- Run `pulumi stack rm --force` to override this error and remove the stack anyway", s.Ref())
 				}
 				return result.FromError(err)
 			}
