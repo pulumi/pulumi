@@ -122,7 +122,9 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the pulumi project")
-	cmd.MarkPersistentFlagRequired("language")
+	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
+		panic("failed to mark 'language' as a required flag")
+	}
 
 	cmd.PersistentFlags().StringVarP(
 		&projectName, "name", "n", "",
