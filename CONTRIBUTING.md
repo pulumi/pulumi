@@ -31,7 +31,7 @@ You'll want to install the following on your machine:
 - Go 1.17
 - NodeJS 14.X.X or later
 - Python 3.6 or later
-- [.NET Core](https://dotnet.microsoft.com/download)
+- [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
@@ -42,7 +42,7 @@ You can get all required dependencies with brew and npm
 
 ```bash
 brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
-curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
+curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
 ```
