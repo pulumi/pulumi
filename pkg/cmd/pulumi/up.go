@@ -396,7 +396,8 @@ func newUpCmd() *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
