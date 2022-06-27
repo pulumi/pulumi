@@ -24,6 +24,9 @@
 - [sdk/dotnet] The dotnet SDK will now send alias objects rather than URNs to the engine.
   [#9731](https://github.com/pulumi/pulumi/pull/9731)
 
+- [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
+  [#9918](https://github.com/pulumi/pulumi/pull/9918)
+
 ### Bug Fixes
 
 - [sdk/go] Handle nils in mapper encoding.
