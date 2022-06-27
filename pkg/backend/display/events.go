@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -284,9 +284,9 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.SummaryEvent != nil:
 		p := apiEvent.SummaryEvent
 		// Convert the resource changes.
-		changes := engine.ResourceChanges{}
+		changes := display.ResourceChanges{}
 		for op, count := range p.ResourceChanges {
-			changes[deploy.StepOp(op)] = count
+			changes[display.StepOp(op)] = count
 		}
 		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
@@ -369,7 +369,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	}
 
 	return engine.StepEventMetadata{
-		Op:   deploy.StepOp(md.Op),
+		Op:   display.StepOp(md.Op),
 		URN:  resource.URN(md.URN),
 		Type: tokens.Type(md.Type),
 

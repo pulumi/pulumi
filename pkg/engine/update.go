@@ -27,6 +27,7 @@ import (
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -152,11 +153,8 @@ type UpdateOptions struct {
 	ExperimentalPlans bool
 }
 
-// ResourceChanges contains the aggregate resource changes by operation type.
-type ResourceChanges map[deploy.StepOp]int
-
 // HasChanges returns true if there are any non-same changes in the resulting summary.
-func (changes ResourceChanges) HasChanges() bool {
+func HasChanges(changes display.ResourceChanges) bool {
 	var c int
 	for op, count := range changes {
 		if op != deploy.OpSame &&
@@ -170,7 +168,7 @@ func (changes ResourceChanges) HasChanges() bool {
 }
 
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
-	*deploy.Plan, ResourceChanges, result.Result) {
+	*deploy.Plan, display.ResourceChanges, result.Result) {
 
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
@@ -425,7 +423,7 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
+	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}
@@ -487,7 +485,7 @@ func abbreviateFilePath(path string) string {
 type updateActions struct {
 	Context *Context
 	Steps   int
-	Ops     map[deploy.StepOp]int
+	Ops     map[display.StepOp]int
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
 	Update  UpdateInfo
@@ -499,7 +497,7 @@ type updateActions struct {
 func newUpdateActions(context *Context, u UpdateInfo, opts deploymentOptions) *updateActions {
 	return &updateActions{
 		Context: context,
-		Ops:     make(map[deploy.StepOp]int),
+		Ops:     make(map[display.StepOp]int),
 		Seen:    make(map[resource.URN]deploy.Step),
 		Update:  u,
 		Opts:    opts,
@@ -634,12 +632,12 @@ func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
 
-func (acts *updateActions) Changes() ResourceChanges {
-	return ResourceChanges(acts.Ops)
+func (acts *updateActions) Changes() display.ResourceChanges {
+	return display.ResourceChanges(acts.Ops)
 }
 
 type previewActions struct {
-	Ops     map[deploy.StepOp]int
+	Ops     map[display.StepOp]int
 	Opts    deploymentOptions
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
@@ -665,7 +663,7 @@ func ShouldRecordReadStep(step deploy.Step) bool {
 
 func newPreviewActions(opts deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[deploy.StepOp]int),
+		Ops:  make(map[display.StepOp]int),
 		Opts: opts,
 		Seen: make(map[resource.URN]deploy.Step),
 	}
@@ -751,6 +749,6 @@ func (acts *previewActions) MaybeCorrupt() bool {
 	return false
 }
 
-func (acts *previewActions) Changes() ResourceChanges {
-	return ResourceChanges(acts.Ops)
+func (acts *previewActions) Changes() display.ResourceChanges {
+	return display.ResourceChanges(acts.Ops)
 }

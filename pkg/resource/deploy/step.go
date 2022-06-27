@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -43,7 +44,7 @@ type Step interface {
 	// the state of the deployment.
 	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
-	Op() StepOp              // the operation performed by this step.
+	Op() display.StepOp      // the operation performed by this step.
 	URN() resource.URN       // the resource URN (for before and after).
 	Type() tokens.Type       // the type affected by this step.
 	Provider() string        // the provider reference for this step.
@@ -109,7 +110,7 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
-func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Op() display.StepOp      { return OpSame }
 func (s *SameStep) Deployment() *Deployment { return s.deployment }
 func (s *SameStep) Type() tokens.Type       { return s.new.Type }
 func (s *SameStep) Provider() string        { return s.new.Provider }
@@ -201,7 +202,7 @@ func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 	}
 }
 
-func (s *CreateStep) Op() StepOp {
+func (s *CreateStep) Op() display.StepOp {
 	if s.replacing {
 		return OpCreateReplacement
 	}
@@ -312,7 +313,7 @@ func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendi
 	}
 }
 
-func (s *DeleteStep) Op() StepOp {
+func (s *DeleteStep) Op() display.StepOp {
 	if s.old.External {
 		if s.replacing {
 			return OpDiscardReplaced
@@ -382,7 +383,7 @@ func NewRemovePendingReplaceStep(deployment *Deployment, old *resource.State) St
 	}
 }
 
-func (s *RemovePendingReplaceStep) Op() StepOp {
+func (s *RemovePendingReplaceStep) Op() display.StepOp {
 	return OpRemovePendingReplace
 }
 func (s *RemovePendingReplaceStep) Deployment() *Deployment { return s.deployment }
@@ -440,7 +441,7 @@ func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
+func (s *UpdateStep) Op() display.StepOp                           { return OpUpdate }
 func (s *UpdateStep) Deployment() *Deployment                      { return s.deployment }
 func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
@@ -530,7 +531,7 @@ func NewReplaceStep(deployment *Deployment, old, new *resource.State, keys, diff
 	}
 }
 
-func (s *ReplaceStep) Op() StepOp                                   { return OpReplace }
+func (s *ReplaceStep) Op() display.StepOp                           { return OpReplace }
 func (s *ReplaceStep) Deployment() *Deployment                      { return s.deployment }
 func (s *ReplaceStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ReplaceStep) Provider() string                             { return s.new.Provider }
@@ -609,7 +610,7 @@ func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old
 	}
 }
 
-func (s *ReadStep) Op() StepOp {
+func (s *ReadStep) Op() display.StepOp {
 	if s.replacing {
 		return OpReadReplacement
 	}
@@ -703,7 +704,7 @@ func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- boo
 	}
 }
 
-func (s *RefreshStep) Op() StepOp              { return OpRefresh }
+func (s *RefreshStep) Op() display.StepOp      { return OpRefresh }
 func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
 func (s *RefreshStep) Type() tokens.Type       { return s.old.Type }
 func (s *RefreshStep) Provider() string        { return s.old.Provider }
@@ -715,7 +716,7 @@ func (s *RefreshStep) Logical() bool           { return false }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
-func (s *RefreshStep) ResultOp() StepOp {
+func (s *RefreshStep) ResultOp() display.StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
@@ -859,7 +860,7 @@ func newImportDeploymentStep(deployment *Deployment, new *resource.State) Step {
 	}
 }
 
-func (s *ImportStep) Op() StepOp {
+func (s *ImportStep) Op() display.StepOp {
 	if s.replacing {
 		return OpImportReplacement
 	}
@@ -1035,29 +1036,27 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return rst, complete, err
 }
 
-// StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
-type StepOp string
-
 const (
-	OpSame                 StepOp = "same"                   // nothing to do.
-	OpCreate               StepOp = "create"                 // creating a new resource.
-	OpUpdate               StepOp = "update"                 // updating an existing resource.
-	OpDelete               StepOp = "delete"                 // deleting an existing resource.
-	OpReplace              StepOp = "replace"                // replacing a resource with a new one.
-	OpCreateReplacement    StepOp = "create-replacement"     // creating a new resource for a replacement.
-	OpDeleteReplaced       StepOp = "delete-replaced"        // deleting an existing resource after replacement.
-	OpRead                 StepOp = "read"                   // reading an existing resource.
-	OpReadReplacement      StepOp = "read-replacement"       // reading an existing resource for a replacement.
-	OpRefresh              StepOp = "refresh"                // refreshing an existing resource.
-	OpReadDiscard          StepOp = "discard"                // removing a resource that was read.
-	OpDiscardReplaced      StepOp = "discard-replaced"       // discarding a read resource that was replaced.
-	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
-	OpImport               StepOp = "import"                 // import an existing resource.
-	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
+	OpSame                 display.StepOp = "same"                   // nothing to do.
+	OpCreate               display.StepOp = "create"                 // creating a new resource.
+	OpUpdate               display.StepOp = "update"                 // updating an existing resource.
+	OpDelete               display.StepOp = "delete"                 // deleting an existing resource.
+	OpReplace              display.StepOp = "replace"                // replacing a resource with a new one.
+	OpCreateReplacement    display.StepOp = "create-replacement"     // creating a new resource for a replacement.
+	OpDeleteReplaced       display.StepOp = "delete-replaced"        // deleting an existing resource after replacement.
+	OpRead                 display.StepOp = "read"                   // reading an existing resource.
+	OpReadReplacement      display.StepOp = "read-replacement"       // reading an existing resource for a replacement.
+	OpRefresh              display.StepOp = "refresh"                // refreshing an existing resource.
+	OpReadDiscard          display.StepOp = "discard"                // removing a resource that was read.
+	OpDiscardReplaced      display.StepOp = "discard-replaced"       // discarding a read resource that was replaced.
+	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
+	OpImport               display.StepOp = "import"                 // import an existing resource.
+	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
+	// with an imported resource.
 )
 
 // StepOps contains the full set of step operation types.
-var StepOps = []StepOp{
+var StepOps = []display.StepOp{
 	OpSame,
 	OpCreate,
 	OpUpdate,
@@ -1076,7 +1075,7 @@ var StepOps = []StepOp{
 }
 
 // Color returns a suggested color for lines of this op type.
-func (op StepOp) Color() string {
+func Color(op display.StepOp) string {
 	switch op {
 	case OpSame:
 		return colors.SpecUnimportant
@@ -1108,23 +1107,23 @@ func (op StepOp) Color() string {
 
 // ColorProgress returns a suggested coloring for lines of this of type which
 // are progressing.
-func (op StepOp) ColorProgress() string {
-	return colors.Bold + op.Color()
+func ColorProgress(op display.StepOp) string {
+	return colors.Bold + Color(op)
 }
 
 // Prefix returns a suggested prefix for lines of this op type.
-func (op StepOp) Prefix(done bool) string {
+func Prefix(op display.StepOp, done bool) string {
 	var color string
 	if done {
-		color = op.Color()
+		color = Color(op)
 	} else {
-		color = op.ColorProgress()
+		color = ColorProgress(op)
 	}
-	return color + op.RawPrefix()
+	return color + RawPrefix(op)
 }
 
 // RawPrefix returns the uncolorized prefix text.
-func (op StepOp) RawPrefix() string {
+func RawPrefix(op display.StepOp) string {
 	switch op {
 	case OpSame:
 		return "  "
@@ -1160,7 +1159,7 @@ func (op StepOp) RawPrefix() string {
 	}
 }
 
-func (op StepOp) PastTense() string {
+func PastTense(op display.StepOp) string {
 	switch op {
 	case OpSame, OpCreate, OpReplace, OpCreateReplacement, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
@@ -1181,7 +1180,7 @@ func (op StepOp) PastTense() string {
 }
 
 // Suffix returns a suggested suffix for lines of this op type.
-func (op StepOp) Suffix() string {
+func Suffix(op display.StepOp) string {
 	switch op {
 	case OpCreateReplacement, OpUpdate, OpReplace, OpReadReplacement, OpRefresh, OpImportReplacement:
 		return colors.Reset // updates and replacements colorize individual lines; get has none
@@ -1190,18 +1189,18 @@ func (op StepOp) Suffix() string {
 }
 
 // ConstrainedTo returns true if this operation is no more impactful than the constraint.
-func (op StepOp) ConstrainedTo(constraint StepOp) bool {
-	var allowed []StepOp
+func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
+	var allowed []display.StepOp
 	switch constraint {
 	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
 		OpRemovePendingReplace, OpImport, OpImportReplacement:
-		allowed = []StepOp{constraint}
+		allowed = []display.StepOp{constraint}
 	case OpCreate:
-		allowed = []StepOp{OpSame, OpCreate}
+		allowed = []display.StepOp{OpSame, OpCreate}
 	case OpUpdate:
-		allowed = []StepOp{OpSame, OpUpdate}
+		allowed = []display.StepOp{OpSame, OpUpdate}
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
-		allowed = []StepOp{OpSame, OpUpdate, constraint}
+		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
 	for _, candidate := range allowed {
 		if candidate == op {
