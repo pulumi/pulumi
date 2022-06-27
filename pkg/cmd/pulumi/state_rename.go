@@ -111,7 +111,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 				return res
 			}
 
-			fmt.Println("Resource renamed successfully")
+			fmt.Println("Resource renamed")
 			return nil
 		}),
 	}

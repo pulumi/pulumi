@@ -85,7 +85,7 @@ func unprotectAllResources(stackName string, showPrompt bool) result.Result {
 	if res != nil {
 		return res
 	}
-	fmt.Println("All resources successfully unprotected")
+	fmt.Println("All resources unprotected")
 	return nil
 }
 
@@ -94,6 +94,6 @@ func unprotectResource(stackName string, urn resource.URN, showPrompt bool) resu
 	if res != nil {
 		return res
 	}
-	fmt.Println("Resource successfully unprotected")
+	fmt.Println("Resource unprotected")
 	return nil
 }
