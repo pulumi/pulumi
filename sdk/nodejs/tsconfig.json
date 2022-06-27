@@ -18,6 +18,7 @@
         "index.ts",
         "config.ts",
         "errors.ts",
+        "invoke.ts",
         "metadata.ts",
         "output.ts",
         "resource.ts",
