@@ -32,6 +32,54 @@ const (
 	version      = "0.0.1"
 )
 
+const schema = `
+{
+    "name": "testprovider",
+    "version": "0.0.1",
+    "resources": {
+        "testprovider:index:Echo": {
+            "properties": {
+                "echo": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "echo"
+            ],
+            "inputProperties": {
+                "echo": {
+                    "type": "string"
+                }
+            },
+            "requiredInputs": [
+                "echo"
+            ]
+        }
+    },
+    "language": {
+        "csharp": {
+            "packageReferences": {
+                "Pulumi": "3.*"
+            }
+        },
+        "go": {
+            "generateResourceContainerTypes": true,
+            "importBasePath": "github.com/pulumi/pulumi/tests/testprovider/sdk/go/testprovider"
+        },
+        "nodejs": {
+            "dependencies": {
+                "@pulumi/pulumi": "^3.0.0"
+            }
+        },
+        "python": {
+            "requires": {
+                "pulumi": ">=3.0.0,<4.0.0"
+            }
+        }
+    }
+}
+`
+
 // Minimal set of methods to implement a basic provider.
 type resourceProvider interface {
 	Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error)
@@ -184,7 +232,9 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
-	return &rpc.GetSchemaResponse{}, nil
+	return &rpc.GetSchemaResponse{
+		Schema: schema,
+	}, nil
 }
 
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
