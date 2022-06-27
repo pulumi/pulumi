@@ -101,6 +101,6 @@
 
         "tests/automation/localWorkspace.spec.ts",
 
-        "tests_with_mocks/mocks.spec.ts",
+        "tests_with_mocks/mocks.spec.ts"
     ]
 }
