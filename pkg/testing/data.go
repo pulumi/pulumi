@@ -48,6 +48,58 @@ func Datatest(t *testing.T, language string, dir string) {
 
 	addPath(t, filepath.Join("..", "testprovider"))
 
+	tmpsdk, err := os.MkdirTemp("", "pulumi-data-test-sdk")
+	assert.NoError(t, err)
+	defer os.Remove(tmpsdk)
+
+	var packageGenerator packageGeneratorFunc
+	var projectGenerator projectGeneratorFunc
+	switch language {
+	case "dotnet":
+		packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
+			return dotnet.GeneratePackage(s, p, nil)
+		}
+		projectGenerator = dotnet.GenerateProject
+	case "go":
+		packageGenerator = gogen.GeneratePackage
+		projectGenerator = gogen.GenerateProject
+	case "nodejs":
+		packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
+			return nodejs.GeneratePackage(s, p, nil)
+		}
+		projectGenerator = nodejs.GenerateProject
+	case "python":
+		packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
+			return python.GeneratePackage(s, p, nil)
+		}
+		projectGenerator = python.GenerateProject
+	case "java":
+		packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
+			return javagen.GeneratePackage(s, p, nil)
+		}
+		projectGenerator = javagen.GenerateProject
+	case "yaml":
+		packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
+			return nil, nil
+		}
+		projectGenerator = yamlgen.GenerateProject
+	default:
+		assert.Fail(t, "unrecognized langauge %s", language)
+	}
+
+	// Convert the testprovider into an sdk
+	ctx, err := plugin.NewContext(nil, nil, nil, nil, ".", nil, false, nil)
+	assert.NoError(t, err)
+	loader := schema.NewPluginLoader(ctx.Host)
+	testSchema, err := loader.LoadPackage("testprovider", nil)
+	assert.NoError(t, err)
+
+	files, err := packageGenerator("testing", testSchema)
+	assert.NoError(t, err)
+	for path, data := range files {
+		os.WriteFile(filepath.Join(tmpsdk, path), data, 066)
+	}
+
 	for _, test := range tests {
 		if !test.IsDir() {
 			continue
@@ -60,58 +112,6 @@ func Datatest(t *testing.T, language string, dir string) {
 			tmp, err := os.MkdirTemp("", "pulumi-data-test-program")
 			assert.NoError(t, err)
 			defer os.Remove(tmp)
-
-			tmpsdk, err := os.MkdirTemp("", "pulumi-data-test-sdk")
-			assert.NoError(t, err)
-			defer os.Remove(tmpsdk)
-
-			var packageGenerator packageGeneratorFunc
-			var projectGenerator projectGeneratorFunc
-			switch language {
-			case "dotnet":
-				packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
-					return dotnet.GeneratePackage(s, p, nil)
-				}
-				projectGenerator = dotnet.GenerateProject
-			case "go":
-				packageGenerator = gogen.GeneratePackage
-				projectGenerator = gogen.GenerateProject
-			case "nodejs":
-				packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
-					return nodejs.GeneratePackage(s, p, nil)
-				}
-				projectGenerator = nodejs.GenerateProject
-			case "python":
-				packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
-					return python.GeneratePackage(s, p, nil)
-				}
-				projectGenerator = python.GenerateProject
-			case "java":
-				packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
-					return javagen.GeneratePackage(s, p, nil)
-				}
-				projectGenerator = javagen.GenerateProject
-			case "yaml":
-				packageGenerator = func(s string, p *schema.Package) (map[string][]byte, error) {
-					return nil, nil
-				}
-				projectGenerator = yamlgen.GenerateProject
-			default:
-				assert.Fail(t, "unrecognized langauge %s", language)
-			}
-
-			// Convert the testprovider into an sdk
-			ctx, err := plugin.NewContext(nil, nil, nil, nil, ".", nil, false, nil)
-			assert.NoError(t, err)
-			loader := schema.NewPluginLoader(ctx.Host)
-			testSchema, err := loader.LoadPackage("testprovider", nil)
-			assert.NoError(t, err)
-
-			files, err := packageGenerator("testing", testSchema)
-			assert.NoError(t, err)
-			for path, data := range files {
-				os.WriteFile(filepath.Join(tmpsdk, path), data, 066)
-			}
 
 			// Read the yaml file or new up a tiny project description
 			projectPath := filepath.Join(test.Name(), "Pulumi.yaml")
