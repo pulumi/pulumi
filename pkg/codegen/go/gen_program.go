@@ -196,7 +196,10 @@ require (
 		}
 
 		// Relatively safe default, this works for Pulumi provider packages:
-		vPath := fmt.Sprintf("/v%d", p.Version.Major)
+		vPath := ""
+		if p.Version != nil && p.Version.Major > 1 {
+			vPath = fmt.Sprintf("/v%d", p.Version.Major)
+		}
 		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)

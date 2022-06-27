@@ -181,7 +181,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
 			}
 		}
-		csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+		if p.Version != nil {
+			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+		} else {
+			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, "*"))
+		}
 	}
 
 	csproj.WriteString(`	</ItemGroup>
