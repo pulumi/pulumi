@@ -60,12 +60,14 @@ func newDestroyCmd() *cobra.Command {
 		Use:        "destroy",
 		Aliases:    []string{"down"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-		Short:      "Destroy an existing stack and its resources",
-		Long: "Destroy an existing stack and its resources\n" +
+		Short:      "Destroy all the existing resources in the stack",
+		Long: "Destroy all the existing resources in the stack\n" +
 			"\n" +
-			"This command deletes an entire existing stack by name.  The current state is\n" +
+			"This command deletes all the resources in the selected stack.  The current state is\n" +
 			"loaded from the associated state file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state will be gone.\n" +
+			"\n" +
+			"The stack itself is not deleted. Use `pulumi stack rm` to delete the stack.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
