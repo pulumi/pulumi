@@ -136,6 +136,9 @@ type pkgContext struct {
 	names       codegen.StringSet
 	renamed     map[string]string
 
+	// A mapping between external packages and their bound contents.
+	externalPackages map[*schema.Package]map[string]*pkgContext
+
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
 	functionNames   map[*schema.Function]string
@@ -699,7 +702,16 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 		}
 	}
 
-	maps := generatePackageContextMap(pkg.tool, extPkg, goInfo)
+	var maps map[string]*pkgContext
+	if pkg.externalPackages == nil {
+		pkg.externalPackages = map[*schema.Package]map[string]*pkgContext{}
+	}
+	if extMap, ok := pkg.externalPackages[extPkg]; ok {
+		maps = extMap
+	} else {
+		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo)
+		pkg.externalPackages[extPkg] = maps
+	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
 	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
