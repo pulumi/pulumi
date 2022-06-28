@@ -437,7 +437,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		parentAliases := sg.aliases[goal.Parent]
-		logging.V(9).Infof("Generating alias for '%v' with %d aliases and %d parent aliases", urn, len(selfAliasesSet), len(parentAliases))
+		logging.V(9).Infof(
+			"Generating alias for '%v' with %d aliases and %d parent aliases",
+			urn, len(selfAliasesSet), len(parentAliases))
 
 		for _, parentAlias := range parentAliases {
 			inheritedAlias := sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)
