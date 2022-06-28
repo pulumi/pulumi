@@ -427,27 +427,33 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	// Generate the aliases for this resource
-	aliases := make([]resource.URN, 0)
+	fullAliasesSet := make(map[resource.URN]interface{})
+	selfAliasesSet := make(map[resource.URN]interface{})
 	for _, alias := range goal.Aliases {
 		urn := sg.collapseAliasToUrn(goal, alias)
-		aliases = append(aliases, urn)
+		selfAliasesSet[urn] = nil
+		fullAliasesSet[urn] = nil
 	}
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		parentAliases := sg.aliases[goal.Parent]
 		for _, parentAlias := range parentAliases {
-			aliases = append(aliases, sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
-			for _, alias := range goal.Aliases {
-				childAlias := sg.collapseAliasToUrn(goal, alias)
+			inheritedAlias := sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)
+			fullAliasesSet[inheritedAlias] = nil
+			for childAlias := range selfAliasesSet {
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
 				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
-				aliases = append(aliases, inheritedAlias)
+				fullAliasesSet[inheritedAlias] = nil
 			}
 		}
 	}
 
 	// Save the aliases so we can look them up later if anything has this as a parent
+	aliases := make([]resource.URN, 0)
+	for urn := range fullAliasesSet {
+		aliases = append(aliases, urn)
+	}
 	sg.aliases[urn] = aliases
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
