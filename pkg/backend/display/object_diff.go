@@ -24,15 +24,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
-	"gopkg.in/yaml.v3"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/sergi/go-diff/diffmatchpatch"
+	"gopkg.in/yaml.v3"
 )
 
 // getIndent computes a step's parent indentation.
@@ -66,7 +66,7 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
-func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
+func getIndentationString(indent int, op display.StepOp, prefix bool) string {
 	result := strings.Repeat("    ", indent)
 
 	if !prefix {
@@ -78,7 +78,7 @@ func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
 		return result
 	}
 
-	rp := op.RawPrefix()
+	rp := deploy.RawPrefix(op)
 	contract.Assert(len(rp) == 2)
 	contract.Assert(len(result) >= 2)
 	return result[:len(result)-2] + rp
@@ -89,22 +89,22 @@ func writeString(b io.StringWriter, s string) {
 	contract.IgnoreError(err)
 }
 
-func writeWithIndent(b io.StringWriter, indent int, op deploy.StepOp, prefix bool, format string, a ...interface{}) {
-	writeString(b, op.Color())
+func writeWithIndent(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...interface{}) {
+	writeString(b, deploy.Color(op))
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeWithIndentNoPrefix(b io.StringWriter, indent int, op deploy.StepOp, format string, a ...interface{}) {
+func writeWithIndentNoPrefix(b io.StringWriter, indent int, op display.StepOp, format string, a ...interface{}) {
 	writeWithIndent(b, indent, op, false, format, a...)
 }
 
-func write(b io.StringWriter, op deploy.StepOp, format string, a ...interface{}) {
+func write(b io.StringWriter, op display.StepOp, format string, a ...interface{}) {
 	writeWithIndentNoPrefix(b, 0, op, format, a...)
 }
 
-func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
+func writeVerbatim(b io.StringWriter, op display.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
@@ -119,7 +119,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	writeString(&b, getIndentationString(indent, op, false))
 
 	// First, print out the operation's prefix.
-	writeString(&b, op.Prefix(true /*done*/))
+	writeString(&b, deploy.Prefix(op, true /*done*/))
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	printStepHeader(&b, step)
@@ -212,7 +212,7 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op deploy.StepOp, prefix bool, debug bool) {
+	indent int, op display.StepOp, prefix bool, debug bool) {
 
 	p := propertyPrinter{
 		dest:     b,
@@ -245,7 +245,7 @@ func (p *propertyPrinter) printObjectProperty(key resource.PropertyKey, value re
 
 func PrintResourceReference(
 	b *bytes.Buffer, resRef resource.ResourceReference, planning bool,
-	indent int, op deploy.StepOp, prefix bool, debug bool) {
+	indent int, op display.StepOp, prefix bool, debug bool) {
 
 	p := propertyPrinter{
 		dest:     b,
@@ -454,7 +454,7 @@ func getResourceOutputsPropertiesString(
 	return b.String()
 }
 
-func considerSameIfNotCreateOrDelete(op deploy.StepOp) deploy.StepOp {
+func considerSameIfNotCreateOrDelete(op display.StepOp) display.StepOp {
 	switch op {
 	case deploy.OpCreate, deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 		return op
@@ -489,7 +489,7 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 type propertyPrinter struct {
 	dest io.StringWriter
 
-	op       deploy.StepOp
+	op       display.StepOp
 	planning bool
 	prefix   bool
 	debug    bool
@@ -504,7 +504,7 @@ func (p *propertyPrinter) indented(amt int) *propertyPrinter {
 	return &new
 }
 
-func (p *propertyPrinter) withOp(op deploy.StepOp) *propertyPrinter {
+func (p *propertyPrinter) withOp(op display.StepOp) *propertyPrinter {
 	new := *p
 	new.op = op
 	return &new
@@ -648,7 +648,7 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op deploy.StepOp, summary bool, debug bool) {
+	planning bool, indent int, op display.StepOp, summary bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
@@ -1095,7 +1095,7 @@ func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
 func (p *propertyPrinter) printLineDiff(diffs []diffmatchpatch.Diff) {
 	p.writeVerbatim("\n")
 
-	writeDiff := func(op deploy.StepOp, text string) {
+	writeDiff := func(op display.StepOp, text string) {
 		prefix := op == deploy.OpCreate || op == deploy.OpDelete
 		p.withOp(op).withPrefix(prefix).writeWithIndent("%s", text)
 	}
@@ -1103,7 +1103,7 @@ func (p *propertyPrinter) printLineDiff(diffs []diffmatchpatch.Diff) {
 	for index, diff := range diffs {
 		text := diff.Text
 		lines := strings.Split(text, "\n")
-		printLines := func(op deploy.StepOp, startInclusive int, endExclusive int) {
+		printLines := func(op display.StepOp, startInclusive int, endExclusive int) {
 			for i := startInclusive; i < endExclusive; i++ {
 				if strings.TrimSpace(lines[i]) != "" {
 					writeDiff(op, lines[i])
