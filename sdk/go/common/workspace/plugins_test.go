@@ -287,7 +287,7 @@ func TestPluginDownload(t *testing.T) {
 
 	t.Run("Test Downloading From Pulumi GitHub Releases", func(t *testing.T) {
 		os.Setenv("GITHUB_TOKEN", "")
-		version := semver.MustParse("4.32.0")
+		version := semver.MustParse("4.30.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
 			Name:              "mockdl",
@@ -297,18 +297,18 @@ func TestPluginDownload(t *testing.T) {
 		source, err := info.GetSource()
 		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
 					"assets": [
 					  {
 						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
-						"name": "pulumi-mockdl_4.32.0_checksums.txt"
+						"name": "pulumi-mockdl_4.30.0_checksums.txt"
 					  },
 					  {
 						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
-						"name": "pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz"
+						"name": "pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz"
 					  }
 					]
 				  }
@@ -330,7 +330,7 @@ func TestPluginDownload(t *testing.T) {
 		version := semver.MustParse("4.32.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
-			Name:              "mockdl",
+			Name:              "otherdl",
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
@@ -338,11 +338,11 @@ func TestPluginDownload(t *testing.T) {
 		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on github
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-otherdl/releases/tags/v4.32.0" {
 				return nil, -1, errors.New("404 not found")
 			}
 			assert.Equal(t,
-				"https://get.pulumi.com/releases/plugins/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
+				"https://get.pulumi.com/releases/plugins/pulumi-resource-otherdl-v4.32.0-darwin-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}

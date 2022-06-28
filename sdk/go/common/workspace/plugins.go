@@ -231,7 +231,9 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	}
 
 	if len(parts) != 1 && len(parts) != 2 {
-		return nil, fmt.Errorf("github:// url must have the format <host>/<organization>[/<repository>], was: %s", url.String())
+		return nil, fmt.Errorf(
+			"github:// url must have the format <host>/<organization>[/<repository>], was: %s",
+			url.String())
 	}
 
 	organization := parts[0]
@@ -474,7 +476,8 @@ func (source *fallbackSource) Download(
 		if repoOwner == "" {
 			err = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			private, err := newGithubSource(urlMustParse("github://api.github.com/"+repoOwner), source.name, source.kind)
+			var private *githubSource
+			private, err = newGithubSource(urlMustParse("github://api.github.com/"+repoOwner), source.name, source.kind)
 			if err != nil {
 				return nil, -1, err
 			}
