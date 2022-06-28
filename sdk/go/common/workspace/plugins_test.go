@@ -294,12 +294,29 @@ func TestPluginDownload(t *testing.T) {
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			assert.Equal(t,
-				"https://github.com/pulumi/pulumi-mockdl/releases/download/v4.32.0/"+
-					"pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
-				req.URL.String())
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"assets": [
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
+						"name": "pulumi-mockdl_4.32.0_checksums.txt"
+					  },
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
+						"name": "pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz"
+					  }
+					]
+				  }
+				`)
+			}
+
+			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*info.Version, "darwin", "amd64", getHTTPResponse)
@@ -317,11 +334,11 @@ func TestPluginDownload(t *testing.T) {
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on github
-			if req.URL.String() == "https://github.com/pulumi/pulumi-mockdl/releases/"+
-				"download/v4.32.0/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz" {
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				return nil, -1, errors.New("404 not found")
 			}
 			assert.Equal(t,
@@ -344,7 +361,8 @@ func TestPluginDownload(t *testing.T) {
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://customurl.jfrog.io/artifactory/pulumi-packages/"+
@@ -370,7 +388,8 @@ func TestPluginDownload(t *testing.T) {
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on pulumi github
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-private/releases/tags/v1.22.0" {
@@ -417,14 +436,9 @@ func TestPluginDownload(t *testing.T) {
 			Version:           &version,
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			// Test that the asset isn't on github
-			if req.URL.String() == "https://github.com/pulumi/pulumi-mockdl/releases/download/"+
-				"v1.22.0/pulumi-resource-mockdl-v1.22.0-darwin-amd64.tar.gz" {
-				return nil, -1, errors.New("404 not found")
-			}
-
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
 				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
@@ -456,6 +470,54 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
+	t.Run("Test Downloading From Internal GitHub Releases", func(t *testing.T) {
+		os.Setenv("GITHUB_TOKEN", token)
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "github://api.git.org/ourorg/mock",
+			Name:              "mockdl",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		source, err := info.GetSource()
+		assert.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			// Test that the asset isn't on github
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.32.0" {
+				return nil, -1, errors.New("404 not found")
+			}
+
+			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/tags/v4.32.0" {
+				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"assets": [
+					  {
+						"url": "https://api.git.org/repos/ourorg/mock/releases/assets/654321",
+						"name": "pulumi-mockdl_4.32.0_checksums.txt"
+					  },
+					  {
+						"url": "https://api.git.org/repos/ourorg/mock/releases/assets/123456",
+						"name": "pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz"
+					  }
+					]
+				  }
+				`)
+			}
+
+			assert.Equal(t, "https://api.git.org/repos/ourorg/mock/releases/assets/123456", req.URL.String())
+			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*info.Version, "darwin", "amd64", getHTTPResponse)
+		assert.Nil(t, err)
+		readBytes, err := ioutil.ReadAll(r)
+		assert.Nil(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -470,7 +532,8 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Kind:              PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("4.37.5")
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest",
@@ -490,7 +553,8 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Name:              "mock-latest",
 			Kind:              PluginKind("resource"),
 		}
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
 		assert.Equal(t, "GetLatestVersion is not supported for plugins using PluginDownloadURL", err.Error())
@@ -505,7 +569,8 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Kind:              PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("1.0.2")
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on github
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-private/releases/latest" {
@@ -535,9 +600,36 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			Kind:              PluginKind("resource"),
 		}
 		expectedVersion := semver.MustParse("4.37.5")
-		source := info.GetSource()
+		source, err := info.GetSource()
+		assert.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mock-private/releases/latest" {
+				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"tag_name": "v4.37.5"
+				}`)
+			}
+
+			panic("Unexpected call to getHTTPResponse")
+		}
+		version, err := source.GetLatestVersion(getHTTPResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedVersion, *version)
+	})
+	t.Run("Test GetLatestVersion From Internal GitHub Releases", func(t *testing.T) {
+		os.Setenv("GITHUB_TOKEN", token)
+		info := PluginInfo{
+			PluginDownloadURL: "github://api.git.org/ourorg/mock",
+			Name:              "mock-private",
+			Kind:              PluginKind("resource"),
+		}
+		expectedVersion := semver.MustParse("4.37.5")
+		source, err := info.GetSource()
+		assert.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			if req.URL.String() == "https://api.git.org/repos/ourorg/mock/releases/latest" {
 				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
