@@ -18,6 +18,7 @@
         "index.ts",
         "config.ts",
         "errors.ts",
+        "invoke.ts",
         "metadata.ts",
         "output.ts",
         "resource.ts",
@@ -101,6 +102,6 @@
 
         "tests/automation/localWorkspace.spec.ts",
 
-        "tests_with_mocks/mocks.spec.ts",
+        "tests_with_mocks/mocks.spec.ts"
     ]
 }
