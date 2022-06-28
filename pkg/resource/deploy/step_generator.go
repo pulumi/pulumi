@@ -430,13 +430,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	fullAliasesSet := make(map[resource.URN]interface{})
 	selfAliasesSet := make(map[resource.URN]interface{})
 	for _, alias := range goal.Aliases {
-		urn := sg.collapseAliasToUrn(goal, alias)
-		selfAliasesSet[urn] = nil
-		fullAliasesSet[urn] = nil
+		collapsedAlias := sg.collapseAliasToUrn(goal, alias)
+		selfAliasesSet[collapsedAlias] = nil
+		fullAliasesSet[collapsedAlias] = nil
 	}
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		parentAliases := sg.aliases[goal.Parent]
+		logging.V(9).Infof("Generating alias for '%v' with %d aliases and %d parent aliases", urn, len(selfAliasesSet), len(parentAliases))
+
 		for _, parentAlias := range parentAliases {
 			inheritedAlias := sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)
 			fullAliasesSet[inheritedAlias] = nil
@@ -448,6 +450,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 	}
+
+	logging.V(9).Infof("Alias generation for '%v' resulted in %d aliases", urn, len(fullAliasesSet))
 
 	// Save the aliases so we can look them up later if anything has this as a parent
 	aliases := make([]resource.URN, 0)
