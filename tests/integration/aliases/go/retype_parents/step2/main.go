@@ -8,14 +8,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-
-package main
-
-import (
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-)
-
 type Resource struct {
 	pulumi.ResourceState
 }
@@ -42,12 +34,13 @@ func NewComponentSix(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOp
 	comp := &ComponentSix{}
 	aliases := make([]pulumi.Alias, 0)
 	for i := 0; i < 100; i++ {
-		aliases = append(aliases, &pulumi.Alias{
+		aliases = append(aliases, pulumi.Alias{
 			Type: pulumi.StringInput(pulumi.String(fmt.Sprintf("my:module:ComponentSix-v%d", i))),
 		})
 	}
-	aliasOpt := pulumi.Aliases(aliases)
-	err := ctx.RegisterComponentResource("my:module:ComponentSix-v0", name, comp, opts...)
+	err := ctx.RegisterComponentResource(
+		"my:module:ComponentSix-v0", name, comp,
+		pulumi.Aliases(aliases), pulumi.Composite(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +52,19 @@ func NewComponentSix(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOp
 	return comp, nil
 }
 
-func NewComponentSixParent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*ComponentSixParent, error) {
+func NewComponentSixParent(ctx *pulumi.Context, name string,
+	opts ...pulumi.ResourceOption) (*ComponentSixParent, error) {
+
 	comp := &ComponentSixParent{}
 	aliases := make([]pulumi.Alias, 0)
 	for i := 0; i < 10; i++ {
-		aliases = append(aliases, &pulumi.Alias{
+		aliases = append(aliases, pulumi.Alias{
 			Type: pulumi.StringInput(pulumi.String(fmt.Sprintf("my:module:ComponentSixParent-v%d", i))),
 		})
 	}
-	aliasOpt := pulumi.Aliases(aliases)
-	err := ctx.RegisterComponentResource("my:module:ComponentSixParent-v0", name, comp,aliasOpt, opts...)
+	err := ctx.RegisterComponentResource(
+		"my:module:ComponentSixParent-v0", name, comp,
+		pulumi.Aliases(aliases), pulumi.Composite(opts...))
 	if err != nil {
 		return nil, err
 	}
