@@ -1,22 +1,4 @@
 ### Improvements
 
-- [sdk/go] Added `PreviewDigest` for third party tools to be able to ingest the preview json
-  [#9886](https://github.com/pulumi/pulumi/pull/9886)
-
-- [cli] Do not require the `--yes` option if the `--skip-preview` option is set.
-  [#9972](https://github.com/pulumi/pulumi/pull/9972)
-
-- [yaml] [Updates Pulumi YAML to v0.5.2](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.2),
-  containing bug fixes and improvements primarily for `pulumi convert` from YAML.
-  [#9993](https://github.com/pulumi/pulumi/pull/9993)
-
 ### Bug Fixes
 
-- [engine] Filter out non-targeted resources much earlier in the engine cycle.
-  [#9960](https://github.com/pulumi/pulumi/pull/9960)
-
-- [cli] Fix a panic in `pulumi plugin ls --project --json`.
-  [#9998](https://github.com/pulumi/pulumi/pull/9998)
-  
-- [engine] Revert support for aliases in the engine.
-  [#9999](https://github.com/pulumi/pulumi/pull/9999)
