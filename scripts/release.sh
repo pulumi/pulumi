@@ -33,7 +33,7 @@ case "$1" in
         echo "Please edit CHANGELOG.md to add a ${VERSION} section with CHANGELOG_PENDING.md changes."
         echo "When done, run the following to commit and push the changes:"
         echo ""
-        echo "    ./scripts/release.sh push"
+        echo "    ./scripts/release.sh push ${VERSION}"
         ;;
     push)
         git add CHANGELOG.md

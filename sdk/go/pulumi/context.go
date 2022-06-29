@@ -565,6 +565,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	options := merge(opts...)
+	aliasParent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -572,6 +573,12 @@ func (ctx *Context) ReadResource(
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
 	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return err
+	}
+
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, aliasParent)
 	if err != nil {
 		return err
 	}
@@ -592,7 +599,7 @@ func (ctx *Context) ReadResource(
 
 	// Create resolvers for the resource's outputs.
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
-		options.Version, options.PluginDownloadURL, []URNOutput{}, transformations)
+		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -625,6 +632,7 @@ func (ctx *Context) ReadResource(
 			Properties:              inputs.rpcProps,
 			Provider:                inputs.provider,
 			Id:                      string(idToRead),
+			Aliases:                 inputs.aliases,
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
@@ -828,7 +836,7 @@ func (ctx *Context) registerResource(
 				ImportId:                inputs.importID,
 				CustomTimeouts:          inputs.customTimeouts,
 				IgnoreChanges:           inputs.ignoreChanges,
-				UrnAliases:              inputs.aliases,
+				Aliases:                 inputs.aliases,
 				AcceptSecrets:           true,
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,

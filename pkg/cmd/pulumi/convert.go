@@ -66,7 +66,7 @@ func newConvertCmd() *cobra.Command {
 			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject
 			default:
-				return result.Errorf("cannot generate programs for %v", language)
+				return result.Errorf("cannot generate programs for %q language", language)
 			}
 
 			cwd, err := os.Getwd()
@@ -122,6 +122,9 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the pulumi project")
+	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
+		panic("failed to mark 'language' as a required flag")
+	}
 
 	cmd.PersistentFlags().StringVarP(
 		&projectName, "name", "n", "",
