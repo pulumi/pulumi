@@ -415,33 +415,33 @@ type RegisterResourceRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Type                    string                                                   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                                                         // the type of the object allocated.
-	Name                    string                                                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                                                                                                         // the name, for URN purposes, of the object.
-	Parent                  string                                                   `protobuf:"bytes,3,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                                                     // an optional parent URN that this child resource belongs to.
-	Custom                  bool                                                     `protobuf:"varint,4,opt,name=custom,proto3" json:"custom,omitempty"`                                                                                                                    // true if the resource is a custom, managed by a plugin's CRUD operations.
-	Object                  *structpb.Struct                                         `protobuf:"bytes,5,opt,name=object,proto3" json:"object,omitempty"`                                                                                                                     // an object produced by the interpreter/source.
-	Protect                 bool                                                     `protobuf:"varint,6,opt,name=protect,proto3" json:"protect,omitempty"`                                                                                                                  // true if the resource should be marked protected.
-	Dependencies            []string                                                 `protobuf:"bytes,7,rep,name=dependencies,proto3" json:"dependencies,omitempty"`                                                                                                         // a list of URNs that this resource depends on, as observed by the language host.
-	Provider                string                                                   `protobuf:"bytes,8,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                                                 // an optional reference to the provider to manage this resource's CRUD operations.
-	PropertyDependencies    map[string]*RegisterResourceRequest_PropertyDependencies `protobuf:"bytes,9,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map from property keys to the dependencies of the property.
-	DeleteBeforeReplace     bool                                                     `protobuf:"varint,10,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`                                                                                         // true if this resource should be deleted before replacement.
-	Version                 string                                                   `protobuf:"bytes,11,opt,name=version,proto3" json:"version,omitempty"`                                                                                                                  // the version of the provider to use when servicing this request.
-	IgnoreChanges           []string                                                 `protobuf:"bytes,12,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`                                                                                                      // a list of property selectors to ignore during updates.
-	AcceptSecrets           bool                                                     `protobuf:"varint,13,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`                                                                                                     // when true operations should return secrets as strongly typed.
-	AdditionalSecretOutputs []string                                                 `protobuf:"bytes,14,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`                                                                                  // a list of output properties that should also be treated as secret, in addition to ones we detect.
+	Type                       string                                                   `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                                                         // the type of the object allocated.
+	Name                       string                                                   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                                                                                                         // the name, for URN purposes, of the object.
+	Parent                     string                                                   `protobuf:"bytes,3,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                                                     // an optional parent URN that this child resource belongs to.
+	Custom                     bool                                                     `protobuf:"varint,4,opt,name=custom,proto3" json:"custom,omitempty"`                                                                                                                    // true if the resource is a custom, managed by a plugin's CRUD operations.
+	Object                     *structpb.Struct                                         `protobuf:"bytes,5,opt,name=object,proto3" json:"object,omitempty"`                                                                                                                     // an object produced by the interpreter/source.
+	Protect                    bool                                                     `protobuf:"varint,6,opt,name=protect,proto3" json:"protect,omitempty"`                                                                                                                  // true if the resource should be marked protected.
+	Dependencies               []string                                                 `protobuf:"bytes,7,rep,name=dependencies,proto3" json:"dependencies,omitempty"`                                                                                                         // a list of URNs that this resource depends on, as observed by the language host.
+	Provider                   string                                                   `protobuf:"bytes,8,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                                                 // an optional reference to the provider to manage this resource's CRUD operations.
+	PropertyDependencies       map[string]*RegisterResourceRequest_PropertyDependencies `protobuf:"bytes,9,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // a map from property keys to the dependencies of the property.
+	DeleteBeforeReplace        bool                                                     `protobuf:"varint,10,opt,name=deleteBeforeReplace,proto3" json:"deleteBeforeReplace,omitempty"`                                                                                         // true if this resource should be deleted before replacement.
+	Version                    string                                                   `protobuf:"bytes,11,opt,name=version,proto3" json:"version,omitempty"`                                                                                                                  // the version of the provider to use when servicing this request.
+	IgnoreChanges              []string                                                 `protobuf:"bytes,12,rep,name=ignoreChanges,proto3" json:"ignoreChanges,omitempty"`                                                                                                      // a list of property selectors to ignore during updates.
+	AcceptSecrets              bool                                                     `protobuf:"varint,13,opt,name=acceptSecrets,proto3" json:"acceptSecrets,omitempty"`                                                                                                     // when true operations should return secrets as strongly typed.
+	AdditionalSecretOutputs    []string                                                 `protobuf:"bytes,14,rep,name=additionalSecretOutputs,proto3" json:"additionalSecretOutputs,omitempty"`                                                                                  // a list of output properties that should also be treated as secret, in addition to ones we detect.
+	UrnAliases                 []string                                                 `protobuf:"bytes,15,rep,name=urnAliases,proto3" json:"urnAliases,omitempty"`                                                                                                            // a list of additional URNs that should be considered the same.
+	ImportId                   string                                                   `protobuf:"bytes,16,opt,name=importId,proto3" json:"importId,omitempty"`                                                                                                                // if set, this resource's state should be imported from the given ID.
+	CustomTimeouts             *RegisterResourceRequest_CustomTimeouts                  `protobuf:"bytes,17,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`                                                                                                    // ability to pass a custom Timeout block.
+	DeleteBeforeReplaceDefined bool                                                     `protobuf:"varint,18,opt,name=deleteBeforeReplaceDefined,proto3" json:"deleteBeforeReplaceDefined,omitempty"`                                                                           // true if the deleteBeforeReplace property should be treated as defined even if it is false.
+	SupportsPartialValues      bool                                                     `protobuf:"varint,19,opt,name=supportsPartialValues,proto3" json:"supportsPartialValues,omitempty"`                                                                                     // true if the request is from an SDK that supports partially-known properties during preview.
+	Remote                     bool                                                     `protobuf:"varint,20,opt,name=remote,proto3" json:"remote,omitempty"`                                                                                                                   // true if the resource is a plugin-managed component resource.
+	AcceptResources            bool                                                     `protobuf:"varint,21,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                                                                 // when true operations should return resource references as strongly typed.
+	Providers                  map[string]string                                        `protobuf:"bytes,22,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`                      // an optional reference to the provider map to manage this resource's CRUD operations.
+	ReplaceOnChanges           []string                                                 `protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`                                                                                                // a list of properties that if changed should force a replacement.
+	PluginDownloadURL          string                                                   `protobuf:"bytes,24,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                                              // the server URL of the provider to use when servicing this request.
+	RetainOnDelete             bool                                                     `protobuf:"varint,25,opt,name=retainOnDelete,proto3" json:"retainOnDelete,omitempty"`                                                                                                   // if true the engine will not call the resource providers delete method for this resource.
 	// Deprecated: Do not use.
-	UrnAliases                 []string                                `protobuf:"bytes,15,rep,name=urnAliases,proto3" json:"urnAliases,omitempty"`                                                                                       // a list of additional URNs that should be considered the same.
-	ImportId                   string                                  `protobuf:"bytes,16,opt,name=importId,proto3" json:"importId,omitempty"`                                                                                           // if set, this resource's state should be imported from the given ID.
-	CustomTimeouts             *RegisterResourceRequest_CustomTimeouts `protobuf:"bytes,17,opt,name=customTimeouts,proto3" json:"customTimeouts,omitempty"`                                                                               // ability to pass a custom Timeout block.
-	DeleteBeforeReplaceDefined bool                                    `protobuf:"varint,18,opt,name=deleteBeforeReplaceDefined,proto3" json:"deleteBeforeReplaceDefined,omitempty"`                                                      // true if the deleteBeforeReplace property should be treated as defined even if it is false.
-	SupportsPartialValues      bool                                    `protobuf:"varint,19,opt,name=supportsPartialValues,proto3" json:"supportsPartialValues,omitempty"`                                                                // true if the request is from an SDK that supports partially-known properties during preview.
-	Remote                     bool                                    `protobuf:"varint,20,opt,name=remote,proto3" json:"remote,omitempty"`                                                                                              // true if the resource is a plugin-managed component resource.
-	AcceptResources            bool                                    `protobuf:"varint,21,opt,name=acceptResources,proto3" json:"acceptResources,omitempty"`                                                                            // when true operations should return resource references as strongly typed.
-	Providers                  map[string]string                       `protobuf:"bytes,22,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // an optional reference to the provider map to manage this resource's CRUD operations.
-	ReplaceOnChanges           []string                                `protobuf:"bytes,23,rep,name=replaceOnChanges,proto3" json:"replaceOnChanges,omitempty"`                                                                           // a list of properties that if changed should force a replacement.
-	PluginDownloadURL          string                                  `protobuf:"bytes,24,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                         // the server URL of the provider to use when servicing this request.
-	RetainOnDelete             bool                                    `protobuf:"varint,25,opt,name=retainOnDelete,proto3" json:"retainOnDelete,omitempty"`                                                                              // if true the engine will not call the resource providers delete method for this resource.
-	Aliases                    []*Alias                                `protobuf:"bytes,26,rep,name=aliases,proto3" json:"aliases,omitempty"`                                                                                             // a list of additional aliases that should be considered the same.
+	Aliases []*Alias `protobuf:"bytes,26,rep,name=aliases,proto3" json:"aliases,omitempty"` // a list of additional aliases that should be considered the same. This was part of #9731 but caused memory usage issues and was reverted.
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -574,7 +574,6 @@ func (x *RegisterResourceRequest) GetAdditionalSecretOutputs() []string {
 	return nil
 }
 
-// Deprecated: Do not use.
 func (x *RegisterResourceRequest) GetUrnAliases() []string {
 	if x != nil {
 		return x.UrnAliases
@@ -652,6 +651,7 @@ func (x *RegisterResourceRequest) GetRetainOnDelete() bool {
 	return false
 }
 
+// Deprecated: Do not use.
 func (x *RegisterResourceRequest) GetAliases() []*Alias {
 	if x != nil {
 		return x.Aliases
@@ -1267,43 +1267,43 @@ var file_resource_proto_rawDesc = []byte{
 	0x6f, 0x6e, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74,
 	0x73, 0x18, 0x0e, 0x20, 0x03, 0x28, 0x09, 0x52, 0x17, 0x61, 0x64, 0x64, 0x69, 0x74, 0x69, 0x6f,
 	0x6e, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x73,
-	0x12, 0x22, 0x0a, 0x0a, 0x75, 0x72, 0x6e, 0x41, 0x6c, 0x69, 0x61, 0x73, 0x65, 0x73, 0x18, 0x0f,
-	0x20, 0x03, 0x28, 0x09, 0x42, 0x02, 0x18, 0x01, 0x52, 0x0a, 0x75, 0x72, 0x6e, 0x41, 0x6c, 0x69,
-	0x61, 0x73, 0x65, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x49, 0x64,
-	0x18, 0x10, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x49, 0x64,
-	0x12, 0x59, 0x0a, 0x0e, 0x63, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75,
-	0x74, 0x73, 0x18, 0x11, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x31, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d,
-	0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x43, 0x75, 0x73,
-	0x74, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x73, 0x52, 0x0e, 0x63, 0x75, 0x73,
-	0x74, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x73, 0x12, 0x3e, 0x0a, 0x1a, 0x64,
-	0x65, 0x6c, 0x65, 0x74, 0x65, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x61,
-	0x63, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x65, 0x64, 0x18, 0x12, 0x20, 0x01, 0x28, 0x08, 0x52,
-	0x1a, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x70,
-	0x6c, 0x61, 0x63, 0x65, 0x44, 0x65, 0x66, 0x69, 0x6e, 0x65, 0x64, 0x12, 0x34, 0x0a, 0x15, 0x73,
-	0x75, 0x70, 0x70, 0x6f, 0x72, 0x74, 0x73, 0x50, 0x61, 0x72, 0x74, 0x69, 0x61, 0x6c, 0x56, 0x61,
-	0x6c, 0x75, 0x65, 0x73, 0x18, 0x13, 0x20, 0x01, 0x28, 0x08, 0x52, 0x15, 0x73, 0x75, 0x70, 0x70,
-	0x6f, 0x72, 0x74, 0x73, 0x50, 0x61, 0x72, 0x74, 0x69, 0x61, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65,
-	0x73, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28,
-	0x08, 0x52, 0x06, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x12, 0x28, 0x0a, 0x0f, 0x61, 0x63, 0x63,
-	0x65, 0x70, 0x74, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x15, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x0f, 0x61, 0x63, 0x63, 0x65, 0x70, 0x74, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
-	0x63, 0x65, 0x73, 0x12, 0x4f, 0x0a, 0x09, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x73,
-	0x18, 0x16, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x31, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72,
-	0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75,
-	0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69,
-	0x64, 0x65, 0x72, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x76, 0x69,
-	0x64, 0x65, 0x72, 0x73, 0x12, 0x2a, 0x0a, 0x10, 0x72, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x4f,
-	0x6e, 0x43, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x73, 0x18, 0x17, 0x20, 0x03, 0x28, 0x09, 0x52, 0x10,
-	0x72, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x4f, 0x6e, 0x43, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x73,
-	0x12, 0x2c, 0x0a, 0x11, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f,
-	0x61, 0x64, 0x55, 0x52, 0x4c, 0x18, 0x18, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x70, 0x6c, 0x75,
-	0x67, 0x69, 0x6e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x52, 0x4c, 0x12, 0x26,
-	0x0a, 0x0e, 0x72, 0x65, 0x74, 0x61, 0x69, 0x6e, 0x4f, 0x6e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65,
-	0x18, 0x19, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0e, 0x72, 0x65, 0x74, 0x61, 0x69, 0x6e, 0x4f, 0x6e,
-	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x2a, 0x0a, 0x07, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x65,
-	0x73, 0x18, 0x1a, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69,
-	0x72, 0x70, 0x63, 0x2e, 0x41, 0x6c, 0x69, 0x61, 0x73, 0x52, 0x07, 0x61, 0x6c, 0x69, 0x61, 0x73,
+	0x12, 0x1e, 0x0a, 0x0a, 0x75, 0x72, 0x6e, 0x41, 0x6c, 0x69, 0x61, 0x73, 0x65, 0x73, 0x18, 0x0f,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x0a, 0x75, 0x72, 0x6e, 0x41, 0x6c, 0x69, 0x61, 0x73, 0x65, 0x73,
+	0x12, 0x1a, 0x0a, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x49, 0x64, 0x18, 0x10, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x69, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x49, 0x64, 0x12, 0x59, 0x0a, 0x0e,
+	0x63, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x73, 0x18, 0x11,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x31, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63,
+	0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x43, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x54,
+	0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x73, 0x52, 0x0e, 0x63, 0x75, 0x73, 0x74, 0x6f, 0x6d, 0x54,
+	0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x73, 0x12, 0x3e, 0x0a, 0x1a, 0x64, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x44, 0x65,
+	0x66, 0x69, 0x6e, 0x65, 0x64, 0x18, 0x12, 0x20, 0x01, 0x28, 0x08, 0x52, 0x1a, 0x64, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65,
+	0x44, 0x65, 0x66, 0x69, 0x6e, 0x65, 0x64, 0x12, 0x34, 0x0a, 0x15, 0x73, 0x75, 0x70, 0x70, 0x6f,
+	0x72, 0x74, 0x73, 0x50, 0x61, 0x72, 0x74, 0x69, 0x61, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73,
+	0x18, 0x13, 0x20, 0x01, 0x28, 0x08, 0x52, 0x15, 0x73, 0x75, 0x70, 0x70, 0x6f, 0x72, 0x74, 0x73,
+	0x50, 0x61, 0x72, 0x74, 0x69, 0x61, 0x6c, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x12, 0x16, 0x0a,
+	0x06, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x72,
+	0x65, 0x6d, 0x6f, 0x74, 0x65, 0x12, 0x28, 0x0a, 0x0f, 0x61, 0x63, 0x63, 0x65, 0x70, 0x74, 0x52,
+	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x18, 0x15, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0f,
+	0x61, 0x63, 0x63, 0x65, 0x70, 0x74, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x12,
+	0x4f, 0x0a, 0x09, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x73, 0x18, 0x16, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x31, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x73,
+	0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x09, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x73,
+	0x12, 0x2a, 0x0a, 0x10, 0x72, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x4f, 0x6e, 0x43, 0x68, 0x61,
+	0x6e, 0x67, 0x65, 0x73, 0x18, 0x17, 0x20, 0x03, 0x28, 0x09, 0x52, 0x10, 0x72, 0x65, 0x70, 0x6c,
+	0x61, 0x63, 0x65, 0x4f, 0x6e, 0x43, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x73, 0x12, 0x2c, 0x0a, 0x11,
+	0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x52,
+	0x4c, 0x18, 0x18, 0x20, 0x01, 0x28, 0x09, 0x52, 0x11, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x44,
+	0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x55, 0x52, 0x4c, 0x12, 0x26, 0x0a, 0x0e, 0x72, 0x65,
+	0x74, 0x61, 0x69, 0x6e, 0x4f, 0x6e, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x18, 0x19, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x0e, 0x72, 0x65, 0x74, 0x61, 0x69, 0x6e, 0x4f, 0x6e, 0x44, 0x65, 0x6c, 0x65,
+	0x74, 0x65, 0x12, 0x2e, 0x0a, 0x07, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x65, 0x73, 0x18, 0x1a, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e,
+	0x41, 0x6c, 0x69, 0x61, 0x73, 0x42, 0x02, 0x18, 0x01, 0x52, 0x07, 0x61, 0x6c, 0x69, 0x61, 0x73,
 	0x65, 0x73, 0x1a, 0x2a, 0x0a, 0x14, 0x50, 0x72, 0x6f, 0x70, 0x65, 0x72, 0x74, 0x79, 0x44, 0x65,
 	0x70, 0x65, 0x6e, 0x64, 0x65, 0x6e, 0x63, 0x69, 0x65, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x75, 0x72,
 	0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x75, 0x72, 0x6e, 0x73, 0x1a, 0x58,

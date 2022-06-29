@@ -626,8 +626,6 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableResourceReferences
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
-	case "aliasSpecs":
-		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -983,28 +981,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliases := []resource.Alias{}
-	for _, aliasURN := range req.GetUrnAliases() {
-		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
-	}
-	for _, aliasObject := range req.GetAliases() {
-		aliasSpec := aliasObject.GetSpec()
-		var alias resource.Alias
-		if aliasSpec != nil {
-			alias = resource.Alias{
-				Name:     aliasSpec.GetName(),
-				Type:     aliasSpec.GetType(),
-				Stack:    aliasSpec.GetStack(),
-				Project:  aliasSpec.GetProject(),
-				Parent:   resource.URN(aliasSpec.GetParentUrn()),
-				NoParent: aliasSpec.GetNoParent(),
-			}
-		} else {
-			alias = resource.Alias{
-				URN: resource.URN(aliasObject.GetUrn()),
-			}
-		}
-		aliases = append(aliases, alias)
+	aliases := []resource.URN{}
+	for _, aliasURN := range req.GetAliases() {
+		aliases = append(aliases, resource.URN(aliasURN))
 	}
 
 	dependencies := []resource.URN{}
@@ -1122,9 +1101,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			// We don't actually need to send a list of aliases to construct anymore because the engine does
-			// all alias construction.
-			Aliases:              []resource.URN{},
+			Aliases:              aliases,
 			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,

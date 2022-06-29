@@ -212,14 +212,6 @@ namespace Pulumi
             return MonitorSupportsFeature("outputValues");
         }
 
-        /// <summary>
-        /// Check if the monitor supports the "aliasSpecs" feature.
-        /// </summary>
-        internal Task<bool> MonitorSupportsAliasSpecs()
-        {
-            return MonitorSupportsFeature("aliasSpecs");
-        }
-
         // Because the secrets feature predates the Pulumi .NET SDK, we assume
         // that the monitor supports secrets.
     }
