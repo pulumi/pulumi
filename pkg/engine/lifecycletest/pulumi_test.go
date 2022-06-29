@@ -2030,7 +2030,7 @@ func TestAliases(t *testing.T) {
 	}}, []display.StepOp{deploy.OpCreate}, true)
 
 	// ensure different resources can use different aliases
-	snap = updateProgramWithResource(nil, []Resource{{
+	_ = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
 		aliases: []resource.Alias{
@@ -2043,6 +2043,94 @@ func TestAliases(t *testing.T) {
 			{Name: "n2", Type: "pkgA:index:t1"},
 		},
 	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// ensure that aliases of parents of parents resolves correctly
+	// first create a chain of resources such that we have n1 -> n1-sub -> n1-sub-sub
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+	}, {
+		t:      "pkgA:index:t2",
+		name:   "n1-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
+	}, {
+		t:      "pkgA:index:t3",
+		name:   "n1-sub-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n1-sub"),
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Now change n1's name and type
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1-new",
+		name: "n1-new",
+		aliases: []resource.Alias{
+			{Name: "n1", Type: "pkgA:index:t1"},
+		},
+	}, {
+		t:      "pkgA:index:t2",
+		name:   "n1-new-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
+	}, {
+		t:      "pkgA:index:t3",
+		name:   "n1-new-sub-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new$pkgA:index:t2::n1-new-sub"),
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Test catastrophic multiplication out of aliases doesn't crash out of memory
+	// first create a chain of resources such that we have n1 -> n1-sub -> n1-sub-sub
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1-v0",
+		name: "n1",
+	}, {
+		t:      "pkgA:index:t2-v0",
+		name:   "n1-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-v0::n1"),
+	}, {
+		t:      "pkgA:index:t3",
+		name:   "n1-sub-sub",
+		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-v0$pkgA:index:t2-v0::n1-sub"),
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Now change n1's name and type and n2's type, but also add a load of aliases and pre-multiply them out
+	// before sending to the engine
+	n1Aliases := make([]resource.Alias, 0)
+	n2Aliases := make([]resource.Alias, 0)
+	n3Aliases := make([]resource.Alias, 0)
+	for i := 0; i < 100; i++ {
+		n1Aliases = append(n1Aliases, resource.Alias{
+			Name: "n1",
+			Type: fmt.Sprintf("pkgA:index:t1-v%d", i),
+		})
+
+		for j := 0; j < 10; j++ {
+			n2Aliases = append(n2Aliases, resource.Alias{
+				Name:   "n1-sub",
+				Parent: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d::n1", i)),
+				Type:   fmt.Sprintf("pkgA:index:t2-v%d", j),
+			})
+
+			n3Aliases = append(n3Aliases, resource.Alias{
+				Name:   "n1-sub-sub",
+				Parent: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)),
+			})
+		}
+	}
+
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:       "pkgA:index:t1-v100",
+		name:    "n1-new",
+		aliases: n1Aliases,
+	}, {
+		t:       "pkgA:index:t2-v10",
+		name:    "n1-new-sub",
+		parent:  resource.URN("urn:pulumi:test::test::pkgA:index:t1-v100::n1-new"),
+		aliases: n2Aliases,
+	}, {
+		t:       "pkgA:index:t3",
+		name:    "n1-new-sub-sub",
+		parent:  resource.URN("urn:pulumi:test::test::pkgA:index:t1-v100$pkgA:index:t2-v10::n1-new-sub"),
+		aliases: n3Aliases,
+	}}, []display.StepOp{deploy.OpSame}, false)
 
 	err := snap.NormalizeURNReferences()
 	assert.Nil(t, err)
