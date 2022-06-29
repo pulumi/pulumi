@@ -434,11 +434,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		selfAliasesSet[collapsedAlias] = nil
 		fullAliasesSet[collapsedAlias] = nil
 	}
+	// If the user sent an alias for the current URN just ignore it
+	delete(selfAliasesSet, urn)
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
 		parentAliases := sg.aliases[goal.Parent]
 		logging.V(9).Infof(
-			"Generating alias for '%v' with %d aliases and %d parent aliases",
+			"Generating aliases for '%v' with %d aliases and %d parent aliases",
 			urn, len(selfAliasesSet), len(parentAliases))
 
 		for _, parentAlias := range parentAliases {
@@ -452,6 +454,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 	}
+
+	// If we added our current URN as an alias as part of generation ignore it
+	delete(fullAliasesSet, urn)
 
 	logging.V(9).Infof("Alias generation for '%v' resulted in %d aliases", urn, len(fullAliasesSet))
 
