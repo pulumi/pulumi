@@ -16,11 +16,12 @@ class ComponentSix(ComponentResource):
             Alias(type_=f"my:module:ComponentSix-v{i}")
             for i in range(0, 100)
         ]
-        if opts.aliases is not None:
-            for alias in opts.aliases:
-                aliases.append(alias)
 
-        super().__init__("my:module:ComponentSix-v100", name, None, opts)
+        # ..and then make the super call with the new type of this resource and the added alias.
+        opts_copy = copy.copy(opts)
+        opts_copy.aliases = aliases
+
+        super().__init__("my:module:ComponentSix-v100", name, None, opts_copy)
         resource = Resource("otherchild", ResourceOptions(parent=self))
 
 class ComponentSixParent(ComponentResource):
@@ -30,15 +31,11 @@ class ComponentSixParent(ComponentResource):
             Alias(type_=f"my:module:ComponentSixParent-v{i}")
             for i in range(0, 10)
         ]
-        if opts.aliases is not None:
-            for alias in opts.aliases:
-                aliases.append(alias)
 
         # ..and then make the super call with the new type of this resource and the added alias.
-        opts_copy = copy.copy(opts)
-        opts_copy.aliases = aliases
+        opts = ResourceOptions(aliases=aliases)
 
-        super().__init__("my:module:ComponentSixParent-v10", name, None, opts_copy)
+        super().__init__("my:module:ComponentSixParent-v10", name, None, opts)
         child = ComponentSix("child", ResourceOptions(parent=self))
 
 comp6 = ComponentSixParent("comp6")

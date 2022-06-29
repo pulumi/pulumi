@@ -10,7 +10,7 @@ class Resource(ComponentResource):
 class ComponentSix(ComponentResource):
     def __init__(self, name, opts=None):
         super().__init__("my:module:ComponentSix-v0", name, None, opts)
-        resource = Resource1("otherchild", ResourceOptions(parent=self))
+        resource = Resource("otherchild", ResourceOptions(parent=self))
 
 class ComponentSixParent(ComponentResource):
     def __init__(self, name, opts=None):
