@@ -15,5 +15,8 @@
 - [engine] Filter out non-targeted resources much earlier in the engine cycle.
   [#9960](https://github.com/pulumi/pulumi/pull/9960)
 
+- [cli] Fix a panic in `pulumi plugin ls --project --json`.
+  [#9998](https://github.com/pulumi/pulumi/pull/9998)
+
 - [engine] Use sets of aliases rather than lists to reduce memory usage of duplicates.
   [#9989](https://github.com/pulumi/pulumi/pull/9989)
