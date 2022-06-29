@@ -66,8 +66,6 @@ type stepGenerator struct {
 
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
-	// a list of aliases for each resource discovered so far
-	aliases map[resource.URN][]resource.URN
 }
 
 func (sg *stepGenerator) isTargetedUpdate() bool {
@@ -265,14 +263,13 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
-
 				constraint := resourcePlan.Ops[0]
-				if !s.Op().ConstrainedTo(constraint) {
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
@@ -336,80 +333,6 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return steps, nil
 }
 
-func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.Alias) resource.URN {
-	if alias.URN != "" {
-		return alias.URN
-	}
-
-	n := alias.Name
-	if n == "" {
-		n = string(goal.Name)
-	}
-	t := alias.Type
-	if t == "" {
-		t = string(goal.Type)
-	}
-
-	var parentType tokens.Type
-	// If alias.NoParent is true then parentType is blank, else we need to look if a parent URN is given
-	if !alias.NoParent {
-		parentURN := alias.Parent
-		if parentURN == "" {
-			parentURN = goal.Parent
-		}
-
-		if parentURN != "" && parentURN.Type() != resource.RootStackType {
-			// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
-			parentType = parentURN.QualifiedType()
-		}
-	}
-
-	project := alias.Project
-	if project == "" {
-		project = sg.deployment.source.Project().String()
-	}
-	stack := alias.Stack
-	if stack == "" {
-		stack = sg.deployment.Target().Name.String()
-	}
-
-	return resource.NewURN(tokens.QName(stack), tokens.PackageName(project), parentType, tokens.Type(t), tokens.QName(n))
-}
-
-// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's
-// parent. This may involve changing the name of the resource in cases where the resource has a named derived
-// from the name of the parent, and the parent name changed.
-func (sg *stepGenerator) inheritedChildAlias(
-	childType tokens.Type,
-	childName, parentName tokens.QName,
-	parentAlias resource.URN) resource.URN {
-	// If the child name has the parent name as a prefix, then we make the assumption that
-	// it was constructed from the convention of using '{name}-details' as the name of the
-	// child resource.  To ensure this is aliased correctly, we must then also replace the
-	// parent aliases name in the prefix of the child resource name.
-	//
-	// For example:
-	// * name: "newapp-function"
-	// * options.parent.__name: "newapp"
-	// * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-	// * parentAliasName: "app"
-	// * aliasName: "app-function"
-	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-
-	aliasName := childName
-	if strings.HasPrefix(childName.String(), parentName.String()) {
-		aliasName = tokens.AsQName(
-			parentAlias.Name().String() +
-				strings.TrimPrefix(childName.String(), parentName.String()))
-	}
-	return resource.NewURN(
-		sg.deployment.Target().Name.Q(),
-		sg.deployment.source.Project(),
-		parentAlias.Type(),
-		childType,
-		aliasName)
-}
-
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
@@ -427,30 +350,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return nil, res
 	}
 
-	// Generate the aliases for this resource
-	aliases := make([]resource.URN, 0)
-	for _, alias := range goal.Aliases {
-		urn := sg.collapseAliasToUrn(goal, alias)
-		aliases = append(aliases, urn)
-	}
-	// Now multiply out any aliases our parent had.
-	if goal.Parent != "" {
-		parentAliases := sg.aliases[goal.Parent]
-		for _, parentAlias := range parentAliases {
-			aliases = append(aliases, sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
-			for _, alias := range goal.Aliases {
-				childAlias := sg.collapseAliasToUrn(goal, alias)
-				aliasedChildType := childAlias.Type()
-				aliasedChildName := childAlias.Name()
-				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
-				aliases = append(aliases, inheritedAlias)
-			}
-		}
-	}
-
-	// Save the aliases so we can look them up later if anything has this as a parent
-	sg.aliases[urn] = aliases
-
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
@@ -459,7 +358,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var old *resource.State
 	var hasOld bool
 	var alias []resource.URN
-	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
+	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
@@ -508,6 +407,42 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	sg.deployment.goals.set(urn, goal)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
+	}
+
+	isTargeted := sg.isTargetedForUpdate(new)
+	if isTargeted && sg.updateTargetsOpt != nil {
+		sg.updateTargetsOpt[urn] = true
+	}
+
+	// If this isn't targeted we don't want to call into Check or analyzers
+	if !isTargeted && !providers.IsProviderType(goal.Type) {
+		sg.sames[urn] = true
+
+		if !hasOld {
+			// If the user requested only specific resources to update, and this resource was not in that set,
+			// then we want to flat out ignore it (just like we ignore updates to resource not in the --target
+			// list).  This has interesting implications though. Specifically, what to do if a prop from this
+			// resource is then actually needed by a property we *are* doing a targeted create/update for.
+			//
+			// In that case, we want to error to force the user to be explicit about wanting this resource to
+			// be created. However, we can't issue the error until later on when the resource is referenced.
+			// So, to support this we create a special "same" step here for this resource. That "same" step
+			// has a bit on it letting us know that it is for this case. If we then later see a resource that
+			// depends on this resource, we will issue an error letting the user know.
+			//
+			// We will also not record this non-created resource into the checkpoint as it doesn't actually
+			// exist.
+			sg.skippedCreates[urn] = true
+			logging.V(7).Infof(
+				"Planner decided not to create '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
+			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+		}
+
+		// If the user requested only specific resources to update, and this resource was not in that set,
+		// then do nothing but create a SameStep for it.
+		logging.V(7).Infof(
+			"Planner decided not to update '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
+		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
 	}
 
 	// Fetch the provider for this resource.
@@ -749,11 +684,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
-	isTargeted := sg.isTargetedForUpdate(new)
-	if isTargeted && sg.updateTargetsOpt != nil {
-		sg.updateTargetsOpt[urn] = true
-	}
-
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
@@ -771,28 +701,21 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	if hasOld {
 		contract.Assert(old != nil)
 
-		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then do nothing but create a SameStep for it.
-		if !isTargeted {
-			logging.V(7).Infof(
-				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
-		} else {
-			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+		updateSteps, res := sg.generateStepsFromDiff(
+			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
-			if res != nil {
-				return nil, res
-			}
-
-			if len(updateSteps) > 0 {
-				// 'Diff' produced update steps.  We're done at this point.
-				return updateSteps, nil
-			}
-
-			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-			// is same/unchanged.
-			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+		if res != nil {
+			return nil, res
 		}
+
+		if len(updateSteps) > 0 {
+			// 'Diff' produced update steps.  We're done at this point.
+			return updateSteps, nil
+		}
+
+		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+		// is same/unchanged.
+		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
@@ -802,32 +725,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
-
-	// We're in the create stage now.  In a normal run just issue a 'create step'. If, however, the
-	// user is doing a run with `--target`s, then we need to operate specially here.
-	//
-	// 1. If the user did include this resource urn in the --target list, then we can proceed
-	// normally and issue a create step for this.
-	//
-	// 2. However, if they did not include the resource in the --target list, then we want to flat
-	// out ignore it (just like we ignore updates to resource not in the --target list).  This has
-	// interesting implications though. Specifically, what to do if a prop from this resource is
-	// then actually needed by a property we *are* doing a targeted create/update for.
-	//
-	// In that case, we want to error to force the user to be explicit about wanting this resource
-	// to be created. However, we can't issue the error until later on when the resource is
-	// referenced. So, to support this we create a special "same" step here for this resource. That
-	// "same" step has a bit on it letting us know that it is for this case. If we then later see a
-	// resource that depends on this resource, we will issue an error letting the user know.
-	//
-	// We will also not record this non-created resource into the checkpoint as it doesn't actually
-	// exist.
-
-	if !isTargeted && !providers.IsProviderType(goal.Type) {
-		sg.sames[urn] = true
-		sg.skippedCreates[urn] = true
-		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
-	}
 
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
@@ -1104,11 +1001,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 				// This op has been attempted, it just might fail its constraint.
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
-				if !s.Op().ConstrainedTo(constraint) {
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
@@ -1932,6 +1829,5 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
-		aliases:              make(map[resource.URN][]resource.URN),
 	}
 }

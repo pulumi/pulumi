@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1231,7 +1232,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we'll print out summary text describing the step instead of a
 		// past-tense verb describing the step that was performed.
-		return op.Color() + display.getPreviewDoneText(step) + colors.Reset
+		return deploy.Color(op) + display.getPreviewDoneText(step) + colors.Reset
 	}
 
 	getDescription := func() string {
@@ -1298,7 +1299,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return makeError(getDescription())
 	}
 
-	return op.Color() + getDescription() + colors.Reset
+	return deploy.Color(op) + getDescription() + colors.Reset
 }
 
 func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
@@ -1368,7 +1369,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	return ""
 }
 
-func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
+func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display.StepOp {
 	op := step.Op
 
 	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
@@ -1394,7 +1395,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 }
 
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
-	return display.getStepOp(step).Prefix(done) + colors.Reset
+	return deploy.Prefix(display.getStepOp(step), done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -1445,5 +1446,5 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.ColorProgress() + getDescription() + colors.Reset
+	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }

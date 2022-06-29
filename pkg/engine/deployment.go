@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -218,13 +219,13 @@ type deployment struct {
 type runActions interface {
 	deploy.Events
 
-	Changes() ResourceChanges
+	Changes() display.ResourceChanges
 	MaybeCorrupt() bool
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
+	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)

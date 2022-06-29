@@ -4,13 +4,15 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ &
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
 TESTPARALLELISM  ?= 10
-PROJECT_ROOT     := $(realpath ../..)
 
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= install
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 gen::
 	go generate ./pulumi/...

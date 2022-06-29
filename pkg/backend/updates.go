@@ -15,8 +15,8 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -109,8 +109,8 @@ type UpdateInfo struct {
 	Config config.Map `json:"config"`
 
 	// Information obtained from an update completing.
-	Version         int                    `json:"version"`
-	Result          UpdateResult           `json:"result"`
-	EndTime         int64                  `json:"endTime"`
-	ResourceChanges engine.ResourceChanges `json:"resourceChanges,omitempty"`
+	Version         int                     `json:"version"`
+	Result          UpdateResult            `json:"result"`
+	EndTime         int64                   `json:"endTime"`
+	ResourceChanges display.ResourceChanges `json:"resourceChanges,omitempty"`
 }

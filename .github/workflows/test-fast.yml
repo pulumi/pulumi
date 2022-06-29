@@ -301,7 +301,7 @@ jobs:
           rm ./coverage/*.cov || true
       - name: Upload code coverage
         if: ${{ inputs.enable-coverage && (inputs.platform != 'windows-latest') }}
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           directory: coverage
           files: '*'

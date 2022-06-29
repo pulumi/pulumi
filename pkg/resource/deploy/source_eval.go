@@ -626,8 +626,6 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableResourceReferences
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
-	case "aliasSpecs":
-		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -983,28 +981,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliases := []resource.Alias{}
-	for _, aliasURN := range req.GetUrnAliases() {
-		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
-	}
-	for _, aliasObject := range req.GetAliases() {
-		aliasSpec := aliasObject.GetSpec()
-		var alias resource.Alias
-		if aliasSpec != nil {
-			alias = resource.Alias{
-				Name:     aliasSpec.GetName(),
-				Type:     aliasSpec.GetType(),
-				Stack:    aliasSpec.GetStack(),
-				Project:  aliasSpec.GetProject(),
-				Parent:   resource.URN(aliasSpec.GetParentUrn()),
-				NoParent: aliasSpec.GetNoParent(),
-			}
-		} else {
-			alias = resource.Alias{
-				URN: resource.URN(aliasObject.GetUrn()),
-			}
-		}
-		aliases = append(aliases, alias)
+	aliases := []resource.URN{}
+	for _, aliasURN := range req.GetAliases() {
+		aliases = append(aliases, resource.URN(aliasURN))
 	}
 
 	dependencies := []resource.URN{}
@@ -1122,9 +1101,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			// We don't actually need to send a list of aliases to construct anymore because the engine does
-			// all alias construction.
-			Aliases:              []resource.URN{},
+			Aliases:              aliases,
 			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
@@ -1197,14 +1174,37 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = filtered
 	}
 
-	// TODO(@platform): Currently component resources ignore the "ignoreChanges" option.
+	// TODO(@platform):
+	// Currently component resources ignore these options:
+	// • ignoreChanges
+	// • customTimeouts
+	// • additionalSecretOutputs
+	// • replaceOnChanges
+	// • retainOnDelete
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
-	if !custom && len(ignoreChanges) > 0 {
-		rm.diagostics.Warningf(diag.Message(
-			result.State.URN,
-			"The option 'ignoreChanges' has no effect on component resources.",
-		))
+	if !custom {
+		rm.checkComponentOption(result.State.URN, "ignoreChanges", func() bool {
+			return len(ignoreChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
+			if customTimeouts == nil {
+				return false
+			}
+			var hasUpdateTimeout = customTimeouts.Update != ""
+			var hasCreateTimeout = customTimeouts.Create != ""
+			var hasDeleteTimeout = customTimeouts.Delete != ""
+			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
+		})
+		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
+			return len(additionalSecretOutputs) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "replaceOnChanges", func() bool {
+			return len(replaceOnChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
+			return retainOnDelete
+		})
 	}
 
 	logging.V(5).Infof(
@@ -1228,6 +1228,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 	}, nil
+}
+
+// checkComponentOption generates a warning message on the resource
+// 'urn' if 'check' returns true.
+// This function is intended to validate options passed to component resources,
+// so urn is expected to refer to a component.
+func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
+	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
+	if check() {
+		rm.diagostics.Warningf(diag.Message(
+			urn,
+			msg,
+		))
+	}
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial

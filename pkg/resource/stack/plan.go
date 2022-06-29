@@ -3,6 +3,7 @@ package stack
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -190,9 +191,9 @@ func DeserializeResourcePlan(
 		outputs = outs
 	}
 
-	ops := make([]deploy.StepOp, len(plan.Steps))
+	ops := make([]display.StepOp, len(plan.Steps))
 	for i, op := range plan.Steps {
-		ops[i] = deploy.StepOp(op)
+		ops[i] = display.StepOp(op)
 	}
 
 	return &deploy.ResourcePlan{

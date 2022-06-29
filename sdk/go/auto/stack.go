@@ -107,6 +107,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/opthistory"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -361,7 +362,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
 	}
 	if upOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", upOpts.Color))
 	}
 	if upOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
@@ -400,7 +401,11 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, err
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if upOpts.ShowSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*upOpts.ShowSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, err
 	}
@@ -448,7 +453,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
 	}
 	if refreshOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", refreshOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", refreshOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -471,7 +476,11 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if showSecrets := refreshOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
@@ -519,7 +528,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
 	}
 	if destroyOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", destroyOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", destroyOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -542,7 +551,11 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -568,12 +581,24 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
-func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSummary, error) {
+func (s *Stack) History(ctx context.Context,
+	pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
-	args := []string{"stack", "history", "--json", "--show-secrets"}
+	var options opthistory.Options
+	for _, opt := range opts {
+		opt.ApplyOption(&options)
+	}
+	showSecrets := true
+	if options.ShowSecrets != nil {
+		showSecrets = *options.ShowSecrets
+	}
+	args := []string{"stack", "history", "--json"}
+	if showSecrets {
+		args = append(args, "--show-secrets")
+	}
 	if pageSize > 0 {
 		// default page=1 if unset when pageSize is set
 		if page < 1 {

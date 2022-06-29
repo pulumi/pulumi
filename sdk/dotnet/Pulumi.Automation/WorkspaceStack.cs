@@ -332,7 +332,7 @@ namespace Pulumi.Automation
                 }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
-                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+                var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -566,7 +566,7 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -627,7 +627,7 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -654,8 +654,12 @@ namespace Pulumi.Automation
                 "stack",
                 "history",
                 "--json",
-                "--show-secrets",
             };
+
+            if (options?.ShowSecrets ?? true)
+            {
+                args.Add("--show-secrets");
+            }
 
             if (options?.PageSize.HasValue == true)
             {
@@ -701,10 +705,16 @@ namespace Pulumi.Automation
 
         public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
+            return await GetInfoAsync(cancellationToken, true);
+        }
+
+        private async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default, bool? showSecrets = default)
+        {
             var history = await this.GetHistoryAsync(
                 new HistoryOptions
                 {
                     PageSize = 1,
+                    ShowSecrets = showSecrets,
                 },
                 cancellationToken).ConfigureAwait(false);
 

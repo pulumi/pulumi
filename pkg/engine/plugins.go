@@ -245,7 +245,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 
 	}
 
-	logging.V(7).Infof("installPlugin(%s, %s): successfully installed", plugin.Name, plugin.Version)
+	logging.V(7).Infof("installPlugin(%s, %s): installation complete", plugin.Name, plugin.Version)
 	return nil
 }
 

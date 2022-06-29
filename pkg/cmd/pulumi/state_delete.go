@@ -86,7 +86,7 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 					return res
 				}
 			}
-			fmt.Println("Resource deleted successfully")
+			fmt.Println("Resource deleted")
 			return nil
 		}),
 	}

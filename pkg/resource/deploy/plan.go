@@ -10,6 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -133,8 +134,8 @@ type GoalPlan struct {
 	IgnoreChanges []string
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
-	// additional alias that should be aliased to this resource.
-	Aliases []resource.Alias
+	// additional URNs that should be aliased to this resource.
+	Aliases []resource.URN
 	// the expected ID of the resource, if any.
 	ID resource.ID
 	// an optional config object for resource options
@@ -198,51 +199,8 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 // ordered.
 type ResourcePlan struct {
 	Goal    *GoalPlan
-	Ops     []StepOp
+	Ops     []display.StepOp
 	Outputs resource.PropertyMap
-}
-
-func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, changed bool) {
-
-	setA := map[resource.Alias]struct{}{}
-	for _, s := range a {
-		setA[s] = struct{}{}
-	}
-
-	setB := map[resource.Alias]struct{}{}
-	for _, s := range b {
-		setB[s] = struct{}{}
-	}
-
-	var adds, deletes []string
-	for s := range setA {
-		if _, has := setB[s]; !has {
-			deletes = append(deletes, fmt.Sprintf("%v", s))
-		}
-	}
-	for s := range setB {
-		if _, has := setA[s]; !has {
-			adds = append(adds, fmt.Sprintf("%v", s))
-		}
-	}
-
-	if len(adds) == 0 && len(deletes) == 0 {
-		return "", false
-	}
-
-	sort.Strings(adds)
-	sort.Strings(deletes)
-
-	if len(adds) != 0 {
-		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
-	}
-	if len(deletes) != 0 {
-		if len(adds) != 0 {
-			message += "; "
-		}
-		message += fmt.Sprintf("deleted %v", strings.Join(deletes, ", "))
-	}
-	return message, true
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
@@ -292,12 +250,12 @@ func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed b
 		}
 	}
 
+	sort.Strings(adds)
+	sort.Strings(deletes)
+
 	if len(adds) == 0 && len(deletes) == 0 {
 		return "", false
 	}
-
-	sort.Strings(adds)
-	sort.Strings(deletes)
 
 	if len(adds) != 0 {
 		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
@@ -318,11 +276,6 @@ func checkMissingPlan(
 	newInputs resource.PropertyMap,
 	programGoal *resource.Goal) error {
 
-	aliases := make([]resource.Alias, 0)
-	for _, alias := range oldState.Aliases {
-		aliases = append(aliases, resource.Alias{URN: alias})
-	}
-
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
 		Type:                    oldState.Type,
@@ -339,7 +292,7 @@ func checkMissingPlan(
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 aliases,
+		Aliases:                 oldState.Aliases,
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
 	}
@@ -613,7 +566,7 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the alias sets are identical.
-	if message, changed := rp.diffAliases(rp.Goal.Aliases, programGoal.Aliases); changed {
+	if message, changed := rp.diffURNs(rp.Goal.Aliases, programGoal.Aliases); changed {
 		return fmt.Errorf("aliases changed: %v", message)
 	}
 
