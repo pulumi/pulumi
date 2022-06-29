@@ -1,5 +1,16 @@
 2624515781 9222 sdk/proto/analyzer.proto
+<<<<<<< HEAD
+3172449786 3236 sdk/proto/engine.proto
+1917216136 789 sdk/proto/errors.proto
+3708129712 3697 sdk/proto/language.proto
+2872506167 1739 sdk/proto/plugin.proto
+3595227895 19292 sdk/proto/provider.proto
+2135809236 11812 sdk/proto/resource.proto
+1574098198 4061 sdk/proto/status.proto
+2198262572 4564 sdk/proto/generate.sh
+=======
 364958963 2027 sdk/proto/build-container/Dockerfile
+>>>>>>> origin/master
 3003861496 625 sdk/proto/build-container/scripts/install-go.sh
 853251015 873 sdk/proto/build-container/scripts/install-node.sh
 2003827277 549 sdk/proto/build-container/scripts/install-packages.sh
