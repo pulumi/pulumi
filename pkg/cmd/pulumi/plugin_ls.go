@@ -95,10 +95,14 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 
 	jsonPluginInfo := make([]pluginInfoJSON, len(plugins))
 	for idx, plugin := range plugins {
+		var version string
+		if plugin.Version != nil {
+			version = plugin.Version.String()
+		}
 		jsonPluginInfo[idx] = pluginInfoJSON{
 			Name:    plugin.Name,
 			Kind:    string(plugin.Kind),
-			Version: plugin.Version.String(),
+			Version: version,
 			Size:    int(plugin.Size),
 		}
 

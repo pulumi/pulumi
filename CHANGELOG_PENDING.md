@@ -15,5 +15,8 @@
 - [engine] Filter out non-targeted resources much earlier in the engine cycle.
   [#9960](https://github.com/pulumi/pulumi/pull/9960)
 
+- [cli] Fix a panic in `pulumi plugin ls --project --json`.
+  [#9998](https://github.com/pulumi/pulumi/pull/9998)
+  
 - [engine] Revert support for aliases in the engine.
   [#9999](https://github.com/pulumi/pulumi/pull/9999)
