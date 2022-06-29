@@ -423,8 +423,8 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
 			deploytest.ResourceOptions{
-				Inputs:     providerInputs,
-				UrnAliases: aliases,
+				Inputs:  providerInputs,
+				Aliases: aliases,
 			})
 		assert.NoError(t, err)
 
@@ -515,8 +515,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
 			deploytest.ResourceOptions{
-				Inputs:     providerInputs,
-				UrnAliases: aliases,
+				Inputs:  providerInputs,
+				Aliases: aliases,
 			})
 		assert.NoError(t, err)
 
