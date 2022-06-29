@@ -23,7 +23,7 @@ namespace Pulumi
     /// static Task&lt;int&gt; Main(string[] args)
     /// {
     ///     // program initialization code ...
-    ///
+    ///     
     ///     return Deployment.Run(async () =>
     ///     {
     ///         // Code that creates resources.

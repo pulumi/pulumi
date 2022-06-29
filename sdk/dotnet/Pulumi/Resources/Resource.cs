@@ -333,7 +333,7 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
         }
 
         /// <summary>
-        /// <see cref="AllAliases"/> makes a copy of the aliases array, and add to it any
+        /// <see cref="AllAliases"/> makes a copy of the aliases array, and add to it any 
         /// implicit aliases inherited from its parent. If there are N child aliases, and
         /// M parent aliases, there will be (M+1)*(N+1)-1 total aliases, or, as calculated
         /// in the logic below, N+(M*(1+N)).
