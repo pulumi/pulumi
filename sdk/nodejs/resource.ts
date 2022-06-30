@@ -42,8 +42,8 @@ export function createUrn(name: Input<string>, type: Input<string>, parent?: Res
                 // Don't prefix the stack type as a parent type
                 return `urn:pulumi:${stack || getStack()}::${project || getProject()}::`;
             }
-            return prefix
-        })
+            return prefix;
+        });
     } else {
         parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
     }
