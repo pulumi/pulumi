@@ -5,7 +5,7 @@ class MyStack : Stack
 {
     public MyStack()
     {
-        var encoded = Convert.ToBase64String(System.Text.UTF8.GetBytes("haha business"));
+        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("haha business"));
         var joined = string.Join("-", 
         {
             "haha",
