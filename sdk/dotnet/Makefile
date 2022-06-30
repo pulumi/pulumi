@@ -14,7 +14,7 @@ include ../../build/common.mk
 TEST_ALL_DEPS ?= install
 
 ensure:: dotnet.ensure .ensure.phony
-.ensure.phony: dotnet.sln **/*.csproj
+.ensure.phony: dotnet.sln
 	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
 	dotnet restore dotnet.sln
 	@touch .ensure.phony

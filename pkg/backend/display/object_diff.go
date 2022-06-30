@@ -793,7 +793,6 @@ func isPrimitive(value resource.PropertyValue) bool {
 
 func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) {
 	contract.Assert(isPrimitive(v))
-
 	if v.IsNull() {
 		p.writeVerbatim("<null>")
 	} else if v.IsBool() {
@@ -806,7 +805,7 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.printPropertyValue(vv)
 			return
 		}
-		p.write("%q", v.StringValue())
+		p.write("%q", p.truncatePropertyString(v.StringValue()))
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
 		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
@@ -1267,4 +1266,13 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 	default:
 		return v, true
 	}
+}
+
+// if string exceeds three lines, truncate and add "..."
+func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
+	tokens := strings.Split(propertyString, "\n")
+	if len(tokens) > 3 {
+		return strings.Join(tokens[:3], "") + "..."
+	}
+	return propertyString
 }
