@@ -36,7 +36,14 @@ export function createUrn(name: Input<string>, type: Input<string>, parent?: Res
         } else {
             parentUrn = output(parent);
         }
-        parentPrefix = parentUrn.apply(parentUrnString => parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$");
+        parentPrefix = parentUrn.apply(parentUrnString =>  {
+            const prefix = parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$";
+            if (prefix.endsWith("::pulumi:pulumi:Stack$")) {
+                // Don't prefix the stack type as a parent type
+                return `urn:pulumi:${stack || getStack()}::${project || getProject()}::`;
+            }
+            return prefix
+        })
     } else {
         parentPrefix = output(`urn:pulumi:${stack || getStack()}::${project || getProject()}::`);
     }
@@ -370,7 +377,7 @@ export abstract class Resource {
         this.__aliases = [];
         if (opts.aliases) {
             for (const alias of opts.aliases) {
-                this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
+                this.__aliases.push(collapseAliasToUrn(alias, name, t, parent));
             }
         }
 
