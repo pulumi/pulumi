@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/aliases/retype_component
+module github.com/pulumi/pulumi/tests/aliases/retype_parents
 
 go 1.16
 
