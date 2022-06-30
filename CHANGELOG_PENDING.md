@@ -5,3 +5,5 @@
 
 ### Bug Fixes
 
+- [cli] `pulumi convert` supports provider packages without a version.
+  [#9976](https://github.com/pulumi/pulumi/pull/9976)
