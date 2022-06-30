@@ -4,7 +4,7 @@ set -eo pipefail
 set -x
 
 # shellcheck disable=SC2043
-for i in "java v0.4.0" "yaml v0.5.2"; do
+for i in "java v0.4.1" "yaml v0.5.2"; do
   set -- $i # treat strings in loop as args
   PULUMI_LANG="$1"
   TAG="$2"
