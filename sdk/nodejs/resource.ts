@@ -289,8 +289,8 @@ export abstract class Resource {
 
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
         // options assigned to this resource.
-        const parent = opts.parent || getStackResource() || { __transformations: undefined };
-        this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
+        const parent = opts.parent || getStackResource();
+        this.__transformations = [ ...(opts.transformations || []), ...(parent?.__transformations || []) ];
         for (const transformation of this.__transformations) {
             const tres = transformation({ resource: this, type: t, name, props, opts });
             if (tres) {
@@ -315,19 +315,19 @@ export abstract class Resource {
 
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
-        if (opts.parent) {
-            this.__parentResource = opts.parent;
+        if (parent) {
+            this.__parentResource = parent;
             this.__parentResource.__childResources = this.__parentResource.__childResources || new Set();
             this.__parentResource.__childResources.add(this);
 
             if (opts.protect === undefined) {
-                opts.protect = opts.parent.__protect;
+                opts.protect = parent.__protect;
             }
 
             // Update aliases to include the full set of aliases implied by the child and parent aliases.
-            opts.aliases = allAliases(opts.aliases || [], name, t, opts.parent, opts.parent.__name!);
+            opts.aliases = allAliases(opts.aliases || [], name, t, parent, parent.__name!);
 
-            this.__providers = opts.parent.__providers;
+            this.__providers = parent.__providers;
         }
 
         // providers is found by combining (in ascending order of priority)
@@ -350,7 +350,7 @@ export abstract class Resource {
             if (memComponents.length === 3) {
                 pkg = memComponents[0];
             }
-            const parentProvider = opts.parent?.getProvider(t);
+            const parentProvider = parent?.getProvider(t);
 
             if (pkg && pkg in this.__providers) {
                 opts.provider = this.__providers[pkg];
@@ -376,7 +376,7 @@ export abstract class Resource {
 
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
-            getResource(this, props, custom, opts.urn);
+            getResource(this, parent, props, custom, opts.urn);
         }
         else if (opts.id) {
             // If this is a custom resource that already exists, read its state from the provider.
@@ -384,13 +384,13 @@ export abstract class Resource {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
-            readResource(this, t, name, props, opts);
+            readResource(this, parent, t, name, props, opts);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, t, name, custom, remote, urn => new DependencyResource(urn), props, opts);
+            registerResource(this, parent, t, name, custom, remote, urn => new DependencyResource(urn), props, opts);
         }
     }
 }

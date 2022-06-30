@@ -15,7 +15,7 @@
 import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
-import { ComponentResource, URN } from "../resource";
+import { ComponentResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
@@ -79,7 +79,6 @@ export function resetOptions(
 
     monitor = undefined;
     engine = undefined;
-    rootResource = undefined;
     rpcDone = Promise.resolve();
     featureSupport = {};
 
@@ -433,46 +432,6 @@ export function rpcKeepAlive(): () => void {
     return done!;
 }
 
-let rootResource: Promise<URN> | undefined;
-
-/**
- * getRootResource returns a root resource URN that will automatically become the default parent of all resources.  This
- * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
- */
-export function getRootResource(): Promise<URN | undefined> {
-    const engineRef: any = getEngine();
-    if (!engineRef) {
-        return Promise.resolve(undefined);
-    }
-
-    const req = new engproto.GetRootResourceRequest();
-    return new Promise<URN | undefined>((resolve, reject) => {
-        engineRef.getRootResource(req, (err: grpc.ServiceError, resp: any) => {
-            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root resources,
-            // fall back to the old behavior.
-            if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                if (rootResource) {
-                    rootResource.then(resolve);
-                    return;
-                }
-
-                resolve(undefined);
-            }
-
-            if (err) {
-                return reject(err);
-            }
-
-            const urn = resp.getUrn();
-            if (urn) {
-                return resolve(urn);
-            }
-
-            return resolve(undefined);
-        });
-    });
-}
-
 /**
  * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
  */
@@ -482,15 +441,16 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
         return Promise.resolve();
     }
 
+    // Back-compat case - Try to set the root URN for SxS old SDKs that expect the engine to roundtrip the
+    // stack URN.
     const req = new engproto.SetRootResourceRequest();
     const urn = await res.urn.promise();
     req.setUrn(urn);
     return new Promise<void>((resolve, reject) => {
         engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
-            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root resources,
-            // fall back to the old behavior.
+            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
+            // resources, just ignore there's nothing we can do.
             if (err && err.code === grpc.status.UNIMPLEMENTED) {
-                rootResource = res.urn.promise();
                 return resolve();
             }
 
