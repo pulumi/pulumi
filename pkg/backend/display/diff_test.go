@@ -78,6 +78,7 @@ func testDiffEvents(t *testing.T, path string, accept bool) {
 		ShowReplacementSteps: true,
 		ShowSameResources:    true,
 		ShowReads:            true,
+		ShowFullOutput:       true,
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 	})

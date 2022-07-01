@@ -171,7 +171,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 }
 
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, debug bool) string {
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, fullOutput bool, debug bool) string {
 	var b bytes.Buffer
 
 	// indent everything an additional level, like other properties.
@@ -180,21 +180,21 @@ func getResourcePropertiesDetails(
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
-			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, fullOutput, debug)
 		} else {
-			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, fullOutput, debug)
 		}
 	} else if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
 		// and that's sufficient for a summarized deletion view.
 		if !summary {
-			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, debug)
+			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, fullOutput, debug)
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op, summary, fullOutput, debug)
 	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, debug)
+		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op, summary, fullOutput, debug)
 	}
 
 	return b.String()
@@ -212,15 +212,16 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op display.StepOp, prefix bool, debug bool) {
+	indent int, op display.StepOp, prefix bool, fullOutput bool, debug bool) {
 
 	p := propertyPrinter{
-		dest:     b,
-		planning: planning,
-		indent:   indent,
-		op:       op,
-		prefix:   prefix,
-		debug:    debug,
+		dest:       b,
+		planning:   planning,
+		indent:     indent,
+		op:         op,
+		prefix:     prefix,
+		debug:      debug,
+		fullOutput: fullOutput,
 	}
 	p.printObject(props)
 }
@@ -489,11 +490,12 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 type propertyPrinter struct {
 	dest io.StringWriter
 
-	op       display.StepOp
-	planning bool
-	prefix   bool
-	debug    bool
-	summary  bool
+	op         display.StepOp
+	planning   bool
+	prefix     bool
+	debug      bool
+	summary    bool
+	fullOutput bool
 
 	indent int
 }
@@ -648,28 +650,29 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, debug bool) {
+	planning bool, indent int, op display.StepOp, summary bool, fullOutput bool, debug bool) {
 
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, debug)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, fullOutput, debug)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
-		PrintObject(b, news, planning, indent, deploy.OpSame, true, debug)
+		PrintObject(b, news, planning, indent, deploy.OpSame, true, fullOutput, debug)
 	}
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
-	planning bool, indent int, summary bool, debug bool) {
+	planning bool, indent int, summary bool, fullOutput bool, debug bool) {
 
 	p := propertyPrinter{
-		dest:     b,
-		planning: planning,
-		indent:   indent,
-		prefix:   true,
-		debug:    debug,
-		summary:  summary,
+		dest:       b,
+		planning:   planning,
+		indent:     indent,
+		prefix:     true,
+		debug:      debug,
+		summary:    summary,
+		fullOutput: fullOutput,
 	}
 	p.printObjectDiff(diff, include)
 }
@@ -805,7 +808,11 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.printPropertyValue(vv)
 			return
 		}
-		p.write("%q", p.truncatePropertyString(v.StringValue()))
+		if p.fullOutput {
+			p.write("%q", v.StringValue())
+		} else {
+			p.write("%q", p.truncatePropertyString(v.StringValue()))
+		}
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
 		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
@@ -1274,7 +1281,7 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 
 	lines := strings.Split(propertyString, "\n")
 	if len(lines) > contextLines {
-		return strings.Join(lines[:3], "") + "..."
+		return strings.Join(lines[:3], "\n") + "..."
 	}
 	return propertyString
 }

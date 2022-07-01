@@ -17,7 +17,7 @@ PULUMI_BUILD_CONTAINER_VERSION=v0.3.0
 
 # First build the image for the Pulumi Build Container
 echo "* Building Pulumi Build Container:"
-docker build build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+docker build --platform linux/x86_64 build-container -t "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
 DOCKER_RUN="docker run -it --rm -w /local -v $(pwd)/../sdk/proto/go:/go  -v $(pwd)/../sdk/python:/python -v $(pwd)/../sdk/nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 

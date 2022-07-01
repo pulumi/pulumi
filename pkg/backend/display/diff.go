@@ -316,15 +316,15 @@ func renderDiff(
 	if metadata.DetailedDiff != nil {
 		var buf bytes.Buffer
 		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, debug)
+			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.ShowFullOutput, debug)
 		} else {
 			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, debug)
+				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.ShowFullOutput, debug)
 		}
 		details = buf.String()
 	} else {
 		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, debug)
+			metadata, indent, planning, opts.SummaryDiff, opts.ShowFullOutput, debug)
 	}
 
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
