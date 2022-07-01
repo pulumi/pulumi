@@ -9,6 +9,9 @@
 - [protobuf] Pulumi protobuf messages are now namespaced under "pulumi".
   [#10074](https://github.com/pulumi/pulumi/pull/10074)
 
+- [cli] Truncate long stack outputs
+  [#9905](https://github.com/pulumi/pulumi/issues/9905)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
