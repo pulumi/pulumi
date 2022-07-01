@@ -38,8 +38,6 @@ type projectGeneratorFunc func(directory string, project workspace.Project, p *p
 func newConvertCmd() *cobra.Command {
 	var outDir string
 	var language string
-	var projectName string
-	var projectDescription string
 
 	cmd := &cobra.Command{
 		Use:    "convert",
@@ -48,7 +46,8 @@ func newConvertCmd() *cobra.Command {
 		Short:  "Convert resource declarations into a pulumi program",
 		Long: "Convert resource declarations into a pulumi program.\n" +
 			"\n" +
-			"The PCL program to convert should be supplied on stdin.\n",
+			"The YAML program to convert will default to the manifest in the current working directory.\n" +
+			"You may also specify '-f' for the file path or '-d' for the directory path containing the manifests.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			var projectGenerator projectGeneratorFunc
@@ -125,14 +124,6 @@ func newConvertCmd() *cobra.Command {
 	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
 		panic("failed to mark 'language' as a required flag")
 	}
-
-	cmd.PersistentFlags().StringVarP(
-		&projectName, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-
-	cmd.PersistentFlags().StringVarP(
-		&projectDescription, "description", "d", "",
-		"The project description; if not specified, a prompt will request it")
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
