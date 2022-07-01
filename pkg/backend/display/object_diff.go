@@ -1270,8 +1270,10 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 
 // if string exceeds three lines, truncate and add "..."
 func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
+	const contextLines = 3
+
 	lines := strings.Split(propertyString, "\n")
-	if len(lines) > 3 {
+	if len(lines) > contextLines {
 		return strings.Join(lines[:3], "") + "..."
 	}
 	return propertyString
