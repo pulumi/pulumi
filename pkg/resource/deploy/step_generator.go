@@ -409,42 +409,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		sg.providers[urn] = new
 	}
 
-	isTargeted := sg.isTargetedForUpdate(new)
-	if isTargeted && sg.updateTargetsOpt != nil {
-		sg.updateTargetsOpt[urn] = true
-	}
-
-	// If this isn't targeted we don't want to call into Check or analyzers
-	if !isTargeted && !providers.IsProviderType(goal.Type) {
-		sg.sames[urn] = true
-
-		if !hasOld {
-			// If the user requested only specific resources to update, and this resource was not in that set,
-			// then we want to flat out ignore it (just like we ignore updates to resource not in the --target
-			// list).  This has interesting implications though. Specifically, what to do if a prop from this
-			// resource is then actually needed by a property we *are* doing a targeted create/update for.
-			//
-			// In that case, we want to error to force the user to be explicit about wanting this resource to
-			// be created. However, we can't issue the error until later on when the resource is referenced.
-			// So, to support this we create a special "same" step here for this resource. That "same" step
-			// has a bit on it letting us know that it is for this case. If we then later see a resource that
-			// depends on this resource, we will issue an error letting the user know.
-			//
-			// We will also not record this non-created resource into the checkpoint as it doesn't actually
-			// exist.
-			sg.skippedCreates[urn] = true
-			logging.V(7).Infof(
-				"Planner decided not to create '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
-			return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
-		}
-
-		// If the user requested only specific resources to update, and this resource was not in that set,
-		// then do nothing but create a SameStep for it.
-		logging.V(7).Infof(
-			"Planner decided not to update '%v' due to not being in target group (inputs=%v)", urn, new.Inputs)
-		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
-	}
-
 	// Fetch the provider for this resource.
 	prov, res := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
 	if res != nil {
@@ -684,6 +648,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
+	isTargeted := sg.isTargetedForUpdate(new)
+	if isTargeted && sg.updateTargetsOpt != nil {
+		sg.updateTargetsOpt[urn] = true
+	}
+
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
@@ -701,21 +670,28 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	if hasOld {
 		contract.Assert(old != nil)
 
-		updateSteps, res := sg.generateStepsFromDiff(
-			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+		// If the user requested only specific resources to update, and this resource was not in
+		// that set, then do nothing but create a SameStep for it.
+		if !isTargeted {
+			logging.V(7).Infof(
+				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+		} else {
+			updateSteps, res := sg.generateStepsFromDiff(
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
-		if res != nil {
-			return nil, res
+			if res != nil {
+				return nil, res
+			}
+
+			if len(updateSteps) > 0 {
+				// 'Diff' produced update steps.  We're done at this point.
+				return updateSteps, nil
+			}
+
+			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
+			// is same/unchanged.
+			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 		}
-
-		if len(updateSteps) > 0 {
-			// 'Diff' produced update steps.  We're done at this point.
-			return updateSteps, nil
-		}
-
-		// Diff didn't produce any steps for this resource.  Fall through and indicate that it
-		// is same/unchanged.
-		logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
@@ -725,6 +701,32 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Case 4: Not Case 1, 2, or 3
 	//  If a resource isn't being recreated and it's not being updated or replaced,
 	//  it's just being created.
+
+	// We're in the create stage now.  In a normal run just issue a 'create step'. If, however, the
+	// user is doing a run with `--target`s, then we need to operate specially here.
+	//
+	// 1. If the user did include this resource urn in the --target list, then we can proceed
+	// normally and issue a create step for this.
+	//
+	// 2. However, if they did not include the resource in the --target list, then we want to flat
+	// out ignore it (just like we ignore updates to resource not in the --target list).  This has
+	// interesting implications though. Specifically, what to do if a prop from this resource is
+	// then actually needed by a property we *are* doing a targeted create/update for.
+	//
+	// In that case, we want to error to force the user to be explicit about wanting this resource
+	// to be created. However, we can't issue the error until later on when the resource is
+	// referenced. So, to support this we create a special "same" step here for this resource. That
+	// "same" step has a bit on it letting us know that it is for this case. If we then later see a
+	// resource that depends on this resource, we will issue an error letting the user know.
+	//
+	// We will also not record this non-created resource into the checkpoint as it doesn't actually
+	// exist.
+
+	if !isTargeted && !providers.IsProviderType(goal.Type) {
+		sg.sames[urn] = true
+		sg.skippedCreates[urn] = true
+		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
+	}
 
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
