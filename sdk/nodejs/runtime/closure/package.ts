@@ -211,7 +211,9 @@ class ModuleMap {
     get(srcName: string) {
         const modPath =  this.wildcardMap.get(srcName);
         if (modPath === undefined) {
-            throw new Error(`package.json export path for "${srcName}" not found`);
+            console.warn(`warning: package.json export path for "${srcName}" not found`);
+            // [pulumi/pulumi#10009] best effort export resolution.
+            return srcName;
         }
         return modPath;
     }
