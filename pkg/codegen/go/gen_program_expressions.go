@@ -909,7 +909,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	model.Expression, []interface{}) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	expr = pcl.RewriteConversions(expr, typ)
+	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
@@ -932,6 +932,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	for _, t := range oTemps {
 		temps = append(temps, t)
 	}
+	diags = append(diags, convertDiags...)
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
 	diags = append(diags, readDirDiags...)
