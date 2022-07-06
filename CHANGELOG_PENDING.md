@@ -3,6 +3,9 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [cli] Add Last Status to `pulumi stack ls` output.
+  [#6148](https://github.com/pulumi/pulumi/pull/6148)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
