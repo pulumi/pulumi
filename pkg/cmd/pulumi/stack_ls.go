@@ -194,7 +194,7 @@ type stackSummaryJSON struct {
 	Current          bool   `json:"current"`
 	LastUpdate       string `json:"lastUpdate,omitempty"`
 	UpdateInProgress bool   `json:"updateInProgress"`
-	LastStatus       string `json:"lastStatus",omitempty`
+	LastStatus       string `json:"lastStatus,omitempty"`
 	ResourceCount    *int   `json:"resourceCount,omitempty"`
 	URL              string `json:"url,omitempty"`
 }
