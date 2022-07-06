@@ -266,7 +266,8 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		// Last status column
 		lastStatus := none
 		if httpBackend, ok := b.(httpstate.Backend); ok {
-			if stackHistory, err := httpBackend.GetHistory(commandContext(), summary.Name(), len(stackSummaries), 1); err == nil {
+			if stackHistory, err := httpBackend.GetHistory(commandContext(), summary.Name(),
+				len(stackSummaries), 1); err == nil {
 				if len(stackHistory) > 0 {
 					lastStatus = string(stackHistory[0].Result)
 				}
