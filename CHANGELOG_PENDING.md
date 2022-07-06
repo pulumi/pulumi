@@ -7,3 +7,6 @@
 
 - [cli] `pulumi convert` help text is wrong
   [#9892](https://github.com/pulumi/pulumi/issues/9892)
+
+- [cli] `pulumi convert` generates incorrect input parameter names for C#
+  [#10042](https://github.com/pulumi/pulumi/issues/10042)

@@ -410,6 +410,19 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	return qualifiedMemberName
 }
 
+func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
+	// Extract language-specific property names from schema
+	var csharpInputPropertyNameMap = make(map[string]string)
+	if r.Schema != nil {
+		for _, inputProperty := range r.Schema.InputProperties {
+			if val, ok := inputProperty.Language["csharp"]; ok {
+				csharpInputPropertyNameMap[inputProperty.Name] = val.(CSharpPropertyInfo).Name
+			}
+		}
+	}
+	return csharpInputPropertyNameMap
+}
+
 // resourceArgsTypeName computes the C# arguments class name for the given resource.
 func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
@@ -568,12 +581,16 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
 	argsName := g.resourceArgsTypeName(r)
+	csharpInputPropertyNameMap := g.extractInputPropertyNameMap(r)
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+		if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
+			input.Name = csharpName
+		}
 	}
 
 	name := r.LogicalName()
