@@ -81,7 +81,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+          tag: v0.0.32
           cache: enable
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
@@ -142,7 +142,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+          tag: v0.0.32
           cache: enable
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v3
@@ -191,7 +191,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+          tag: v0.0.32
           cache: enable
       - name: Set up Node ${{ inputs.node-version }}
         uses: actions/setup-node@v2
@@ -243,7 +243,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+          tag: v0.0.32
           cache: enable
       - name: Set up DotNet ${{ inputs.dotnet-version }}
         uses: actions/setup-dotnet@v1
