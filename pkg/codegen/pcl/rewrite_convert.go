@@ -99,12 +99,15 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 		for i := range x.Items {
 			item := &x.Items[i]
 
-			var traverser hcl.Traverser
+			traverser := model.MakeTraverser(model.StringType)
 			if lit, ok := item.Key.(*model.LiteralValueExpression); ok {
 				traverser = hcl.TraverseIndex{Key: lit.Value}
-			} else {
-				traverser = model.MakeTraverser(model.StringType)
+			} else if temp, isTemp := item.Key.(*model.TemplateExpression); isTemp && len(temp.Parts) == 1 {
+				if literal, isLiteral := temp.Parts[0].(*model.LiteralValueExpression); isLiteral {
+					traverser = hcl.TraverseIndex{Key: literal.Value}
+				}
 			}
+
 			valueType, diags := to.Traverse(traverser)
 			contract.Ignore(diags)
 

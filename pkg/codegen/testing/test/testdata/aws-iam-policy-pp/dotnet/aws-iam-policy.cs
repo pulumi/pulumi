@@ -20,33 +20,24 @@ class MyStack : Stack
                         new Dictionary<string, object?>
                         {
                             { "Effect", "Allow" },
-                            { "Principal", "*" },
-                            { "Action", new[]
-                                {
-                                    "s3:GetObject",
-                                }
-                             },
-                            { "Resource", new[]
-                                {
-                                    "arn:aws:s3:::some-aws-bucket/*",
-                                }
-                             },
+                            { "Action", "lambda:*" },
+                            { "Resource", "arn:aws:lambda:*:*:function:*" },
                             { "Condition", new Dictionary<string, object?>
                             {
-                                { "Foo", new Dictionary<string, object?>
+                                { "StringEquals", new Dictionary<string, object?>
                                 {
-                                    { "Bar", new[]
+                                    { "aws:RequestTag/Team", new[]
                                         {
                                             "iamuser-admin",
                                             "iamuser2-admin",
                                         }
                                      },
                                 } },
-                                { "Baz", new Dictionary<string, object?>
+                                { "ForAllValues:StringEquals", new Dictionary<string, object?>
                                 {
-                                    { "Qux", new[]
+                                    { "aws:TagKeys", new[]
                                         {
-                                            "iamuser3-admin",
+                                            "Team",
                                         }
                                      },
                                 } },
@@ -56,6 +47,9 @@ class MyStack : Stack
                  },
             }),
         });
+        this.PolicyName = policy.Name;
     }
 
+    [Output("policyName")]
+    public Output<string> PolicyName { get; set; }
 }
