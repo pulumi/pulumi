@@ -1,8 +1,8 @@
 
 ---
-title: "Workload"
-title_tag: "example.Workload"
-meta_desc: "Documentation for the example.Workload resource with examples, input properties, output properties, lookup functions, and supporting types."
+title: "IamResource"
+title_tag: "example.myModule.IamResource"
+meta_desc: "Documentation for the example.myModule.IamResource resource with examples, input properties, output properties, lookup functions, and supporting types."
 layout: api
 no_edit_this_page: true
 ---
@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a Workload Resource {#create}
+## Create a IamResource Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -23,46 +23,47 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+<span class="k">def </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+                <span class="nx">config</span><span class="p">:</span> <span class="nx">Optional[pulumi_google_native.iam.v1.AuditConfigArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
-<span class="k">def </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[WorkloadArgs]</a></span> = None<span class="p">,</span>
-             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
+<span class="k">def </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[IamResourceArgs]</a></span> = None<span class="p">,</span>
+                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewWorkload</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Workload</span>, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewIamResource</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">IamResource</span>, error)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Workload</span><span class="p"></span>
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:myModule:IamResource</span><span class="p"></span>
 <span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
 <span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
 <span class="p"></span>
@@ -83,7 +84,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -109,7 +110,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -141,7 +142,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -167,7 +168,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -193,7 +194,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -206,56 +207,104 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
-## Workload Resource Properties {#properties}
+## IamResource Resource Properties {#properties}
 
 To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The Workload resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
+The IamResource resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go" style="color: inherit; text-decoration: inherit;">Config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python" style="color: inherit; text-decoration: inherit;">config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="config_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml" style="color: inherit; text-decoration: inherit;">config</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#auditconfig">Property Map</a></span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
 
 ### Outputs
 
-All [input](#inputs) properties are implicitly available as output properties. Additionally, the Workload resource produces the following output properties:
+All [input](#inputs) properties are implicitly available as output properties. Additionally, the IamResource resource produces the following output properties:
 
 
 
@@ -270,15 +319,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_csharp" style="color: inherit; text-decoration: inherit;">Pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Outputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -293,15 +334,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_go" style="color: inherit; text-decoration: inherit;">Pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod<wbr>Type</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -316,15 +349,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_java" style="color: inherit; text-decoration: inherit;">pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -339,15 +364,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">string</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_nodejs" style="color: inherit; text-decoration: inherit;">pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">pulumi<wbr>Kubernetestypesoutputcorev1Pod</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -362,15 +379,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">str</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_python" style="color: inherit; text-decoration: inherit;">pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -385,15 +394,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
-            title="">
-        <span id="pod_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_yaml" style="color: inherit; text-decoration: inherit;">pod</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Property Map</a></span>
-    </dt>
-    <dd></dd></dl>
+</dd></dl>
 </pulumi-choosable>
 </div>
 
