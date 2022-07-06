@@ -398,11 +398,11 @@ func getResourceOutputsPropertiesString(
 		if planning && step.URN.Type() == resource.RootStackType {
 			massageStackPreviewOutputDiff(outputDiff, false)
 		}
-	}
 
-	// If we asked to not show-sames, and no outputs changed then don't show anything at all here.
-	if outputDiff == nil && !showSames {
-		return ""
+		// If we asked not to show-sames, and no outputs changed then don't show anything at all here.
+		if outputDiff == nil && !showSames {
+			return ""
+		}
 	}
 
 	var keys []resource.PropertyKey
