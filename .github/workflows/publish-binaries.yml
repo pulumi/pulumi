@@ -47,7 +47,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.31
+          tag: v0.0.32
           cache: enable
       # Section 1: configure
       - name: Configure AWS Credentials
