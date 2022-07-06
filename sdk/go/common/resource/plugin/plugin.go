@@ -376,8 +376,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 			args = append(args, "-v="+strconv.Itoa(opts.verbose))
 		}
 	}
-	// Flow tracing settings if we are using a remote collector.
-	if opts.tracingEndpoint != "" && !opts.tracingToFile {
+	if opts.tracingEndpoint != "" {
 		args = append(args, "--tracing", opts.tracingEndpoint)
 	}
 	args = append(args, opts.pluginArgs...)

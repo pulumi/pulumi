@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -37,8 +38,6 @@ type projectGeneratorFunc func(directory string, project workspace.Project, p *p
 func newConvertCmd() *cobra.Command {
 	var outDir string
 	var language string
-	var projectName string
-	var projectDescription string
 
 	cmd := &cobra.Command{
 		Use:    "convert",
@@ -47,7 +46,8 @@ func newConvertCmd() *cobra.Command {
 		Short:  "Convert resource declarations into a pulumi program",
 		Long: "Convert resource declarations into a pulumi program.\n" +
 			"\n" +
-			"The PCL program to convert should be supplied on stdin.\n",
+			"The YAML program to convert will default to the manifest in the current working directory.\n" +
+			"You may also specify '-f' for the file path or '-d' for the directory path containing the manifests.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			var projectGenerator projectGeneratorFunc
@@ -60,10 +60,12 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case langPython:
 				projectGenerator = python.GenerateProject
+			case "java":
+				projectGenerator = javagen.GenerateProject
 			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject
 			default:
-				return result.Errorf("cannot generate programs for %v", language)
+				return result.Errorf("cannot generate programs for %q language", language)
 			}
 
 			cwd, err := os.Getwd()
@@ -119,14 +121,9 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the pulumi project")
-
-	cmd.PersistentFlags().StringVarP(
-		&projectName, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-
-	cmd.PersistentFlags().StringVarP(
-		&projectDescription, "description", "d", "",
-		"The project description; if not specified, a prompt will request it")
+	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
+		panic("failed to mark 'language' as a required flag")
+	}
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll

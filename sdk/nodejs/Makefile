@@ -3,7 +3,6 @@ NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language javascript))
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
-PROJECT_ROOT     := $(realpath ../..)
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM ?= 10
@@ -16,6 +15,9 @@ TEST_ALL_DEPS ?= build
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json

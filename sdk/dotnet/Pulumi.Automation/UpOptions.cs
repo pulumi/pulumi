@@ -26,6 +26,11 @@ namespace Pulumi.Automation
         public string? Plan {get; set; }
 
         /// <summary>
+        /// Show config secrets when they appear.
+        /// </summary>
+        public bool? ShowSecrets { get; set; }
+
+        /// <summary>
         /// A custom logger instance that will be used for the action. Note that it will only be used
         /// if <see cref="Program"/> is also provided.
         /// </summary>

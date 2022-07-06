@@ -10,6 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -198,7 +199,7 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 // ordered.
 type ResourcePlan struct {
 	Goal    *GoalPlan
-	Ops     []StepOp
+	Ops     []display.StepOp
 	Outputs resource.PropertyMap
 }
 

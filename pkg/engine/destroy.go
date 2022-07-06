@@ -16,6 +16,7 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -27,7 +28,7 @@ func Destroy(
 	u UpdateInfo,
 	ctx *Context,
 	opts UpdateOptions,
-	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+	dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
@@ -71,7 +72,7 @@ func newDestroySource(
 	}
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), plugins); err != nil {
+	if err := ensurePluginsAreInstalled(plugctx.Request(), plugins.Deduplicate()); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}
 

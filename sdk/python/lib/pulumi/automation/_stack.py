@@ -201,6 +201,8 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        policy_packs: Optional[List[str]] = None,
+        policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
@@ -210,6 +212,7 @@ class Stack:
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
+        show_secrets: bool = True,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -220,6 +223,8 @@ class Stack:
         :param message: Message (optional) to associate with the update operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param policy_packs: Run one or more policy packs as part of this update.
+        :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
@@ -228,6 +233,7 @@ class Stack:
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param plan: Plan specifies the path to an update plan to use for the update.
+        :param show_secrets: Inclode config secrets in the UpResult summary.
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -283,7 +289,7 @@ class Stack:
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
-            summary = self.info()
+            summary = self.info(show_secrets)
             assert summary is not None
         finally:
             _cleanup(temp_dir, log_watcher_thread, on_exit)
@@ -300,6 +306,8 @@ class Stack:
         parallel: Optional[int] = None,
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
+        policy_packs: Optional[List[str]] = None,
+        policy_pack_configs: Optional[List[str]] = None,
         expect_no_changes: Optional[bool] = None,
         diff: Optional[bool] = None,
         target_dependents: Optional[bool] = None,
@@ -318,6 +326,8 @@ class Stack:
                          (1 for no parallelism). Defaults to unbounded (2147483647).
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
+        :param policy_packs: Run one or more policy packs as part of this update.
+        :param policy_pack_configs: Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
@@ -407,6 +417,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        show_secrets: bool = True,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -420,6 +431,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param show_secrets: Inclode config secrets in the RefreshResult summary.
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -446,7 +458,7 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        summary = self.info(show_secrets)
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
@@ -461,6 +473,7 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
+        show_secrets: bool = True,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -473,6 +486,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
+        :param show_secrets: Inclode config secrets in the DestroyResult summary.
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -499,7 +513,7 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        summary = self.info(show_secrets)
         assert summary is not None
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
@@ -568,7 +582,10 @@ class Stack:
         return self.workspace.stack_outputs(self.name)
 
     def history(
-        self, page_size: Optional[int] = None, page: Optional[int] = None
+        self,
+        page_size: Optional[int] = None,
+        page: Optional[int] = None,
+        show_secrets: bool = True,
     ) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
@@ -576,10 +593,13 @@ class Stack:
 
         :param page_size: Paginate history entries (used in combination with page), defaults to all.
         :param page: Paginate history entries (used in combination with page_size), defaults to all.
+        :param show_secrets: Show config secrets when they appear in history.
 
         :returns: List[UpdateSummary]
         """
-        args = ["stack", "history", "--json", "--show-secrets"]
+        args = ["stack", "history", "--json"]
+        if show_secrets:
+            args.append("--show-secrets")
         if page_size is not None:
             # default page=1 when page_size is set
             if page is None:
@@ -611,13 +631,13 @@ class Stack:
             summaries.append(summary)
         return summaries
 
-    def info(self) -> Optional[UpdateSummary]:
+    def info(self, show_secrets=True) -> Optional[UpdateSummary]:
         """
         Returns the current results from Stack lifecycle operations.
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history(page_size=1)
+        history = self.history(page_size=1, show_secrets=show_secrets)
         if not history:
             return None
         return history[0]
@@ -673,6 +693,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
     diff = kwargs.get("diff")
     replace = kwargs.get("replace")
     target = kwargs.get("target")
+    policy_packs = kwargs.get("policy_packs")
+    policy_pack_configs = kwargs.get("policy_pack_configs")
     target_dependents = kwargs.get("target_dependents")
     parallel = kwargs.get("parallel")
     color = kwargs.get("color")
@@ -689,6 +711,12 @@ def _parse_extra_args(**kwargs) -> List[str]:
     if target:
         for t in target:
             extra_args.extend(["--target", t])
+    if policy_packs:
+        for p in policy_packs:
+            extra_args.extend(["--policy-pack", p])
+    if policy_pack_configs:
+        for p in policy_pack_configs:
+            extra_args.extend(["--policy-pack-config", p])
     if target_dependents:
         extra_args.append("--target-dependents")
     if parallel:

@@ -470,6 +470,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
+	diagostics                diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
@@ -504,6 +505,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
+		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
 		regChan:                   regChan,
@@ -1014,6 +1016,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
+
+		// Make sure that an explicit provider which doesn't specify its plugin gets the
+		// same plugin as the default provider for the package.
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+			if defaultProvider.Version != nil {
+				providers.SetProviderVersion(props, defaultProvider.Version)
+			}
+			if defaultProvider.PluginDownloadURL != "" {
+				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+			}
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
@@ -1097,6 +1111,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -1159,6 +1174,39 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = filtered
 	}
 
+	// TODO(@platform):
+	// Currently component resources ignore these options:
+	// • ignoreChanges
+	// • customTimeouts
+	// • additionalSecretOutputs
+	// • replaceOnChanges
+	// • retainOnDelete
+	// Revisit these semantics in Pulumi v4.0
+	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
+	if !custom {
+		rm.checkComponentOption(result.State.URN, "ignoreChanges", func() bool {
+			return len(ignoreChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
+			if customTimeouts == nil {
+				return false
+			}
+			var hasUpdateTimeout = customTimeouts.Update != ""
+			var hasCreateTimeout = customTimeouts.Create != ""
+			var hasDeleteTimeout = customTimeouts.Delete != ""
+			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
+		})
+		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
+			return len(additionalSecretOutputs) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "replaceOnChanges", func() bool {
+			return len(replaceOnChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
+			return retainOnDelete
+		})
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
 		result.State.Type, result.State.URN, len(outputs))
@@ -1180,6 +1228,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 	}, nil
+}
+
+// checkComponentOption generates a warning message on the resource
+// 'urn' if 'check' returns true.
+// This function is intended to validate options passed to component resources,
+// so urn is expected to refer to a component.
+func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
+	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
+	if check() {
+		rm.diagostics.Warningf(diag.Message(
+			urn,
+			msg,
+		))
+	}
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial

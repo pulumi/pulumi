@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
-// useLegacyName are names that should return the result of PyNameLegacy from PyName, for compatibility.
+// useLegacyName are names that should return a legacy result from PyName, for compatibility.
 var useLegacyName = codegen.NewStringSet(
 	// The following property name of a nested type is a case where the newer algorithm produces an incorrect name
 	// (`open_xjson_ser_de`). It should be the legacy name of `open_x_json_ser_de`.
@@ -44,14 +44,6 @@ var useLegacyName = codegen.NewStringSet(
 // PyName turns a variable or function name, normally using camelCase, to an underscore_case name.
 func PyName(name string) string {
 	return pyName(name, useLegacyName.Has(name))
-}
-
-// PyNameLegacy is an uncorrected and deprecated version of the PyName algorithm to maintain compatibility and avoid
-// a breaking change. See the linked issue for more context: https://github.com/pulumi/pulumi-kubernetes/issues/1179
-//
-// Deprecated: Use PyName instead.
-func PyNameLegacy(name string) string {
-	return pyName(name, true /*legacy*/)
 }
 
 func pyName(name string, legacy bool) string {

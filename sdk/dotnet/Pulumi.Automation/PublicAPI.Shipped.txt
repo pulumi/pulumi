@@ -312,6 +312,10 @@ Pulumi.Automation.UpdateOptions.Parallel.get -> int?
 Pulumi.Automation.UpdateOptions.Parallel.set -> void
 Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>
 Pulumi.Automation.UpdateOptions.Target.set -> void
+Pulumi.Automation.UpdateOptions.PolicyPacks.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpdateOptions.PolicyPacks.set -> void
+Pulumi.Automation.UpdateOptions.PolicyPackConfigs.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpdateOptions.PolicyPackConfigs.set -> void
 Pulumi.Automation.UpdateOptions.UpdateOptions() -> void
 Pulumi.Automation.UpdateResult
 Pulumi.Automation.UpdateResult.StandardError.get -> string

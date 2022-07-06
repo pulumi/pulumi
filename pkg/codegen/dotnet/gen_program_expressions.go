@@ -438,7 +438,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
-		g.Fgenf(w, "Convert.ToBase64String(System.Text.UTF8.GetBytes(%v))", expr.Args[0])
+		g.Fgenf(w, "Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionaryOrTuple(w, expr.Args[0])

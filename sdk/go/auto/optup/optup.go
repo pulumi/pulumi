@@ -108,6 +108,13 @@ func Plan(path string) Option {
 	})
 }
 
+// Show config secrets when they appear.
+func ShowSecrets(show bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ShowSecrets = &show
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -144,6 +151,12 @@ type Options struct {
 	Color string
 	// Use the update plan at the given path.
 	Plan string
+	// Run one or more policy packs as part of this update
+	PolicyPacks []string
+	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+	PolicyPackConfigs []string
+	// Show config secrets when they appear.
+	ShowSecrets *bool
 }
 
 type optionFunc func(*Options)

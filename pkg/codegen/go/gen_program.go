@@ -196,7 +196,10 @@ require (
 		}
 
 		// Relatively safe default, this works for Pulumi provider packages:
-		vPath := fmt.Sprintf("/v%d", p.Version.Major)
+		vPath := ""
+		if p.Version != nil && p.Version.Major > 1 {
+			vPath = fmt.Sprintf("/v%d", p.Version.Major)
+		}
 		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
@@ -724,6 +727,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			}
 			g.Fgenf(w, "}\n")
 			g.Fgenf(w, "%s := string(%s)\n", t.Variable.Name, bytesVar)
+			g.isErrAssigned = true
 		case *readDirTemp:
 			tmpSuffix := strings.Split(t.Name, "files")[1]
 			g.Fgenf(w, "%s, err := ioutil.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
@@ -741,6 +745,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
 			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
 			g.Fgenf(w, "}\n")
+			g.isErrAssigned = true
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each, t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {

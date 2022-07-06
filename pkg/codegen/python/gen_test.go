@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -64,14 +65,30 @@ func TestRelPathToRelImport(t *testing.T) {
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
-	if !test.NoSDKCodegenChecks() {
-		// To speed up these tests, we will generate one common
-		// virtual environment for all of them to run in, rather than
-		// having one per test.
-		err := buildVirtualEnv(context.Background())
-		if err != nil {
-			t.Error(err)
-			return
+	var virtualEnvLock sync.Mutex
+	// If we are running without checks, we mark the env as already built so we don't
+	// build it again.
+	var virtualEnvBuilt = test.NoSDKCodegenChecks()
+
+	// To speed up these tests, we will generate one common virtual environment for all of
+	// them to run in, rather than having one per test. We want to make sure that we only
+	// build the virtual env if we are going to run one of the tests. We thus build the
+	// environment lazily
+	needsEnv := func(testFn test.CodegenCheck) test.CodegenCheck {
+		return func(t *testing.T, codedir string) {
+			func() {
+				virtualEnvLock.Lock()
+				defer virtualEnvLock.Unlock()
+				if !virtualEnvBuilt {
+					err := buildVirtualEnv(context.Background())
+					if err != nil {
+						t.Error(err)
+						t.FailNow()
+					}
+					virtualEnvBuilt = true
+				}
+			}()
+			testFn(t, codedir)
 		}
 	}
 
@@ -79,8 +96,8 @@ func TestGeneratePackage(t *testing.T) {
 		Language:   "python",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
-			"python/py_compile": pyCompileCheck,
-			"python/test":       pyTestCheck,
+			"python/py_compile": needsEnv(pyCompileCheck),
+			"python/test":       needsEnv(pyTestCheck),
 		},
 		TestCases: test.PulumiPulumiSDKTests,
 	})
@@ -143,6 +160,14 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+	pyCmd.Dir = hereDir
+	err = pyCmd.Run()
+	if err != nil {
+		contract.Failf("failed to link venv against in-source pulumi: %v", err)
+	}
+
 	if !gotSdk {
 		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 	}
@@ -166,6 +191,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
 		return cmd.Run()
 	}
 

@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -140,24 +141,77 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	assert.Equal(t, "0.17.0", awsVer.String())
 }
 
+func TestPluginSetDeduplicate(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		input    pluginSet
+		expected pluginSet
+	}{{
+		input: newPluginSet(workspace.PluginInfo{
+			Name:    "foo",
+			Version: &semver.Version{Major: 1},
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+		expected: newPluginSet(workspace.PluginInfo{
+			Name:    "foo",
+			Version: &semver.Version{Major: 1},
+		}),
+	}, {
+		input: newPluginSet(workspace.PluginInfo{
+			Name:    "bar",
+			Version: &semver.Version{Minor: 3},
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			PluginDownloadURL: "example.com/bar",
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			Version:           &semver.Version{Patch: 3},
+			PluginDownloadURL: "example.com",
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+		expected: newPluginSet(workspace.PluginInfo{
+			Name:    "bar",
+			Version: &semver.Version{Minor: 3},
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			PluginDownloadURL: "example.com/bar",
+		}, workspace.PluginInfo{
+			Name:              "bar",
+			Version:           &semver.Version{Patch: 3},
+			PluginDownloadURL: "example.com",
+		}, workspace.PluginInfo{
+			Name: "foo",
+		}),
+	}}
+
+	for _, c := range cases { //nolint:parallelTest
+		c := c
+		t.Run(fmt.Sprintf("%s", c.input), func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.expected, c.input.Deduplicate())
+		})
+	}
+}
+
 func TestDefaultProviderPluginsSorting(t *testing.T) {
 	t.Parallel()
-	plugins := newPluginSet()
 	v1 := semver.MustParse("0.0.1-alpha.10")
-	plugins.Add(workspace.PluginInfo{
+	p1 := workspace.PluginInfo{
 		Name:    "foo",
 		Version: &v1,
 		Kind:    workspace.ResourcePlugin,
-	})
+	}
 	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
-	plugin2 := workspace.PluginInfo{
+	p2 := workspace.PluginInfo{
 		Name:    "foo",
 		Version: &v2,
 		Kind:    workspace.ResourcePlugin,
 	}
-	plugins.Add(plugin2)
+	plugins := newPluginSet(p1, p2)
 	result := computeDefaultProviderPlugins(plugins, plugins)
 	assert.Equal(t, map[tokens.Package]workspace.PluginInfo{
-		"foo": plugin2,
+		"foo": p2,
 	}, result)
 }

@@ -500,7 +500,7 @@ class Output(Generic[T_co]):
         return Output.all(*transformed_items).apply("".join)  # type: ignore
 
     def __str__(self) -> str:
-        return """Calling [str] on an [Output<T>] is not supported.
+        return """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v => f"prefix{v}suffix")

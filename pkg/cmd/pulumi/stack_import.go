@@ -140,7 +140,7 @@ func newStackImportCmd() *cobra.Command {
 			if err = s.ImportDeployment(commandContext(), &dep); err != nil {
 				return fmt.Errorf("could not import deployment: %w", err)
 			}
-			fmt.Printf("Import successful.\n")
+			fmt.Printf("Import complete.\n")
 			return nil
 		}),
 	}
