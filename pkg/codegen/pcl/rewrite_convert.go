@@ -103,9 +103,17 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			if lit, ok := item.Key.(*model.LiteralValueExpression); ok {
 				traverser = hcl.TraverseIndex{Key: lit.Value}
 			} else if temp, isTemp := item.Key.(*model.TemplateExpression); isTemp && len(temp.Parts) == 1 {
-				if literal, isLiteral := temp.Parts[0].(*model.LiteralValueExpression); isLiteral {
+				if literal, isLiteral := temp.Parts[0].(*model.LiteralValueExpression); isLiteral && len(temp.Parts) == 1 {
 					traverser = hcl.TraverseIndex{Key: literal.Value}
+				} else {
+					*diags = diags.Append(errorf(item.Key.SyntaxNode().Range(),
+						"invalid key in object expression, expected a quoted string literal value, "+
+							"got a template string with %v parts and first part of type %T",
+						len(temp.Parts), temp))
 				}
+			} else {
+				*diags = diags.Append(errorf(item.Key.SyntaxNode().Range(), "invalid key in object expression, "+
+					"expected a literal string or template string literal, got an expression of type %T", item.Key))
 			}
 
 			valueType, tdiags := to.Traverse(traverser)
