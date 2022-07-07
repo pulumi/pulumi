@@ -938,7 +938,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	diags = append(diags, readDirDiags...)
 	diags = append(diags, splatDiags...)
 	diags = append(diags, optDiags...)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
 	return expr, temps
 }
 
