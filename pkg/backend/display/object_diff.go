@@ -523,14 +523,6 @@ func (p *propertyPrinter) writeString(s string) {
 }
 
 func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
-	if !p.fullOutput {
-		for i, item := range a {
-			switch item.(type) {
-			case string:
-				a[i] = p.truncatePropertyString(item.(string))
-			}
-		}
-	}
 	writeWithIndent(p.dest, p.indent, p.op, p.prefix, format, a...)
 }
 
@@ -1291,19 +1283,13 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 	)
 
 	lines := strings.Split(propertyString, "\n")
-	numLines := len(lines)
-	if numLines > contextLines {
-		numLines = contextLines
-	}
-
-	for i := 0; i < numLines; i++ {
+	for i := 0; i < len(lines) && i < contextLines; i++ {
 		if len(lines[i]) > maxLineLength {
 			lines[i] = lines[i][:maxLineLength] + "..."
 		}
 	}
-
-	if len(lines) == 1 {
-		return lines[0]
+	if len(lines) > contextLines {
+		return strings.Join(lines[:3], "\n") + "\n..."
 	}
-	return strings.Join(lines[:numLines], "\n") + "\n..."
+	return propertyString
 }
