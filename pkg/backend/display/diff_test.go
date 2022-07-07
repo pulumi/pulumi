@@ -53,7 +53,7 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
-func testDiffEvents(t *testing.T, path string, accept bool) {
+func testDiffEvents(t *testing.T, path string, accept bool, fullOutput bool) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 
@@ -78,7 +78,7 @@ func testDiffEvents(t *testing.T, path string, accept bool) {
 		ShowReplacementSteps: true,
 		ShowSameResources:    true,
 		ShowReads:            true,
-		ShowFullOutput:       true,
+		ShowFullOutput:       fullOutput,
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 	})
@@ -108,6 +108,7 @@ func TestDiffEvents(t *testing.T) {
 	entries, err := os.ReadDir("testdata")
 	require.NoError(t, err)
 
+	const truncateTestFile = "testdata/up-truncate.json"
 	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
@@ -118,7 +119,11 @@ func TestDiffEvents(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			testDiffEvents(t, path, accept)
+			if entry.Name() == truncateTestFile {
+				testDiffEvents(t, path, accept, false)
+			} else {
+				testDiffEvents(t, path, accept, true)
+			}
 		})
 	}
 }
