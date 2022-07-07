@@ -13,24 +13,19 @@ func main() {
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
-					"Effect":    "Allow",
-					"Principal": "*",
-					"Action": []string{
-						"s3:GetObject",
-					},
-					"Resource": []string{
-						"arn:aws:s3:::some-aws-bucket/*",
-					},
+					"Effect":   "Allow",
+					"Action":   "lambda:*",
+					"Resource": "arn:aws:lambda:*:*:function:*",
 					"Condition": map[string]interface{}{
-						"Foo": map[string]interface{}{
-							"Bar": []string{
+						"StringEquals": map[string]interface{}{
+							"aws:RequestTag/Team": []string{
 								"iamuser-admin",
 								"iamuser2-admin",
 							},
 						},
-						"Baz": map[string]interface{}{
-							"Qux": []string{
-								"iamuser3-admin",
+						"ForAllValues:StringEquals": map[string]interface{}{
+							"aws:TagKeys": []string{
+								"Team",
 							},
 						},
 					},
@@ -41,7 +36,7 @@ func main() {
 			return err
 		}
 		json0 := string(tmpJSON0)
-		_, err = iam.NewPolicy(ctx, "policy", &iam.PolicyArgs{
+		policy, err := iam.NewPolicy(ctx, "policy", &iam.PolicyArgs{
 			Path:        pulumi.String("/"),
 			Description: pulumi.String("My test policy"),
 			Policy:      pulumi.String(json0),
@@ -49,6 +44,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		ctx.Export("policyName", policy.Name)
 		return nil
 	})
 }

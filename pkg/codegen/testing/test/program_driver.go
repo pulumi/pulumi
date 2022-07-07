@@ -77,8 +77,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-iam-policy",
 		Description: "AWS IAM Policy",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go
 	},
 	{
 		Directory:   "aws-optionals",

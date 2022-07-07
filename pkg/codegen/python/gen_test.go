@@ -15,6 +15,7 @@
 package python
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -238,4 +240,27 @@ func TestGenerateTypeNames(t *testing.T) {
 			return root.typeString(t, false, false)
 		}
 	})
+}
+
+func TestEscapeDocString(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		`Active directory email address. Example: xyz@contoso.com or Contoso\xyz`,
+		`Triple quotes """ are all escaped`,
+		`But just quotes " are not`,
+		`This \N should be escaped`,
+		`Here \\N slashes should be escaped but not N`,
+	}
+	source := strings.Join(lines, "\n")
+	expected := `"""
+Active directory email address. Example: xyz@contoso.com or Contoso\\xyz
+Triple quotes \"\"\" are all escaped
+But just quotes " are not
+This \\N should be escaped
+Here \\\\N slashes should be escaped but not N
+"""
+`
+	w := &bytes.Buffer{}
+	printComment(w, source, "")
+	assert.Equal(t, expected, w.String())
 }
