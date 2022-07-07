@@ -30,11 +30,15 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 		expr = g.awaitInvokes(expr)
 	}
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	if typ != nil {
-		expr = pcl.RewriteConversions(expr, typ)
+		var convertDiags hcl.Diagnostics
+		expr, convertDiags = pcl.RewriteConversions(expr, typ)
+		diags = diags.Extend(convertDiags)
 	}
-	expr, _ = g.lowerProxyApplies(expr)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	diags = diags.Extend(lowerProxyDiags)
+	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
 	return expr
 }
 
