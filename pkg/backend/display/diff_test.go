@@ -108,7 +108,6 @@ func TestDiffEvents(t *testing.T) {
 	entries, err := os.ReadDir("testdata")
 	require.NoError(t, err)
 
-	const truncateTestFile = "testdata/up-truncate.json"
 	//nolint:paralleltest
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
@@ -119,11 +118,7 @@ func TestDiffEvents(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			if entry.Name() == truncateTestFile {
-				testDiffEvents(t, path, accept, false)
-			} else {
-				testDiffEvents(t, path, accept, true)
-			}
+			testDiffEvents(t, path, accept, true)
 		})
 	}
 }
