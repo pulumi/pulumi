@@ -1289,7 +1289,7 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 		}
 	}
 	if len(lines) > contextLines {
-		return strings.Join(lines[:3], "\n") + "..."
+		return strings.Join(lines[:3], "\n") + "\n..."
 	}
 	return propertyString
 }
