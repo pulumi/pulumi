@@ -753,8 +753,8 @@ github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40T
 github.com/pulumi/pulumi-java/pkg v0.1.0/go.mod h1:Dw5klQSJCD6hHaHN4BcCoOW+KjC6NafdBtDsy6sY6uc=
 github.com/pulumi/pulumi-java/pkg v0.2.0/go.mod h1:LUz8JGS7Lxn2EnPkxFhB6Rap0CwZyHTHmwLQ16NFIhc=
 github.com/pulumi/pulumi-java/pkg v0.4.1/go.mod h1:j3qzYXomeNTibPcInXJVdsaBuHYwv0ISmwTgR6q0hU0=
-github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706204007-1bcf1fe215ba h1:haZONZSBwq2iIMaG1/GhkqJTl/mUsARDUWNbIIky7+w=
-github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706204007-1bcf1fe215ba/go.mod h1:iMOOvsXEw3+shTdhB8AEsomUHIbcPyAfkGrKvHMOyPk=
+github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706212453-8046ed6407d4 h1:IzCiUvaUJm4io/MNyjNnmDTwEFRwQe9T+6vDzm5xheA=
+github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706212453-8046ed6407d4/go.mod h1:kvPN1g2gzkGPsXp16/3C4a/OKo+NmPtBolK2DXd0I5Q=
 github.com/pulumi/pulumi-yaml v0.3.0/go.mod h1:6pQ0QcQqLYbq+i5vYjir/gDnpCvTkKcHqB5+mt0d3So=
 github.com/pulumi/pulumi-yaml v0.5.2 h1:1VFVAdM0dG4VS7Ef27dBpiaP0wrTJj0Vr4ybslfweDc=
 github.com/pulumi/pulumi-yaml v0.5.2/go.mod h1:VTgGg3z1WFYDeiwnq9rS3Y4qAysHiQS3M4X67wqo0RM=

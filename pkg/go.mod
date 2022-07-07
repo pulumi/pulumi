@@ -152,7 +152,7 @@ require (
 require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/natefinch/atomic v1.0.1
-	github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706204007-1bcf1fe215ba
+	github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706212453-8046ed6407d4
 	github.com/pulumi/pulumi-yaml v0.5.2
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
