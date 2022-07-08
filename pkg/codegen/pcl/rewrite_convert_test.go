@@ -120,7 +120,8 @@ func TestRewriteConversions(t *testing.T) {
 		if to == nil {
 			to = expr.Type()
 		}
-		expr = RewriteConversions(expr, to)
+		expr, diags = RewriteConversions(expr, to)
+		assert.Len(t, diags, 0)
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
 }
@@ -159,7 +160,8 @@ func TestRewriteConversionsAfterApply(t *testing.T) {
 		assert.Len(t, diags, 0)
 
 		expr, _ = RewriteApplies(expr, nameInfo(0), false)
-		expr = RewriteConversions(expr, expr.Type())
+		expr, diags = RewriteConversions(expr, expr.Type())
+		assert.Len(t, diags, 0)
 		assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 	}
 }

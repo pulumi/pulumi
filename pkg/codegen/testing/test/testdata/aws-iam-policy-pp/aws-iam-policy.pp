@@ -3,21 +3,25 @@ resource policy "aws:iam/policy:Policy" {
 	__logicalName = "policy"
 	path = "/"
 	description = "My test policy"
-    policy = toJSON({
-		Version = "2012-10-17"
-		Statement = [{
-			Effect = "Allow"
-			Principal = "*"
-			Action = [ "s3:GetObject" ]
-			Resource = [ "arn:aws:s3:::some-aws-bucket/*" ]
-            Condition = {
-				Foo = {
-					Bar: ["iamuser-admin", "iamuser2-admin"]
-				},
-				Baz: {
-					Qux: ["iamuser3-admin"]
-				}
-			}
-		}]
+  policy = toJSON({
+    "Version" = "2012-10-17",
+    "Statement" = [{
+      "Effect" = "Allow",
+      "Action" = "lambda:*",
+      "Resource" = "arn:aws:lambda:*:*:function:*",
+      "Condition" = {
+        "StringEquals" = {
+          "aws:RequestTag/Team" = [
+            "iamuser-admin",
+            "iamuser2-admin"
+          ]
+        },
+        "ForAllValues:StringEquals" = {
+          "aws:TagKeys" = ["Team"]
+        }
+      }
+    }]
 	})
 }
+
+output policyName { value = policy.name }

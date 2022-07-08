@@ -10,19 +10,19 @@ policy = aws.iam.Policy("policy",
         "Version": "2012-10-17",
         "Statement": [{
             "Effect": "Allow",
-            "Principal": "*",
-            "Action": ["s3:GetObject"],
-            "Resource": ["arn:aws:s3:::some-aws-bucket/*"],
+            "Action": "lambda:*",
+            "Resource": "arn:aws:lambda:*:*:function:*",
             "Condition": {
-                "Foo": {
-                    "Bar": [
+                "StringEquals": {
+                    "aws:RequestTag/Team": [
                         "iamuser-admin",
                         "iamuser2-admin",
                     ],
                 },
-                "Baz": {
-                    "Qux": ["iamuser3-admin"],
+                "ForAllValues:StringEquals": {
+                    "aws:TagKeys": ["Team"],
                 },
             },
         }],
     }))
+pulumi.export("policyName", policy.name)

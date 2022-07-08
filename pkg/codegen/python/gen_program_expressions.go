@@ -29,10 +29,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), false)
-	expr, _ = g.lowerProxyApplies(expr)
-	expr = pcl.RewriteConversions(expr, typ)
-	expr, quotes, _ := g.rewriteQuotes(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	diags = diags.Extend(lowerProxyDiags)
+	diags = diags.Extend(convertDiags)
+	diags = diags.Extend(quoteDiags)
+
+	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
 
 	return expr, quotes
 }
