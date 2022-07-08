@@ -3,8 +3,8 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from . import language_pb2 as language__pb2
-from . import plugin_pb2 as plugin__pb2
+from . import language_pb2 as pulumi_dot_language__pb2
+from . import plugin_pb2 as pulumi_dot_plugin__pb2
 
 
 class LanguageRuntimeStub(object):
@@ -20,23 +20,23 @@ class LanguageRuntimeStub(object):
         """
         self.GetRequiredPlugins = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
-                request_serializer=language__pb2.GetRequiredPluginsRequest.SerializeToString,
-                response_deserializer=language__pb2.GetRequiredPluginsResponse.FromString,
+                request_serializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
                 )
         self.Run = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/Run',
-                request_serializer=language__pb2.RunRequest.SerializeToString,
-                response_deserializer=language__pb2.RunResponse.FromString,
+                request_serializer=pulumi_dot_language__pb2.RunRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.RunResponse.FromString,
                 )
         self.GetPluginInfo = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/GetPluginInfo',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=plugin__pb2.PluginInfo.FromString,
+                response_deserializer=pulumi_dot_plugin__pb2.PluginInfo.FromString,
                 )
         self.InstallDependencies = channel.unary_stream(
                 '/pulumirpc.LanguageRuntime/InstallDependencies',
-                request_serializer=language__pb2.InstallDependenciesRequest.SerializeToString,
-                response_deserializer=language__pb2.InstallDependenciesResponse.FromString,
+                request_serializer=pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
                 )
 
 
@@ -78,23 +78,23 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetRequiredPlugins': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRequiredPlugins,
-                    request_deserializer=language__pb2.GetRequiredPluginsRequest.FromString,
-                    response_serializer=language__pb2.GetRequiredPluginsResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_language__pb2.GetRequiredPluginsRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.GetRequiredPluginsResponse.SerializeToString,
             ),
             'Run': grpc.unary_unary_rpc_method_handler(
                     servicer.Run,
-                    request_deserializer=language__pb2.RunRequest.FromString,
-                    response_serializer=language__pb2.RunResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_language__pb2.RunRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.RunResponse.SerializeToString,
             ),
             'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPluginInfo,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+                    response_serializer=pulumi_dot_plugin__pb2.PluginInfo.SerializeToString,
             ),
             'InstallDependencies': grpc.unary_stream_rpc_method_handler(
                     servicer.InstallDependencies,
-                    request_deserializer=language__pb2.InstallDependenciesRequest.FromString,
-                    response_serializer=language__pb2.InstallDependenciesResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_language__pb2.InstallDependenciesRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.InstallDependenciesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -120,8 +120,8 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetRequiredPlugins',
-            language__pb2.GetRequiredPluginsRequest.SerializeToString,
-            language__pb2.GetRequiredPluginsResponse.FromString,
+            pulumi_dot_language__pb2.GetRequiredPluginsRequest.SerializeToString,
+            pulumi_dot_language__pb2.GetRequiredPluginsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -137,8 +137,8 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Run',
-            language__pb2.RunRequest.SerializeToString,
-            language__pb2.RunResponse.FromString,
+            pulumi_dot_language__pb2.RunRequest.SerializeToString,
+            pulumi_dot_language__pb2.RunResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -155,7 +155,7 @@ class LanguageRuntime(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetPluginInfo',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            plugin__pb2.PluginInfo.FromString,
+            pulumi_dot_plugin__pb2.PluginInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -171,7 +171,7 @@ class LanguageRuntime(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/pulumirpc.LanguageRuntime/InstallDependencies',
-            language__pb2.InstallDependenciesRequest.SerializeToString,
-            language__pb2.InstallDependenciesResponse.FromString,
+            pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
+            pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -35,7 +35,7 @@ from pulumi.resource import (
     _parse_resource_reference,
 )
 from pulumi.runtime import known_types, proto, rpc
-from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.runtime.proto import provider_pb2, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
@@ -334,7 +334,9 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     async def serve() -> None:
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
-        provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
+        provider_pb2.add_ResourceProviderServicer_to_server(
+            servicer, server
+        )
         port = server.add_insecure_port(address="0.0.0.0:0")
         await server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())

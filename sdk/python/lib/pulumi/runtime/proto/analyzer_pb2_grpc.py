@@ -2,9 +2,9 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from . import analyzer_pb2 as analyzer__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from . import plugin_pb2 as plugin__pb2
+from . import analyzer_pb2 as pulumi_dot_analyzer__pb2
+from . import plugin_pb2 as pulumi_dot_plugin__pb2
 
 
 class AnalyzerStub(object):
@@ -22,27 +22,27 @@ class AnalyzerStub(object):
         """
         self.Analyze = channel.unary_unary(
                 '/pulumirpc.Analyzer/Analyze',
-                request_serializer=analyzer__pb2.AnalyzeRequest.SerializeToString,
-                response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzeResponse.FromString,
                 )
         self.AnalyzeStack = channel.unary_unary(
                 '/pulumirpc.Analyzer/AnalyzeStack',
-                request_serializer=analyzer__pb2.AnalyzeStackRequest.SerializeToString,
-                response_deserializer=analyzer__pb2.AnalyzeResponse.FromString,
+                request_serializer=pulumi_dot_analyzer__pb2.AnalyzeStackRequest.SerializeToString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzeResponse.FromString,
                 )
         self.GetAnalyzerInfo = channel.unary_unary(
                 '/pulumirpc.Analyzer/GetAnalyzerInfo',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=analyzer__pb2.AnalyzerInfo.FromString,
+                response_deserializer=pulumi_dot_analyzer__pb2.AnalyzerInfo.FromString,
                 )
         self.GetPluginInfo = channel.unary_unary(
                 '/pulumirpc.Analyzer/GetPluginInfo',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=plugin__pb2.PluginInfo.FromString,
+                response_deserializer=pulumi_dot_plugin__pb2.PluginInfo.FromString,
                 )
         self.Configure = channel.unary_unary(
                 '/pulumirpc.Analyzer/Configure',
-                request_serializer=analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
+                request_serializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -97,27 +97,27 @@ def add_AnalyzerServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Analyze': grpc.unary_unary_rpc_method_handler(
                     servicer.Analyze,
-                    request_deserializer=analyzer__pb2.AnalyzeRequest.FromString,
-                    response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzeRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzeResponse.SerializeToString,
             ),
             'AnalyzeStack': grpc.unary_unary_rpc_method_handler(
                     servicer.AnalyzeStack,
-                    request_deserializer=analyzer__pb2.AnalyzeStackRequest.FromString,
-                    response_serializer=analyzer__pb2.AnalyzeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_analyzer__pb2.AnalyzeStackRequest.FromString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzeResponse.SerializeToString,
             ),
             'GetAnalyzerInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetAnalyzerInfo,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=analyzer__pb2.AnalyzerInfo.SerializeToString,
+                    response_serializer=pulumi_dot_analyzer__pb2.AnalyzerInfo.SerializeToString,
             ),
             'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPluginInfo,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+                    response_serializer=pulumi_dot_plugin__pb2.PluginInfo.SerializeToString,
             ),
             'Configure': grpc.unary_unary_rpc_method_handler(
                     servicer.Configure,
-                    request_deserializer=analyzer__pb2.ConfigureAnalyzerRequest.FromString,
+                    request_deserializer=pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -146,8 +146,8 @@ class Analyzer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Analyze',
-            analyzer__pb2.AnalyzeRequest.SerializeToString,
-            analyzer__pb2.AnalyzeResponse.FromString,
+            pulumi_dot_analyzer__pb2.AnalyzeRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -163,8 +163,8 @@ class Analyzer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/AnalyzeStack',
-            analyzer__pb2.AnalyzeStackRequest.SerializeToString,
-            analyzer__pb2.AnalyzeResponse.FromString,
+            pulumi_dot_analyzer__pb2.AnalyzeStackRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.AnalyzeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -181,7 +181,7 @@ class Analyzer(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/GetAnalyzerInfo',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            analyzer__pb2.AnalyzerInfo.FromString,
+            pulumi_dot_analyzer__pb2.AnalyzerInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -198,7 +198,7 @@ class Analyzer(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/GetPluginInfo',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            plugin__pb2.PluginInfo.FromString,
+            pulumi_dot_plugin__pb2.PluginInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -214,7 +214,7 @@ class Analyzer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Analyzer/Configure',
-            analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
+            pulumi_dot_analyzer__pb2.ConfigureAnalyzerRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
