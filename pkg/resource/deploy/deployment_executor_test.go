@@ -16,7 +16,6 @@ package deploy
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,44 +25,27 @@ func TestRebuildBaseState(t *testing.T) {
 	a := &resource.State{URN: "A", Delete: true}
 	b := &resource.State{URN: "B", Parent: a.URN}
 	bNoParent := &resource.State{URN: "B"}
-	cases := []struct {
-		// Inputs
-		previous        []*resource.State
-		resourcesToStep map[*resource.State]Step
-		// Outputs
-		expectedOlds     map[resource.URN]*resource.State
-		expectedDepGraph *graph.DependencyGraph
-	}{
-		{
-			previous: []*resource.State{a, b},
-			resourcesToStep: map[*resource.State]Step{
-				a: &RefreshStep{
-					old: a,
-					new: a,
-				},
-				b: &RefreshStep{
-					old: b,
-					new: b,
-				},
+	previous := []*resource.State{a, b}
+	resourcesToStep := map[*resource.State]Step{
+		a: &RefreshStep{
+			old: a,
+			new: a,
+		},
+		b: &RefreshStep{
+			old: b,
+			new: b,
+		},
+	}
+	expectedOlds := map[resource.URN]*resource.State{b.URN: bNoParent}
+	ex := &deploymentExecutor{
+		deployment: &Deployment{
+			prev: &Snapshot{
+				Resources: previous,
 			},
-			expectedOlds: map[resource.URN]*resource.State{b.URN: bNoParent},
 		},
 	}
 
-	for _, c := range cases {
-		c := c
-		t.Run("", func(t *testing.T) {
-			ex := &deploymentExecutor{
-				deployment: &Deployment{
-					prev: &Snapshot{
-						Resources: c.previous,
-					},
-				},
-			}
+	ex.rebuildBaseState(resourcesToStep, true)
 
-			ex.rebuildBaseState(c.resourcesToStep, true)
-
-			assert.EqualValues(t, c.expectedOlds, ex.deployment.olds)
-		})
-	}
+	assert.EqualValues(t, expectedOlds, ex.deployment.olds)
 }
