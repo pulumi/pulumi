@@ -3,6 +3,9 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [protobuf] Pulumi protobuf messages are now namespaced under "pulumi".
+  [#10074](https://github.com/pulumi/pulumi/pull/10074)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
