@@ -1,4 +1,4 @@
-// source: errors.proto
+// source: pulumi/errors.proto
 /**
  * @fileoverview
  * @enhanceable

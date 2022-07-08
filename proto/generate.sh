@@ -54,16 +54,21 @@ $DOCKER_RUN /bin/bash -c 'set -x && GO_PULUMIRPC=/go && \
 # This sets up the remainder of the protobuf file so that it works fine, but doesn't mess with global.
 $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     JS_PROTOFLAGS="import_style=commonjs,binary"   && \
-    JS_HACK_PROTOS=$(find . -name "*.proto" -not -name "status.proto") && \
+    PROTO_FILES=$(find . -name "*.proto") && \
     echo -e "\tJavaScript: $JS_PULUMIRPC [$JS_PROTOFLAGS]" && \
     TEMP_DIR=/tmp/nodejs-build                 && \
     echo -e "\tJavaScript temp dir: $TEMP_DIR" && \
     mkdir -p "$TEMP_DIR"                       && \
-    protoc --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin google/protobuf/status.proto && \
-    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $JS_HACK_PROTOS && \
-    sed -i "s/^var global = .*;/var proto = { pulumirpc: {} }, global = proto;/" "$TEMP_DIR"/pulumi/*.js && \
-    sed -i "s/^var grpc = require(.*);/var grpc = require('\''@grpc\/grpc-js'\'');/" "$TEMP_DIR"/pulumi/*.js && \
+    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $PROTO_FILES && \
+    find $TEMP_DIR && \
+    sed -i "s|^var global = .*;|var proto = { pulumirpc: {} }, global = proto;|" "$TEMP_DIR"/**/*.js && \
+    sed -i "s|^var grpc = require(.*);|var grpc = require('\''@grpc\/grpc-js'\'');|" "$TEMP_DIR"/**/*.js && \
+    sed -i "s|require('\''../pulumi/|require('\''./|" "$TEMP_DIR"/pulumi/*.js && \
+    cp "$TEMP_DIR"/google/protobuf/*.js "$JS_PULUMIRPC" && \
     cp "$TEMP_DIR"/pulumi/*.js "$JS_PULUMIRPC"'
+
+
+
 
 # Protoc for Python has a bug where, if your proto files are all in the same directory relative
 # to one another, imports of said proto files will produce imports that don't work using Python 3.

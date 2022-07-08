@@ -1,4 +1,4 @@
-// source: language.proto
+// source: pulumi/language.proto
 /**
  * @fileoverview
  * @enhanceable
@@ -15,8 +15,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { pulumirpc: {} }, global = proto;
 
-var plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, plugin_pb);
+var pulumi_plugin_pb = require('./plugin_pb.js');
+goog.object.extend(proto, pulumi_plugin_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
 goog.exportSymbol('proto.pulumirpc.GetRequiredPluginsRequest', null, global);
@@ -381,7 +381,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.prototype.toObject = function(opt_inc
 proto.pulumirpc.GetRequiredPluginsResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     pluginsList: jspb.Message.toObjectList(msg.getPluginsList(),
-    plugin_pb.PluginDependency.toObject, includeInstance)
+    pulumi_plugin_pb.PluginDependency.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -419,8 +419,8 @@ proto.pulumirpc.GetRequiredPluginsResponse.deserializeBinaryFromReader = functio
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = new plugin_pb.PluginDependency;
-      reader.readMessage(value,plugin_pb.PluginDependency.deserializeBinaryFromReader);
+      var value = new pulumi_plugin_pb.PluginDependency;
+      reader.readMessage(value,pulumi_plugin_pb.PluginDependency.deserializeBinaryFromReader);
       msg.addPlugins(value);
       break;
     default:
@@ -457,7 +457,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.serializeBinaryToWriter = function(me
     writer.writeRepeatedMessage(
       1,
       f,
-      plugin_pb.PluginDependency.serializeBinaryToWriter
+      pulumi_plugin_pb.PluginDependency.serializeBinaryToWriter
     );
   }
 };
@@ -469,7 +469,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.serializeBinaryToWriter = function(me
  */
 proto.pulumirpc.GetRequiredPluginsResponse.prototype.getPluginsList = function() {
   return /** @type{!Array<!proto.pulumirpc.PluginDependency>} */ (
-    jspb.Message.getRepeatedWrapperField(this, plugin_pb.PluginDependency, 1));
+    jspb.Message.getRepeatedWrapperField(this, pulumi_plugin_pb.PluginDependency, 1));
 };
 
 
