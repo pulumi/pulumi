@@ -422,7 +422,7 @@ func newUpCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
-				ShowFullOutput:       showFullOutput,
+				TruncateOutput:       !showFullOutput,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -546,7 +546,7 @@ func newUpCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().BoolVar(
-		&showFullOutput, "show-full-output", false,
+		&showFullOutput, "show-full-output", true,
 		"Display full length of stack outputs")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",

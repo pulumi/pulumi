@@ -53,7 +53,7 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
-func testDiffEvents(t *testing.T, path string, accept bool, fullOutput bool) {
+func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 
@@ -78,7 +78,7 @@ func testDiffEvents(t *testing.T, path string, accept bool, fullOutput bool) {
 		ShowReplacementSteps: true,
 		ShowSameResources:    true,
 		ShowReads:            true,
-		ShowFullOutput:       fullOutput,
+		TruncateOutput:       truncateOutput,
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 	})
@@ -118,7 +118,7 @@ func TestDiffEvents(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			testDiffEvents(t, path, accept, true)
+			testDiffEvents(t, path, accept, false)
 		})
 	}
 }

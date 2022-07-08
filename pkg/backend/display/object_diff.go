@@ -212,16 +212,16 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op display.StepOp, prefix bool, fullOutput bool, debug bool) {
+	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool) {
 
 	p := propertyPrinter{
-		dest:       b,
-		planning:   planning,
-		indent:     indent,
-		op:         op,
-		prefix:     prefix,
-		debug:      debug,
-		fullOutput: fullOutput,
+		dest:           b,
+		planning:       planning,
+		indent:         indent,
+		op:             op,
+		prefix:         prefix,
+		debug:          debug,
+		truncateOutput: truncateOutput,
 	}
 	p.printObject(props)
 }
@@ -490,12 +490,12 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 type propertyPrinter struct {
 	dest io.StringWriter
 
-	op         display.StepOp
-	planning   bool
-	prefix     bool
-	debug      bool
-	summary    bool
-	fullOutput bool
+	op             display.StepOp
+	planning       bool
+	prefix         bool
+	debug          bool
+	summary        bool
+	truncateOutput bool
 
 	indent int
 }
@@ -523,7 +523,7 @@ func (p *propertyPrinter) writeString(s string) {
 }
 
 func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
-	if !p.fullOutput {
+	if p.truncateOutput {
 		for i, item := range a {
 			switch item.(type) {
 			case string:
@@ -671,16 +671,16 @@ func printOldNewDiffs(
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
-	planning bool, indent int, summary bool, fullOutput bool, debug bool) {
+	planning bool, indent int, summary bool, truncateOutput bool, debug bool) {
 
 	p := propertyPrinter{
-		dest:       b,
-		planning:   planning,
-		indent:     indent,
-		prefix:     true,
-		debug:      debug,
-		summary:    summary,
-		fullOutput: fullOutput,
+		dest:           b,
+		planning:       planning,
+		indent:         indent,
+		prefix:         true,
+		debug:          debug,
+		summary:        summary,
+		truncateOutput: truncateOutput,
 	}
 	p.printObjectDiff(diff, include)
 }
@@ -816,10 +816,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.printPropertyValue(vv)
 			return
 		}
-		if p.fullOutput {
-			p.write("%q", v.StringValue())
-		} else {
+		if p.truncateOutput {
 			p.write("%q", p.truncatePropertyString(v.StringValue()))
+		} else {
+			p.write("%q", v.StringValue())
 		}
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
@@ -1302,8 +1302,11 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 		}
 	}
 
-	if numLines <= contextLines {
+	if numLines == 1 {
+		return lines[0]
+	} else if numLines <= contextLines {
 		strings.Join(lines[:numLines], "\n")
 	}
+
 	return strings.Join(lines[:numLines], "\n") + "\n..."
 }

@@ -41,7 +41,7 @@ type Options struct {
 	ShowReplacementSteps bool                // true to show the replacement steps in the plan.
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
 	ShowReads            bool                // true to show resources that are being read in
-	ShowFullOutput       bool                // true if we should not truncate long outputs
+	TruncateOutput       bool                // true if we should truncate long outputs
 	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
 	SuppressPermalink    bool                // true to suppress state permalink
 	SummaryDiff          bool                // true if diff display should be summarized.
