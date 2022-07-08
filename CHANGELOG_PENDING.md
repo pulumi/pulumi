@@ -13,3 +13,6 @@
 
 - [cli] `pulumi convert` generates incorrect input parameter names for C#
   [#10042](https://github.com/pulumi/pulumi/issues/10042)
+
+- [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
+  [#10075](https://github.com/pulumi/pulumi/pull/10075)
