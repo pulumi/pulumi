@@ -13,3 +13,6 @@
 
 - [cli] `pulumi convert` generates incorrect input parameter names for C#
   [#10042](https://github.com/pulumi/pulumi/issues/10042)
+
+- [engine] Un-parent child resource when a resource is deleted during a refresh.
+  [#10073](https://github.com/pulumi/pulumi/pull/10073)
