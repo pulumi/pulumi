@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\..\proto\*.proto" Access="internal" />
+    <Protobuf ProtoRoot="..\..\..\proto" Include="..\..\..\proto\**\*.proto" Access="internal" />
   </ItemGroup>
 
   <ItemGroup>
