@@ -645,7 +645,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			if refresh {
-				contract.Assert(old.Custom)
+				contract.Assertf(old.Custom, "Expected custom resource")
 				contract.Assert(!providers.IsProviderType(old.Type))
 			}
 			continue
@@ -660,6 +660,12 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 				}
 			}
 			new.Dependencies = deps
+		}
+
+		if new.Parent != "" {
+			if _, ok := olds[new.Parent]; !ok {
+				new.Parent = ""
+			}
 		}
 
 		// Add this resource to the resource list and mark it as referenceable.
