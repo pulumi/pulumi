@@ -662,12 +662,6 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			new.Dependencies = deps
 		}
 
-		if new.Parent != "" {
-			if _, ok := olds[new.Parent]; !ok {
-				new.Parent = ""
-			}
-		}
-
 		// Add this resource to the resource list and mark it as referenceable.
 		resources = append(resources, new)
 		referenceable[new.URN] = true
@@ -678,6 +672,64 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
+	undangleParentResources(olds, resources)
+
 	ex.deployment.prev.Resources = resources
 	ex.deployment.olds, ex.deployment.depGraph = olds, graph.NewDependencyGraph(resources)
+}
+
+func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+	// Since a refresh may delete arbitrary resources, we need to handle the case where
+	// the parent of a still existing resource is deleted.
+	//
+	// Invalid parents need to be fixed since otherwise they leave the state invalid, and
+	// the user sees an error:
+	// ```
+	// snapshot integrity failure; refusing to use it: child resource ${validURN} refers to missing parent ${deletedURN}
+	// ```
+	// To solve the problem we traverse the topologically sorted list of resources in
+	// order, setting newly invalidated parent URNS to the URN of the parent's parent.
+	//
+	// This can be illustrated by an example. Consider the graph of resource parents:
+	//
+	//         A            xBx
+	//       /   \           |
+	//    xCx      D        xEx
+	//     |     /   \       |
+	//     F    G     xHx    I
+	//
+	// When a capital letter is marked for deletion, it is bracketed by `x`s.
+	// We can obtain a topological sort by reading left to right, top to bottom.
+	//
+	// A..D -> valid parents, so we do nothing
+	// E -> The parent of E is marked for deletion, so set E.Parent to E.Parent.Parent.
+	//      Since B (E's parent) has no parent, we set E.Parent to "".
+	// F -> The parent of F is marked for deletion, so set F.Parent to F.Parent.Parent.
+	//      We set F.Parent to "A"
+	// G, H -> valid parents, do nothing
+	// I -> The parent of I is marked for deletion, so set I.Parent to I.Parent.Parent.
+	//      The parent of I has parent "", (since we addressed the parent of E
+	//      previously), so we set I.Parent = "".
+	//
+	// The new graph looks like this:
+	//
+	//         A        xBx   xEx   I
+	//       / | \
+	//     xCx F  D
+	//          /   \
+	//         G    xHx
+	// We observe that it is perfectly valid for deleted nodes to be leaf nodes, but they
+	// cannot be intermediary nodes.
+	_, hasEmptyValue := undeleted[""]
+	contract.Assertf(!hasEmptyValue, "the zero value for an URN is not a valid URN")
+	availableParents := map[resource.URN]resource.URN{}
+	for _, r := range resources {
+		if _, ok := undeleted[r.Parent]; !ok {
+			// Since existing must obey a topological sort, we have already addressed
+			// p.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+			// exists, we set r.Parent as r.Parent.Parent.
+			r.Parent = availableParents[r.Parent]
+		}
+		availableParents[r.URN] = r.Parent
+	}
 }
