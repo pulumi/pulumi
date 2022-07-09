@@ -1,4 +1,4 @@
-PROJECT_NAME := Pulumi SDK
+ePROJECT_NAME := Pulumi SDK
 SDKS         := dotnet nodejs python go
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 

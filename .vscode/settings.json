@@ -15,4 +15,7 @@
 
     "omnisharp.defaultLaunchSolution": "sdk/dotnet/dotnet.sln",
     "dotnet-test-explorer.testProjectPath": "sdk/dotnet",
+    "githubPullRequests.ignoredPullRequestBranches": [
+        "master"
+    ],
 }

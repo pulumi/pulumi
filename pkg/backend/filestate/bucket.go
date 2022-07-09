@@ -54,6 +54,9 @@ func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err 
 }
 
 func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
+	if opts == nil {
+		opts = &blob.WriterOptions{ MaxConcurrency: 30 }
+	}
 	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
 }
 

@@ -138,7 +138,7 @@ require (
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	gocloud.dev v0.25.0 // indirect
+	gocloud.dev v0.25.1-0.20220706153602-e0f202b696de // indirect
 	gocloud.dev/secrets/hashivault v0.24.0 // indirect
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
 	golang.org/x/net v0.0.0-20220401154927-543a649e0bdd // indirect
