@@ -19,3 +19,7 @@
 
 - [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
   [#10075](https://github.com/pulumi/pulumi/pull/10075)
+
+### Misc
+
+- Update version of go-cloud used by Pulumi to `0.25.0`
