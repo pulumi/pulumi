@@ -9,8 +9,10 @@ import (
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -170,6 +172,9 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
 const getResource = "pulumi:pulumi:getResource"
+const getConfig = "pulumi:pulumi:getConfig"
+
+var configFallbacks map[string]config.Value = map[string]config.Value{}
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -193,6 +198,52 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 			return nil, nil, err
 		}
 		return outs, nil, nil
+	case getConfig:
+
+		deserialize := func(v config.Value) (resource.PropertyValue, error) {
+			stringValue, err := v.Value(nil)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			return resource.NewPropertyValue(stringValue), nil
+		}
+
+		key := args["key"].V.(string)
+
+		if v, ok := configFallbacks[key]; ok {
+			val, err := deserialize(v)
+			if err != nil {
+				return nil, nil, err
+			}
+			return resource.PropertyMap{
+				resource.PropertyKey("value"): val,
+			}, nil, nil
+		}
+
+		if !cmdutil.Interactive() {
+			return nil, nil, errors.New("config value must be specified in non-interactive mode")
+		}
+		// TODO fail on non-preview
+
+		// TODO store config value to stack after preview
+
+		// I would like to reuse existing user input flows for config, but they're heavily coupled
+
+		fmt.Printf("Missing required configuration variable '%s'. Please enter a value below:\n", key)
+		value, err := cmdutil.ReadConsole("")
+		if err != nil {
+			return nil, nil, err
+		}
+		//configValue := fmt.Sprintf("TODO add value for %s", key)
+		val := config.NewValue(value)
+		configFallbacks[args["key"].String()] = val
+		v, err := deserialize(val)
+		if err != nil {
+			return nil, nil, err
+		}
+		return resource.PropertyMap{
+			resource.PropertyKey("value"): v,
+		}, nil, nil
 	default:
 		return nil, nil, fmt.Errorf("unrecognized function name: '%v'", tok)
 	}

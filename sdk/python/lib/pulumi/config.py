@@ -258,7 +258,14 @@ class Config:
     ) -> str:
         v = self._get(key, use, instead_of)
         if v is None:
-            raise ConfigMissingError(self.full_key(key))
+            from .runtime.invoke import invoke
+            fallback_config = invoke("pulumi:pulumi:getConfig", {"key": key}).value
+            if fallback_config == None:
+                raise ConfigMissingError(self.full_key(key))
+            # try fall back on engine
+            print(fallback_config.values())
+            return fallback_config['value']
+
         return v
 
     def require(self, key: str) -> str:
