@@ -3,6 +3,9 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [sdk/go] Add `As*Output` methods to `AnyOutput`
+  [#10085](https://github.com/pulumi/pulumi/pull/10085)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
