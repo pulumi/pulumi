@@ -7647,3 +7647,1297 @@ func TestTopLevelToURNMapMapOutput(t *testing.T) {
 
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
 }
+
+// Test AnyOutput `To*Output` functions
+
+func TestAnyOutputAsArchiveOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(NewFileArchive("foo.zip"))
+	out := anyout.AsArchiveOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArray{NewFileArchive("foo.zip")})
+	out := anyout.AsArchiveArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMap{"baz": NewFileArchive("foo.zip")})
+	out := anyout.AsArchiveMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}})
+	out := anyout.AsArchiveArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	out := anyout.AsArchiveMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	out := anyout.AsArchiveMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArchiveArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
+	out := anyout.AsArchiveArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(NewFileAsset("foo.txt"))
+	out := anyout.AsAssetOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArray{NewFileAsset("foo.txt")})
+	out := anyout.AsAssetArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMap{"baz": NewFileAsset("foo.txt")})
+	out := anyout.AsAssetMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}})
+	out := anyout.AsAssetArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}})
+	out := anyout.AsAssetMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}})
+	out := anyout.AsAssetMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}})
+	out := anyout.AsAssetArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(NewFileArchive("foo.zip"))
+	out := anyout.AsAssetOrArchiveOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArray{NewFileArchive("foo.zip")})
+	out := anyout.AsAssetOrArchiveArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")})
+	out := anyout.AsAssetOrArchiveMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}})
+	out := anyout.AsAssetOrArchiveArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	out := anyout.AsAssetOrArchiveMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
+	out := anyout.AsAssetOrArchiveMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsAssetOrArchiveArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
+	out := anyout.AsAssetOrArchiveArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Bool(true))
+	out := anyout.AsBoolOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolPtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolPtr(bool(Bool(true))))
+	out := anyout.AsBoolPtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArray{Bool(true)})
+	out := anyout.AsBoolArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMap{"baz": Bool(true)})
+	out := anyout.AsBoolMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayMap{"baz": BoolArray{Bool(true)}})
+	out := anyout.AsBoolArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMapArray{BoolMap{"baz": Bool(true)}})
+	out := anyout.AsBoolMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}})
+	out := anyout.AsBoolMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsBoolArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(BoolArrayArray{BoolArray{Bool(true)}})
+	out := anyout.AsBoolArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64Output(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64(999.9))
+	out := anyout.AsFloat64Output()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64PtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64Ptr(float64(Float64(999.9))))
+	out := anyout.AsFloat64PtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64Array{Float64(999.9)})
+	out := anyout.AsFloat64ArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64Map{"baz": Float64(999.9)})
+	out := anyout.AsFloat64MapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayMap{"baz": Float64Array{Float64(999.9)}})
+	out := anyout.AsFloat64ArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64MapArray{Float64Map{"baz": Float64(999.9)}})
+	out := anyout.AsFloat64MapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64MapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}})
+	out := anyout.AsFloat64MapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsFloat64ArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Float64ArrayArray{Float64Array{Float64(999.9)}})
+	out := anyout.AsFloat64ArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ID("foo"))
+	out := anyout.AsIDOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDPtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDPtr(ID(ID("foo"))))
+	out := anyout.AsIDPtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArray{ID("foo")})
+	out := anyout.AsIDArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMap{"baz": ID("foo")})
+	out := anyout.AsIDMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayMap{"baz": IDArray{ID("foo")}})
+	out := anyout.AsIDArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMapArray{IDMap{"baz": ID("foo")}})
+	out := anyout.AsIDMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDMapMap{"baz": IDMap{"baz": ID("foo")}})
+	out := anyout.AsIDMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIDArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IDArrayArray{IDArray{ID("foo")}})
+	out := anyout.AsIDArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Array{String("any")})
+	out := anyout.AsArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Map{"baz": String("any")})
+	out := anyout.AsMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayMap{"baz": Array{String("any")}})
+	out := anyout.AsArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(MapArray{Map{"baz": String("any")}})
+	out := anyout.AsMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(MapMap{"baz": Map{"baz": String("any")}})
+	out := anyout.AsMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayArray{Array{String("any")}})
+	out := anyout.AsArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsArrayArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
+	out := anyout.AsArrayArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(Int(42))
+	out := anyout.AsIntOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntPtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntPtr(int(Int(42))))
+	out := anyout.AsIntPtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArray{Int(42)})
+	out := anyout.AsIntArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMap{"baz": Int(42)})
+	out := anyout.AsIntMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayMap{"baz": IntArray{Int(42)}})
+	out := anyout.AsIntArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMapArray{IntMap{"baz": Int(42)}})
+	out := anyout.AsIntMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntMapMap{"baz": IntMap{"baz": Int(42)}})
+	out := anyout.AsIntMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsIntArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(IntArrayArray{IntArray{Int(42)}})
+	out := anyout.AsIntArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(String("foo"))
+	out := anyout.AsStringOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringPtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringPtr(string(String("foo"))))
+	out := anyout.AsStringPtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArray{String("foo")})
+	out := anyout.AsStringArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMap{"baz": String("foo")})
+	out := anyout.AsStringMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayMap{"baz": StringArray{String("foo")}})
+	out := anyout.AsStringArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapArray{StringMap{"baz": String("foo")}})
+	out := anyout.AsStringMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringMapMap{"baz": StringMap{"baz": String("foo")}})
+	out := anyout.AsStringMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsStringArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(StringArrayArray{StringArray{String("foo")}})
+	out := anyout.AsStringArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URN("foo"))
+	out := anyout.AsURNOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNPtrOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNPtr(URN(URN("foo"))))
+	out := anyout.AsURNPtrOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArray{URN("foo")})
+	out := anyout.AsURNArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMap{"baz": URN("foo")})
+	out := anyout.AsURNMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayMap{"baz": URNArray{URN("foo")}})
+	out := anyout.AsURNArrayMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMapArray{URNMap{"baz": URN("foo")}})
+	out := anyout.AsURNMapArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNMapMapOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNMapMap{"baz": URNMap{"baz": URN("foo")}})
+	out := anyout.AsURNMapMapOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}
+
+func TestAnyOutputAsURNArrayArrayOutput(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any(URNArrayArray{URNArray{URN("foo")}})
+	out := anyout.AsURNArrayArrayOutput()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}

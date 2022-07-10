@@ -506,3 +506,23 @@ func TestTopLevelTo{{.Name}}Output(t *testing.T) {
 {{end}}
 {{end}}
 {{end}}
+
+// Test AnyOutput `To*Output` functions
+{{range .Builtins}}
+func TestAnyOutputAs{{.Name}}Output(t *testing.T) {
+	t.Parallel()
+
+	anyout := Any({{.Example}})
+	out := anyout.As{{.Name}}Output()
+
+	ev, known, _, _, err := await(anyout)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, ev, av)
+}	
+{{end}}
