@@ -19,3 +19,6 @@
 
 - [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
   [#10075](https://github.com/pulumi/pulumi/pull/10075)
+
+- [nodejs/sdkgen] Default set `pulumi.name` in package.json to the pulumi package name.
+  [#10088](https://github.com/pulumi/pulumi/pull/10088)
