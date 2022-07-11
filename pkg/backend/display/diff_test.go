@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -118,7 +119,11 @@ func TestDiffEvents(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			testDiffEvents(t, path, accept, false)
+			if strings.Contains(entry.Name(), "truncate") {
+				testDiffEvents(t, path, accept, true)
+			} else {
+				testDiffEvents(t, path, accept, false)
+			}
 		})
 	}
 }
