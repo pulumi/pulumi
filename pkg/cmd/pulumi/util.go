@@ -476,13 +476,10 @@ func readProject() (*workspace.Project, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w", pwd, err)
-
-	} else if path == "" {
-		return nil, "", fmt.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", pwd)
+		logging.Warningf("failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %s"+
+			"continuing with an empty project", pwd, err.Error())
+		return &workspace.Project{}, "", nil
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
