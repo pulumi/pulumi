@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -106,7 +105,7 @@ func TestDiffEvents(t *testing.T) {
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
-	entries, err := os.ReadDir("testdata")
+	entries, err := os.ReadDir("testdata/not-truncated")
 	require.NoError(t, err)
 
 	//nolint:paralleltest
@@ -115,12 +114,26 @@ func TestDiffEvents(t *testing.T) {
 			continue
 		}
 
-		path := filepath.Join("testdata", entry.Name())
+		path := filepath.Join("testdata/not-truncated", entry.Name())
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
+			testDiffEvents(t, path, accept, false)
+		})
+	}
 
-			truncate := strings.Contains(entry.Name(), "truncate")
-			testDiffEvents(t, path, accept, truncate)
+	entries, err = os.ReadDir("testdata/truncated")
+	require.NoError(t, err)
+
+	//nolint:paralleltest
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			testDiffEvents(t, path, accept, true)
 		})
 	}
 }
