@@ -1295,15 +1295,21 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 		numLines = contextLines
 	}
 
+	isTruncated := false
 	for i := 0; i < numLines; i++ {
 		if len(lines[i]) > maxLineLength {
 			lines[i] = lines[i][:maxLineLength] + "..."
+			isTruncated = true
 		}
 	}
 
+	if !isTruncated {
+		return propertyString
+	}
+
 	if len(lines) <= contextLines {
- 		return strings.Join(lines, "\n")
- 	}
+		return strings.Join(lines, "\n")
+	}
 
 	return strings.Join(lines[:numLines], "\n") + "\n..."
 }
