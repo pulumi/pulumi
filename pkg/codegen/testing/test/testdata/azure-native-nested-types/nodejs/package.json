@@ -22,6 +22,7 @@
         "typescript": "^4.3.5"
     },
     "pulumi": {
-        "resource": true
+        "resource": true,
+        "name": "azure-native"
     }
 }
