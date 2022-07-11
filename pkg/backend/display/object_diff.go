@@ -1301,11 +1301,9 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 		}
 	}
 
-	if numLines == 1 {
-		return lines[0]
-	} else if len(lines) <= contextLines {
-		return strings.Join(lines, "\n")
-	}
+	if len(lines) <= contextLines {
+ 		return strings.Join(lines, "\n")
+ 	}
 
 	return strings.Join(lines[:numLines], "\n") + "\n..."
 }
