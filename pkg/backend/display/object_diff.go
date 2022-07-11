@@ -526,7 +526,7 @@ func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
 	if p.truncateOutput {
 		for i, item := range a {
 			if item, ok := item.(string); ok {
-			    a[i] = p.truncatePropertyString(item)
+				a[i] = p.truncatePropertyString(item)
 			}
 		}
 	}
