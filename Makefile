@@ -32,8 +32,7 @@ ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
 	cd tests && go mod download
 	@touch .ensure.phony
 
-PROTO_FILES := $(sort $(wildcard proto/*.proto) proto/generate.sh \
-                      $(wildcard proto/build-container/scripts/*) proto/build-container/Dockerfile)
+PROTO_FILES := $(sort $(wildcard proto/**/*.proto) proto/generate.sh $(wildcard proto/build-container/**/*))
 build-proto:
 	@printf "Protobuffer interfaces are ....... "
 	@if [ "$$(cat proto/.checksum.txt)" = "$$(cksum $(PROTO_FILES))" ]; then \

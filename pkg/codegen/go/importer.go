@@ -69,6 +69,10 @@ type GoPackageInfo struct {
 	// all plain types, instead of for only types that are used as input/output types.
 	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
 
+	// omitExtraInputTypes determines whether the code generator generates input (and output) types
+	// for all plain types, instead of for only types that are used as input/output types.
+	OmitExtraInputTypes bool `json:"omitExtraInputTypes,omitempty"`
+
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 
