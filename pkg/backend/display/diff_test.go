@@ -119,11 +119,8 @@ func TestDiffEvents(t *testing.T) {
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			if strings.Contains(entry.Name(), "truncate") {
-				testDiffEvents(t, path, accept, true)
-			} else {
-				testDiffEvents(t, path, accept, false)
-			}
+			truncate := strings.Contains(entry.Name(), "truncate")
+			testDiffEvents(t, path, accept, truncate)
 		})
 	}
 }
