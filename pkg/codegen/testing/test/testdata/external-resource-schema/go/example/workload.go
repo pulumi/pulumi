@@ -14,7 +14,7 @@ import (
 type Workload struct {
 	pulumi.CustomResourceState
 
-	Pod corev1.PodPtrOutput `pulumi:"pod"`
+	Pod *corev1.PodTypeOutput `pulumi:"pod"`
 }
 
 // NewWorkload registers a new resource with the given unique name, arguments, and options.
@@ -149,8 +149,8 @@ func (o WorkloadOutput) ToWorkloadOutputWithContext(ctx context.Context) Workloa
 	return o
 }
 
-func (o WorkloadOutput) Pod() corev1.PodPtrOutput {
-	return o.ApplyT(func(v *Workload) corev1.PodPtrOutput { return v.Pod }).(corev1.PodPtrOutput)
+func (o WorkloadOutput) Pod() *corev1.PodTypeOutput {
+	return o.ApplyT(func(v *Workload) *corev1.PodTypeOutput { return v.Pod }).(*corev1.PodTypeOutput)
 }
 
 type WorkloadArrayOutput struct{ *pulumi.OutputState }

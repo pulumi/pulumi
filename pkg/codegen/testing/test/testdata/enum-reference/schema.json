@@ -1,0 +1,48 @@
+{
+    "name": "example",
+    "resources": {
+        "example:myModule:IamResource": {
+            "inputProperties": {
+                "config": {
+                    "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam%2Fv1:AuditConfig"
+                }
+            },
+            "isComponent": true
+        }
+    },
+    "language": {
+        "python": {
+            "requires": {
+                "pulumi": ">=3.0.0,<4.0.0",
+                "pulumi-aws": ">=4.37.1,<5.0.0"
+            }
+        },
+        "csharp": {
+            "projectReferences": [
+                "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+            ],
+            "packageReferences": {
+                "Pulumi": "3.13",
+                "Pulumi.GoogleNative": "0.20.0"
+            },
+            "respectSchemaVersion": true
+        },
+        "nodejs": {
+            "dependencies": {
+                "@pulumi/pulumi": "^3.12",
+                "@pulumi/google-native": "^0.20.0"
+            },
+            "devDependencies": {
+                "typescript": "^3.7.0",
+                "@types/node": "latest"
+            },
+            "respectSchemaVersion": true,
+            "pluginVersion": "3.2.1"
+        },
+        "go": {
+            "importBasePath": "enum-reference/example",
+            "generateExtraInputTypes": true,
+            "respectSchemaVersion": true
+        }
+    }
+}

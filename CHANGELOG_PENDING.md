@@ -5,6 +5,8 @@
 
 - [cli] Add Last Status to `pulumi stack ls` output.
   [#6148](https://github.com/pulumi/pulumi/pull/6148)
+- [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
+  [#9918](https://github.com/pulumi/pulumi/pull/9918)
 
 ### Bug Fixes
 
@@ -16,3 +18,9 @@
 
 - [cli] `pulumi convert` generates incorrect input parameter names for C#
   [#10042](https://github.com/pulumi/pulumi/issues/10042)
+
+- [engine] Un-parent child resource when a resource is deleted during a refresh.
+  [#10073](https://github.com/pulumi/pulumi/pull/10073)
+
+- [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
+  [#10075](https://github.com/pulumi/pulumi/pull/10075)
