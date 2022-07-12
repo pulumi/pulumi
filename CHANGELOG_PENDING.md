@@ -1,8 +1,5 @@
 ### Improvements
 
-- [engine] Fix rare data races where engine events were experiencing writes concurrent with reads during diagnostic emission.
-  [#10107](https://github.com/pulumi/pulumi/pull/10107)
-
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
@@ -18,6 +15,9 @@
   [#9905](https://github.com/pulumi/pulumi/issues/9905)
 
 ### Bug Fixes
+
+- [engine] Fix rare data races where engine events were experiencing writes concurrent with reads during diagnostic emission.
+  [#10107](https://github.com/pulumi/pulumi/pull/10107)
 
 - [cli] `pulumi convert` help text is wrong
   [#9892](https://github.com/pulumi/pulumi/issues/9892)
