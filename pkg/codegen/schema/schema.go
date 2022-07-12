@@ -507,7 +507,11 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 //
 // For example, given an input [[B, D], [C]] where each property has a name
 // equivalent to it's variable, this function should yield: ["B.D", "C"]
-func FormatReplaceOnChanges(propertyList [][]*Property, replaceOnChanges []string, nameFormatter func(string) string) []string {
+func FormatReplaceOnChanges(
+	propertyList [][]*Property,
+	replaceOnChanges []string,
+	nameFormatter func(string) string,
+) []string {
 	var nonOptional func(Type) Type
 	nonOptional = func(t Type) Type {
 		if o, ok := t.(*OptionalType); ok {
