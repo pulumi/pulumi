@@ -885,6 +885,8 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 }
 
 func toOutputTWithContext(ctx context.Context, join *workGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
+	// forceSecretVal enables ensuring the value is marked secret before the secret field of the
+	// output could be observed (read: raced) by any user of the returned Output prior to awaiting.
 	joins := gatherJoins(v)
 
 	done := joins.done
@@ -905,6 +907,9 @@ func toOutputTWithContext(ctx context.Context, join *workGroup, outputType refle
 	joins.add()
 
 	output := newOutput(join, outputType)
+	if forceSecretVal != nil {
+		output.getState().secret = *forceSecretVal
+	}
 	go func() {
 		defer done()
 
