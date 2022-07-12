@@ -884,6 +884,29 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("large_resource/nodejs")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.CWD = os.TempDir()
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
+}
+
 //nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
