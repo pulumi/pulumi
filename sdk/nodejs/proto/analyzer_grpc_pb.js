@@ -17,8 +17,8 @@
 //
 'use strict';
 var grpc = require('@grpc/grpc-js');
-var analyzer_pb = require('./analyzer_pb.js');
-var plugin_pb = require('./plugin_pb.js');
+var pulumi_analyzer_pb = require('./analyzer_pb.js');
+var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
@@ -34,69 +34,69 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
 }
 
 function serialize_pulumirpc_AnalyzeRequest(arg) {
-  if (!(arg instanceof analyzer_pb.AnalyzeRequest)) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzeRequest)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzeRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzeRequest(buffer_arg) {
-  return analyzer_pb.AnalyzeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_analyzer_pb.AnalyzeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_AnalyzeResponse(arg) {
-  if (!(arg instanceof analyzer_pb.AnalyzeResponse)) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzeResponse)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzeResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzeResponse(buffer_arg) {
-  return analyzer_pb.AnalyzeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_analyzer_pb.AnalyzeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_AnalyzeStackRequest(arg) {
-  if (!(arg instanceof analyzer_pb.AnalyzeStackRequest)) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzeStackRequest)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzeStackRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzeStackRequest(buffer_arg) {
-  return analyzer_pb.AnalyzeStackRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_analyzer_pb.AnalyzeStackRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_AnalyzerInfo(arg) {
-  if (!(arg instanceof analyzer_pb.AnalyzerInfo)) {
+  if (!(arg instanceof pulumi_analyzer_pb.AnalyzerInfo)) {
     throw new Error('Expected argument of type pulumirpc.AnalyzerInfo');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_AnalyzerInfo(buffer_arg) {
-  return analyzer_pb.AnalyzerInfo.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_analyzer_pb.AnalyzerInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ConfigureAnalyzerRequest(arg) {
-  if (!(arg instanceof analyzer_pb.ConfigureAnalyzerRequest)) {
+  if (!(arg instanceof pulumi_analyzer_pb.ConfigureAnalyzerRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureAnalyzerRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConfigureAnalyzerRequest(buffer_arg) {
-  return analyzer_pb.ConfigureAnalyzerRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_analyzer_pb.ConfigureAnalyzerRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_PluginInfo(arg) {
-  if (!(arg instanceof plugin_pb.PluginInfo)) {
+  if (!(arg instanceof pulumi_plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {
-  return plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -111,8 +111,8 @@ analyze: {
     path: '/pulumirpc.Analyzer/Analyze',
     requestStream: false,
     responseStream: false,
-    requestType: analyzer_pb.AnalyzeRequest,
-    responseType: analyzer_pb.AnalyzeResponse,
+    requestType: pulumi_analyzer_pb.AnalyzeRequest,
+    responseType: pulumi_analyzer_pb.AnalyzeResponse,
     requestSerialize: serialize_pulumirpc_AnalyzeRequest,
     requestDeserialize: deserialize_pulumirpc_AnalyzeRequest,
     responseSerialize: serialize_pulumirpc_AnalyzeResponse,
@@ -125,8 +125,8 @@ analyzeStack: {
     path: '/pulumirpc.Analyzer/AnalyzeStack',
     requestStream: false,
     responseStream: false,
-    requestType: analyzer_pb.AnalyzeStackRequest,
-    responseType: analyzer_pb.AnalyzeResponse,
+    requestType: pulumi_analyzer_pb.AnalyzeStackRequest,
+    responseType: pulumi_analyzer_pb.AnalyzeResponse,
     requestSerialize: serialize_pulumirpc_AnalyzeStackRequest,
     requestDeserialize: deserialize_pulumirpc_AnalyzeStackRequest,
     responseSerialize: serialize_pulumirpc_AnalyzeResponse,
@@ -138,7 +138,7 @@ getAnalyzerInfo: {
     requestStream: false,
     responseStream: false,
     requestType: google_protobuf_empty_pb.Empty,
-    responseType: analyzer_pb.AnalyzerInfo,
+    responseType: pulumi_analyzer_pb.AnalyzerInfo,
     requestSerialize: serialize_google_protobuf_Empty,
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_AnalyzerInfo,
@@ -150,7 +150,7 @@ getPluginInfo: {
     requestStream: false,
     responseStream: false,
     requestType: google_protobuf_empty_pb.Empty,
-    responseType: plugin_pb.PluginInfo,
+    responseType: pulumi_plugin_pb.PluginInfo,
     requestSerialize: serialize_google_protobuf_Empty,
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
@@ -161,7 +161,7 @@ configure: {
     path: '/pulumirpc.Analyzer/Configure',
     requestStream: false,
     responseStream: false,
-    requestType: analyzer_pb.ConfigureAnalyzerRequest,
+    requestType: pulumi_analyzer_pb.ConfigureAnalyzerRequest,
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_ConfigureAnalyzerRequest,
     requestDeserialize: deserialize_pulumirpc_ConfigureAnalyzerRequest,

@@ -3,8 +3,8 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from . import plugin_pb2 as plugin__pb2
-from . import provider_pb2 as provider__pb2
+from . import plugin_pb2 as pulumi_dot_plugin__pb2
+from . import provider_pb2 as pulumi_dot_provider__pb2
 
 
 class ResourceProviderStub(object):
@@ -20,73 +20,73 @@ class ResourceProviderStub(object):
         """
         self.GetSchema = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/GetSchema',
-                request_serializer=provider__pb2.GetSchemaRequest.SerializeToString,
-                response_deserializer=provider__pb2.GetSchemaResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.GetSchemaResponse.FromString,
                 )
         self.CheckConfig = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/CheckConfig',
-                request_serializer=provider__pb2.CheckRequest.SerializeToString,
-                response_deserializer=provider__pb2.CheckResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CheckResponse.FromString,
                 )
         self.DiffConfig = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/DiffConfig',
-                request_serializer=provider__pb2.DiffRequest.SerializeToString,
-                response_deserializer=provider__pb2.DiffResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.DiffRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.DiffResponse.FromString,
                 )
         self.Configure = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Configure',
-                request_serializer=provider__pb2.ConfigureRequest.SerializeToString,
-                response_deserializer=provider__pb2.ConfigureResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.ConfigureRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ConfigureResponse.FromString,
                 )
         self.Invoke = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Invoke',
-                request_serializer=provider__pb2.InvokeRequest.SerializeToString,
-                response_deserializer=provider__pb2.InvokeResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
         self.StreamInvoke = channel.unary_stream(
                 '/pulumirpc.ResourceProvider/StreamInvoke',
-                request_serializer=provider__pb2.InvokeRequest.SerializeToString,
-                response_deserializer=provider__pb2.InvokeResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Call',
-                request_serializer=provider__pb2.CallRequest.SerializeToString,
-                response_deserializer=provider__pb2.CallResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CallResponse.FromString,
                 )
         self.Check = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Check',
-                request_serializer=provider__pb2.CheckRequest.SerializeToString,
-                response_deserializer=provider__pb2.CheckResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CheckResponse.FromString,
                 )
         self.Diff = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Diff',
-                request_serializer=provider__pb2.DiffRequest.SerializeToString,
-                response_deserializer=provider__pb2.DiffResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.DiffRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.DiffResponse.FromString,
                 )
         self.Create = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Create',
-                request_serializer=provider__pb2.CreateRequest.SerializeToString,
-                response_deserializer=provider__pb2.CreateResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.CreateRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CreateResponse.FromString,
                 )
         self.Read = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Read',
-                request_serializer=provider__pb2.ReadRequest.SerializeToString,
-                response_deserializer=provider__pb2.ReadResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ReadResponse.FromString,
                 )
         self.Update = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Update',
-                request_serializer=provider__pb2.UpdateRequest.SerializeToString,
-                response_deserializer=provider__pb2.UpdateResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.UpdateRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.UpdateResponse.FromString,
                 )
         self.Delete = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Delete',
-                request_serializer=provider__pb2.DeleteRequest.SerializeToString,
+                request_serializer=pulumi_dot_provider__pb2.DeleteRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.Construct = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Construct',
-                request_serializer=provider__pb2.ConstructRequest.SerializeToString,
-                response_deserializer=provider__pb2.ConstructResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.ConstructRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ConstructResponse.FromString,
                 )
         self.Cancel = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Cancel',
@@ -96,11 +96,11 @@ class ResourceProviderStub(object):
         self.GetPluginInfo = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/GetPluginInfo',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-                response_deserializer=plugin__pb2.PluginInfo.FromString,
+                response_deserializer=pulumi_dot_plugin__pb2.PluginInfo.FromString,
                 )
         self.Attach = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Attach',
-                request_serializer=plugin__pb2.PluginAttach.SerializeToString,
+                request_serializer=pulumi_dot_plugin__pb2.PluginAttach.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -245,73 +245,73 @@ def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetSchema': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSchema,
-                    request_deserializer=provider__pb2.GetSchemaRequest.FromString,
-                    response_serializer=provider__pb2.GetSchemaResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.GetSchemaRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.GetSchemaResponse.SerializeToString,
             ),
             'CheckConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.CheckConfig,
-                    request_deserializer=provider__pb2.CheckRequest.FromString,
-                    response_serializer=provider__pb2.CheckResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.CheckRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CheckResponse.SerializeToString,
             ),
             'DiffConfig': grpc.unary_unary_rpc_method_handler(
                     servicer.DiffConfig,
-                    request_deserializer=provider__pb2.DiffRequest.FromString,
-                    response_serializer=provider__pb2.DiffResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.DiffRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.DiffResponse.SerializeToString,
             ),
             'Configure': grpc.unary_unary_rpc_method_handler(
                     servicer.Configure,
-                    request_deserializer=provider__pb2.ConfigureRequest.FromString,
-                    response_serializer=provider__pb2.ConfigureResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.ConfigureRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ConfigureResponse.SerializeToString,
             ),
             'Invoke': grpc.unary_unary_rpc_method_handler(
                     servicer.Invoke,
-                    request_deserializer=provider__pb2.InvokeRequest.FromString,
-                    response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
             'StreamInvoke': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamInvoke,
-                    request_deserializer=provider__pb2.InvokeRequest.FromString,
-                    response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
-                    request_deserializer=provider__pb2.CallRequest.FromString,
-                    response_serializer=provider__pb2.CallResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.CallRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CallResponse.SerializeToString,
             ),
             'Check': grpc.unary_unary_rpc_method_handler(
                     servicer.Check,
-                    request_deserializer=provider__pb2.CheckRequest.FromString,
-                    response_serializer=provider__pb2.CheckResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.CheckRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CheckResponse.SerializeToString,
             ),
             'Diff': grpc.unary_unary_rpc_method_handler(
                     servicer.Diff,
-                    request_deserializer=provider__pb2.DiffRequest.FromString,
-                    response_serializer=provider__pb2.DiffResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.DiffRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.DiffResponse.SerializeToString,
             ),
             'Create': grpc.unary_unary_rpc_method_handler(
                     servicer.Create,
-                    request_deserializer=provider__pb2.CreateRequest.FromString,
-                    response_serializer=provider__pb2.CreateResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.CreateRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CreateResponse.SerializeToString,
             ),
             'Read': grpc.unary_unary_rpc_method_handler(
                     servicer.Read,
-                    request_deserializer=provider__pb2.ReadRequest.FromString,
-                    response_serializer=provider__pb2.ReadResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.ReadRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ReadResponse.SerializeToString,
             ),
             'Update': grpc.unary_unary_rpc_method_handler(
                     servicer.Update,
-                    request_deserializer=provider__pb2.UpdateRequest.FromString,
-                    response_serializer=provider__pb2.UpdateResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.UpdateRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.UpdateResponse.SerializeToString,
             ),
             'Delete': grpc.unary_unary_rpc_method_handler(
                     servicer.Delete,
-                    request_deserializer=provider__pb2.DeleteRequest.FromString,
+                    request_deserializer=pulumi_dot_provider__pb2.DeleteRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Construct': grpc.unary_unary_rpc_method_handler(
                     servicer.Construct,
-                    request_deserializer=provider__pb2.ConstructRequest.FromString,
-                    response_serializer=provider__pb2.ConstructResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.ConstructRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ConstructResponse.SerializeToString,
             ),
             'Cancel': grpc.unary_unary_rpc_method_handler(
                     servicer.Cancel,
@@ -321,11 +321,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
             'GetPluginInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPluginInfo,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                    response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+                    response_serializer=pulumi_dot_plugin__pb2.PluginInfo.SerializeToString,
             ),
             'Attach': grpc.unary_unary_rpc_method_handler(
                     servicer.Attach,
-                    request_deserializer=plugin__pb2.PluginAttach.FromString,
+                    request_deserializer=pulumi_dot_plugin__pb2.PluginAttach.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -352,8 +352,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetSchema',
-            provider__pb2.GetSchemaRequest.SerializeToString,
-            provider__pb2.GetSchemaResponse.FromString,
+            pulumi_dot_provider__pb2.GetSchemaRequest.SerializeToString,
+            pulumi_dot_provider__pb2.GetSchemaResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -369,8 +369,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/CheckConfig',
-            provider__pb2.CheckRequest.SerializeToString,
-            provider__pb2.CheckResponse.FromString,
+            pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CheckResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -386,8 +386,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/DiffConfig',
-            provider__pb2.DiffRequest.SerializeToString,
-            provider__pb2.DiffResponse.FromString,
+            pulumi_dot_provider__pb2.DiffRequest.SerializeToString,
+            pulumi_dot_provider__pb2.DiffResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -403,8 +403,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Configure',
-            provider__pb2.ConfigureRequest.SerializeToString,
-            provider__pb2.ConfigureResponse.FromString,
+            pulumi_dot_provider__pb2.ConfigureRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ConfigureResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -420,8 +420,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Invoke',
-            provider__pb2.InvokeRequest.SerializeToString,
-            provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.InvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -437,8 +437,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceProvider/StreamInvoke',
-            provider__pb2.InvokeRequest.SerializeToString,
-            provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.InvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -454,8 +454,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Call',
-            provider__pb2.CallRequest.SerializeToString,
-            provider__pb2.CallResponse.FromString,
+            pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CallResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -471,8 +471,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Check',
-            provider__pb2.CheckRequest.SerializeToString,
-            provider__pb2.CheckResponse.FromString,
+            pulumi_dot_provider__pb2.CheckRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CheckResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -488,8 +488,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Diff',
-            provider__pb2.DiffRequest.SerializeToString,
-            provider__pb2.DiffResponse.FromString,
+            pulumi_dot_provider__pb2.DiffRequest.SerializeToString,
+            pulumi_dot_provider__pb2.DiffResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -505,8 +505,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Create',
-            provider__pb2.CreateRequest.SerializeToString,
-            provider__pb2.CreateResponse.FromString,
+            pulumi_dot_provider__pb2.CreateRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CreateResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -522,8 +522,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Read',
-            provider__pb2.ReadRequest.SerializeToString,
-            provider__pb2.ReadResponse.FromString,
+            pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ReadResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -539,8 +539,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Update',
-            provider__pb2.UpdateRequest.SerializeToString,
-            provider__pb2.UpdateResponse.FromString,
+            pulumi_dot_provider__pb2.UpdateRequest.SerializeToString,
+            pulumi_dot_provider__pb2.UpdateResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -556,7 +556,7 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Delete',
-            provider__pb2.DeleteRequest.SerializeToString,
+            pulumi_dot_provider__pb2.DeleteRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -573,8 +573,8 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Construct',
-            provider__pb2.ConstructRequest.SerializeToString,
-            provider__pb2.ConstructResponse.FromString,
+            pulumi_dot_provider__pb2.ConstructRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ConstructResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -608,7 +608,7 @@ class ResourceProvider(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetPluginInfo',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            plugin__pb2.PluginInfo.FromString,
+            pulumi_dot_plugin__pb2.PluginInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -624,7 +624,7 @@ class ResourceProvider(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Attach',
-            plugin__pb2.PluginAttach.SerializeToString,
+            pulumi_dot_plugin__pb2.PluginAttach.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

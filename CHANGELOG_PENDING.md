@@ -5,6 +5,9 @@
 
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9918](https://github.com/pulumi/pulumi/pull/9918)
+  
+- [protobuf] Pulumi protobuf messages are now namespaced under "pulumi".
+  [#10074](https://github.com/pulumi/pulumi/pull/10074)
 
 ### Bug Fixes
 
