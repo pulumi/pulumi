@@ -1,5 +1,8 @@
 ### Improvements
 
+- [engine] Fix rare data races where engine events were experiencing writes concurrent with reads during diagnostic emission.
+  [#10107](https://github.com/pulumi/pulumi/pull/10107)
+
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
