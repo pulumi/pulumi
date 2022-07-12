@@ -76,6 +76,18 @@ jobs:
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
 
+  protobuf-lint:
+    name: Check protobufs are clean
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Check Protobufs
+        run: |
+          make check-proto
+
   sdk-lint:
     name: Lint SDKs
     runs-on: ubuntu-latest
