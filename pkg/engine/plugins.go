@@ -239,7 +239,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin{Tgz: stream}, false); err != nil {
+	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(stream), false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 

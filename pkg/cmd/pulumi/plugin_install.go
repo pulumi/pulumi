@@ -145,9 +145,9 @@ func newPluginInstallCmd() *cobra.Command {
 					if r, size, err = install.Download(); err != nil {
 						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
-					payload = workspace.TarPlugin{
-						Tgz: workspace.ReadCloserProgressBar(r, size, "Downloading plugin", displayOpts.Color),
-					}
+					payload = workspace.TarPlugin(
+						workspace.ReadCloserProgressBar(r, size, "Downloading plugin", displayOpts.Color),
+					)
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
@@ -185,6 +185,10 @@ func getFilePayload(file string) (workspace.PluginContent, error) {
 		return nil, fmt.Errorf("stat on file %s: %w", source, err)
 	}
 
+	if stat.IsDir() {
+		return workspace.DirPlugin(file), nil
+	}
+
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, fmt.Errorf("opening file %s: %w", source, err)
@@ -202,7 +206,7 @@ func getFilePayload(file string) (workspace.PluginContent, error) {
 		if (stat.Mode() & 0100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return workspace.SingleFilePlugin{F: f}, nil
+		return workspace.SingleFilePlugin(f), nil
 	}
-	return workspace.TarPlugin{Tgz: f}, nil
+	return workspace.TarPlugin(f), nil
 }

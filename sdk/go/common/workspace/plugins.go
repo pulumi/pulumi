@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -795,7 +796,7 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 
 // Install installs a plugin's tarball into the cache. See InstallWithContext for details.
 func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
-	return info.InstallWithContext(context.Background(), TarPlugin{tgz}, reinstall)
+	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
 type PluginContent interface {
@@ -804,13 +805,15 @@ type PluginContent interface {
 	WriteToDir(info PluginInfo) error
 }
 
-var _ = (PluginContent)((*SingleFilePlugin)(nil))
+func SingleFilePlugin(f *os.File) PluginContent {
+	return singleFilePlugin{F: f}
+}
 
-type SingleFilePlugin struct {
+type singleFilePlugin struct {
 	F *os.File
 }
 
-func (p SingleFilePlugin) WriteToDir(info PluginInfo) error {
+func (p singleFilePlugin) WriteToDir(info PluginInfo) error {
 	bytes, err := ioutil.ReadAll(p.F)
 	if err != nil {
 		return err
@@ -824,26 +827,78 @@ func (p SingleFilePlugin) WriteToDir(info PluginInfo) error {
 	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
 }
 
-func (p SingleFilePlugin) Close() error {
+func (p singleFilePlugin) Close() error {
 	return p.F.Close()
 }
 
-var _ = (PluginContent)((*TarPlugin)(nil))
+func TarPlugin(tgz io.ReadCloser) PluginContent {
+	return tarPlugin{Tgz: tgz}
+}
 
-type TarPlugin struct {
+type tarPlugin struct {
 	Tgz io.ReadCloser
 }
 
-func (p TarPlugin) Close() error {
+func (p tarPlugin) Close() error {
 	return p.Tgz.Close()
 }
 
-func (p TarPlugin) WriteToDir(info PluginInfo) error {
+func (p tarPlugin) WriteToDir(info PluginInfo) error {
 	finalPath, err := info.DirPath()
 	if err != nil {
 		return err
 	}
 	return archive.ExtractTGZ(p.Tgz, finalPath)
+}
+
+func DirPlugin(rootPath string) PluginContent {
+	return dirPlugin{Root: rootPath}
+}
+
+type dirPlugin struct {
+	Root string
+}
+
+func (p dirPlugin) Close() error {
+	return nil
+}
+
+func (p dirPlugin) WriteToDir(info PluginInfo) error {
+	dstRoot, err := info.DirPath()
+	if err != nil {
+		return err
+	}
+	return filepath.WalkDir(p.Root, func(srcPath string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath := strings.TrimPrefix(srcPath, p.Root)
+		dstPath := filepath.Join(dstRoot, relPath)
+
+		if srcPath == p.Root {
+			return nil
+		}
+		if d.IsDir() {
+			return os.Mkdir(dstPath, 0700)
+		}
+
+		src, err := os.Open(srcPath)
+		if err != nil {
+			return err
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := ioutil.ReadAll(src)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(dstPath, bytes, info.Mode())
+	})
 }
 
 // Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
