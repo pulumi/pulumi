@@ -96,8 +96,7 @@ const (
 
 // OutputState holds the internal details of an Output and implements the Apply and ApplyWithContext methods.
 type OutputState struct {
-	mutex sync.Mutex
-	cond  *sync.Cond
+	cond *sync.Cond
 
 	join *workGroup // the wait group associated with this output, if any.
 
@@ -146,9 +145,9 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 		return
 	}
 
-	o.mutex.Lock()
+	o.cond.L.Lock()
 	defer func() {
-		o.mutex.Unlock()
+		o.cond.L.Unlock()
 		o.cond.Broadcast()
 	}()
 
@@ -245,14 +244,14 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			return nil, false, false, nil, nil
 		}
 
-		o.mutex.Lock()
+		o.cond.L.Lock()
 		for o.state == outputPending {
 			if ctx.Err() != nil {
 				return nil, true, false, nil, ctx.Err()
 			}
 			o.cond.Wait()
 		}
-		o.mutex.Unlock()
+		o.cond.L.Unlock()
 
 		deps = mergeDependencies(deps, o.deps)
 		known = known && o.known
@@ -282,12 +281,17 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 		join.Add(1)
 	}
 
+	var m sync.Mutex
 	out := &OutputState{
 		join:    join,
 		element: elementType,
 		deps:    deps,
+		// Note: Calling registerResource or readResource with the same resource state can report a
+		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
+		//
+		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
+		cond: sync.NewCond(&m),
 	}
-	out.cond = sync.NewCond(&out.mutex)
 	return out
 }
 

@@ -1,4 +1,4 @@
-// source: engine.proto
+// source: pulumi/engine.proto
 /**
  * @fileoverview
  * @enhanceable
