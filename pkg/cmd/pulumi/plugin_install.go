@@ -171,7 +171,7 @@ func newPluginInstallCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&exact,
 		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
-		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
+		"file", "f", "", "Install a plugin from a binary, folder or tarball, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 
