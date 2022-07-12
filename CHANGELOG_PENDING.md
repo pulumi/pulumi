@@ -3,6 +3,8 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [cli] Add Last Status to `pulumi stack ls` output.
+  [#6148](https://github.com/pulumi/pulumi/pull/6148)
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9918](https://github.com/pulumi/pulumi/pull/9918)
   

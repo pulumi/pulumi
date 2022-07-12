@@ -194,6 +194,7 @@ type stackSummaryJSON struct {
 	Current          bool   `json:"current"`
 	LastUpdate       string `json:"lastUpdate,omitempty"`
 	UpdateInProgress bool   `json:"updateInProgress"`
+	LastStatus       string `json:"lastStatus,omitempty"`
 	ResourceCount    *int   `json:"resourceCount,omitempty"`
 	URL              string `json:"url,omitempty"`
 }
@@ -216,6 +217,11 @@ func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSumma
 		}
 
 		if httpBackend, ok := b.(httpstate.Backend); ok {
+			if stackHistory, err := httpBackend.GetHistory(commandContext(), summary.Name(), 1, 1); err == nil {
+				if len(stackHistory) > 0 {
+					summaryJSON.LastStatus = string(stackHistory[0].Result)
+				}
+			}
 			if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
 				summaryJSON.URL = consoleURL
 			}
@@ -231,7 +237,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 	_, showURLColumn := b.(httpstate.Backend)
 
 	// Header string and formatting options to align columns.
-	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
+	headers := []string{"NAME", "LAST UPDATE", "LAST STATUS", "RESOURCE COUNT"}
 	if showURLColumn {
 		headers = append(headers, "URL")
 	}
@@ -257,6 +263,17 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 			}
 		}
 
+		// Last status column
+		lastStatus := none
+		if httpBackend, ok := b.(httpstate.Backend); ok {
+			if stackHistory, err := httpBackend.GetHistory(commandContext(), summary.Name(),
+				len(stackSummaries), 1); err == nil {
+				if len(stackHistory) > 0 {
+					lastStatus = string(stackHistory[0].Result)
+				}
+			}
+		}
+
 		// ResourceCount column
 		resourceCount := none
 		if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
@@ -264,7 +281,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 		}
 
 		// Render the columns.
-		columns := []string{name, lastUpdate, resourceCount}
+		columns := []string{name, lastUpdate, lastStatus, resourceCount}
 		if showURLColumn {
 			url := none
 			if httpBackend, ok := b.(httpstate.Backend); ok {
