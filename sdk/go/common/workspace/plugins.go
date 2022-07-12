@@ -795,7 +795,7 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 
 // Install installs a plugin's tarball into the cache. See InstallWithContext for details.
 func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
-	return info.InstallWithContext(context.Background(), tgz, reinstall)
+	return info.InstallWithContext(context.Background(), tgz, reinstall, false)
 }
 
 // Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
@@ -809,7 +809,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser, reinstall bool) error {
+func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser, reinstall bool, rawFile bool) error {
 	defer contract.IgnoreClose(tgz)
 
 	// Fetch the directory into which we will expand this tarball.
@@ -873,9 +873,22 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser
 		return err
 	}
 
-	// Uncompress the plugin.
-	if err := archive.ExtractTGZ(tgz, finalDir); err != nil {
-		return err
+	if rawFile {
+		bytes, err := ioutil.ReadAll(tgz)
+		if err != nil {
+			return err
+		}
+		finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-resource-%s", info.Name))
+		// We are writing an executable.
+		err = os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
+		if err != nil {
+			return err
+		}
+	} else {
+		// Uncompress the plugin.
+		if err := archive.ExtractTGZ(tgz, finalDir); err != nil {
+			return err
+		}
 	}
 
 	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close

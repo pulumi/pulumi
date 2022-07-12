@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/blang/semver"
@@ -137,6 +138,7 @@ func newPluginInstallCmd() *cobra.Command {
 				// If we got here, actually try to do the download.
 				var source string
 				var tarball io.ReadCloser
+				var rawExec bool
 				var err error
 				if file == "" {
 					var size int64
@@ -147,12 +149,33 @@ func newPluginInstallCmd() *cobra.Command {
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
-					if tarball, err = os.Open(file); err != nil {
+					f, err := os.Open(file)
+					if err != nil {
 						return fmt.Errorf("opening file %s: %w", source, err)
 					}
+					compressHeader := make([]byte, 5)
+					_, err = f.Read(compressHeader)
+					if err != nil {
+						return fmt.Errorf("reading file %s: %w", source, err)
+					}
+					_, err = f.Seek(0, 0)
+					if err != nil {
+						return fmt.Errorf("seeking back in file %s: %w", source, err)
+					}
+					if !encoding.IsCompressed(compressHeader) {
+						rawExec = true
+						stat, err := f.Stat()
+						if err != nil {
+							return fmt.Errorf("stat on file %s: %w", source, err)
+						}
+						if (stat.Mode() & 0100) == 0 {
+							return fmt.Errorf("%s is not executable", source)
+						}
+					}
+					tarball = f
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.InstallWithContext(context.Background(), tarball, reinstall); err != nil {
+				if err = install.InstallWithContext(context.Background(), tarball, reinstall, rawExec); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}
