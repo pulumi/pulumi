@@ -559,8 +559,6 @@ func UnsafeUnknownOutput(deps []Resource) Output {
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	x := true
 	o := toOutputWithContext(ctx, nil, input, &x)
-	// set immediate secretness ahead of resolution/fufillment
-	o.getState().secret = true
 	return o
 }
 
