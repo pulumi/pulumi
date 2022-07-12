@@ -18,6 +18,7 @@ namespace Pulumi.Example.Outputs
     {
         public readonly Outputs.Toy? Associated;
         public readonly string? Color;
+        public readonly bool? HasHazardousChemicals;
         public readonly double? Wear;
 
         [OutputConstructor]
@@ -26,10 +27,13 @@ namespace Pulumi.Example.Outputs
 
             string? color,
 
+            bool? hasHazardousChemicals,
+
             double? wear)
         {
             Associated = associated;
             Color = color;
+            HasHazardousChemicals = hasHazardousChemicals;
             Wear = wear;
         }
     }

@@ -54,6 +54,7 @@ namespace Pulumi.Example
                     "stuff[*].associated.color",
                     "stuff[*].color",
                     "wanted[*]",
+                    "stuff.[*].hasHazardousChemicals",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);

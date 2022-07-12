@@ -1332,12 +1332,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
-	replaceOnChangesProps, errList := res.ReplaceOnChanges()
+	replaceOnChangesProps, replaceOnChangesOverrides, errList := res.ReplaceOnChanges()
 	for _, err := range errList {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
-	if len(replaceOnChangesProps) > 0 {
-		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, PyName)
+	if len(replaceOnChangesProps) > 0 || len(replaceOnChangesOverrides) > 0 {
+		replaceOnChangesStrings := schema.FormatReplaceOnChanges(replaceOnChangesProps, replaceOnChangesOverrides, PyName)
 		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
 	}

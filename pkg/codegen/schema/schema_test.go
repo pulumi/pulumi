@@ -483,11 +483,12 @@ func TestReplaceOnChanges(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		name     string
-		filePath string
-		resource string
-		result   []string
-		errors   []string
+		name              string
+		filePath          string
+		resource          string
+		nameFormatterFunc func(string) string
+		result            []string
+		errors            []string
 	}{
 		{
 			name:     "Simple case",
@@ -524,7 +525,14 @@ func TestReplaceOnChanges(t *testing.T) {
 			name:     "Drill Correctly",
 			filePath: "replace-on-changes-5.json",
 			resource: "example::Pets",
-			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
+			result:   []string{"foes.*.color", "friends[*].color", "friends[*].hasHazardousChemicals", "name", "toy.color", "toy.hasHazardousChemicals"},
+		},
+		{
+			name:              "Drill Correctly with custom formatting",
+			filePath:          "replace-on-changes-5.json",
+			resource:          "example::Pets",
+			nameFormatterFunc: strings.ToLower,
+			result:            []string{"foes.*.color", "friends[*].color", "friends[*].hashazardouschemicals", "name", "toy.color", "toy.hashazardouschemicals"},
 		},
 		{
 			name:     "No replace on changes and recursive",
@@ -548,13 +556,17 @@ func TestReplaceOnChanges(t *testing.T) {
 			assert.NoError(t, err, "Import should be successful")
 			resource, found := pkg.GetResource(tt.resource)
 			assert.True(t, found, "The resource should exist")
-			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
+			replaceOnChanges, replaceOnChangesOverrides, errListErrors := resource.ReplaceOnChanges()
 			errList := make([]string, len(errListErrors))
 			for i, e := range errListErrors {
 				errList[i] = e.Error()
 			}
-			actualResult := PropertyListJoinToString(replaceOnChanges,
-				func(x string) string { return x })
+
+			fn := tt.nameFormatterFunc
+			if fn == nil {
+				fn = func(x string) string { return x }
+			}
+			actualResult := FormatReplaceOnChanges(replaceOnChanges, replaceOnChangesOverrides, fn)
 			sort.Strings(actualResult)
 			if tt.result != nil || len(actualResult) > 0 {
 				assert.Equal(t, tt.result, actualResult,

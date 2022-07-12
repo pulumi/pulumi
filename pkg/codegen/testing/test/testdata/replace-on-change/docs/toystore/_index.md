@@ -841,6 +841,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
+        <span id="hashazardouschemicals_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hashazardouschemicals_csharp" style="color: inherit; text-decoration: inherit;">Has<wbr>Hazardous<wbr>Chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
         <span id="wear_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_csharp" style="color: inherit; text-decoration: inherit;">Wear</a>
 </span>
@@ -868,6 +876,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="hashazardouschemicals_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hashazardouschemicals_go" style="color: inherit; text-decoration: inherit;">Has<wbr>Hazardous<wbr>Chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -901,6 +917,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
+        <span id="hashazardouschemicals_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hashazardouschemicals_java" style="color: inherit; text-decoration: inherit;">has<wbr>Hazardous<wbr>Chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
         <span id="wear_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_java" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
@@ -928,6 +952,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="hashazardouschemicals_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hashazardouschemicals_nodejs" style="color: inherit; text-decoration: inherit;">has<wbr>Hazardous<wbr>Chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -961,6 +993,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
+        <span id="has_hazardous_chemicals_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#has_hazardous_chemicals_python" style="color: inherit; text-decoration: inherit;">has_<wbr>hazardous_<wbr>chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
         <span id="wear_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_python" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
@@ -988,6 +1028,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="hashazardouschemicals_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hashazardouschemicals_yaml" style="color: inherit; text-decoration: inherit;">has<wbr>Hazardous<wbr>Chemicals</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

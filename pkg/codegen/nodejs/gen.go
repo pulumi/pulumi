@@ -888,13 +888,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
-	replaceOnChanges, errList := r.ReplaceOnChanges()
+	replaceOnChangesProps, replaceOnChangesOverrides, errList := r.ReplaceOnChanges()
 	for _, err := range errList {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges,
+	replaceOnChangesStrings := schema.FormatReplaceOnChanges(replaceOnChangesProps, replaceOnChangesOverrides,
 		func(x string) string { return x })
-	if len(replaceOnChanges) > 0 {
+	if len(replaceOnChangesProps) > 0 || len(replaceOnChangesOverrides) > 0 {
 		fmt.Fprintf(w, `        const replaceOnChanges = { replaceOnChanges: ["%s"] };`, strings.Join(replaceOnChangesStrings, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
 	}

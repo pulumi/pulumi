@@ -91,9 +91,27 @@ class Toy(dict):
     """
     This is a toy
     """
+    @staticmethod
+    def __key_warning(key: str):
+        suggest = None
+        if key == "hasHazardousChemicals":
+            suggest = "has_hazardous_chemicals"
+
+        if suggest:
+            pulumi.log.warn(f"Key '{key}' not found in Toy. Access the value via the '{suggest}' property getter instead.")
+
+    def __getitem__(self, key: str) -> Any:
+        Toy.__key_warning(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default = None) -> Any:
+        Toy.__key_warning(key)
+        return super().get(key, default)
+
     def __init__(__self__, *,
                  associated: Optional['outputs.Toy'] = None,
                  color: Optional[str] = None,
+                 has_hazardous_chemicals: Optional[bool] = None,
                  wear: Optional[float] = None):
         """
         This is a toy
@@ -102,6 +120,8 @@ class Toy(dict):
             pulumi.set(__self__, "associated", associated)
         if color is not None:
             pulumi.set(__self__, "color", color)
+        if has_hazardous_chemicals is not None:
+            pulumi.set(__self__, "has_hazardous_chemicals", has_hazardous_chemicals)
         if wear is not None:
             pulumi.set(__self__, "wear", wear)
 
@@ -114,6 +134,11 @@ class Toy(dict):
     @pulumi.getter
     def color(self) -> Optional[str]:
         return pulumi.get(self, "color")
+
+    @property
+    @pulumi.getter(name="hasHazardousChemicals")
+    def has_hazardous_chemicals(self) -> Optional[bool]:
+        return pulumi.get(self, "has_hazardous_chemicals")
 
     @property
     @pulumi.getter

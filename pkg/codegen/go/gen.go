@@ -1751,13 +1751,13 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	// Setup replaceOnChange
-	replaceOnChangesProps, errList := r.ReplaceOnChanges()
+	replaceOnChangesProps, replaceOnChangesOverrides, errList := r.ReplaceOnChanges()
 	for _, err := range errList {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+	replaceOnChangesStrings := schema.FormatReplaceOnChanges(replaceOnChangesProps, replaceOnChangesOverrides,
 		func(x string) string { return x })
-	if len(replaceOnChangesProps) > 0 {
+	if len(replaceOnChangesProps) > 0 || len(replaceOnChangesOverrides) > 0 {
 		fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")
 		for _, p := range replaceOnChangesStrings {
 			fmt.Fprintf(w, "\t\t%q,\n", p)

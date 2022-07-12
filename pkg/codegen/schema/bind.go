@@ -1384,19 +1384,20 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	}
 
 	*decl = Resource{
-		Package:            t.pkg,
-		PackageReference:   t.externalPackage(),
-		Token:              token,
-		Comment:            spec.Description,
-		InputProperties:    inputProperties,
-		Properties:         properties,
-		StateInputs:        stateInputs,
-		Aliases:            aliases,
-		DeprecationMessage: spec.DeprecationMessage,
-		Language:           language,
-		IsComponent:        spec.IsComponent,
-		Methods:            methods,
-		IsOverlay:          spec.IsOverlay,
+		Package:                  t.pkg,
+		PackageReference:         t.externalPackage(),
+		Token:                    token,
+		Comment:                  spec.Description,
+		InputProperties:          inputProperties,
+		Properties:               properties,
+		StateInputs:              stateInputs,
+		Aliases:                  aliases,
+		DeprecationMessage:       spec.DeprecationMessage,
+		Language:                 language,
+		IsComponent:              spec.IsComponent,
+		Methods:                  methods,
+		IsOverlay:                spec.IsOverlay,
+		ReplaceOnChangesOverride: spec.ReplaceOnChangesOverride,
 	}
 	return diags, nil
 }

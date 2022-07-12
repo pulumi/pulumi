@@ -34,7 +34,8 @@
             "$ref": "#/types/example::toy"
           }
         }
-      }
+      },
+      "replaceOnChangesOverride": ["toy.hasHazardousChemicals", "friends[*].hasHazardousChemicals"]
     }
   },
   "types": {
@@ -45,6 +46,9 @@
         "color": {
           "type": "string",
           "replaceOnChanges": true
+        },
+        "hasHazardousChemicals": {
+          "type": "boolean"
         },
         "wear": {
           "type": "number"

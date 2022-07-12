@@ -1076,15 +1076,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                },\n")
 	}
 
-	replaceOnChangesProps, errList := r.ReplaceOnChanges()
+	replaceOnChangesProps, replaceOnChangesOverrides, errList := r.ReplaceOnChanges()
 	for _, err := range errList {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
-	if len(replaceOnChangesProps) > 0 {
+	if len(replaceOnChangesProps) > 0 || len(replaceOnChangesOverrides) > 0 {
 		fmt.Fprint(w, "                ReplaceOnChanges =\n")
 		fmt.Fprintf(w, "                {\n")
-		for _, n := range schema.PropertyListJoinToString(replaceOnChangesProps,
-			func(s string) string { return s }) {
+		for _, n := range schema.FormatReplaceOnChanges(replaceOnChangesProps, replaceOnChangesOverrides, func(s string) string { return s }) {
 			fmt.Fprintf(w, "                    ")
 			fmt.Fprintf(w, "%q,\n", n)
 		}

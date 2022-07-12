@@ -32,6 +32,7 @@ func NewToyStore(ctx *pulumi.Context,
 		"stuff[*].associated.color",
 		"stuff[*].color",
 		"wanted[*]",
+		"stuff.[*].hasHazardousChemicals",
 	})
 	opts = append(opts, replaceOnChanges)
 	var resource ToyStore

@@ -447,9 +447,10 @@ func (o RecPtrOutput) Rec1() RecPtrOutput {
 
 // This is a toy
 type Toy struct {
-	Associated *Toy     `pulumi:"associated"`
-	Color      *string  `pulumi:"color"`
-	Wear       *float64 `pulumi:"wear"`
+	Associated            *Toy     `pulumi:"associated"`
+	Color                 *string  `pulumi:"color"`
+	HasHazardousChemicals *bool    `pulumi:"hasHazardousChemicals"`
+	Wear                  *float64 `pulumi:"wear"`
 }
 
 // ToyInput is an input type that accepts ToyArgs and ToyOutput values.
@@ -465,9 +466,10 @@ type ToyInput interface {
 
 // This is a toy
 type ToyArgs struct {
-	Associated ToyPtrInput            `pulumi:"associated"`
-	Color      pulumi.StringPtrInput  `pulumi:"color"`
-	Wear       pulumi.Float64PtrInput `pulumi:"wear"`
+	Associated            ToyPtrInput            `pulumi:"associated"`
+	Color                 pulumi.StringPtrInput  `pulumi:"color"`
+	HasHazardousChemicals pulumi.BoolPtrInput    `pulumi:"hasHazardousChemicals"`
+	Wear                  pulumi.Float64PtrInput `pulumi:"wear"`
 }
 
 func (ToyArgs) ElementType() reflect.Type {
@@ -606,6 +608,10 @@ func (o ToyOutput) Color() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Toy) *string { return v.Color }).(pulumi.StringPtrOutput)
 }
 
+func (o ToyOutput) HasHazardousChemicals() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v Toy) *bool { return v.HasHazardousChemicals }).(pulumi.BoolPtrOutput)
+}
+
 func (o ToyOutput) Wear() pulumi.Float64PtrOutput {
 	return o.ApplyT(func(v Toy) *float64 { return v.Wear }).(pulumi.Float64PtrOutput)
 }
@@ -650,6 +656,15 @@ func (o ToyPtrOutput) Color() pulumi.StringPtrOutput {
 		}
 		return v.Color
 	}).(pulumi.StringPtrOutput)
+}
+
+func (o ToyPtrOutput) HasHazardousChemicals() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Toy) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.HasHazardousChemicals
+	}).(pulumi.BoolPtrOutput)
 }
 
 func (o ToyPtrOutput) Wear() pulumi.Float64PtrOutput {

@@ -32,6 +32,7 @@ export interface Rec {
 export interface Toy {
     associated?: outputs.Toy;
     color?: string;
+    hasHazardousChemicals?: boolean;
     wear?: number;
 }
 

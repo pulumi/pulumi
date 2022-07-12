@@ -34,7 +34,8 @@
           },
           "replaceOnChanges": true
         }
-      }
+      },
+      "replaceOnChangesOverride": ["stuff.[*].hasHazardousChemicals"]
     },
     "example::God": {
       "properties": {
@@ -94,6 +95,9 @@
         },
         "associated": {
           "$ref": "#/types/example::Toy"
+        },
+        "hasHazardousChemicals": {
+          "type": "boolean"
         }
       }
     },
