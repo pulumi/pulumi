@@ -2,8 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from . import engine_pb2 as engine__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from . import engine_pb2 as pulumi_dot_engine__pb2
 
 
 class EngineStub(object):
@@ -20,18 +20,18 @@ class EngineStub(object):
         """
         self.Log = channel.unary_unary(
                 '/pulumirpc.Engine/Log',
-                request_serializer=engine__pb2.LogRequest.SerializeToString,
+                request_serializer=pulumi_dot_engine__pb2.LogRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetRootResource = channel.unary_unary(
                 '/pulumirpc.Engine/GetRootResource',
-                request_serializer=engine__pb2.GetRootResourceRequest.SerializeToString,
-                response_deserializer=engine__pb2.GetRootResourceResponse.FromString,
+                request_serializer=pulumi_dot_engine__pb2.GetRootResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_engine__pb2.GetRootResourceResponse.FromString,
                 )
         self.SetRootResource = channel.unary_unary(
                 '/pulumirpc.Engine/SetRootResource',
-                request_serializer=engine__pb2.SetRootResourceRequest.SerializeToString,
-                response_deserializer=engine__pb2.SetRootResourceResponse.FromString,
+                request_serializer=pulumi_dot_engine__pb2.SetRootResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_engine__pb2.SetRootResourceResponse.FromString,
                 )
 
 
@@ -68,18 +68,18 @@ def add_EngineServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Log': grpc.unary_unary_rpc_method_handler(
                     servicer.Log,
-                    request_deserializer=engine__pb2.LogRequest.FromString,
+                    request_deserializer=pulumi_dot_engine__pb2.LogRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'GetRootResource': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRootResource,
-                    request_deserializer=engine__pb2.GetRootResourceRequest.FromString,
-                    response_serializer=engine__pb2.GetRootResourceResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_engine__pb2.GetRootResourceRequest.FromString,
+                    response_serializer=pulumi_dot_engine__pb2.GetRootResourceResponse.SerializeToString,
             ),
             'SetRootResource': grpc.unary_unary_rpc_method_handler(
                     servicer.SetRootResource,
-                    request_deserializer=engine__pb2.SetRootResourceRequest.FromString,
-                    response_serializer=engine__pb2.SetRootResourceResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_engine__pb2.SetRootResourceRequest.FromString,
+                    response_serializer=pulumi_dot_engine__pb2.SetRootResourceResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -106,7 +106,7 @@ class Engine(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Engine/Log',
-            engine__pb2.LogRequest.SerializeToString,
+            pulumi_dot_engine__pb2.LogRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -123,8 +123,8 @@ class Engine(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Engine/GetRootResource',
-            engine__pb2.GetRootResourceRequest.SerializeToString,
-            engine__pb2.GetRootResourceResponse.FromString,
+            pulumi_dot_engine__pb2.GetRootResourceRequest.SerializeToString,
+            pulumi_dot_engine__pb2.GetRootResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -140,7 +140,7 @@ class Engine(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.Engine/SetRootResource',
-            engine__pb2.SetRootResourceRequest.SerializeToString,
-            engine__pb2.SetRootResourceResponse.FromString,
+            pulumi_dot_engine__pb2.SetRootResourceRequest.SerializeToString,
+            pulumi_dot_engine__pb2.SetRootResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

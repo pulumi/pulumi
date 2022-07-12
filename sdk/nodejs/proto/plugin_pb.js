@@ -1,4 +1,4 @@
-// source: plugin.proto
+// source: pulumi/plugin.proto
 /**
  * @fileoverview
  * @enhanceable
