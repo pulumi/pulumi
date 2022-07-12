@@ -2,7 +2,10 @@
     aws:region: us-west-2
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev]
-<{%reset%}><{%reset%}>    <{%reset%}>  aws:iam/role:Role: (same)
+<{%reset%}><{%reset%}>    readme: <{%reset%}><{%reset%}>"line 1\nline2\nline3\nline4"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>    readme: <{%reset%}><{%reset%}>"line 1\nline2\nline3\nline4"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%reset%}>  aws:iam/role:Role: (same)
 <{%reset%}>        [id=eks-role-24b1266]
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::7b99a6ae-83b6-49d1-a82d-3f9f7cf83d42]
