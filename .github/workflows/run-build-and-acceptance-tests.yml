@@ -77,13 +77,14 @@ jobs:
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
 
   protobuf-lint:
-    name: Check protobufs are clean
+    name: Check Protobufs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
+        # This till display missing pulumictl errors, but it won't prevent the lint from working.
       - name: Check Protobufs
         run: |
           make check-proto
