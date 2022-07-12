@@ -1,4 +1,4 @@
-// source: resource.proto
+// source: pulumi/resource.proto
 /**
  * @fileoverview
  * @enhanceable
@@ -19,8 +19,8 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
-var provider_pb = require('./provider_pb.js');
-goog.object.extend(proto, provider_pb);
+var pulumi_provider_pb = require('./provider_pb.js');
+goog.object.extend(proto, pulumi_provider_pb);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);

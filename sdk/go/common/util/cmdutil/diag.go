@@ -16,6 +16,7 @@ package cmdutil
 
 import (
 	"os"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -23,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+var snkMutex sync.Mutex
 var snk diag.Sink
 
 // By default we'll attempt to figure out if we should have colors or not. This can be overridden
@@ -77,6 +79,8 @@ func SetGlobalColorization(value string) error {
 
 // Diag lazily allocates a sink to be used if we can't create a compiler.
 func Diag() diag.Sink {
+	snkMutex.Lock()
+	defer snkMutex.Unlock()
 	if snk == nil {
 		snk = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: GetGlobalColorization(),

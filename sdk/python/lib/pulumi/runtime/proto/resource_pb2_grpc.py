@@ -3,8 +3,8 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from . import provider_pb2 as provider__pb2
-from . import resource_pb2 as resource__pb2
+from . import provider_pb2 as pulumi_dot_provider__pb2
+from . import resource_pb2 as pulumi_dot_resource__pb2
 
 
 class ResourceMonitorStub(object):
@@ -19,37 +19,37 @@ class ResourceMonitorStub(object):
         """
         self.SupportsFeature = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/SupportsFeature',
-                request_serializer=resource__pb2.SupportsFeatureRequest.SerializeToString,
-                response_deserializer=resource__pb2.SupportsFeatureResponse.FromString,
+                request_serializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.SupportsFeatureResponse.FromString,
                 )
         self.Invoke = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Invoke',
-                request_serializer=resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=provider__pb2.InvokeResponse.FromString,
+                request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
         self.StreamInvoke = channel.unary_stream(
                 '/pulumirpc.ResourceMonitor/StreamInvoke',
-                request_serializer=resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=provider__pb2.InvokeResponse.FromString,
+                request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Call',
-                request_serializer=provider__pb2.CallRequest.SerializeToString,
-                response_deserializer=provider__pb2.CallResponse.FromString,
+                request_serializer=pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.CallResponse.FromString,
                 )
         self.ReadResource = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/ReadResource',
-                request_serializer=resource__pb2.ReadResourceRequest.SerializeToString,
-                response_deserializer=resource__pb2.ReadResourceResponse.FromString,
+                request_serializer=pulumi_dot_resource__pb2.ReadResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.ReadResourceResponse.FromString,
                 )
         self.RegisterResource = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterResource',
-                request_serializer=resource__pb2.RegisterResourceRequest.SerializeToString,
-                response_deserializer=resource__pb2.RegisterResourceResponse.FromString,
+                request_serializer=pulumi_dot_resource__pb2.RegisterResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.RegisterResourceResponse.FromString,
                 )
         self.RegisterResourceOutputs = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
-                request_serializer=resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
+                request_serializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -105,37 +105,37 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'SupportsFeature': grpc.unary_unary_rpc_method_handler(
                     servicer.SupportsFeature,
-                    request_deserializer=resource__pb2.SupportsFeatureRequest.FromString,
-                    response_serializer=resource__pb2.SupportsFeatureResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.SupportsFeatureResponse.SerializeToString,
             ),
             'Invoke': grpc.unary_unary_rpc_method_handler(
                     servicer.Invoke,
-                    request_deserializer=resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
             'StreamInvoke': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamInvoke,
-                    request_deserializer=resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
-                    request_deserializer=provider__pb2.CallRequest.FromString,
-                    response_serializer=provider__pb2.CallResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_provider__pb2.CallRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.CallResponse.SerializeToString,
             ),
             'ReadResource': grpc.unary_unary_rpc_method_handler(
                     servicer.ReadResource,
-                    request_deserializer=resource__pb2.ReadResourceRequest.FromString,
-                    response_serializer=resource__pb2.ReadResourceResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_resource__pb2.ReadResourceRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.ReadResourceResponse.SerializeToString,
             ),
             'RegisterResource': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterResource,
-                    request_deserializer=resource__pb2.RegisterResourceRequest.FromString,
-                    response_serializer=resource__pb2.RegisterResourceResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterResourceRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.RegisterResourceResponse.SerializeToString,
             ),
             'RegisterResourceOutputs': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterResourceOutputs,
-                    request_deserializer=resource__pb2.RegisterResourceOutputsRequest.FromString,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -161,8 +161,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/SupportsFeature',
-            resource__pb2.SupportsFeatureRequest.SerializeToString,
-            resource__pb2.SupportsFeatureResponse.FromString,
+            pulumi_dot_resource__pb2.SupportsFeatureRequest.SerializeToString,
+            pulumi_dot_resource__pb2.SupportsFeatureResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -178,8 +178,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/Invoke',
-            resource__pb2.ResourceInvokeRequest.SerializeToString,
-            provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.InvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -195,8 +195,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceMonitor/StreamInvoke',
-            resource__pb2.ResourceInvokeRequest.SerializeToString,
-            provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
+            pulumi_dot_provider__pb2.InvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -212,8 +212,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/Call',
-            provider__pb2.CallRequest.SerializeToString,
-            provider__pb2.CallResponse.FromString,
+            pulumi_dot_provider__pb2.CallRequest.SerializeToString,
+            pulumi_dot_provider__pb2.CallResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -229,8 +229,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/ReadResource',
-            resource__pb2.ReadResourceRequest.SerializeToString,
-            resource__pb2.ReadResourceResponse.FromString,
+            pulumi_dot_resource__pb2.ReadResourceRequest.SerializeToString,
+            pulumi_dot_resource__pb2.ReadResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -246,8 +246,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResource',
-            resource__pb2.RegisterResourceRequest.SerializeToString,
-            resource__pb2.RegisterResourceResponse.FromString,
+            pulumi_dot_resource__pb2.RegisterResourceRequest.SerializeToString,
+            pulumi_dot_resource__pb2.RegisterResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -263,7 +263,7 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
-            resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
+            pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
