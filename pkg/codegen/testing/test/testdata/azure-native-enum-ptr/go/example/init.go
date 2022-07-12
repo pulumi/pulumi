@@ -10,26 +10,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type module struct {
-	version semver.Version
-}
-
-func (m *module) Version() semver.Version {
-	return m.version
-}
-
-func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
-	switch typ {
-	case "example::Component":
-		r = &Component{}
-	default:
-		return nil, fmt.Errorf("unknown resource type: %s", typ)
-	}
-
-	err = ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))
-	return
-}
-
 type pkg struct {
 	version semver.Version
 }
@@ -50,11 +30,6 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 
 func init() {
 	version, _ := PkgVersion()
-	pulumi.RegisterResourceModule(
-		"example",
-		"",
-		&module{version},
-	)
 	pulumi.RegisterResourcePackage(
 		"example",
 		&pkg{version},

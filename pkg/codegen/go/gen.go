@@ -2868,7 +2868,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 // Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
 // definition and its registration to support rehydrating providers.
-func (pkg *pkgContext) genResourceModule(w io.Writer) {
+func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	contract.Assert(len(pkg.resources) != 0)
 	allResourcesAreOverlays := true
 	for _, r := range pkg.resources {
@@ -2879,7 +2879,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	}
 	if allResourcesAreOverlays {
 		// If all resources in this module are overlays, skip further code generation.
-		return
+		return nil
 	}
 
 	basePath := pkg.importBasePath
@@ -2978,6 +2978,11 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		} else {
 			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
 		}
+
+		if pkgName == "" {
+			return fmt.Errorf("generating multiple modules requires specifying import base path")
+		}
+
 		pkgName = strings.ReplaceAll(pkgName, "-", "")
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 		// To avoid breaking compatibility, we don't change the function
@@ -3002,6 +3007,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "\t)\n")
 	}
 	fmt.Fprintf(w, "}\n")
+	return nil
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.

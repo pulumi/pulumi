@@ -158,7 +158,8 @@
   "language": {
     "go": {
       "disableInputTypeRegistrations": true,
-      "generateResourceContainerTypes": false
+      "generateResourceContainerTypes": false,
+      "importBasePath": "azure-native-enum-ptr/example"
     }
   }
 }

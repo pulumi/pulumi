@@ -1,6 +1,8 @@
 {
   "emittedFiles": [
-    "example/component.go",
+    "example/apimanagement/init.go",
+    "example/apimanagement/product.go",
+    "example/apimanagement/pulumiEnums.go",
     "example/doc.go",
     "example/init.go",
     "example/provider.go",
