@@ -576,14 +576,13 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencies(v interface{}) ([]Resource, workGroups) {
+func gatherJoins(v interface{}) workGroups {
 	if v == nil {
-		return nil, nil
+		return nil
 	}
 
-	depSet := make(map[Resource]struct{})
 	joinSet := make(map[*workGroup]struct{})
-	gatherDependencySet(reflect.ValueOf(v), depSet, joinSet)
+	gatherJoinSet(reflect.ValueOf(v), joinSet)
 
 	var joins workGroups
 	if len(joinSet) > 0 {
@@ -593,29 +592,18 @@ func gatherDependencies(v interface{}) ([]Resource, workGroups) {
 		}
 	}
 
-	var deps []Resource
-	if len(depSet) > 0 {
-		deps = make([]Resource, 0, len(depSet))
-		for d := range depSet {
-			deps = append(deps, d)
-		}
-	}
-
-	return deps, joins
+	return joins
 }
 
 var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
 
-func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*workGroup]struct{}) {
+func gatherJoinSet(v reflect.Value, joins map[*workGroup]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
 			output := v.Convert(outputType).Interface().(Output)
 			if join := output.getState().join; join != nil {
 				joins[join] = struct{}{}
-			}
-			for _, d := range output.getState().dependencies() {
-				deps[d] = struct{}{}
 			}
 			return
 		}
@@ -634,18 +622,18 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[
 		case reflect.Struct:
 			numFields := v.Type().NumField()
 			for i := 0; i < numFields; i++ {
-				gatherDependencySet(v.Field(i), deps, joins)
+				gatherJoinSet(v.Field(i), joins)
 			}
 		case reflect.Array, reflect.Slice:
 			l := v.Len()
 			for i := 0; i < l; i++ {
-				gatherDependencySet(v.Index(i), deps, joins)
+				gatherJoinSet(v.Index(i), joins)
 			}
 		case reflect.Map:
 			iter := v.MapRange()
 			for iter.Next() {
-				gatherDependencySet(iter.Key(), deps, joins)
-				gatherDependencySet(iter.Value(), deps, joins)
+				gatherJoinSet(iter.Key(), joins)
+				gatherJoinSet(iter.Value(), joins)
 			}
 		}
 		return
@@ -897,7 +885,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 }
 
 func toOutputTWithContext(ctx context.Context, join *workGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
-	deps, joins := gatherDependencies(v)
+	joins := gatherJoins(v)
 
 	done := joins.done
 	if join == nil {
@@ -916,7 +904,7 @@ func toOutputTWithContext(ctx context.Context, join *workGroup, outputType refle
 	}
 	joins.add()
 
-	output := newOutput(join, outputType, deps...)
+	output := newOutput(join, outputType)
 	go func() {
 		defer done()
 
