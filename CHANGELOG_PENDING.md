@@ -6,6 +6,9 @@
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9918](https://github.com/pulumi/pulumi/pull/9918)
 
+- [*/sdkgen] Add support for overriding `replaceOnChanges` at a resource level
+  [10095](https://github.com/pulumi/pulumi/pull/10095)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
