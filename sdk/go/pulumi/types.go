@@ -25,6 +25,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// wrapper enables retrieving the inner type of newtype wrappers such as pulumi.String
+type wrapper interface {
+	ElementType() reflect.Type
+}
+
 // Output helps encode the relationship between resources in a Pulumi application. Specifically an output property
 // holds onto a value and the resource it came from. An output value can then be provided when constructing new
 // resources, allowing that new resource to know both the value as well as the resource the value came from.  This
@@ -40,6 +45,7 @@ type Output interface {
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
 var inputType = reflect.TypeOf((*Input)(nil)).Elem()
+var wrapperType = reflect.TypeOf((*wrapper)(nil)).Elem()
 
 var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
 
@@ -478,6 +484,12 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		resultType = ot.(reflect.Type)
 	} else if applierReturnType.Implements(outputType) {
 		resultType = applierReturnType
+	} else if applierReturnType.Implements(wrapperType) {
+		// Handle type aliases for primitive types: pulumi.String, .Int, and so on.
+		unwrappedType := reflect.New(applierReturnType).Interface().(wrapper).ElementType()
+		if ot, ok := concreteTypeToOutputType.Load(unwrappedType); ok {
+			resultType = ot.(reflect.Type)
+		}
 	}
 
 	result := newOutput(o.join, resultType, o.dependencies()...)
