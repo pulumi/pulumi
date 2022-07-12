@@ -16,6 +16,9 @@
   file or a folder.
   [#10094](https://github.com/pulumi/pulumi/pull/10094)
 
+- [cli] Truncate long stack outputs
+  [#9905](https://github.com/pulumi/pulumi/issues/9905)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
