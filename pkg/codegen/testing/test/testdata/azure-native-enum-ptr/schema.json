@@ -1,0 +1,164 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example:apimanagement:Product": {
+      "description": "Product details.\nAPI Version: 2020-12-01.\n\n{{% examples %}}\n## Example Usage\n{{% example %}}\n### ApiManagementCreateProduct\n```csharp\nusing Pulumi;\nusing AzureNative = Pulumi.AzureNative;\n\nclass MyStack : Stack\n{\n    public MyStack()\n    {\n        var product = new AzureNative.ApiManagement.Product(\"product\", new AzureNative.ApiManagement.ProductArgs\n        {\n            DisplayName = \"Test Template ProductName 4\",\n            ProductId = \"testproduct\",\n            ResourceGroupName = \"rg1\",\n            ServiceName = \"apimService1\",\n        });\n    }\n\n}\n\n```\n\n```go\npackage main\n\nimport (\n\tapimanagement \"github.com/pulumi/pulumi-azure-native/sdk/go/azure/apimanagement\"\n\t\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n)\n\nfunc main() {\n\tpulumi.Run(func(ctx *pulumi.Context) error {\n\t\t_, err := apimanagement.NewProduct(ctx, \"product\", \u0026apimanagement.ProductArgs{\n\t\t\tDisplayName:       pulumi.String(\"Test Template ProductName 4\"),\n\t\t\tProductId:         pulumi.String(\"testproduct\"),\n\t\t\tResourceGroupName: pulumi.String(\"rg1\"),\n\t\t\tServiceName:       pulumi.String(\"apimService1\"),\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn nil\n\t})\n}\n\n```\n\n```java\npackage generated_program;\n\nimport java.util.*;\nimport java.io.*;\nimport java.nio.*;\nimport com.pulumi.*;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var product = new Product(\"product\", ProductArgs.builder()        \n            .displayName(\"Test Template ProductName 4\")\n            .productId(\"testproduct\")\n            .resourceGroupName(\"rg1\")\n            .serviceName(\"apimService1\")\n            .build());\n\n    }\n}\n\n```\n\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as azure_native from \"@pulumi/azure-native\";\n\nconst product = new azure_native.apimanagement.Product(\"product\", {\n    displayName: \"Test Template ProductName 4\",\n    productId: \"testproduct\",\n    resourceGroupName: \"rg1\",\n    serviceName: \"apimService1\",\n});\n\n```\n\n```python\nimport pulumi\nimport pulumi_azure_native as azure_native\n\nproduct = azure_native.apimanagement.Product(\"product\",\n    display_name=\"Test Template ProductName 4\",\n    product_id=\"testproduct\",\n    resource_group_name=\"rg1\",\n    service_name=\"apimService1\")\n\n```\n\n```yaml\nresources:\n  product:\n    type: azure-native:apimanagement:Product\n    properties:\n      displayName: Test Template ProductName 4\n      productId: testproduct\n      resourceGroupName: rg1\n      serviceName: apimService1\n\n```\n\n{{% /example %}}\n{{% /examples %}}\n\n## Import\n\nAn existing resource can be imported using its type token, name, and identifier, e.g.\n\n```sh\n$ pulumi import azure-native:apimanagement:Product testproduct /subscriptions/subid/resourceGroups/rg1/providers/Microsoft.ApiManagement/service/apimService1/products/testproduct \n```\n",
+      "properties": {
+        "approvalRequired": {
+          "type": "boolean",
+          "description": "whether subscription approval is required. If false, new subscriptions will be approved automatically enabling developers to call the product’s APIs immediately after subscribing. If true, administrators must manually approve the subscription before the developer can any of the product’s APIs. Can be present only if subscriptionRequired property is present and has a value of false."
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description. May include HTML formatting tags."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Product name."
+        },
+        "name": {
+          "type": "string",
+          "description": "Resource name."
+        },
+        "state": {
+          "type": "string",
+          "description": "whether product is published or not. Published products are discoverable by users of developer portal. Non published products are visible only to administrators. Default state of Product is notPublished."
+        },
+        "subscriptionRequired": {
+          "type": "boolean",
+          "description": "Whether a product subscription is required for accessing APIs included in this product. If true, the product is referred to as \"protected\" and a valid subscription key is required for a request to an API included in the product to succeed. If false, the product is referred to as \"open\" and requests to an API included in the product can be made without a subscription key. If property is omitted when creating a new product it's value is assumed to be true."
+        },
+        "subscriptionsLimit": {
+          "type": "integer",
+          "description": "Whether the number of subscriptions a user can have to this product at the same time. Set to null or omit to allow unlimited per user subscriptions. Can be present only if subscriptionRequired property is present and has a value of false."
+        },
+        "terms": {
+          "type": "string",
+          "description": "Product terms of use. Developers trying to subscribe to the product will be presented and required to accept these terms before they can complete the subscription process."
+        },
+        "type": {
+          "type": "string",
+          "description": "Resource type for API Management resource."
+        }
+      },
+      "type": "object",
+      "required": [
+        "displayName",
+        "name",
+        "type"
+      ],
+      "inputProperties": {
+        "approvalRequired": {
+          "type": "boolean",
+          "description": "whether subscription approval is required. If false, new subscriptions will be approved automatically enabling developers to call the product’s APIs immediately after subscribing. If true, administrators must manually approve the subscription before the developer can any of the product’s APIs. Can be present only if subscriptionRequired property is present and has a value of false."
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description. May include HTML formatting tags."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Product name."
+        },
+        "productId": {
+          "type": "string",
+          "description": "Product identifier. Must be unique in the current API Management service instance."
+        },
+        "resourceGroupName": {
+          "type": "string",
+          "description": "The name of the resource group."
+        },
+        "serviceName": {
+          "type": "string",
+          "description": "The name of the API Management service."
+        },
+        "state": {
+          "$ref": "#/types/example:apimanagement:ProductState",
+          "description": "whether product is published or not. Published products are discoverable by users of developer portal. Non published products are visible only to administrators. Default state of Product is notPublished."
+        },
+        "subscriptionRequired": {
+          "type": "boolean",
+          "description": "Whether a product subscription is required for accessing APIs included in this product. If true, the product is referred to as \"protected\" and a valid subscription key is required for a request to an API included in the product to succeed. If false, the product is referred to as \"open\" and requests to an API included in the product can be made without a subscription key. If property is omitted when creating a new product it's value is assumed to be true."
+        },
+        "subscriptionsLimit": {
+          "type": "integer",
+          "description": "Whether the number of subscriptions a user can have to this product at the same time. Set to null or omit to allow unlimited per user subscriptions. Can be present only if subscriptionRequired property is present and has a value of false."
+        },
+        "terms": {
+          "type": "string",
+          "description": "Product terms of use. Developers trying to subscribe to the product will be presented and required to accept these terms before they can complete the subscription process."
+        }
+      },
+      "requiredInputs": [
+        "displayName",
+        "resourceGroupName",
+        "serviceName"
+      ],
+      "aliases": [
+        {
+          "type": "azure-native:apimanagement/v20160707:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20161010:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20170301:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20180101:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20180601preview:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20190101:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20191201:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20191201preview:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20200601preview:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20201201:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20210101preview:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20210401preview:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20210801:Product"
+        },
+        {
+          "type": "azure-native:apimanagement/v20211201preview:Product"
+        }
+      ]
+    }
+  },
+  "types": {
+    "example:apimanagement:ProductState": {
+      "description": "whether product is published or not. Published products are discoverable by users of developer portal. Non published products are visible only to administrators. Default state of Product is notPublished.",
+      "type": "string",
+      "enum": [
+        {
+          "value": "notPublished"
+        },
+        {
+          "value": "published"
+        }
+      ]
+    }
+  },
+  "language": {
+    "go": {
+      "disableInputTypeRegistrations": true,
+      "generateResourceContainerTypes": false
+    }
+  }
+}

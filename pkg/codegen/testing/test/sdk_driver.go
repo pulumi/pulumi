@@ -283,6 +283,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Generate a resource that outputs [][][]Foo",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "azure-native-enum-ptr",
+		Description: "Enum pointer types with azure-native flags",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
