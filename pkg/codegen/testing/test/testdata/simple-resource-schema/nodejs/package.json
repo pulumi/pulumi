@@ -13,6 +13,7 @@
     },
     "pulumi": {
         "resource": true,
+        "name": "example",
         "version": "3.2.1",
         "server": "example.com/download"
     }

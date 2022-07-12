@@ -3,6 +3,18 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [cli] Add Last Status to `pulumi stack ls` output.
+  [#6148](https://github.com/pulumi/pulumi/pull/6148)
+  
+- [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
+  [#9918](https://github.com/pulumi/pulumi/pull/9918)
+  
+- [protobuf] Pulumi protobuf messages are now namespaced under "pulumi".
+  [#10074](https://github.com/pulumi/pulumi/pull/10074)
+
+- [cli] Truncate long stack outputs
+  [#9905](https://github.com/pulumi/pulumi/issues/9905)
+  
 - [sdk/go] Add `As*Output` methods to `AnyOutput`
   [#10085](https://github.com/pulumi/pulumi/pull/10085)
 
@@ -22,3 +34,6 @@
 
 - [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
   [#10075](https://github.com/pulumi/pulumi/pull/10075)
+
+- [nodejs/sdkgen] Default set `pulumi.name` in package.json to the pulumi package name.
+  [#10088](https://github.com/pulumi/pulumi/pull/10088)

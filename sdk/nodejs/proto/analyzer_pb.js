@@ -1,4 +1,4 @@
-// source: analyzer.proto
+// source: pulumi/analyzer.proto
 /**
  * @fileoverview
  * @enhanceable
@@ -15,8 +15,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { pulumirpc: {} }, global = proto;
 
-var plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, plugin_pb);
+var pulumi_plugin_pb = require('./plugin_pb.js');
+goog.object.extend(proto, pulumi_plugin_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');

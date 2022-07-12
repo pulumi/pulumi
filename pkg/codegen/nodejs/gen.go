@@ -2135,6 +2135,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		scriptVersion = pluginVersion
 	}
 
+	pluginName := info.PluginName
+	// Default to the pulumi package name if PluginName isn't set by the user. This is different to the npm
+	// package name, e.g. the npm package "@pulumiverse/sentry" has a pulumi package name of just "sentry".
+	if pluginName == "" {
+		pluginName = pkg.Name
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
@@ -2152,7 +2159,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		Pulumi: plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
-			Name:     info.PluginName,
+			Name:     pluginName,
 			Version:  pluginVersion,
 		},
 	}

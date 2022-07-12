@@ -4,6 +4,7 @@ package lifecycletest
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
@@ -105,15 +106,20 @@ func (op TestOp) runWithContext(
 	}
 
 	// Begin draining events.
+	var wg sync.WaitGroup
 	var firedEvents []Event
+	wg.Add(1)
 	go func() {
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
+		wg.Done()
 	}()
 
 	// Run the step and its validator.
 	plan, _, res := op(info, ctx, opts, dryRun)
+	close(events)
+	wg.Wait()
 	contract.IgnoreClose(journal)
 
 	if validate != nil {

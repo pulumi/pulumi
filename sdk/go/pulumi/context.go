@@ -1109,6 +1109,10 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
 		contract.Assert(rs != nil)
+		if rs.urn.OutputState != nil {
+			err := ctx.Log.Error(fmt.Sprintf("The resource named %v (type: %v) was initialized multiple times.", name, t), nil)
+			contract.AssertNoError(err)
+		}
 		state.providers = providers
 		rs.providers = providers
 		state.provider = provider
