@@ -795,7 +795,55 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 
 // Install installs a plugin's tarball into the cache. See InstallWithContext for details.
 func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
-	return info.InstallWithContext(context.Background(), tgz, reinstall, false)
+	return info.InstallWithContext(context.Background(), TarPlugin{tgz}, reinstall)
+}
+
+type PluginContent interface {
+	io.Closer
+
+	WriteToDir(info PluginInfo) error
+}
+
+var _ = (PluginContent)((*SingleFilePlugin)(nil))
+
+type SingleFilePlugin struct {
+	F *os.File
+}
+
+func (p SingleFilePlugin) WriteToDir(info PluginInfo) error {
+	bytes, err := ioutil.ReadAll(p.F)
+	if err != nil {
+		return err
+	}
+	finalDir, err := info.DirPath()
+	if err != nil {
+		return err
+	}
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-resource-%s", info.Name))
+	// We are writing an executable.
+	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
+}
+
+func (p SingleFilePlugin) Close() error {
+	return p.F.Close()
+}
+
+var _ = (PluginContent)((*TarPlugin)(nil))
+
+type TarPlugin struct {
+	Tgz io.ReadCloser
+}
+
+func (p TarPlugin) Close() error {
+	return p.Tgz.Close()
+}
+
+func (p TarPlugin) WriteToDir(info PluginInfo) error {
+	finalPath, err := info.DirPath()
+	if err != nil {
+		return err
+	}
+	return archive.ExtractTGZ(p.Tgz, finalPath)
 }
 
 // Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
@@ -809,8 +857,8 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser, reinstall bool, rawFile bool) error {
-	defer contract.IgnoreClose(tgz)
+func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginContent, reinstall bool) error {
+	defer contract.IgnoreClose(content)
 
 	// Fetch the directory into which we will expand this tarball.
 	finalDir, err := info.DirPath()
@@ -873,28 +921,14 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser
 		return err
 	}
 
-	if rawFile {
-		bytes, err := ioutil.ReadAll(tgz)
-		if err != nil {
-			return err
-		}
-		finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-resource-%s", info.Name))
-		// We are writing an executable.
-		err = os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
-		if err != nil {
-			return err
-		}
-	} else {
-		// Uncompress the plugin.
-		if err := archive.ExtractTGZ(tgz, finalDir); err != nil {
-			return err
-		}
+	if err := content.WriteToDir(info); err != nil {
+		return err
 	}
 
 	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
 	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
 	// the progress bar.
-	contract.IgnoreClose(tgz)
+	contract.IgnoreClose(content)
 
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))

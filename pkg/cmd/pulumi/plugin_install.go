@@ -137,45 +137,27 @@ func newPluginInstallCmd() *cobra.Command {
 
 				// If we got here, actually try to do the download.
 				var source string
-				var tarball io.ReadCloser
-				var rawExec bool
+				var payload workspace.PluginContent
 				var err error
 				if file == "" {
 					var size int64
-					if tarball, size, err = install.Download(); err != nil {
+					var r io.ReadCloser
+					if r, size, err = install.Download(); err != nil {
 						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
-					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
+					payload = workspace.TarPlugin{
+						Tgz: workspace.ReadCloserProgressBar(r, size, "Downloading plugin", displayOpts.Color),
+					}
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
-					f, err := os.Open(file)
+					payload, err = getFilePayload(file)
 					if err != nil {
-						return fmt.Errorf("opening file %s: %w", source, err)
+						return err
 					}
-					compressHeader := make([]byte, 5)
-					_, err = f.Read(compressHeader)
-					if err != nil {
-						return fmt.Errorf("reading file %s: %w", source, err)
-					}
-					_, err = f.Seek(0, 0)
-					if err != nil {
-						return fmt.Errorf("seeking back in file %s: %w", source, err)
-					}
-					if !encoding.IsCompressed(compressHeader) {
-						rawExec = true
-						stat, err := f.Stat()
-						if err != nil {
-							return fmt.Errorf("stat on file %s: %w", source, err)
-						}
-						if (stat.Mode() & 0100) == 0 {
-							return fmt.Errorf("%s is not executable", source)
-						}
-					}
-					tarball = f
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.InstallWithContext(context.Background(), tarball, reinstall, rawExec); err != nil {
+				if err = install.InstallWithContext(context.Background(), payload, reinstall); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}
@@ -194,4 +176,33 @@ func newPluginInstallCmd() *cobra.Command {
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 
 	return cmd
+}
+
+func getFilePayload(file string) (workspace.PluginContent, error) {
+	source := file
+	stat, err := os.Stat(file)
+	if err != nil {
+		return nil, fmt.Errorf("stat on file %s: %w", source, err)
+	}
+
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, fmt.Errorf("opening file %s: %w", source, err)
+	}
+	compressHeader := make([]byte, 5)
+	_, err = f.Read(compressHeader)
+	if err != nil {
+		return nil, fmt.Errorf("reading file %s: %w", source, err)
+	}
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("seeking back in file %s: %w", source, err)
+	}
+	if !encoding.IsCompressed(compressHeader) {
+		if (stat.Mode() & 0100) == 0 {
+			return nil, fmt.Errorf("%s is not executable", source)
+		}
+		return workspace.SingleFilePlugin{F: f}, nil
+	}
+	return workspace.TarPlugin{Tgz: f}, nil
 }
