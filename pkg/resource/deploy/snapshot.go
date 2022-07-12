@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -57,6 +58,10 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 //
 // Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
 func (snap *Snapshot) NormalizeURNReferences() error {
+	// Make a deep copy prior to mutating, since this object's pointer
+	// may be held across thread boundaries as a field on an EngineEvent.
+	var snapCopy = deepcopy.Copy(snap).(*Snapshot)
+	*snap = *snapCopy
 	if snap != nil {
 		aliased := make(map[resource.URN]resource.URN)
 		fixUrn := func(urn resource.URN) resource.URN {

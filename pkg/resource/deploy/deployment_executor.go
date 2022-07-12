@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -671,11 +672,15 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 			olds[new.URN] = new
 		}
 	}
+	// Make a deep copies before mutating in undangleParentResources,
+	// since olds and resources may be held by another thread as part of an engine event.
+	var oldsCopy = deepcopy.Copy(olds).(map[resource.URN]*resource.State)
+	var resourcesCopy = deepcopy.Copy(resources).([]*resource.State)
 
-	undangleParentResources(olds, resources)
+	undangleParentResources(oldsCopy, resourcesCopy)
 
-	ex.deployment.prev.Resources = resources
-	ex.deployment.olds, ex.deployment.depGraph = olds, graph.NewDependencyGraph(resources)
+	ex.deployment.prev.Resources = resourcesCopy
+	ex.deployment.olds, ex.deployment.depGraph = oldsCopy, graph.NewDependencyGraph(resourcesCopy)
 }
 
 func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
