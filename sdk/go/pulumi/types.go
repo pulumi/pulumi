@@ -287,7 +287,9 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 		element: elementType,
 		deps:    deps,
 		// Note: Calling registerResource or readResource with the same resource state can report a
-		// spurious data race here. See: Note [Cond Data Race]
+		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
+		//
+		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
 		cond: sync.NewCond(&m),
 	}
 	return out
@@ -1219,67 +1221,3 @@ func init() {
 	RegisterOutputType(ResourceOutput{})
 	RegisterOutputType(ResourceArrayOutput{})
 }
-
-/*
-Note [Cond Data Race]
-
-The race detector found an unexpected possible race condition that requires calling
-`RegisterResource` or `ReadResource` multiple times against the same resource state.
-(That, itself, was another race.)
-
-The full data logs detected as of commit 1d0f50581f9e5c0233b4e3ae291806cf2cd4620a was:
-
-WARNING: DATA RACE
-Read at 0x00c0002e2500 by goroutine 63:
-  sdk/v3/go/pulumi.(*OutputState).await()
-      sdk/go/pulumi/types.go:247 +0xf1
-  sdk/v3/go/pulumi.URNOutput.awaitURN()
-      sdk/go/pulumi/types.go:1083 +0x44
-  sdk/v3/go/pulumi.(*Context).getOpts()
-      sdk/go/pulumi/context.go:1369 +0x208
-  sdk/v3/go/pulumi.(*Context).prepareResourceInputs()
-      sdk/go/pulumi/context.go:1245 +0x113
-  sdk/v3/go/pulumi.(*Context).registerResource.func1()
-      sdk/go/pulumi/context.go:811 +0x287
-
-Previous write at 0x00c0002e2500 by goroutine 45:
-  sync.NewCond()
-      /home/friel/.gvm/gos/go1.18/src/sync/cond.go:33 +0x9a
-  sdk/v3/go/pulumi.newOutputState()
-      sdk/go/pulumi/types.go:290 +0x22d
-  sdk/v3/go/pulumi.(*Context).newOutputState()
-      sdk/go/pulumi/context.go:1534 +0x8fc
-  sdk/v3/go/pulumi.(*Context).ReadResource()
-      sdk/go/pulumi/context.go:600 +0x824
-  pkg/v3/engine/lifecycletest.TestProviderInheritanceGolangLifecycle.func3.1()
-      pkg/engine/lifecycletest/golang_sdk_test.go:689 +0x1087
-  sdk/v3/go/pulumi.RunWithContext()
-      sdk/go/pulumi/run.go:103 +0x255
-  pkg/v3/engine/lifecycletest.TestProviderInheritanceGolangLifecycle.func3()
-      pkg/engine/lifecycletest/golang_sdk_test.go:633 +0x18b
-  pkg/v3/resource/deploy/deploytest.(*languageRuntime).Run.func1()
-      pkg/resource/deploy/deploytest/languageruntime.go:57 +0x11c
-
-Goroutine 63 (running) created at:
-  sdk/v3/go/pulumi.(*Context).registerResource()
-      sdk/go/pulumi/context.go:798 +0xd24
-  sdk/v3/go/pulumi.(*Context).RegisterResource()
-      sdk/go/pulumi/context.go:682 +0xadc
-  pkg/v3/engine/lifecycletest.TestProviderInheritanceGolangLifecycle.func3.1()
-      pkg/engine/lifecycletest/golang_sdk_test.go:668 +0xa05
-  sdk/v3/go/pulumi.RunWithContext()
-      sdk/go/pulumi/run.go:103 +0x255
-  pkg/v3/engine/lifecycletest.TestProviderInheritanceGolangLifecycle.func3()
-      pkg/engine/lifecycletest/golang_sdk_test.go:633 +0x18b
-  pkg/v3/resource/deploy/deploytest.(*languageRuntime).Run.func1()
-      pkg/resource/deploy/deploytest/languageruntime.go:57 +0x11c
-
-Goroutine 45 (running) created at:
-  pkg/v3/resource/deploy/deploytest.(*languageRuntime).Run()
-      pkg/resource/deploy/deploytest/languageruntime.go:56 +0x319
-  pkg/v3/resource/deploy.(*evalSourceIterator).forkRun.func1.1()
-      pkg/resource/deploy/source_eval.go:212 +0x7a1
-  pkg/v3/resource/deploy.(*evalSourceIterator).forkRun.func1()
-      pkg/resource/deploy/source_eval.go:239 +0xda
-
-*/
