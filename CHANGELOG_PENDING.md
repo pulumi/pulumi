@@ -13,3 +13,6 @@
 
 - [cli] `pulumi convert` generates incorrect input parameter names for C#
   [#10042](https://github.com/pulumi/pulumi/issues/10042)
+
+- [sdk/python] update protobuf library to v4 to speed up pulumi CLI dramatically on M1 machines
+  [#10063](https://github.com/pulumi/pulumi/pull/10063)
