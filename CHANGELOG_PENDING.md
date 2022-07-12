@@ -3,6 +3,9 @@
 - [cli] Display outputs during the very first preview.
   [#10031](https://github.com/pulumi/pulumi/pull/10031)
 
+- [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
+  [#9918](https://github.com/pulumi/pulumi/pull/9918)
+  
 - [protobuf] Pulumi protobuf messages are now namespaced under "pulumi".
   [#10074](https://github.com/pulumi/pulumi/pull/10074)
 
@@ -22,3 +25,6 @@
 
 - [cli] `pulumi state change-secrets-provider` now takes `--stack` into account
   [#10075](https://github.com/pulumi/pulumi/pull/10075)
+
+- [nodejs/sdkgen] Default set `pulumi.name` in package.json to the pulumi package name.
+  [#10088](https://github.com/pulumi/pulumi/pull/10088)
