@@ -33,3 +33,6 @@
 
 - [nodejs/sdkgen] Default set `pulumi.name` in package.json to the pulumi package name.
   [#10088](https://github.com/pulumi/pulumi/pull/10088)
+
+- [sdk/python] update protobuf library to v4 which speeds up pulumi CLI dramatically on M1 machines
+  [#10063](https://github.com/pulumi/pulumi/pull/10063)
