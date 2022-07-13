@@ -20,6 +20,9 @@
 
 - [yaml] [Updates Pulumi YAML to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
 
+- [sdk/go] Accept a short branch name in `GitRepo.Branch`
+  [#10118](https://github.com/pulumi/pulumi/pull/10118)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
