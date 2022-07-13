@@ -5,6 +5,7 @@
 
 - [cli] Add Last Status to `pulumi stack ls` output.
   [#6148](https://github.com/pulumi/pulumi/pull/6148)
+  
 - [cli] Allow pulumi `destroy -s <stack>` if not in a Pulumi project dir
   [#9918](https://github.com/pulumi/pulumi/pull/9918)
   
@@ -13,6 +14,9 @@
 
 - [cli] Truncate long stack outputs
   [#9905](https://github.com/pulumi/pulumi/issues/9905)
+  
+- [sdk/go] Add `As*Output` methods to `AnyOutput`
+  [#10085](https://github.com/pulumi/pulumi/pull/10085)
 
 ### Bug Fixes
 

@@ -205,6 +205,17 @@ func getResolvedValue(input Input) (reflect.Value, bool) {
 	}
 }
 
+{{range .Builtins}}
+// As{{.Name}}Output asserts that the type of the AnyOutput's underlying interface{} value is
+// {{.ElementType}} and returns a `{{.Name}}Output` with that value. As{{.Name}}Output panics if the value
+// was not the expected type.
+func (a AnyOutput) As{{.Name}}Output() {{.Name}}Output {
+	return a.ApplyT(func(i interface{}) {{.ElementType}} {
+		return i.({{.ElementType}})
+	}).({{.Name}}Output)
+}
+{{end}}
+
 func init() {
 {{- range .Builtins}}
 {{- if .RegisterInput}}
