@@ -802,7 +802,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 type PluginContent interface {
 	io.Closer
 
-	WriteToDir(info PluginInfo) error
+	writeToDir(info PluginInfo) error
 }
 
 func SingleFilePlugin(f *os.File) PluginContent {
@@ -813,7 +813,7 @@ type singleFilePlugin struct {
 	F *os.File
 }
 
-func (p singleFilePlugin) WriteToDir(info PluginInfo) error {
+func (p singleFilePlugin) writeToDir(info PluginInfo) error {
 	bytes, err := ioutil.ReadAll(p.F)
 	if err != nil {
 		return err
@@ -843,7 +843,7 @@ func (p tarPlugin) Close() error {
 	return p.Tgz.Close()
 }
 
-func (p tarPlugin) WriteToDir(info PluginInfo) error {
+func (p tarPlugin) writeToDir(info PluginInfo) error {
 	finalPath, err := info.DirPath()
 	if err != nil {
 		return err
@@ -863,7 +863,7 @@ func (p dirPlugin) Close() error {
 	return nil
 }
 
-func (p dirPlugin) WriteToDir(info PluginInfo) error {
+func (p dirPlugin) writeToDir(info PluginInfo) error {
 	dstRoot, err := info.DirPath()
 	if err != nil {
 		return err
@@ -976,7 +976,7 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginCon
 		return err
 	}
 
-	if err := content.WriteToDir(info); err != nil {
+	if err := content.writeToDir(info); err != nil {
 		return err
 	}
 
