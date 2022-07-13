@@ -297,7 +297,7 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
-		PageSize: len(options),
+		PageSize: 10,
 	}, &option, nil); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}

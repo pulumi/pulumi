@@ -103,7 +103,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: len(options),
+		PageSize: 10,
 	}, &option, nil); err != nil {
 		return nil, errors.New("no resource selected")
 	}
