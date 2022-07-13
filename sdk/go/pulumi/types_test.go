@@ -184,6 +184,30 @@ func TestAliasedOutputs(t *testing.T) {
 			return String(""), nil
 		}).(StringOutput))
 	})
+	t.Run("BoolInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (BoolInput, error) {
+			return Bool(false), nil
+		}).(BoolOutput))
+	})
+	t.Run("Float64Input", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Float64Input, error) {
+			return Float64(0.0), nil
+		}).(Float64Output))
+	})
+	t.Run("IntInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (IntInput, error) {
+			return Int(0), nil
+		}).(IntOutput))
+	})
+	t.Run("StringInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (StringInput, error) {
+			return String(""), nil
+		}).(StringOutput))
+	})
 }
 
 func TestResolveOutputToOutput(t *testing.T) {
