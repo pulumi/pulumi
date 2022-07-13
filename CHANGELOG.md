@@ -51,14 +51,14 @@ CHANGELOG
 - [sdk/python] update protobuf library to v4 which speeds up pulumi CLI dramatically on M1 machines
   [#10063](https://github.com/pulumi/pulumi/pull/10063)
 
-- [go] Fix panic when returning pulumi.Bool, .String, .Int, and .Float64 in the argument to
-  ApplyT and casting the result to the corresponding output, e.g.: BoolOutput.
-  [#10103](https://github.com/pulumi/pulumi/pull/10103)
-
 - [engine] Fix data races discovered in CLI and Go SDK that could cause nondeterministic behavior
   or a panic.
   [#10081](https://github.com/pulumi/pulumi/pull/10081),
   [#10100](https://github.com/pulumi/pulumi/pull/10100)
+
+- [go] Fix panic when returning pulumi.Bool, .String, .Int, and .Float64 in the argument to
+  ApplyT and casting the result to the corresponding output, e.g.: BoolOutput.
+  [#10103](https://github.com/pulumi/pulumi/pull/10103)
 
 ## 3.35.3 (2022-07-01)
 
