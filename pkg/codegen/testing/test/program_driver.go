@@ -132,8 +132,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-resource-options",
 		Description: "Resource Options",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#8076]
 	},
 	{
 		Directory:   "aws-secret",
