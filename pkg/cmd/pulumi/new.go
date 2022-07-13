@@ -753,15 +753,16 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-	message := "\rPlease choose a template:"
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	showAll := true
 	var selectedOption workspace.Template
 
 	for {
 
-		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, showAll)
+		const pageSize = 10
+		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, len(options))
+		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 		// If showAll was false and we got only a single result, force showAll to be true and try
 		// again.
@@ -776,7 +777,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
-			PageSize: 10,
+			PageSize: pageSize,
 		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
