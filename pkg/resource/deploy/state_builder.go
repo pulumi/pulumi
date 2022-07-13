@@ -91,7 +91,9 @@ func (sb *stateBuilder) setURN(loc *resource.URN, value resource.URN) {
 }
 
 // internal
-func (sb *stateBuilder) updateURNSlice(slice []resource.URN, update func(resource.URN) resource.URN) (bool, []resource.URN) {
+func (sb *stateBuilder) updateURNSlice(
+	slice []resource.URN,
+	update func(resource.URN) resource.URN) (bool, []resource.URN) {
 	needsUpdate := false
 	for _, urn := range slice {
 		if update(urn) != urn {
