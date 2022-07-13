@@ -756,7 +756,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	showAll := false
+	showAll := true
 	var selectedOption workspace.Template
 
 	for {
