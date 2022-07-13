@@ -1,6 +1,6 @@
 # Packages needed by the library.
 # Keep this list in sync with setup.py.
-protobuf~=3.6
+protobuf~=4.21
 grpcio~=1.33
 dill~=0.3
 six~=1.12

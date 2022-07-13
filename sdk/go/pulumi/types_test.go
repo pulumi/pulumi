@@ -154,6 +154,62 @@ func TestStringOutputs(t *testing.T) {
 	}
 }
 
+func TestAliasedOutputs(t *testing.T) {
+	t.Parallel()
+
+	// Irrelevant for the tests, we're testing return type handling.
+	initialOutput := String("").ToStringOutput()
+
+	t.Run("Bool", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Bool, error) {
+			return Bool(false), nil
+		}).(BoolOutput))
+	})
+	t.Run("Float64", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Float64, error) {
+			return Float64(0.0), nil
+		}).(Float64Output))
+	})
+	t.Run("Int", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Int, error) {
+			return Int(0), nil
+		}).(IntOutput))
+	})
+	t.Run("String", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (String, error) {
+			return String(""), nil
+		}).(StringOutput))
+	})
+	t.Run("BoolInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (BoolInput, error) {
+			return Bool(false), nil
+		}).(BoolOutput))
+	})
+	t.Run("Float64Input", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Float64Input, error) {
+			return Float64(0.0), nil
+		}).(Float64Output))
+	})
+	t.Run("IntInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (IntInput, error) {
+			return Int(0), nil
+		}).(IntOutput))
+	})
+	t.Run("StringInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (StringInput, error) {
+			return String(""), nil
+		}).(StringOutput))
+	})
+}
+
 func TestResolveOutputToOutput(t *testing.T) {
 	t.Parallel()
 

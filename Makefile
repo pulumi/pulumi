@@ -32,6 +32,7 @@ ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
 	cd tests && go mod download
 	@touch .ensure.phony
 
+.PHONY: build-proto
 PROTO_FILES := $(sort $(wildcard proto/**/*.proto) proto/generate.sh $(wildcard proto/build-container/**/*))
 build-proto:
 	@printf "Protobuffer interfaces are ....... "
@@ -42,6 +43,13 @@ build-proto:
 		cd proto && ./generate.sh || exit 1; \
 		cd ../ && cksum $(PROTO_FILES) > proto/.checksum.txt; \
 		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
+	fi
+
+.PHONY: check-proto
+check-proto:
+	@if [ "$$(cat proto/.checksum.txt)" != "$$(cksum $(PROTO_FILES))" ]; then \
+		echo "Protobuff checksum doesn't match. Run \`make build-proto\` to rebuild."; \
+		exit 1; \
 	fi
 
 .PHONY: generate
