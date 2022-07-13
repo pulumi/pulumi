@@ -822,7 +822,7 @@ func (p singleFilePlugin) WriteToDir(info PluginInfo) error {
 	if err != nil {
 		return err
 	}
-	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-resource-%s", info.Name))
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", info.Kind, info.Name))
 	// We are writing an executable.
 	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
 }
