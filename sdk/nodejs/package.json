@@ -21,8 +21,6 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.5.6",
-        "ts-node": "^7.0.1",
-        "typescript": "~3.7.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -43,6 +41,10 @@
         "mocha": "^9.0.0",
         "mockpackage": "file:tests/mockpackage",
         "nyc": "^15.1.0"
+    },
+    "peerDependencies": {
+        "ts-node": ">7.0.1",
+        "typescript": ">3.7.3"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
