@@ -47,7 +47,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 		expr = g.outputInvokes(expr)
 	}
 	diags = diags.Extend(convertDiags)
-	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
+	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr
 }
 
