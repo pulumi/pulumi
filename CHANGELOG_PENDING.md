@@ -54,3 +54,6 @@
   or a panic.
   [#10081](https://github.com/pulumi/pulumi/pull/10081),
   [#10100](https://github.com/pulumi/pulumi/pull/10100)
+
+- [cli] Paginate template options
+  [#10130](https://github.com/pulumi/pulumi/pull/10130)
