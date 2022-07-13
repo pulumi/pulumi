@@ -18,6 +18,8 @@
 - [sdk/go] Add `As*Output` methods to `AnyOutput`
   [#10085](https://github.com/pulumi/pulumi/pull/10085)
 
+- [yaml] [Updates Pulumi YAML to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
