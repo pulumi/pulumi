@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
@@ -26,12 +27,13 @@ import (
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
+	ctx := context.Background()
 	var checkpoint apitype.CheckpointV3
 	byts, err := ioutil.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
 	assert.NoError(t, err)
-	snapshot, err := stack.DeserializeCheckpoint(&checkpoint)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, &checkpoint)
 	assert.NoError(t, err)
 	resources := NewResourceTree(snapshot.Resources)
 	return resources
