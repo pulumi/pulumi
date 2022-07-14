@@ -754,7 +754,6 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 
-	showAll := true
 	var selectedOption workspace.Template
 
 	for {
@@ -763,13 +762,6 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
 		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, len(options))
 		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
-
-		// If showAll was false and we got only a single result, force showAll to be true and try
-		// again.
-		if !showAll && len(options) <= 1 {
-			showAll = true
-			continue
-		}
 
 		cmdutil.EndKeypadTransmitMode()
 
@@ -786,8 +778,6 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		selectedOption, has = optionToTemplateMap[option]
 		if has {
 			break
-		} else {
-			showAll = true
 		}
 	}
 
