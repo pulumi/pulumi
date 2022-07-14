@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -335,11 +335,11 @@ type brokenDecrypter struct {
 	ErrorMessage string
 }
 
-func (b brokenDecrypter) DecryptValue(_ string) (string, error) {
+func (b brokenDecrypter) DecryptValue(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf(b.ErrorMessage)
 }
 
-func (b brokenDecrypter) BulkDecrypt(_ []string) (map[string]string, error) {
+func (b brokenDecrypter) BulkDecrypt(_ context.Context, _ []string) (map[string]string, error) {
 	return nil, fmt.Errorf(b.ErrorMessage)
 }
 
@@ -2672,7 +2672,7 @@ func TestConfigSecrets(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
-	secret, err := crypter.EncryptValue("hunter2")
+	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
 	assert.NoError(t, err)
 
 	p := &TestPlan{
