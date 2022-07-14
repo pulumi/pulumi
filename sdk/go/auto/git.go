@@ -97,14 +97,20 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	if repoArgs.CommitHash != "" {
 		hash = repoArgs.CommitHash
 	}
-	var branch string
+	var refName plumbing.ReferenceName
 	if repoArgs.Branch != "" {
-		branch = repoArgs.Branch
+		refName = plumbing.ReferenceName(repoArgs.Branch)
+		// We might be supplied `/refs/heads/main` or `main`; the first will answer true to
+		// `IsBranch()` and work OK as a reference for Checkout, the second will answer false and
+		// needs to be transformed into a branch ref.
+		if !refName.IsBranch() {
+			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
+		}
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash:   plumbing.NewHash(hash),
-		Branch: plumbing.ReferenceName(branch),
+		Branch: refName,
 		Force:  true,
 	})
 	if err != nil {
