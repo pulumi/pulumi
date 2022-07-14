@@ -517,7 +517,7 @@ func setValue(container, key, value, containerParent, containerParentKey interfa
 
 // adjustObjectValue returns a more suitable value for objects:
 func adjustObjectValue(v Value, path bool) interface{} {
-	contract.Assertf(!v.Object(), "v must not be an Object")
+	contract.Assertf(!v.Object(), "v must not be an Object: %s", v.value)
 
 	// If the path flag isn't set, just return the value as-is.
 	if !path {
