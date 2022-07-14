@@ -174,6 +174,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "logical-name",
 		Description: "Logical names",
 	},
+	{
+		Directory:   "aws-lambda",
+		Description: "AWS Lambdas",
+		// We have special testing for this case because lambda is a python keyword.
+		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
 }
 
 // Checks that a generated program is correct
