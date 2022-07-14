@@ -253,7 +253,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil, nil)
 		if err != nil {
 			return nil, nil, err
 		}

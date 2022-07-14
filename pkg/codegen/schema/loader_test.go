@@ -13,7 +13,7 @@ func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader 
 	cwd, err := os.Getwd()
 	contract.AssertNoError(err)
 	sink := cmdutil.Diag()
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil, nil)
 	contract.AssertNoError(err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 

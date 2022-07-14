@@ -102,6 +102,8 @@ type Project struct {
 
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
+
+	Plugins map[string]*PluginInfo
 }
 
 func (proj *Project) Validate() error {

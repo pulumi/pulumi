@@ -179,7 +179,7 @@ func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
-		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version)
+		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, nil)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)

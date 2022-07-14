@@ -420,6 +420,11 @@ func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	return host.languageRuntime.GetRequiredPlugins(info)
 }
 
+func (host *pluginHost) GetProjectPlugins() map[string]*workspace.PluginInfo {
+	panic("not implemented")
+	return nil
+}
+
 func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
 

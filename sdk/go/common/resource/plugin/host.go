@@ -75,6 +75,8 @@ type Host interface {
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
+	GetProjectPlugins() map[string]*workspace.PluginInfo
+
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and
@@ -88,7 +90,7 @@ type Host interface {
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
-	disableProviderPreview bool) (Host, error) {
+	disableProviderPreview bool, project *workspace.Project) (Host, error) {
 
 	host := &defaultHost{
 		ctx:                     ctx,
@@ -102,6 +104,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 		closer:                  new(sync.Once),
+		projectPlugins:          project.Plugins,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -156,7 +159,8 @@ type defaultHost struct {
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 
-	closer *sync.Once
+	closer         *sync.Once
+	projectPlugins map[string]*workspace.PluginInfo
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -381,7 +385,11 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 
 func (host *defaultHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(kind, name, version)
+	return workspace.GetPluginInfo(kind, name, version, host.projectPlugins)
+}
+
+func (host *defaultHost) GetProjectPlugins() map[string]*workspace.PluginInfo {
+	return host.projectPlugins
 }
 
 func (host *defaultHost) SignalCancellation() error {
