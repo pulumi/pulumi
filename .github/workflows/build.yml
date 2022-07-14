@@ -36,6 +36,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   build_pulumi_go_binaries:

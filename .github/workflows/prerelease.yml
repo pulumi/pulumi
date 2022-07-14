@@ -18,6 +18,7 @@ env:
   IS_PRERELEASE: true
   PYTHON: python
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   publish-sdks:

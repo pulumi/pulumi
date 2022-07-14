@@ -50,6 +50,7 @@ env:
   PYTHON: python
   TESTPARALLELISM: 4
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   test:
