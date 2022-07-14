@@ -469,6 +469,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -515,7 +516,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}
@@ -579,6 +580,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -616,7 +618,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package stack
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -203,6 +204,8 @@ func DeserializeUntypedDeployment(
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
 func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	ctx := context.TODO()
+
 	// Unpack the versions.
 	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
 	if err != nil {
@@ -244,7 +247,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		}
 
 		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
-		cache, err := d.BulkDecrypt(ciphertexts)
+		cache, err := d.BulkDecrypt(ctx, ciphertexts)
 		if err != nil {
 			return nil, err
 		}
@@ -360,6 +363,8 @@ func SerializeProperties(props resource.PropertyMap, enc config.Encrypter,
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
 func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 	showSecrets bool) (interface{}, error) {
+	ctx := context.TODO()
+
 	// Serialize nulls as nil.
 	if prop.IsNull() {
 		return nil, nil
@@ -432,7 +437,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if cachingCrypter, ok := enc.(*cachingCrypter); ok {
 			ciphertext, err = cachingCrypter.encryptSecret(prop.SecretValue(), plaintext)
 		} else {
-			ciphertext, err = enc.EncryptValue(plaintext)
+			ciphertext, err = enc.EncryptValue(ctx, plaintext)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
@@ -533,6 +538,7 @@ func DeserializeProperties(props map[string]interface{}, dec config.Decrypter,
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 	enc config.Encrypter) (resource.PropertyValue, error) {
+	ctx := context.TODO()
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
@@ -587,14 +593,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 
 					if plainOk {
-						encryptedText, err := enc.EncryptValue(plaintext)
+						encryptedText, err := enc.EncryptValue(ctx, plaintext)
 						if err != nil {
 							return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
 						}
 						ciphertext = encryptedText
 
 					} else {
-						unencryptedText, err := dec.DecryptValue(ciphertext)
+						unencryptedText, err := dec.DecryptValue(ctx, ciphertext)
 						if err != nil {
 							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
 						}
