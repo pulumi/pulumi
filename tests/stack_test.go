@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -271,7 +272,9 @@ func TestStackCommands(t *testing.T) {
 			t.FailNow()
 		}
 		os.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
-		snap, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
+		snap, err := stack.DeserializeUntypedDeployment(
+			context.Background(),
+			&deployment, stack.DefaultSecretsProvider)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
