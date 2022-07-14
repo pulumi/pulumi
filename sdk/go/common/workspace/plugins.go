@@ -439,6 +439,9 @@ func (source *fallbackSource) GetLatestVersion(
 			if !private.HasAuthentication() {
 				privateErr = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				version, privateErr = private.GetLatestVersion(getHTTPResponse)
 				if privateErr == nil {
 					return version, nil
@@ -484,6 +487,9 @@ func (source *fallbackSource) Download(
 			if !private.HasAuthentication() {
 				err = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
 				if err == nil {
 					return resp, length, nil
