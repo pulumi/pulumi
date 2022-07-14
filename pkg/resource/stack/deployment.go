@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
@@ -101,6 +102,10 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
 	contract.Require(snap != nil, "snap")
 
+	if snap.Manifest.Magic != snap.Manifest.NewMagic() {
+		return nil, fmt.Errorf("magic cookie mismatch; possible tampering/corruption detected")
+	}
+
 	// Capture the version information into a manifest.
 	manifest := snap.Manifest.Serialize()
 
@@ -120,10 +125,24 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 		enc = config.NewPanicCrypter()
 	}
 
+	aliases := make(aliases)
+	for _, state := range snap.Resources {
+		// Add to aliased maps
+		for _, alias := range state.Aliases {
+			// For ease of implementation, some SDKs may end up creating the same alias to the
+			// same resource multiple times.  That's fine, only error if we see the same alias,
+			// but it maps to *different* resources.
+			if otherUrn, has := aliases[alias]; has && otherUrn != state.URN {
+				return nil, fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+			}
+			aliases[alias] = state.URN
+		}
+	}
+
 	// Serialize all vertices and only include a vertex section if non-empty.
 	var resources []apitype.ResourceV3
 	for _, res := range snap.Resources {
-		sres, err := SerializeResource(res, enc, showSecrets)
+		sres, err := SerializeResource(res, enc, showSecrets, aliases)
 		if err != nil {
 			return nil, fmt.Errorf("serializing resources: %w", err)
 		}
@@ -132,7 +151,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 
 	var operations []apitype.OperationV2
 	for _, op := range snap.PendingOperations {
-		sop, err := SerializeOperation(op, enc, showSecrets)
+		sop, err := SerializeOperation(op, enc, showSecrets, aliases)
 		if err != nil {
 			return nil, err
 		}
@@ -153,12 +172,95 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 		}
 	}
 
-	return &apitype.DeploymentV3{
+	deployment := &apitype.DeploymentV3{
 		Manifest:          manifest,
 		Resources:         resources,
 		SecretsProviders:  secretsProvider,
 		PendingOperations: operations,
-	}, nil
+	}
+
+	err := VerifyIntegrity(deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	return deployment, nil
+}
+
+// VerifyIntegrity checks a deployment snapshot to ensure it is well-formed.  Because of the cost of
+// this operation, integrity verification is only performed on demand, and not automatically during
+// snapshot construction.
+//
+// This function verifies a number of invariants:
+//  1. Provider resources must be referenceable (i.e. they must have a valid URN and ID)
+//  2. A resource's provider must precede the resource in the resource list
+//  3. Parents must precede children in the resource list
+//  4. Dependents must precede their dependencies in the resource list
+//  5. For every URN in the snapshot, there must be at most one resource with that URN that is not pending deletion
+//  6. The magic manifest number should change every time the snapshot is mutated
+func VerifyIntegrity(deployment *apitype.DeploymentV3) error {
+	if deployment == nil {
+		return fmt.Errorf("deployment must not be nil")
+	}
+
+	// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
+	// any duplicate URNs.
+	urns := make(map[resource.URN]*apitype.ResourceV3)
+	provs := make(map[providers.Reference]struct{})
+	for i, state := range deployment.Resources {
+		urn := state.URN
+
+		if providers.IsProviderType(state.Type) {
+			ref, err := providers.NewReference(urn, state.ID)
+			if err != nil {
+				return fmt.Errorf("provider %s is not referenceable: %v", urn, err)
+			}
+			provs[ref] = struct{}{}
+		}
+		if provider := state.Provider; provider != "" {
+			ref, err := providers.ParseReference(provider)
+			if err != nil {
+				return fmt.Errorf("failed to parse provider reference for resource %s: %v", urn, err)
+			}
+			if _, has := provs[ref]; !has {
+				return fmt.Errorf("resource %s refers to unknown provider %s", urn, ref)
+			}
+		}
+
+		if par := state.Parent; par != "" {
+			if _, has := urns[par]; !has {
+				// The parent isn't there; to give a good error message, see whether it's missing entirely, or
+				// whether it comes later in the snapshot (neither of which should ever happen).
+				for _, other := range deployment.Resources[i+1:] {
+					if other.URN == par {
+						return fmt.Errorf("child resource %s's parent %s comes after it", urn, par)
+					}
+				}
+				return fmt.Errorf("child resource %s refers to missing parent %s", urn, par)
+			}
+		}
+
+		for _, dep := range state.Dependencies {
+			if _, has := urns[dep]; !has {
+				// same as above - doing this for better error messages
+				for _, other := range deployment.Resources[i+1:] {
+					if other.URN == dep {
+						return fmt.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
+					}
+				}
+
+				return fmt.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
+			}
+		}
+
+		if _, has := urns[urn]; has && !state.Delete {
+			// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
+			return fmt.Errorf("duplicate resource %s (not marked for deletion)", urn)
+		}
+
+		urns[urn] = &deployment.Resources[i]
+	}
+	return nil
 }
 
 // DeserializeUntypedDeployment deserializes an untyped deployment and produces a `deploy.Snapshot`
@@ -279,8 +381,52 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops), nil
 }
 
+type aliases = map[resource.URN]resource.URN
+
+func fixUrn(urn resource.URN, aliases aliases) resource.URN {
+	for {
+		if newUrn, has := aliases[urn]; has {
+			urn = newUrn
+		} else {
+			break
+		}
+	}
+	return urn
+}
+
+func fixProvider(provider string, aliases aliases) string {
+	if provider == "" {
+		return provider
+	}
+	ref, err := providers.ParseReference(provider)
+	contract.AssertNoError(err)
+	ref, err = providers.NewReference(fixUrn(ref.URN(), aliases), ref.ID())
+	contract.AssertNoError(err)
+	return ref.String()
+}
+
+func fixDependencies(x []resource.URN, aliases aliases) []resource.URN {
+	var dependencies []resource.URN
+	for _, v := range x {
+		dependencies = append(dependencies, fixUrn(v, aliases))
+	}
+	return dependencies
+}
+
+func fixPropertyDependencies(propertyDependencies map[resource.PropertyKey][]resource.URN,
+	aliases aliases) map[resource.PropertyKey][]resource.URN {
+	m := map[resource.PropertyKey][]resource.URN{}
+	for k, deps := range propertyDependencies {
+		for _, dep := range deps {
+			m[k] = append(m[k], fixUrn(dep, aliases))
+		}
+	}
+	return m
+}
+
 // SerializeResource turns a resource into a structure suitable for serialization.
-func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bool) (apitype.ResourceV3, error) {
+func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bool,
+	aliases aliases) (apitype.ResourceV3, error) {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
 
@@ -308,15 +454,15 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 		Delete:                  res.Delete,
 		ID:                      res.ID,
 		Type:                    res.Type,
-		Parent:                  res.Parent,
+		Parent:                  fixUrn(res.Parent, aliases),
 		Inputs:                  inputs,
 		Outputs:                 outputs,
 		Protect:                 res.Protect,
 		External:                res.External,
-		Dependencies:            res.Dependencies,
+		Dependencies:            fixDependencies(res.Dependencies, aliases),
 		InitErrors:              res.InitErrors,
-		Provider:                res.Provider,
-		PropertyDependencies:    res.PropertyDependencies,
+		Provider:                fixProvider(res.Provider, aliases),
+		PropertyDependencies:    fixPropertyDependencies(res.PropertyDependencies, aliases),
 		PendingReplacement:      res.PendingReplacement,
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
@@ -332,8 +478,9 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 	return v3Resource, nil
 }
 
-func SerializeOperation(op resource.Operation, enc config.Encrypter, showSecrets bool) (apitype.OperationV2, error) {
-	res, err := SerializeResource(op.Resource, enc, showSecrets)
+func SerializeOperation(
+	op resource.Operation, enc config.Encrypter, showSecrets bool, aliases aliases) (apitype.OperationV2, error) {
+	res, err := SerializeResource(op.Resource, enc, showSecrets, aliases)
 	if err != nil {
 		return apitype.OperationV2{}, fmt.Errorf("serializing resource: %w", err)
 	}

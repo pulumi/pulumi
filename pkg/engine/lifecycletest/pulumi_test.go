@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1811,7 +1811,7 @@ func TestAliases(t *testing.T) {
 		}
 	}
 
-	snap = updateProgramWithResource(snap, []Resource{{
+	updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1-v100",
 		name:    "n1-new",
 		aliases: n1Aliases,
@@ -1826,9 +1826,6 @@ func TestAliases(t *testing.T) {
 		parent:  resource.URN("urn:pulumi:test::test::pkgA:index:t1-v100$pkgA:index:t2-v10::n1-new-sub"),
 		aliases: n3Aliases,
 	}}, []display.StepOp{deploy.OpSame}, false)
-
-	err := snap.NormalizeURNReferences()
-	assert.Nil(t, err)
 }
 
 func TestPersistentDiff(t *testing.T) {

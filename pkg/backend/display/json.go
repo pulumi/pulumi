@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -176,7 +176,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */, nil /* aliases */)
 					if err == nil {
 						step.OldState = &res
 					} else {
@@ -185,7 +185,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */, nil /* aliases */)
 					if err == nil {
 						step.NewState = &res
 					} else {

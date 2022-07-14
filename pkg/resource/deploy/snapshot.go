@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -47,57 +46,6 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 		Resources:         resources,
 		PendingOperations: ops,
 	}
-}
-
-// NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
-// URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
-// later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
-// references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
-// of a resource in the resources map.
-//
-// Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
-func (snap *Snapshot) NormalizeURNReferences() error {
-	if snap != nil {
-		aliased := make(map[resource.URN]resource.URN)
-		fixUrn := func(urn resource.URN) resource.URN {
-			if newUrn, has := aliased[urn]; has {
-				return newUrn
-			}
-			return urn
-		}
-		for _, state := range snap.Resources {
-			// Fix up any references to URNs
-			state.Parent = fixUrn(state.Parent)
-			for i, dependency := range state.Dependencies {
-				state.Dependencies[i] = fixUrn(dependency)
-			}
-			for k, deps := range state.PropertyDependencies {
-				for i, dep := range deps {
-					state.PropertyDependencies[k][i] = fixUrn(dep)
-				}
-			}
-			if state.Provider != "" {
-				ref, err := providers.ParseReference(state.Provider)
-				contract.AssertNoError(err)
-				ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
-				contract.AssertNoError(err)
-				state.Provider = ref.String()
-			}
-
-			// Add to aliased maps
-			for _, alias := range state.Aliases {
-				// For ease of implementation, some SDKs may end up creating the same alias to the
-				// same resource multiple times.  That's fine, only error if we see the same alias,
-				// but it maps to *different* resources.
-				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
-					return fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
-				}
-				aliased[alias] = state.URN
-			}
-		}
-	}
-
-	return nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,

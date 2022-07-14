@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -280,7 +280,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			assert.Equal(t, state.Provider, actualState.Provider)
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
-				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false)
+				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false, nil)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")
