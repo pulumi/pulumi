@@ -166,7 +166,9 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 // from it. DeserializeDeployment will return an error if the untyped deployment's version is
 // not within the range `DeploymentSchemaVersionCurrent` and `DeploymentSchemaVersionOldestSupported`.
 func DeserializeUntypedDeployment(
-	deployment *apitype.UntypedDeployment, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	ctx context.Context,
+	deployment *apitype.UntypedDeployment,
+	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
 
 	contract.Require(deployment != nil, "deployment")
 	switch {
@@ -199,12 +201,14 @@ func DeserializeUntypedDeployment(
 		contract.Failf("unrecognized version: %d", deployment.Version)
 	}
 
-	return DeserializeDeploymentV3(v3deployment, secretsProv)
+	return DeserializeDeploymentV3(ctx, v3deployment, secretsProv)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
-func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
-	ctx := context.TODO()
+func DeserializeDeploymentV3(
+	ctx context.Context,
+	deployment apitype.DeploymentV3,
+	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
 
 	// Unpack the versions.
 	manifest, err := deploy.DeserializeManifest(deployment.Manifest)

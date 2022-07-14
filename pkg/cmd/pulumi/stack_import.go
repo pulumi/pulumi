@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ func newStackImportCmd() *cobra.Command {
 			"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 			"The updated deployment will be read from standard in.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -76,7 +77,7 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			snapshot, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
+			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
 			if err != nil {
 				return checkDeploymentVersionError(err, stackName.String())
 			}

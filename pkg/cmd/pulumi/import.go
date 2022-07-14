@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -183,12 +183,14 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	return imports, names, nil
 }
 
-func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(context.Background())
+func getCurrentDeploymentForStack(
+	ctx context.Context,
+	s backend.Stack) (*deploy.Snapshot, error) {
+	deployment, err := s.ExportDeployment(ctx)
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
@@ -361,6 +363,8 @@ func newImportCmd() *cobra.Command {
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
+
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
@@ -510,7 +514,7 @@ func newImportCmd() *cobra.Command {
 			}, imports)
 
 			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(s)
+				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return result.FromError(err)
 				}
