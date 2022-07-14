@@ -151,7 +151,7 @@ func newPluginInstallCmd() *cobra.Command {
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
-					payload, err = getFilePayload(file)
+					payload, err = getFilePayload(file, install)
 					if err != nil {
 						return err
 					}
@@ -178,7 +178,7 @@ func newPluginInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func getFilePayload(file string) (workspace.PluginContent, error) {
+func getFilePayload(file string, info workspace.PluginInfo) (workspace.PluginContent, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -206,7 +206,7 @@ func getFilePayload(file string) (workspace.PluginContent, error) {
 		if (stat.Mode() & 0100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return workspace.SingleFilePlugin(f), nil
+		return workspace.SingleFilePlugin(f, info), nil
 	}
 	return workspace.TarPlugin(f), nil
 }

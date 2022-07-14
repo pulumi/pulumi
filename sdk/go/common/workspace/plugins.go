@@ -802,27 +802,26 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 type PluginContent interface {
 	io.Closer
 
-	writeToDir(info PluginInfo) error
+	writeToDir(pathToDir string) error
 }
 
-func SingleFilePlugin(f *os.File) PluginContent {
+func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
 	return singleFilePlugin{F: f}
 }
 
 type singleFilePlugin struct {
-	F *os.File
+	F    *os.File
+	Kind PluginKind
+	Name string
 }
 
-func (p singleFilePlugin) writeToDir(info PluginInfo) error {
+func (p singleFilePlugin) writeToDir(finalDir string) error {
 	bytes, err := ioutil.ReadAll(p.F)
 	if err != nil {
 		return err
 	}
-	finalDir, err := info.DirPath()
-	if err != nil {
-		return err
-	}
-	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", info.Kind, info.Name))
+
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
 	// We are writing an executable.
 	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
 }
@@ -843,11 +842,7 @@ func (p tarPlugin) Close() error {
 	return p.Tgz.Close()
 }
 
-func (p tarPlugin) writeToDir(info PluginInfo) error {
-	finalPath, err := info.DirPath()
-	if err != nil {
-		return err
-	}
+func (p tarPlugin) writeToDir(finalPath string) error {
 	return archive.ExtractTGZ(p.Tgz, finalPath)
 }
 
@@ -863,11 +858,7 @@ func (p dirPlugin) Close() error {
 	return nil
 }
 
-func (p dirPlugin) writeToDir(info PluginInfo) error {
-	dstRoot, err := info.DirPath()
-	if err != nil {
-		return err
-	}
+func (p dirPlugin) writeToDir(dstRoot string) error {
 	return filepath.WalkDir(p.Root, func(srcPath string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -976,7 +967,7 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginCon
 		return err
 	}
 
-	if err := content.writeToDir(info); err != nil {
+	if err := content.writeToDir(finalDir); err != nil {
 		return err
 	}
 
