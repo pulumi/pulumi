@@ -20,6 +20,9 @@
 
 - [yaml] [Updates Pulumi YAML to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
 
+- [dotnet/codegen] code generation for csharp Pulumi programs now targets .NET 6
+  [#10143](https://github.com/pulumi/pulumi/pull/10143)
+
 ### Bug Fixes
 
 - [cli] `pulumi convert` help text is wrong
