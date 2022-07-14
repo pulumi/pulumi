@@ -92,6 +92,19 @@ type Host interface {
 func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, project *workspace.Project) (Host, error) {
 
+	// Create plugin info from providers
+	providerPlugins := make(map[string]*workspace.PluginInfo)
+	for name, providerOpts := range project.Providers {
+		//Go to path
+		path := providerOpts.LocalPath
+		providerPlugins[name] = &workspace.PluginInfo{
+			Name:    name,
+			Kind:    workspace.ResourcePlugin,
+			Path:    path,
+			Version: nil,
+		}
+	}
+
 	host := &defaultHost{
 		ctx:                     ctx,
 		config:                  config,
@@ -104,7 +117,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 		closer:                  new(sync.Once),
-		projectPlugins:          project.Plugins,
+		projectPlugins:          providerPlugins,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use

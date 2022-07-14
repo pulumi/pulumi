@@ -63,6 +63,10 @@ type ProjectOptions struct {
 	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
 }
 
+type ProviderOptions struct {
+	LocalPath string `json:"localPath,omitempty" yaml:"localPath,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -103,7 +107,7 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
-	Plugins map[string]*PluginInfo
+	Providers map[string]*ProviderOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
 }
 
 func (proj *Project) Validate() error {
