@@ -38,7 +38,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	}
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	diags = diags.Extend(lowerProxyDiags)
-	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
+	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr
 }
 
