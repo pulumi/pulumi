@@ -439,6 +439,9 @@ func (source *fallbackSource) GetLatestVersion(
 			if !private.HasAuthentication() {
 				privateErr = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				version, privateErr = private.GetLatestVersion(getHTTPResponse)
 				if privateErr == nil {
 					return version, nil
@@ -484,6 +487,9 @@ func (source *fallbackSource) Download(
 			if !private.HasAuthentication() {
 				err = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
 				if err == nil {
 					return resp, length, nil
@@ -747,14 +753,18 @@ func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
-	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
+	// detailed api logs that may include credentials.
+	logging.V(11).Infof("plugin install request headers: %v", req.Header)
 
 	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
+	// As above this might include authentication information, but also to be consistent at what level headers
+	// print at.
+	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 
