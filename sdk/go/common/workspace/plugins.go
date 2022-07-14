@@ -753,14 +753,18 @@ func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
-	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
+	// detailed api logs that may include credentials.
+	logging.V(11).Infof("plugin install request headers: %v", req.Header)
 
 	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
+	// As above this might include authentication information, but also to be consistent at what level headers
+	// print at.
+	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 
