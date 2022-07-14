@@ -1,16 +1,16 @@
 using System;
+using System.Collections.Generic;
 using Pulumi;
 
-class MyStack : Stack
+await Deployment.RunAsync(() => 
 {
-    public MyStack()
-    {
-        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("haha business"));
-        var joined = string.Join("-", 
-        {
-            "haha",
-            "business",
-        });
-    }
+    var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("haha business"));
 
-}
+    var joined = string.Join("-", new[]
+    {
+        "haha",
+        "business",
+    });
+
+});
+

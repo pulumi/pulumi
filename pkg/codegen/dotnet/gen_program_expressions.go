@@ -20,6 +20,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/pulumi/pulumi-java/pkg/codegen/java/names"
+
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
@@ -41,14 +43,53 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	diags = diags.Extend(convertDiags)
 	if g.asyncInit {
 		expr = g.awaitInvokes(expr)
 	} else {
 		expr = g.outputInvokes(expr)
 	}
-	diags = diags.Extend(convertDiags)
 	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
 	return expr
+}
+
+// lowerExpressionWithoutApplies is the same as lowerExpression
+// but without rewriting applies. Make especially for function invokes that are returning outputs
+func (g *generator) lowerExpressionWithoutApplies(expr model.Expression, typ model.Type) model.Expression {
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, diags := pcl.RewriteConversions(expr, typ)
+	if g.asyncInit {
+		expr = g.awaitInvokes(expr)
+	} else {
+		expr = g.outputInvokes(expr)
+	}
+	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
+	return expr
+}
+
+// awaitInvokes wraps each call to `invoke` with a call to the `await` intrinsic. This rewrite should only be used
+// if we are generating an async Initialize, in which case the apply rewriter should also be configured not to treat
+// promises as eventuals. Note that this depends on the fact that invokes are the only way to introduce promises
+// in to a Pulumi program; if this changes in the future, this transform will need to be applied in a more general way
+// (e.g. by the apply rewriter).
+func (g *generator) awaitInvokes(x model.Expression) model.Expression {
+	contract.Assert(g.asyncInit)
+
+	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
+		// Ignore the node if it is not a call to invoke.
+		call, ok := x.(*model.FunctionCallExpression)
+		if !ok || call.Name != pcl.Invoke {
+			return x, nil
+		}
+
+		_, isPromise := call.Type().(*model.PromiseType)
+		contract.Assert(isPromise)
+
+		return newAwaitCall(call), nil
+	}
+	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
+	contract.Assert(len(diags) == 0)
+	return x
 }
 
 // outputInvokes wraps each call to `invoke` with a call to the `output` intrinsic. This rewrite should only be used if
@@ -74,31 +115,6 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 		contract.Assert(isPromise)
 
 		return newOutputCall(call), nil
-	}
-	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
-	contract.Assert(len(diags) == 0)
-	return x
-}
-
-// awaitInvokes wraps each call to `invoke` with a call to the `await` intrinsic. This rewrite should only be used
-// if we are generating an async Initialize, in which case the apply rewriter should also be configured not to treat
-// promises as eventuals. Note that this depends on the fact that invokes are the only way to introduce promises
-// in to a Pulumi program; if this changes in the future, this transform will need to be applied in a more general way
-// (e.g. by the apply rewriter).
-func (g *generator) awaitInvokes(x model.Expression) model.Expression {
-	contract.Assert(g.asyncInit)
-
-	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
-		// Ignore the node if it is not a call to invoke.
-		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != pcl.Invoke {
-			return x, nil
-		}
-
-		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assert(isPromise)
-
-		return newAwaitCall(call), nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
 	contract.Assert(len(diags) == 0)
@@ -260,28 +276,6 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
 }
 
-func (g *generator) markTypeAsUsedInFunctionOutputVersionInputs(t model.Type) {
-	if g.usedInFunctionOutputVersionInputs == nil {
-		g.usedInFunctionOutputVersionInputs = make(map[schema.Type]bool)
-	}
-	schemaType, ok := g.toSchemaType(t)
-	if !ok {
-		return
-	}
-	g.usedInFunctionOutputVersionInputs[schemaType] = true
-}
-
-func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model.Expression) {
-	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-		isCons, _, t := pcl.RecognizeTypedObjectCons(expr)
-		if isCons {
-			g.markTypeAsUsedInFunctionOutputVersionInputs(t)
-		}
-		return expr, nil
-	}
-	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
-}
-
 func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
@@ -350,6 +344,12 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 	}
 }
 
+func (g *generator) withinAwaitBlock(run func()) {
+	g.insideAwait = true
+	run()
+	g.insideAwait = false
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -360,11 +360,55 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 		}
 	case pcl.IntrinsicApply:
+		switch expr.Args[0].(type) {
+		case *model.ScopeTraversalExpression:
+			traversal := expr.Args[0].(*model.ScopeTraversalExpression)
+			if len(traversal.Parts) == 1 {
+				_, isInvoke := g.functionInvokes[traversal.RootName]
+				if isInvoke {
+					switch expr.Args[1].(type) {
+					case *model.AnonymousFunctionExpression:
+						anonFunction := expr.Args[1].(*model.AnonymousFunctionExpression)
+						g.Fgenf(w, "%v", anonFunction.Body)
+						return
+					}
+				}
+			}
+		}
+
 		g.genApply(w, expr)
 	case intrinsicAwait:
-		g.Fgenf(w, "await %.17v", expr.Args[0])
+		g.withinAwaitBlock(func() {
+			g.Fgenf(w, "await %.17v", expr.Args[0])
+		})
+
 	case intrinsicOutput:
-		g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])
+		// if we are calling Output.Create(FuncInvokeAsync())
+		// then we can simplify to just FuncInvoke() which already returns Output
+		if funcExpr, isFunc := expr.Args[0].(*model.FunctionCallExpression); isFunc {
+			_, name := g.functionName(funcExpr.Args[0])
+			g.Fprintf(w, "%s.Invoke(", name)
+			innerFunc, isFunc := funcExpr.Args[1].(*model.FunctionCallExpression)
+			if isFunc && innerFunc.Name == pcl.IntrinsicConvert {
+				switch arg := innerFunc.Args[0].(type) {
+				case *model.ObjectConsExpression:
+					g.withinFunctionInvoke(func() {
+						useImplicitTypeName := true
+						destTypeName := g.argumentTypeNameWithSuffix(funcExpr, funcExpr.Type(), "InvokeArgs")
+						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+					})
+				default:
+					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
+				}
+			} else {
+				g.Fgenf(w, "%v", funcExpr.Args[1])
+			}
+
+			g.Fprint(w, ")")
+		} else {
+			g.Fgenf(w, "Output.Create(%.v)", expr.Args[0])
+		}
+
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
@@ -400,24 +444,38 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
-		_, name := g.functionName(expr.Args[0])
-
-		isOut, outArgs, outArgsTy := pcl.RecognizeOutputVersionedInvoke(expr)
-		if isOut {
-			g.visitToMarkTypesUsedInFunctionOutputVersionInputs(outArgs)
-			g.Fprintf(w, "%s.Invoke(", name)
-			typeName := g.argumentTypeNameWithSuffix(expr, outArgsTy, "InvokeArgs")
-			g.genObjectConsExpressionWithTypeName(w, outArgs, typeName)
+		_, functionName := g.functionName(expr.Args[0])
+		if g.insideAwait {
+			g.Fprintf(w, "%s.InvokeAsync(", functionName)
 		} else {
-			g.Fprintf(w, "%s.InvokeAsync(", name)
-			if len(expr.Args) >= 2 {
-				g.Fgenf(w, "%.v", expr.Args[1])
+			g.Fprintf(w, "%s.Invoke(", functionName)
+		}
+
+		innerFunc, isFunc := expr.Args[1].(*model.FunctionCallExpression)
+		if isFunc && innerFunc.Name == pcl.IntrinsicConvert {
+			// function has been "lowered" i.e. rewritten with __convert
+			switch arg := innerFunc.Args[0].(type) {
+			case *model.ObjectConsExpression:
+				g.withinFunctionInvoke(func() {
+					useImplicitTypeName := true
+					destTypeName := "Irrelevant"
+					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+				})
+			default:
+				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
+			}
+		} else {
+			// function has bot been rewritten
+			switch arg := expr.Args[1].(type) {
+			case *model.ObjectConsExpression:
+				useImplicitTypeName := true
+				destTypeName := "Irrelevant"
+				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+			default:
+				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 			}
 		}
 
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, ", %.v", expr.Args[2])
-		}
 		g.Fprint(w, ")")
 	case "join":
 		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
@@ -464,18 +522,15 @@ func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 		g.genDictionary(w, expr, "object?")
 	case *model.TupleConsExpression:
 		g.Fgen(w, "new[]\n")
+		g.Fgenf(w, "%[1]s{\n", g.Indent)
 		g.Indented(func() {
-			g.Fgenf(w, "%[1]s{\n", g.Indent)
-			g.Indented(func() {
-				for _, v := range expr.Expressions {
-					g.Fgenf(w, "%s", g.Indent)
-					g.genDictionaryOrTuple(w, v)
-					g.Fgen(w, ",\n")
-				}
-			})
-			g.Fgenf(w, "%s}", g.Indent)
+			for _, v := range expr.Expressions {
+				g.Fgenf(w, "%s", g.Indent)
+				g.genDictionaryOrTuple(w, v)
+				g.Fgen(w, ",\n")
+			}
 		})
-		g.Fgenf(w, "\n%s", g.Indent)
+		g.Fgenf(w, "%s}", g.Indent)
 	default:
 		g.Fgenf(w, "%.v", expr)
 	}
@@ -486,9 +541,9 @@ func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression,
 	g.Fgenf(w, "%s{\n", g.Indent)
 	g.Indented(func() {
 		for _, item := range expr.Items {
-			g.Fgenf(w, "%s{ %.v, ", g.Indent, item.Key)
+			g.Fgenf(w, "%s[%.v] = ", g.Indent, item.Key)
 			g.genDictionaryOrTuple(w, item.Value)
-			g.Fgen(w, " },\n")
+			g.Fgen(w, ",\n")
 		}
 	})
 	g.Fgenf(w, "%s}", g.Indent)
@@ -574,11 +629,11 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)
-	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false)
 }
 
 func (g *generator) genObjectConsExpressionWithTypeName(
-	w io.Writer, expr *model.ObjectConsExpression, destTypeName string) {
+	w io.Writer, expr *model.ObjectConsExpression, destTypeName string, implicitTypeName bool) {
 
 	if len(expr.Items) == 0 {
 		return
@@ -586,7 +641,12 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 
 	typeName := destTypeName
 	if typeName != "" {
-		g.Fgenf(w, "new %s", typeName)
+		if implicitTypeName {
+			g.Fgenf(w, "new()")
+		} else {
+			g.Fgenf(w, "new %s", typeName)
+		}
+
 		g.Fgenf(w, "\n%s{\n", g.Indent)
 		g.Indented(func() {
 			for _, item := range expr.Items {
@@ -629,12 +689,11 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
 		}
 
-		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
-			g.Fgen(w, "?")
-		}
-
 		switch key.Type() {
 		case cty.String:
+			if model.IsOptionalType(model.GetTraversableType(parts[i])) {
+				g.Fgen(w, "?")
+			}
 			g.Fgenf(w, ".%s", propertyName(key.AsString()))
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
@@ -650,6 +709,18 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 	g.genRelativeTraversal(w, expr.Traversal, expr.Parts, nil)
 }
 
+func (g *generator) schemaTypeName(schemaType *schema.ObjectType) string {
+	fullyQualifiedTypeName := schemaType.Token
+	nameParts := strings.Split(fullyQualifiedTypeName, ":")
+	return names.Title(nameParts[len(nameParts)-1])
+}
+
+func (g *generator) withinFunctionInvoke(run func()) {
+	g.insideFunctionInvoke = true
+	run()
+	g.insideFunctionInvoke = false
+}
+
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
 	rootName := makeValidIdentifier(expr.RootName)
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
@@ -658,6 +729,14 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	g.Fgen(w, rootName)
 
+	invokedFunctionSchema, isFunctionInvoke := g.functionInvokes[rootName]
+
+	if isFunctionInvoke && !g.asyncInit {
+		lambdaArg := LowerCamelCase(g.schemaTypeName(invokedFunctionSchema.Outputs))
+		// Assume invokes are returning Output<T> instead of CompletableFuture<T>
+		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
+	}
+
 	var objType *schema.ObjectType
 	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
 		if schemaType, ok := pcl.GetSchemaForType(resource.InputType); ok {
@@ -665,6 +744,10 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		}
 	}
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
+
+	if isFunctionInvoke && !g.asyncInit {
+		g.Fgenf(w, ")")
+	}
 }
 
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {
@@ -705,12 +788,55 @@ func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJ
 	g.genNYI(w, "TemplateJoinExpression")
 }
 
+// Removes duplicate strings. Useful when collecting a distinct set of imports
+func removeDuplicates(inputs []string) []string {
+	distinctInputs := make([]string, 0)
+	seenTexts := make(map[string]bool)
+	for _, input := range inputs {
+		if _, seen := seenTexts[input]; !seen {
+			seenTexts[input] = true
+			distinctInputs = append(distinctInputs, input)
+		}
+	}
+
+	return distinctInputs
+}
+
+func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool {
+	switch expr.Type().(type) {
+	case *model.TupleType:
+		tupleType := expr.Type().(*model.TupleType)
+		typeNames := make([]string, 0)
+		for _, elemType := range tupleType.ElementTypes {
+			if schemaType, ok := pcl.GetSchemaForType(elemType); ok {
+				if objectType, ok := schemaType.(*schema.ObjectType); ok {
+					typeName := g.schemaTypeName(objectType)
+					typeNames = append(typeNames, typeName)
+				}
+			}
+		}
+
+		return len(removeDuplicates(typeNames)) > 1
+	}
+
+	return false
+}
+
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
 	switch len(expr.Expressions) {
 	case 0:
-		g.Fgen(w, "{}")
+		g.Fgen(w, "new[] {}")
 	default:
+		if !g.isListOfDifferentTypes(expr) {
+			// only generate this when we don't have a list of union types
+			// list of a union is mapped to InputList<object>
+			// which means new[] will not work because type-inference won't
+			// know the type of the array before hand
+			g.Fgen(w, "new[]")
+		}
+
 		g.Fgenf(w, "\n%s{", g.Indent)
+
 		g.Indented(func() {
 			for _, v := range expr.Expressions {
 				g.Fgenf(w, "\n%s%.v,", g.Indent, v)

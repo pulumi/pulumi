@@ -69,8 +69,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: allProgLanguages.Except("python"),
-		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
+		SkipCompile: allProgLanguages.Except("python").Except("dotnet"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
@@ -142,11 +141,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "functions",
 		Description: "Functions",
-		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8077]
-		// Blocked on dotnet:
-		//   TODO[pulumi/pulumi#8078]
-		//   TODO[pulumi/pulumi#8079]
 	},
 	{
 		Directory:   "output-funcs-aws",
@@ -190,12 +186,13 @@ type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 type ProgramCodegenOptions struct {
-	Language   string
-	Extension  string
-	OutputFile string
-	Check      CheckProgramOutput
-	GenProgram GenProgram
-	TestCases  []ProgramTest
+	Language             string
+	Extension            string
+	OutputFile           string
+	Check                CheckProgramOutput
+	GenProgram           GenProgram
+	TestCases            []ProgramTest
+	AcceptCodegenChanges bool
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -216,7 +213,7 @@ func TestProgramCodegen(
 	}
 
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
-	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) || testcase.AcceptCodegenChanges
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
