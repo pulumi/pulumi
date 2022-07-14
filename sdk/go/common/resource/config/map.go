@@ -314,7 +314,17 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Adjust the value (e.g. convert "true"/"false" to booleans and integers to ints) and set it.
-	adjustedValue := adjustObjectValue(v, path)
+	var adjustedValue interface{} = v
+	if v.Object() {
+		m := make(map[string]interface{})
+		err := json.Unmarshal([]byte(v.value), &m)
+		if err != nil {
+			return err
+		}
+		adjustedValue = m
+	} else if path {
+		adjustedValue = adjustObjectValue(v)
+	}
 	if _, err = setValue(cursor, cursorKey, adjustedValue, parent, parentKey); err != nil {
 		return err
 	}
@@ -516,13 +526,8 @@ func setValue(container, key, value, containerParent, containerParentKey interfa
 }
 
 // adjustObjectValue returns a more suitable value for objects:
-func adjustObjectValue(v Value, path bool) interface{} {
+func adjustObjectValue(v Value) interface{} {
 	contract.Assertf(!v.Object(), "v must not be an Object: %s", v.value)
-
-	// If the path flag isn't set, just return the value as-is.
-	if !path {
-		return v
-	}
 
 	// If it's a secure value, return as-is.
 	if v.Secure() {
