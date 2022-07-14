@@ -20,7 +20,7 @@ on:
         type: string
       dotnet-version:
         description: 'Version of the .NET toolchain for the build'
-        default: '3.1.x'
+        default: '6.0.x'
         required: false
         type: string
       goreleaser-flags:
