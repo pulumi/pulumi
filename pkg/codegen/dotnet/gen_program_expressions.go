@@ -20,16 +20,13 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/pulumi/pulumi-java/pkg/codegen/java/names"
-
-	"github.com/zclconf/go-cty/cty"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
@@ -345,9 +342,17 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 }
 
 func (g *generator) withinAwaitBlock(run func()) {
-	g.insideAwait = true
-	run()
-	g.insideAwait = false
+	if g.insideAwait {
+		// already inside await block?
+		// only run the function
+		run()
+	} else {
+		// not inside await? flag it as true, run the function,
+		// then set it back to false
+		g.insideAwait = true
+		run()
+		g.insideAwait = false
+	}
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -722,13 +727,21 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 func (g *generator) schemaTypeName(schemaType *schema.ObjectType) string {
 	fullyQualifiedTypeName := schemaType.Token
 	nameParts := strings.Split(fullyQualifiedTypeName, ":")
-	return names.Title(nameParts[len(nameParts)-1])
+	return Title(nameParts[len(nameParts)-1])
 }
 
 func (g *generator) withinFunctionInvoke(run func()) {
-	g.insideFunctionInvoke = true
-	run()
-	g.insideFunctionInvoke = false
+	if g.insideFunctionInvoke {
+		// already inside this block?
+		// just run the function
+		run()
+	} else {
+		// not inside function invoke?
+		// set it to true first, run, then set it back to false
+		g.insideFunctionInvoke = true
+		run()
+		g.insideFunctionInvoke = false
+	}
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {

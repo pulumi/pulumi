@@ -286,10 +286,7 @@ func (g *generator) isFunctionInvoke(localVariable *pcl.LocalVariable) (*schema.
 			_, fullFunctionName := g.functionName(args)
 			functionNameParts := strings.Split(fullFunctionName, ".")
 			functionName := functionNameParts[len(functionNameParts)-1]
-			functionSchema, foundFunction := g.findFunctionSchema(functionName)
-			if foundFunction {
-				return functionSchema, true
-			}
+			return g.findFunctionSchema(functionName)
 		}
 	}
 
