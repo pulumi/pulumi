@@ -64,26 +64,26 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
+	var res *schema.Resource
 	var inputProperties, properties []*schema.Property
-	if !isProvider {
-		var res *schema.Resource
-		if r, tk, ok, err := pkgSchema.LookupResource(token); err != nil {
-			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		} else if !ok {
-			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
-		} else {
-			res = r
-			token = tk
-		}
-		node.Schema = res
-		inputProperties, properties = res.InputProperties, res.Properties
-	} else {
-		config, err := pkgSchema.schema.Config()
+	if isProvider {
+		r, err := pkgSchema.schema.Provider()
 		if err != nil {
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
-		inputProperties, properties = config, config
+		res = r
+	} else {
+		r, tk, ok, err := pkgSchema.LookupResource(token)
+		if err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		} else if !ok {
+			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
+		}
+		res = r
+		token = tk
 	}
+	node.Schema = res
+	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
 
 	// Create input and output types for the schema.
