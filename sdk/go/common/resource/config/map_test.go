@@ -1180,6 +1180,17 @@ func TestSetSuccess(t *testing.T) {
 				MustMakeKey("my", "key"): NewObjectValue(`{"bar":"baz","secure":"value"}`),
 			},
 		},
+		{
+			Key:   `my:special.object`,
+			Path:  true,
+			Value: NewObjectValue(`{"foo":"bar","fizz":"buzz"}`),
+			Config: Map{
+				MustMakeKey("my", "special"): NewObjectValue(`{"thing1":1,"thing2":2}`),
+			},
+			Expected: Map{
+				MustMakeKey("my", "special"): NewObjectValue(`{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}`),
+			},
+		},
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg

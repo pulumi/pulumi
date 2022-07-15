@@ -7,6 +7,9 @@
   file or a folder.
   [#10094](https://github.com/pulumi/pulumi/pull/10094)
 
+- [cli/config] Allow `pulumi config cp --path` between objects.
+  [#10147](https://github.com/pulumi/pulumi/pull/10147)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
