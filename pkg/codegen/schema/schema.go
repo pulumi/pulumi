@@ -1743,8 +1743,10 @@ func (p *pulumiPackageReference) Definition() (*Package, error) {
 	return p.packageFull, nil
 }
 
-var DefaultPulumiPackageReference = newPulumiPackageReference(DefaultPulumiPackage.Name, DefaultPulumiPackage.Version, DefaultPulumiPackage.Description, nil,
-	nil, &Resource{}, DefaultPulumiPackage.Reference().Resources(), nil, "pulumi", &DefaultPulumiPackage)
+var DefaultPulumiPackageReference = newPulumiPackageReference(DefaultPulumiPackage.Name,
+	DefaultPulumiPackage.Version, DefaultPulumiPackage.Description, nil, nil,
+	&Resource{}, DefaultPulumiPackage.Reference().Resources(),
+	nil, "pulumi", &DefaultPulumiPackage)
 
 var DefaultPulumiPackage = Package{
 	Name:        "pulumi",
