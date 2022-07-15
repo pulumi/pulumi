@@ -18,3 +18,6 @@
 - [codegen/go] Support program generation, `pulumi convert` for programs that create explicit
   provider resources.
   [#10132](https://github.com/pulumi/pulumi/issues/10132)
+
+- [sdk/go] Remove the `AsName` and `AsQName` asserting functions.
+  [#10156](https://github.com/pulumi/pulumi/pull/10156)
