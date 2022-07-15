@@ -41,7 +41,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	contract.Require(q != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events1 <- cancelEvent() }()
 
 	tracingSpan := func(opName string, parentSpan opentracing.SpanContext) opentracing.Span {
 		// Create a root span for the operation
@@ -56,7 +56,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	}("query", ctx.ParentSpan)
 	defer tracingSpan.Finish()
 
-	emitter, err := makeQueryEventEmitter(ctx.Events)
+	emitter, err := makeQueryEventEmitter(ctx.Events1)
 	if err != nil {
 		return result.FromError(err)
 	}

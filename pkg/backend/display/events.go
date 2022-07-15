@@ -24,7 +24,7 @@ import (
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, error) {
+func ConvertEngineEvent(e engine.Event1, showSecrets bool) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
 	// Error to return if the payload doesn't match expected.
@@ -235,23 +235,23 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
-	var event engine.Event
+func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event1, error) {
+	var event engine.Event1
 
 	switch {
 	case apiEvent.CancelEvent != nil:
-		event = engine.NewEvent(engine.CancelEvent, nil)
+		event = engine.NewEvent1(engine.CancelEvent, nil)
 
 	case apiEvent.StdoutEvent != nil:
 		p := apiEvent.StdoutEvent
-		event = engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+		event = engine.NewEvent1(engine.StdoutColorEvent, engine.StdoutEventPayload{
 			Message: p.Message,
 			Color:   colors.Colorization(p.Color),
 		})
 
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
-		event = engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+		event = engine.NewEvent1(engine.DiagEvent, engine.DiagEventPayload{
 			URN:       resource.URN(p.URN),
 			Prefix:    p.Prefix,
 			Message:   p.Message,
@@ -263,7 +263,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.PolicyEvent != nil:
 		p := apiEvent.PolicyEvent
-		event = engine.NewEvent(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
+		event = engine.NewEvent1(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
 			ResourceURN:       resource.URN(p.ResourceURN),
 			Message:           p.Message,
 			Color:             colors.Colorization(p.Color),
@@ -277,7 +277,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		p := apiEvent.PreludeEvent
 
 		// Convert the config bag.
-		event = engine.NewEvent(engine.PreludeEvent, engine.PreludeEventPayload{
+		event = engine.NewEvent1(engine.PreludeEvent, engine.PreludeEventPayload{
 			Config: p.Config,
 		})
 
@@ -288,7 +288,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		for op, count := range p.ResourceChanges {
 			changes[display.StepOp(op)] = count
 		}
-		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
+		event = engine.NewEvent1(engine.SummaryEvent, engine.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
@@ -297,21 +297,21 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.ResourcePreEvent != nil:
 		p := apiEvent.ResourcePreEvent
-		event = engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+		event = engine.NewEvent1(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOutputsEvent != nil:
 		p := apiEvent.ResOutputsEvent
-		event = engine.NewEvent(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
+		event = engine.NewEvent1(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOpFailedEvent != nil:
 		p := apiEvent.ResOpFailedEvent
-		event = engine.NewEvent(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
+		event = engine.NewEvent1(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
 			Steps:    p.Steps,

@@ -60,8 +60,8 @@ type ResourceRow interface {
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
 
-	RecordDiagEvent(diagEvent engine.Event)
-	RecordPolicyViolationEvent(diagEvent engine.Event)
+	RecordDiagEvent(diagEvent engine.Event1)
+	RecordPolicyViolationEvent(diagEvent engine.Event1)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -181,8 +181,8 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
 }
 
-func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	payload := event.Payload().(engine.DiagEventPayload)
+func (data *resourceRowData) RecordDiagEvent(event engine.Event1) {
+	payload := event.DeepCopy().Payload().(engine.DiagEventPayload)
 	data.recordDiagEventPayload(payload)
 }
 
@@ -224,8 +224,8 @@ func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPaylo
 }
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
-func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
+func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event1) {
+	pePayload := event.DeepCopy().Payload().(engine.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 

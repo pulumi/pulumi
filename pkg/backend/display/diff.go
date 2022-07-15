@@ -35,7 +35,7 @@ import (
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
-func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowDiffEvents(op string, events <-chan engine.Event1, done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
@@ -92,7 +92,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(event engine.Event1, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
 
 	switch event.Type {
 	case engine.CancelEvent:

@@ -210,7 +210,7 @@ func simplifyTypeName(typ tokens.Type) string {
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
-func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
+func getEventUrnAndMetadata(event engine.Event1) (resource.URN, *engine.StepEventMetadata) {
 	switch event.Type {
 	case engine.ResourcePreEvent:
 		payload := event.Payload().(engine.ResourcePreEventPayload)
@@ -271,7 +271,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan engine.Event1, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -1016,7 +1016,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	return row
 }
 
-func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+func (display *ProgressDisplay) processNormalEvent(event engine.Event1) {
 	switch event.Type {
 	case engine.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.
@@ -1025,7 +1025,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		payload := event.Payload().(engine.PreludeEventPayload)
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent1(engine.DiagEvent, engine.DiagEventPayload{
 				Ephemeral: false,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -1069,7 +1069,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(engine.NewEvent1(engine.DiagEvent, engine.DiagEventPayload{
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -1186,7 +1186,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	display.resourceRows = append(display.resourceRows, stackRow)
 }
 
-func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
+func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event1) {
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.

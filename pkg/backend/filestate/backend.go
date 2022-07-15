@@ -465,7 +465,7 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) PackPolicies(
 	ctx context.Context, policyPackRef backend.PolicyPackReference,
 	cancellationScopes backend.CancellationScopeSource,
-	callerEventsOpt chan<- engine.Event) result.Result {
+	callerEventsOpt chan<- engine.Event1) result.Result {
 
 	return result.Error("File state backend does not support resource policy")
 }
@@ -544,7 +544,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	events chan<- engine.Event1) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -563,21 +563,21 @@ func (b *localBackend) apply(
 	}
 
 	// Spawn a display loop to show events on the CLI.
-	displayEvents := make(chan engine.Event)
+	displayEvents := make(chan engine.Event1)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name,
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
-	engineEvents := make(chan engine.Event)
+	engineEvents := make(chan engine.Event1)
 
 	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
 		for e := range engineEvents {
-			displayEvents <- e
+			displayEvents <- e.DeepCopy()
 
 			// If the caller also wants to see the events, stream them there also.
 			if events != nil {
@@ -593,7 +593,7 @@ func (b *localBackend) apply(
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
-		Events:          engineEvents,
+		Events1:         engineEvents,
 		SnapshotManager: manager,
 		BackendClient:   backend.NewBackendClient(b),
 	}
@@ -707,7 +707,7 @@ func (b *localBackend) apply(
 
 // query executes a query program against the resource outputs of a locally hosted stack.
 func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event) result.Result {
+	callerEventsOpt chan<- engine.Event1) result.Result {
 
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }

@@ -33,7 +33,7 @@ func Refresh(
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events1 <- cancelEvent() }()
 
 	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {
@@ -41,7 +41,7 @@ func Refresh(
 	}
 	defer info.Close()
 
-	emitter, err := makeEventEmitter(ctx.Events, u)
+	emitter, err := makeEventEmitter(ctx.Events1, u)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}

@@ -14,24 +14,24 @@ type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)
 
 // RunQuery executes a query program against the resource outputs of a locally hosted stack.
 func RunQuery(ctx context.Context, b Backend, op QueryOperation,
-	callerEventsOpt chan<- engine.Event, newQuery MakeQuery) result.Result {
+	callerEventsOpt chan<- engine.Event1, newQuery MakeQuery) result.Result {
 	q, err := newQuery(ctx, op)
 	if err != nil {
 		return result.FromError(err)
 	}
 
 	// Render query output to CLI.
-	displayEvents := make(chan engine.Event)
+	displayEvents := make(chan engine.Event1)
 	displayDone := make(chan bool)
 	go display.ShowQueryEvents("running query", displayEvents, displayDone, op.Opts.Display)
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
-	engineEvents := make(chan engine.Event)
+	engineEvents := make(chan engine.Event1)
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {
-			displayEvents <- e
+			displayEvents <- e.DeepCopy()
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
 			}
@@ -45,7 +45,7 @@ func RunQuery(ctx context.Context, b Backend, op QueryOperation,
 	cancellationScope := op.Scopes.NewScope(engineEvents, true /*dryRun*/)
 	engineCtx := &engine.Context{
 		Cancel:        cancellationScope.Context(),
-		Events:        engineEvents,
+		Events1:       engineEvents,
 		BackendClient: NewBackendClient(b),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {

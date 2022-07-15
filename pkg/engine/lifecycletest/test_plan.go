@@ -52,7 +52,7 @@ func ImportOp(imports []deploy.Import) TestOp {
 type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, result.Result)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
-	events []Event, res result.Result) result.Result
+	events []Event1, res result.Result) result.Result
 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
 	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Plan, result.Result) {
@@ -95,19 +95,19 @@ func (op TestOp) runWithContext(
 		}
 	}()
 
-	events := make(chan Event)
+	events := make(chan Event1)
 	journal := NewJournal()
 
 	ctx := &Context{
 		Cancel:          cancelCtx,
-		Events:          events,
+		Events1:         events,
 		SnapshotManager: journal,
 		BackendClient:   backendClient,
 	}
 
 	// Begin draining events.
 	var wg sync.WaitGroup
-	var firedEvents []Event
+	var firedEvents []Event1
 	wg.Add(1)
 	go func() {
 		for e := range events {
@@ -148,7 +148,7 @@ type TestStep struct {
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	o := t.Validate
 	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		events []Event, res result.Result) result.Result {
+		events []Event1, res result.Result) result.Result {
 		r := o(project, target, entries, events, res)
 		if r != nil {
 			return r
@@ -294,7 +294,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				// Should see only creates or reads.
 				for _, entry := range entries {
@@ -311,7 +311,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				// Should see only refresh-sames.
 				for _, entry := range entries {
@@ -328,7 +328,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				// Should see only sames.
 				for _, entry := range entries {
@@ -345,7 +345,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				// Should see only refresh-sames.
 				for _, entry := range entries {
@@ -362,7 +362,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				// Should see only deletes.
 				for _, entry := range entries {
@@ -383,7 +383,7 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
+				_ []Event1, res result.Result) result.Result {
 
 				assert.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
