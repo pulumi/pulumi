@@ -1126,7 +1126,7 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version, projectPlugins map[string]*PluginInfo) (string, string, error) {
+func GetPluginPath(kind PluginKind, name string, version *semver.Version, projectPlugins []*PluginInfo) (string, string, error) {
 	info, path, err := getPluginInfoOrPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", "", err
@@ -1149,7 +1149,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version, projec
 	return "", path, err
 }
 
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version, projectPlugins map[string]*PluginInfo) (*PluginInfo, error) {
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version, projectPlugins []*PluginInfo) (*PluginInfo, error) {
 	info, path, err := getPluginInfoOrPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
@@ -1173,26 +1173,25 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version, projec
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
 func getPluginInfoOrPath(
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool, projectPlugins map[string]*PluginInfo) (*PluginInfo, string, error) {
+	kind PluginKind, name string, version *semver.Version, skipMetadata bool, projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
 
-	if projectPlugins != nil {
-		plugin, ok := projectPlugins[name]
-		if ok {
-			if plugin.Name != name {
-				return nil, "", fmt.Errorf("plugin name mismatch: %s != %s", plugin.Name, name)
-			}
-			if plugin.Kind != kind {
-				return nil, "", fmt.Errorf("plugin kind mismatch: %s != %s", plugin.Kind, kind)
-			}
-			//Comparing pointers? Seems wrong, but I get problems when I try to dereference
-			if plugin.Version != version {
-				return nil, "", fmt.Errorf("plugin version mismatch: %s != %s", plugin.Version, version)
-			}
-			path := plugin.Path
-			// figure out the proper plugin path
-			return plugin, path, nil
+	for _, plugin := range projectPlugins {
+		if plugin.Name != name {
+			continue
 		}
+		if plugin.Kind != kind {
+			continue
+		}
+		if plugin.Version != nil && version != nil {
+			if !plugin.Version.Equals(*version) {
+				continue
+			}
+		}
+		// Maybe we should throw an error if, say, there are multiple of the same name/version?
+		path := plugin.Path
+		// figure out the proper plugin path
+		return plugin, path, nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We

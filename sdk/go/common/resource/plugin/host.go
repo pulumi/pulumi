@@ -75,7 +75,7 @@ type Host interface {
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
-	GetProjectPlugins() map[string]*workspace.PluginInfo
+	GetProjectPlugins() []*workspace.PluginInfo
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -93,16 +93,19 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	disableProviderPreview bool, project *workspace.Project) (Host, error) {
 
 	// Create plugin info from providers
-	providerPlugins := make(map[string]*workspace.PluginInfo)
-	for name, providerOpts := range project.Providers {
+	providerPlugins := make([]*workspace.PluginInfo, 0, len(project.Providers))
+	for _, providerOpts := range project.Providers {
 		//Go to path
-		path := providerOpts.LocalPath
-		providerPlugins[name] = &workspace.PluginInfo{
-			Name:    name,
-			Kind:    workspace.ResourcePlugin,
-			Path:    path,
-			Version: nil,
+		v, err := semver.Parse(providerOpts.Version)
+		if err != nil {
+			return nil, err
 		}
+		providerPlugins = append(providerPlugins, &workspace.PluginInfo{
+			Name:    providerOpts.Name,
+			Kind:    workspace.ResourcePlugin,
+			Path:    providerOpts.Path,
+			Version: &v,
+		})
 	}
 
 	host := &defaultHost{
@@ -173,7 +176,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 
 	closer         *sync.Once
-	projectPlugins map[string]*workspace.PluginInfo
+	projectPlugins []*workspace.PluginInfo
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -401,7 +404,7 @@ func (host *defaultHost) ResolvePlugin(
 	return workspace.GetPluginInfo(kind, name, version, host.projectPlugins)
 }
 
-func (host *defaultHost) GetProjectPlugins() map[string]*workspace.PluginInfo {
+func (host *defaultHost) GetProjectPlugins() []*workspace.PluginInfo {
 	return host.projectPlugins
 }
 

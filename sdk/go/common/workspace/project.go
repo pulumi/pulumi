@@ -64,7 +64,9 @@ type ProjectOptions struct {
 }
 
 type ProviderOptions struct {
-	LocalPath string `json:"localPath,omitempty" yaml:"localPath,omitempty"`
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version" yaml:"version"`
+	Path    string `json:"path" yaml:"path"`
 }
 
 // Project is a Pulumi project manifest.
@@ -107,7 +109,7 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
-	Providers map[string]*ProviderOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
+	Providers []*ProviderOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
 }
 
 func (proj *Project) Validate() error {
