@@ -120,6 +120,9 @@ func NewPulumiCmd() *cobra.Command {
 			if tracingHeaderFlag != "" {
 				tracingHeader = tracingHeaderFlag
 			}
+			if logging.Verbose >= 11 {
+				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
+			}
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
