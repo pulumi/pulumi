@@ -27,7 +27,9 @@ func main() {
 			if err != nil {
 				return err
 			}
-			prev = append(prev, r)
+			// uncomment for quadratic deps
+			// prev = append(prev, r)
+			prev = []*random.RandomInteger{r}
 		}
 		return nil
 	})
