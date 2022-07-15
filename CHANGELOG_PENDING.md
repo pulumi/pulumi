@@ -18,3 +18,6 @@
 - [codegen/go] Support program generation, `pulumi convert` for programs that create explicit
   provider resources.
   [#10132](https://github.com/pulumi/pulumi/issues/10132)
+
+- [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
+  [#10155](https://github.com/pulumi/pulumi/pull/10155)
