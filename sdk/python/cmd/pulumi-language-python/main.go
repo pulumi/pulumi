@@ -604,7 +604,13 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 	var err error
 	var cmd *exec.Cmd
 	if virtualenv != "" {
-		cmd = python.VirtualEnvCommand(virtualenv, "python", arg...)
+		// Default to the "python" executable in the virtual environment, but allow the user to override it
+		// with PULUMI_PYTHON_CMD.
+		pythonCmd := os.Getenv("PULUMI_PYTHON_CMD")
+		if pythonCmd == "" {
+			pythonCmd = "python"
+		}
+		cmd = python.VirtualEnvCommand(virtualenv, pythonCmd, arg...)
 	} else {
 		cmd, err = python.Command(ctx, arg...)
 		if err != nil {
