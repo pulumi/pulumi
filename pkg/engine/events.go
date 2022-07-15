@@ -233,7 +233,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 
 	return eventEmitter{
 		done: done,
-		ch1:  buffer,
+		ch:  buffer,
 	}, nil
 }
 
@@ -244,13 +244,13 @@ func makeQueryEventEmitter(events chan<- Event) (eventEmitter, error) {
 
 	return eventEmitter{
 		done: done,
-		ch1:  buffer,
+		ch:  buffer,
 	}, nil
 }
 
 type eventEmitter struct {
 	done <-chan bool
-	ch1  chan<- Event
+	ch  chan<- Event
 }
 
 func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
@@ -349,7 +349,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 }
 
 func (e *eventEmitter) Close() {
-	close(e.ch1)
+	close(e.ch)
 	<-e.done
 }
 
@@ -358,7 +358,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch1 <- NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+	e.ch <- NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Status:   status,
 		Steps:    steps,
@@ -368,7 +368,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch1 <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
+	e.ch <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
 		Metadata: makeStepEventMetadata(op, step, debug),
 		Planning: planning,
 		Debug:    debug,
@@ -380,7 +380,7 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch1 <- NewEvent(ResourcePreEvent, ResourcePreEventPayload{
+	e.ch <- NewEvent(ResourcePreEvent, ResourcePreEventPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Planning: planning,
 		Debug:    debug,
@@ -398,7 +398,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.ch1 <- NewEvent(PreludeEvent, PreludeEventPayload{
+	e.ch <- NewEvent(PreludeEvent, PreludeEventPayload{
 		IsPreview: isPreview,
 		Config:    configStringMap,
 	}).DeepCopy()
@@ -409,7 +409,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch1 <- NewEvent(SummaryEvent, SummaryEventPayload{
+	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
 		IsPreview:       preview,
 		MaybeCorrupt:    maybeCorrupt,
 		Duration:        duration,
@@ -446,7 +446,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.ch1 <- NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
+	e.ch <- NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
 		ResourceURN:       urn,
 		Message:           logging.FilterString(buffer.String()),
 		Color:             colors.Raw,
@@ -462,7 +462,7 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 	ephemeral bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch1 <- NewEvent(DiagEvent, DiagEventPayload{
+	e.ch <- NewEvent(DiagEvent, DiagEventPayload{
 		URN:       d.URN,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),
