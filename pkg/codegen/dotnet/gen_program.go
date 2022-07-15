@@ -34,6 +34,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type GenerateProgramOptions struct {
+	// Determines whether ResourceArg types have an implicit name
+	// when constructing a resource. For example:
+	// when implicitResourceArgsTypeName is set to true,
+	// new Bucket("name", new BucketArgs { ... })
+	// becomes
+	// new Bucket("name", new() { ... });
+	// The latter syntax is only available on .NET 6 or later
+	implicitResourceArgsTypeName bool
+}
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -59,11 +70,15 @@ type generator struct {
 	diagnostics          hcl.Diagnostics
 	insideFunctionInvoke bool
 	insideAwait          bool
+	// Program generation options
+	generateOptions GenerateProgramOptions
 }
 
 const pulumiPackage = "pulumi"
 
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProgramWithOptions(
+	program *pcl.Program,
+	options GenerateProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
@@ -104,7 +119,9 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		tokenToModules:  tokenToModules,
 		functionArgs:    functionArgs,
 		functionInvokes: map[string]*schema.Function{},
+		generateOptions: options,
 	}
+
 	g.Formatter = format.NewFormatter(g)
 
 	for _, n := range nodes {
@@ -128,6 +145,25 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		"Program.cs": index.Bytes(),
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProgramForImport(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	importOptions := GenerateProgramOptions{
+		// for import, we want to generate C# code that
+		// is compatible with old versions of .NET
+		implicitResourceArgsTypeName: false,
+	}
+
+	return GenerateProgramWithOptions(program, importOptions)
+}
+
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	defaultOptions := GenerateProgramOptions{
+		// by default, we generate C# code that targets .NET 6
+		implicitResourceArgsTypeName: true,
+	}
+
+	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
@@ -612,7 +648,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
-
+	argsName := g.resourceArgsTypeName(r)
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
 		g.genTrivia(w, l)
@@ -624,7 +660,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			// only resource name is provided
 			g.Fgenf(w, "new %s(%s)", qualifiedMemberName, resName)
 		} else {
-			g.Fgenf(w, "new %s(%s, new()\n", qualifiedMemberName, resName)
+			if g.generateOptions.implicitResourceArgsTypeName {
+				g.Fgenf(w, "new %s(%s, new()\n", qualifiedMemberName, resName)
+			} else {
+				g.Fgenf(w, "new %s(%s, new %s\n", qualifiedMemberName, resName, argsName)
+			}
+
 			g.Fgenf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
 				for _, attr := range r.Inputs {

@@ -386,15 +386,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// if we are calling Output.Create(FuncInvokeAsync())
 		// then we can simplify to just FuncInvoke() which already returns Output
 		if funcExpr, isFunc := expr.Args[0].(*model.FunctionCallExpression); isFunc {
-			_, name := g.functionName(funcExpr.Args[0])
-			g.Fprintf(w, "%s.Invoke(", name)
+			_, fullFunctionName := g.functionName(funcExpr.Args[0])
+			g.Fprintf(w, "%s.Invoke(", fullFunctionName)
+			functionParts := strings.Split(fullFunctionName, ".")
+			functionName := functionParts[len(functionParts)-1]
 			innerFunc, isFunc := funcExpr.Args[1].(*model.FunctionCallExpression)
 			if isFunc && innerFunc.Name == pcl.IntrinsicConvert {
 				switch arg := innerFunc.Args[0].(type) {
 				case *model.ObjectConsExpression:
 					g.withinFunctionInvoke(func() {
-						useImplicitTypeName := true
-						destTypeName := g.argumentTypeNameWithSuffix(funcExpr, funcExpr.Type(), "InvokeArgs")
+						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
+						inputTypeName := functionName + "InvokeArgs"
+						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
 					})
 				default:
@@ -444,11 +447,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
-		_, functionName := g.functionName(expr.Args[0])
+		_, fullFunctionName := g.functionName(expr.Args[0])
+		functionParts := strings.Split(fullFunctionName, ".")
+		functionName := functionParts[len(functionParts)-1]
 		if g.insideAwait {
-			g.Fprintf(w, "%s.InvokeAsync(", functionName)
+			g.Fprintf(w, "%s.InvokeAsync(", fullFunctionName)
 		} else {
-			g.Fprintf(w, "%s.Invoke(", functionName)
+			g.Fprintf(w, "%s.Invoke(", fullFunctionName)
 		}
 
 		innerFunc, isFunc := expr.Args[1].(*model.FunctionCallExpression)
@@ -457,15 +462,20 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			switch arg := innerFunc.Args[0].(type) {
 			case *model.ObjectConsExpression:
 				g.withinFunctionInvoke(func() {
-					useImplicitTypeName := true
-					destTypeName := "Irrelevant"
+					useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
+					inputTypeName := functionName + "InvokeArgs"
+					if g.insideAwait {
+						inputTypeName = functionName + "Args"
+					}
+
+					destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
 				})
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 			}
 		} else {
-			// function has bot been rewritten
+			// function has not been rewritten
 			switch arg := expr.Args[1].(type) {
 			case *model.ObjectConsExpression:
 				useImplicitTypeName := true
@@ -733,7 +743,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	if isFunctionInvoke && !g.asyncInit {
 		lambdaArg := LowerCamelCase(g.schemaTypeName(invokedFunctionSchema.Outputs))
-		// Assume invokes are returning Output<T> instead of CompletableFuture<T>
+		// Assume invokes are returning Output<T> instead of Task<T>
 		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
 	}
 
