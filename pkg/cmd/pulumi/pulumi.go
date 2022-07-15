@@ -52,6 +52,73 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type commandGroup struct {
+	Name     string
+	Commands []*cobra.Command
+}
+
+func (c *commandGroup) commandWidth() int {
+	width := 0
+	for _, com := range c.Commands {
+		if com.Hidden {
+			continue
+		}
+		newWidth := len(com.Name())
+		if newWidth > width {
+			width = newWidth
+		}
+	}
+	return width
+}
+
+func setCommandGroups(cmd *cobra.Command, cgs []commandGroup) {
+	for _, cg := range cgs {
+		for _, com := range cg.Commands {
+			cmd.AddCommand(com)
+		}
+	}
+
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		if c != cmd.Root() {
+			c.Usage()
+			return
+		}
+
+		width := 0
+		for _, cg := range cgs {
+			newWidth := cg.commandWidth()
+			if newWidth > width {
+				width = newWidth
+			}
+		}
+
+		fmt.Println(cmd.Long)
+		fmt.Println()
+
+		fmt.Println("Usage:")
+		fmt.Println("  pulumi [command]")
+		fmt.Println()
+
+		for _, cg := range cgs {
+			if cg.commandWidth() == 0 {
+				continue
+			}
+			fmt.Printf("%s:\n", cg.Name)
+			for _, com := range cg.Commands {
+				if com.Hidden {
+					continue
+				}
+				spacing := strings.Repeat(" ", width-len(com.Name()))
+				fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+			}
+			fmt.Println()
+		}
+
+		fmt.Println("Flags:")
+		fmt.Println(cmd.Flags().FlagUsages())
+	})
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
 	var cwd string
@@ -76,14 +143,7 @@ func NewPulumiCmd() *cobra.Command {
 			"\n" +
 			"This will prompt you to create a new project for your cloud and language of choice.\n" +
 			"\n" +
-			"The most common commands from there are:\n" +
-			"\n" +
-			"    - pulumi up       : Deploy code and/or resource changes\n" +
-			"    - pulumi stack    : Manage instances of your project\n" +
-			"    - pulumi config   : Alter your stack's configuration or secrets\n" +
-			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
-			"\n" +
-			"For more information, please visit the project page: https://www.pulumi.com/docs/",
+			"For more information, please visit the documentation page: https://www.pulumi.com/docs/",
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.
@@ -183,55 +243,94 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
-	// Common commands:
-	//     - Getting Started Commands:
-	cmd.AddCommand(newNewCmd())
-	//     - Deploy Commands:
-	cmd.AddCommand(newUpCmd())
-	cmd.AddCommand(newPreviewCmd())
-	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newWatchCmd())
-	//     - Stack Management Commands:
-	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newConfigCmd())
-	//     - Service Commands:
-	cmd.AddCommand(newLoginCmd())
-	cmd.AddCommand(newLogoutCmd())
-	cmd.AddCommand(newWhoAmICmd())
-	//     - Policy Management Commands:
-	cmd.AddCommand(newPolicyCmd())
-	//     - Advanced Commands:
-	cmd.AddCommand(newCancelCmd())
-	cmd.AddCommand(newImportCmd())
-	cmd.AddCommand(newRefreshCmd())
-	cmd.AddCommand(newStateCmd())
-	//     - Other Commands:
-	cmd.AddCommand(newLogsCmd())
-	cmd.AddCommand(newPluginCmd())
-	cmd.AddCommand(newVersionCmd())
-	cmd.AddCommand(newConsoleCmd())
-	cmd.AddCommand(newAboutCmd())
-	cmd.AddCommand(newSchemaCmd())
-	cmd.AddCommand(newOrgCmd())
+	setCommandGroups(cmd, []commandGroup{
 
-	// Less common, and thus hidden, commands:
-	cmd.AddCommand(newGenCompletionCmd(cmd))
-	cmd.AddCommand(newGenMarkdownCmd(cmd))
+		// Common commands:
+		{
+			Name: "Project Commands",
+			Commands: []*cobra.Command{
+				newNewCmd(),
+				newUpCmd(),
+				newDestroyCmd(),
+				newWatchCmd(),
+				newPreviewCmd(),
+			},
+		},
+		{
+			Name: "Stack Management Commands",
+			Commands: []*cobra.Command{
+				newStackCmd(),
+				newConfigCmd(),
+			},
+		},
+		{
+			Name: "Service Commands",
+			Commands: []*cobra.Command{
+				newLoginCmd(),
+				newLogoutCmd(),
+				newWhoAmICmd(),
+				newOrgCmd(),
+			},
+		},
+		{
+			Name: "Policy Management Commands",
+			Commands: []*cobra.Command{
+				newPolicyCmd(),
+			},
+		},
+		{
+			Name: "Advanced Commands",
+			Commands: []*cobra.Command{
+				newCancelCmd(),
+				newImportCmd(),
+				newRefreshCmd(),
+				newStateCmd(),
+			},
+		},
+		{
+			Name: "Other Commands",
+			Commands: []*cobra.Command{
+				newLogsCmd(),
+				newPluginCmd(),
+				newVersionCmd(),
+				newConsoleCmd(),
+				newAboutCmd(),
+				newSchemaCmd(),
+			},
+		},
 
-	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
-	// to true.
-	cmd.AddCommand(newQueryCmd())
-	cmd.AddCommand(newConvertCmd())
+		// Less common, and thus hidden, commands:
+		{
+			Name: "Hidden Commands",
+			Commands: []*cobra.Command{
+				newGenCompletionCmd(cmd),
+				newGenMarkdownCmd(cmd),
+			},
+		},
 
-	// We have a set of options that are useful for developers of pulumi that are hidden unless PULUMI_DEBUG_COMMANDS is
-	// set to true.
+		// We have a set of commands that are still experimental
+		//     hidden unless PULUMI_EXPERIMENTAL is set to true.
+		{
+			Name: "Experimental Commands",
+			Commands: []*cobra.Command{
+				newQueryCmd(),
+				newConvertCmd(),
+			},
+		},
+		// We have a set of options that are useful for developers of pulumi
+		//    hidden unless PULUMI_DEBUG_COMMANDS is set to true.
+		{
+			Name: "Developer Commands",
+			Commands: []*cobra.Command{
+				newViewTraceCmd(),
+				newConvertTraceCmd(),
+				newReplayEventsCmd(),
+			},
+		},
+	})
+
 	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 		"Include the tracing header with the given contents.")
-
-	cmd.AddCommand(newViewTraceCmd())
-	cmd.AddCommand(newConvertTraceCmd())
-
-	cmd.AddCommand(newReplayEventsCmd())
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
