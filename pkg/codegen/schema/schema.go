@@ -1761,38 +1761,26 @@ var DefaultPulumiPackage = Package{
 	Config:      []*Property{},
 	Provider:    &Resource{},
 	Resources: []*Resource{
-		{
-			Token: "pulumi:pulumi:StackReference",
-			InputProperties: []*Property{
-				{
-					Name: "name",
-					Type: StringType,
-				},
-			},
-			Properties: []*Property{
-				{
-					Name: "outputs",
-					Type: &MapType{},
-				},
-			},
-		},
+		&stackReferenceResource,
 	},
 
 	resourceTable: map[string]*Resource{
-		"pulumi:pulumi:StackReference": {
-			Token: "pulumi:pulumi:StackReference",
-			InputProperties: []*Property{
-				{
-					Name: "name",
-					Type: StringType,
-				},
-			},
-			Properties: []*Property{
-				{
-					Name: "outputs",
-					Type: &MapType{},
-				},
-			},
+		"pulumi:pulumi:StackReference": &stackReferenceResource,
+	},
+}
+
+var stackReferenceResource = Resource{
+	Token: "pulumi:pulumi:StackReference",
+	InputProperties: []*Property{
+		{
+			Name: "name",
+			Type: StringType,
+		},
+	},
+	Properties: []*Property{
+		{
+			Name: "outputs",
+			Type: &MapType{},
 		},
 	},
 }
