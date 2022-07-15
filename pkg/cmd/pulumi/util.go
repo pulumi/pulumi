@@ -754,7 +754,7 @@ type cancellationScopeSource int
 
 var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event1, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -773,7 +773,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event1, isPreview b
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				engine.NewEvent1(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -781,7 +781,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event1, isPreview b
 				cancelSource.Cancel()
 			} else {
 				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent1(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})

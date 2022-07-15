@@ -27,7 +27,7 @@ import (
 )
 
 // ShowQueryEvents displays query events on the CLI.
-func ShowQueryEvents(op string, events <-chan engine.Event1,
+func ShowQueryEvents(op string, events <-chan engine.Event,
 	done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
@@ -75,7 +75,7 @@ func ShowQueryEvents(op string, events <-chan engine.Event1,
 	}
 }
 
-func renderQueryEvent(event engine.Event1, opts Options) string {
+func renderQueryEvent(event engine.Event, opts Options) string {
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""

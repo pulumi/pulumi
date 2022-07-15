@@ -37,7 +37,7 @@ import (
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event1, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
@@ -69,7 +69,7 @@ func ShowEvents(
 	}
 }
 
-func logJSONEvent(encoder *json.Encoder, event engine.Event1, opts Options, seq int) error {
+func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
 	apiEvent, err := ConvertEngineEvent(event, false /* showSecrets */)
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func logJSONEvent(encoder *json.Encoder, event engine.Event1, opts Options, seq 
 	return encoder.Encode(apiEvent)
 }
 
-func startEventLogger(events <-chan engine.Event1, done chan<- bool, opts Options) (<-chan engine.Event1, chan<- bool) {
+func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
 	logFile, err := os.Create(opts.EventLogPath)
 	if err != nil {
@@ -105,7 +105,7 @@ func startEventLogger(events <-chan engine.Event1, done chan<- bool, opts Option
 		return events, done
 	}
 
-	outEvents, outDone := make(chan engine.Event1), make(chan bool)
+	outEvents, outDone := make(chan engine.Event), make(chan bool)
 	go func() {
 		defer close(done)
 		defer func() {

@@ -98,7 +98,7 @@ func newReplayEventsCmd() *cobra.Command {
 				return fmt.Errorf("error reading events: %w", err)
 			}
 
-			eventChannel, doneChannel := make(chan engine.Event1), make(chan bool)
+			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
 
 			if delay != 0 {
 				time.Sleep(delay)
@@ -152,14 +152,14 @@ func newReplayEventsCmd() *cobra.Command {
 	return cmd
 }
 
-func loadEvents(path string) ([]engine.Event1, error) {
+func loadEvents(path string) ([]engine.Event, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening '%v': %w", path, err)
 	}
 	defer contract.IgnoreClose(f)
 
-	var events []engine.Event1
+	var events []engine.Event
 	dec := json.NewDecoder(f)
 	for {
 		var jsonEvent apitype.EngineEvent
@@ -180,7 +180,7 @@ func loadEvents(path string) ([]engine.Event1, error) {
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
 	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent1(engine.CancelEvent, nil))
+		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
 	}
 
 	return events, nil

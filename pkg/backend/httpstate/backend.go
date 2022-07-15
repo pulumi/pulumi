@@ -981,7 +981,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event1) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
@@ -1027,7 +1027,7 @@ func (b *cloudBackend) printLink(
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi
 // Cloud.
 func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event1) result.Result {
+	callerEventsOpt chan<- engine.Event) result.Result {
 
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
@@ -1035,7 +1035,7 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event1, dryRun bool) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1045,7 +1045,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
 	// will signal all events have been proceed when a value is written to the displayDone channel.
-	displayEvents := make(chan engine.Event1)
+	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go u.RecordAndDisplayEvents(
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
@@ -1053,7 +1053,7 @@ func (b *cloudBackend) runEngineAction(
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
-	engineEvents := make(chan engine.Event1)
+	engineEvents := make(chan engine.Event)
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {
