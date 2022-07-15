@@ -233,7 +233,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 
 	return eventEmitter{
 		done: done,
-		ch:  buffer,
+		ch:   buffer,
 	}, nil
 }
 
@@ -244,13 +244,13 @@ func makeQueryEventEmitter(events chan<- Event) (eventEmitter, error) {
 
 	return eventEmitter{
 		done: done,
-		ch:  buffer,
+		ch:   buffer,
 	}, nil
 }
 
 type eventEmitter struct {
 	done <-chan bool
-	ch  chan<- Event
+	ch   chan<- Event
 }
 
 func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {

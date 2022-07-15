@@ -1081,7 +1081,7 @@ func (b *cloudBackend) runEngineAction(
 	cancellationScope := op.Scopes.NewScope(engineEvents, dryRun)
 	engineCtx := &engine.Context{
 		Cancel:          cancellationScope.Context(),
-		Events:         engineEvents,
+		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
 		BackendClient:   httpstateBackendClient{backend: b},
 	}
