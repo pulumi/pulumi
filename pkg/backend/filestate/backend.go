@@ -593,7 +593,7 @@ func (b *localBackend) apply(
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
-		Events1:         engineEvents,
+		Events:         engineEvents,
 		SnapshotManager: manager,
 		BackendClient:   backend.NewBackendClient(b),
 	}

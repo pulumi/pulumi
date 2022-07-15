@@ -100,7 +100,7 @@ func (op TestOp) runWithContext(
 
 	ctx := &Context{
 		Cancel:          cancelCtx,
-		Events1:         events,
+		Events:         events,
 		SnapshotManager: journal,
 		BackendClient:   backendClient,
 	}

@@ -49,7 +49,7 @@ type QueryInfo interface {
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
 	Cancel          *cancel.Context
-	Events1         chan<- Event
+	Events         chan<- Event
 	SnapshotManager SnapshotManager
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
