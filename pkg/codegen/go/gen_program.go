@@ -327,12 +327,16 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, impo
 	}
 
 	var tokenRange hcl.Range
-	pkg, mod, _, _ := pcl.DecomposeToken(token, tokenRange)
-	vPath, err := g.getVersionPath(program, pkg)
+	pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
+	pkgName := pkg
+	if pkg == "pulumi" && mod == "providers" {
+		pkgName = name
+	}
+	vPath, err := g.getVersionPath(program, pkgName)
 	if err != nil {
 		panic(err)
 	}
-	imports.Add(g.getPulumiImport(pkg, vPath, mod))
+	imports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
@@ -345,16 +349,17 @@ func (g *generator) collectImports(
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
-			if pkg == "pulumi" && mod == "providers" {
-				pkg = name
-			}
 
-			vPath, err := g.getVersionPath(program, pkg)
+			pkgName := pkg
+			if pkg == "pulumi" && mod == "providers" {
+				pkgName = name
+			}
+			vPath, err := g.getVersionPath(program, pkgName)
 			if err != nil {
 				panic(err)
 			}
 
-			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 		}
 		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
 			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
@@ -366,7 +371,7 @@ func (g *generator) collectImports(
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
-					pkg, mod, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 					contract.Assert(len(diagnostics) == 0)
 
@@ -374,7 +379,7 @@ func (g *generator) collectImports(
 					if err != nil {
 						panic(err)
 					}
-					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 				} else if call.Name == pcl.IntrinsicConvert {
 					g.collectConvertImports(program, call, pulumiImports)
 				}
@@ -463,10 +468,13 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	return info, ok
 }
 
-func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
+func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	info, _ := g.getGoPackageInfo(pkg)
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
+	} else if pkg == "pulumi" && mod == "providers" {
+		pkg = name
+		mod = ""
 	}
 
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
@@ -608,7 +616,13 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	modOrAlias := g.getModOrAlias(pkg, mod)
+	var modOrAlias string
+	if pkg == "pulumi" && mod == "providers" {
+		modOrAlias = typ
+		typ = "Provider"
+	} else {
+		modOrAlias = g.getModOrAlias(pkg, mod)
+	}
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
