@@ -159,36 +159,35 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	v, ok, err := currentProjectStack.Config.Get(key, path)
 	if err != nil {
 		return err
-	}
-	if ok {
-		if v.Secure() {
-			var err error
-			if decrypter, err = getStackDecrypter(currentStack); err != nil {
-				return fmt.Errorf("could not create a decrypter: %w", err)
-			}
-		} else {
-			decrypter = config.NewPanicCrypter()
-		}
-
-		encrypter, cerr := getStackEncrypter(destinationStack)
-		if cerr != nil {
-			return cerr
-		}
-
-		val, err := v.Copy(decrypter, encrypter)
-		if err != nil {
-			return err
-		}
-
-		err = destinationProjectStack.Config.Set(key, val, path)
-		if err != nil {
-			return err
-		}
-
-		return saveProjectStack(destinationStack, destinationProjectStack)
+	} else if !ok {
+		return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 	}
 
-	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+	if v.Secure() {
+		var err error
+		if decrypter, err = getStackDecrypter(currentStack); err != nil {
+			return fmt.Errorf("could not create a decrypter: %w", err)
+		}
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	encrypter, cerr := getStackEncrypter(destinationStack)
+	if cerr != nil {
+		return cerr
+	}
+
+	val, err := v.Copy(decrypter, encrypter)
+	if err != nil {
+		return err
+	}
+
+	err = destinationProjectStack.Config.Set(key, val, path)
+	if err != nil {
+		return err
+	}
+
+	return saveProjectStack(destinationStack, destinationProjectStack)
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,
