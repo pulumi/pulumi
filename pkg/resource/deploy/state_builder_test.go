@@ -23,6 +23,7 @@ import (
 )
 
 func TestStateBuilder(t *testing.T) {
+	t.Parallel()
 	s0 := &resource.State{}
 
 	s1 := &resource.State{
@@ -69,6 +70,7 @@ func TestStateBuilder(t *testing.T) {
 	}
 
 	t.Run("withUpdatedParent", func(t *testing.T) {
+		t.Parallel()
 		s := newStateBuilder(s0).withUpdatedParent(panicURN).build()
 		assert.Same(t, s0, s)
 
@@ -82,6 +84,7 @@ func TestStateBuilder(t *testing.T) {
 	})
 
 	t.Run("withUpdatedProvider", func(t *testing.T) {
+		t.Parallel()
 		s := newStateBuilder(s0).withUpdatedProvider(panicStr).build()
 		assert.Same(t, s, s0)
 
@@ -95,6 +98,7 @@ func TestStateBuilder(t *testing.T) {
 	})
 
 	t.Run("withUpdatedDependencies", func(t *testing.T) {
+		t.Parallel()
 		s := newStateBuilder(s0).withUpdatedDependencies(panicURN).build()
 		assert.Same(t, s, s0)
 
@@ -108,6 +112,7 @@ func TestStateBuilder(t *testing.T) {
 	})
 
 	t.Run("withUpdatedPropertyDependencies", func(t *testing.T) {
+		t.Parallel()
 		s := newStateBuilder(s0).withUpdatedPropertyDependencies(panicURN).build()
 		assert.Same(t, s, s0)
 

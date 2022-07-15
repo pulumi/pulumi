@@ -77,6 +77,7 @@ func TestGlobUrn(t *testing.T) {
 }
 
 func TestSnapshotNormalizeURNReferences(t *testing.T) {
+	t.Parallel()
 	s1 := createSnapshotPtr()
 	s1n, err := s1.NormalizeURNReferences()
 	assert.NoError(t, err)
@@ -97,6 +98,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 }
 
 func TestSnapshotWithUpdatedResources(t *testing.T) {
+	t.Parallel()
 	s1 := createSnapshotPtr()
 
 	s := s1.withUpdatedResources(func(r *resource.State) *resource.State {
