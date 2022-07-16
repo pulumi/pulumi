@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
@@ -293,11 +294,16 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	cmdutil.EndKeypadTransmitMode()
 
+	_, height, err := terminal.GetSize(0)
+	if err != nil {
+		height = 15
+	}
+
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
-		PageSize: 10,
+		PageSize: height - 5,
 	}, &option, nil); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
