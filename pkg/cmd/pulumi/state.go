@@ -104,6 +104,9 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	if err != nil {
 		height = 15
 	}
+	if height < len(options) {
+		height = len(options)
+	}
 
 	var option string
 	if err := survey.AskOne(&survey.Select{

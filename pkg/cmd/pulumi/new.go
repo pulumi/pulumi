@@ -765,6 +765,9 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		}
 
 		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+		if height < len(options) {
+			height = len(options)
+		}
 		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", height, len(options))
 		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
