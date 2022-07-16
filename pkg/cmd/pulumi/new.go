@@ -437,12 +437,8 @@ func newNewCmd() *cobra.Command {
 
 		// If we have any templates, show them.
 		if len(templates) > 0 {
-			available, _ := templatesToOptionArrayAndMap(templates, true)
-			fmt.Println("")
-			fmt.Println("Available Templates:")
-			for _, t := range available {
-				fmt.Printf("  %s\n", t)
-			}
+			fmt.Println()
+			fmt.Printf("You have %d templates available. To view them interactively, run `pulumi new`.\n", len(templates))
 		}
 	})
 
