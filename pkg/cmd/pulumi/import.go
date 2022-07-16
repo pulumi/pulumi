@@ -503,7 +503,7 @@ func newImportCmd() *cobra.Command {
 				UseLegacyDiff: useLegacyDiff(),
 			}
 
-			_, res := s.Import(commandContext(), backend.UpdateOperation{
+			_, res := s.Import(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
