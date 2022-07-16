@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -439,6 +440,9 @@ func (source *fallbackSource) GetLatestVersion(
 			if !private.HasAuthentication() {
 				privateErr = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				version, privateErr = private.GetLatestVersion(getHTTPResponse)
 				if privateErr == nil {
 					return version, nil
@@ -484,6 +488,9 @@ func (source *fallbackSource) Download(
 			if !private.HasAuthentication() {
 				err = errors.New("no GitHub authentication information provided")
 			} else {
+				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
+					"please use a github download URL instead: " +
+					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
 				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
 				if err == nil {
 					return resp, length, nil
@@ -747,14 +754,18 @@ func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
-	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
+	// detailed api logs that may include credentials.
+	logging.V(11).Infof("plugin install request headers: %v", req.Header)
 
 	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
 	if err != nil {
 		return nil, -1, err
 	}
 
-	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
+	// As above this might include authentication information, but also to be consistent at what level headers
+	// print at.
+	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 
@@ -795,7 +806,100 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 
 // Install installs a plugin's tarball into the cache. See InstallWithContext for details.
 func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
-	return info.InstallWithContext(context.Background(), tgz, reinstall)
+	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
+}
+
+type PluginContent interface {
+	io.Closer
+
+	writeToDir(pathToDir string) error
+}
+
+func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
+	return singleFilePlugin{F: f}
+}
+
+type singleFilePlugin struct {
+	F    *os.File
+	Kind PluginKind
+	Name string
+}
+
+func (p singleFilePlugin) writeToDir(finalDir string) error {
+	bytes, err := ioutil.ReadAll(p.F)
+	if err != nil {
+		return err
+	}
+
+	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
+	// We are writing an executable.
+	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
+}
+
+func (p singleFilePlugin) Close() error {
+	return p.F.Close()
+}
+
+func TarPlugin(tgz io.ReadCloser) PluginContent {
+	return tarPlugin{Tgz: tgz}
+}
+
+type tarPlugin struct {
+	Tgz io.ReadCloser
+}
+
+func (p tarPlugin) Close() error {
+	return p.Tgz.Close()
+}
+
+func (p tarPlugin) writeToDir(finalPath string) error {
+	return archive.ExtractTGZ(p.Tgz, finalPath)
+}
+
+func DirPlugin(rootPath string) PluginContent {
+	return dirPlugin{Root: rootPath}
+}
+
+type dirPlugin struct {
+	Root string
+}
+
+func (p dirPlugin) Close() error {
+	return nil
+}
+
+func (p dirPlugin) writeToDir(dstRoot string) error {
+	return filepath.WalkDir(p.Root, func(srcPath string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath := strings.TrimPrefix(srcPath, p.Root)
+		dstPath := filepath.Join(dstRoot, relPath)
+
+		if srcPath == p.Root {
+			return nil
+		}
+		if d.IsDir() {
+			return os.Mkdir(dstPath, 0700)
+		}
+
+		src, err := os.Open(srcPath)
+		if err != nil {
+			return err
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		bytes, err := ioutil.ReadAll(src)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(dstPath, bytes, info.Mode())
+	})
 }
 
 // Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
@@ -809,8 +913,8 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser, reinstall bool) error {
-	defer contract.IgnoreClose(tgz)
+func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginContent, reinstall bool) error {
+	defer contract.IgnoreClose(content)
 
 	// Fetch the directory into which we will expand this tarball.
 	finalDir, err := info.DirPath()
@@ -873,15 +977,14 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, tgz io.ReadCloser
 		return err
 	}
 
-	// Uncompress the plugin.
-	if err := archive.ExtractTGZ(tgz, finalDir); err != nil {
+	if err := content.writeToDir(finalDir); err != nil {
 		return err
 	}
 
 	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
 	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
 	// the progress bar.
-	contract.IgnoreClose(tgz)
+	contract.IgnoreClose(content)
 
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
