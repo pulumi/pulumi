@@ -81,6 +81,23 @@ const (
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	plan, changes, res, events := preview(ctx, kind, stack, op, apply)
+	if res != nil {
+		return plan, changes, res
+	}
+
+	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
+	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
+		return plan, changes, nil
+	}
+
+	// Otherwise, ensure the user wants to proceed.
+	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
+	return plan, changes, res
+}
+
+func preview(ctx context.Context, kind apitype.UpdateKind, stack Stack,
+	op UpdateOperation, apply Applier) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result, []sdkDisplay.Event) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -113,21 +130,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	plan, changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
-	if res != nil {
-		close(eventsChannel)
-		return plan, changes, res
-	}
-
-	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
-	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
-		close(eventsChannel)
-		return plan, changes, nil
-	}
-
-	// Otherwise, ensure the user wants to proceed.
-	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return plan, changes, res
+	return plan, changes, res, events
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
