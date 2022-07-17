@@ -25,7 +25,6 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -95,9 +94,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	go func() {
 		// pull the events from the channel and store them locally
 		for e := range eventsChannel {
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.SummaryEvent {
+			if e.Type == sdkDisplay.ResourcePreEvent ||
+				e.Type == sdkDisplay.ResourceOutputsEvent ||
+				e.Type == sdkDisplay.SummaryEvent {
 
 				events = append(events, e)
 			}
@@ -233,12 +232,12 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 func createDiff(updateKind apitype.UpdateKind, events []sdkDisplay.Event, displayOpts display.Options) string {
 	buff := &bytes.Buffer{}
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
+	seen := make(map[resource.URN]sdkDisplay.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
 		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg != "" && e.Type != engine.SummaryEvent {
+		if msg != "" && e.Type != sdkDisplay.SummaryEvent {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}

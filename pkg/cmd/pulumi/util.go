@@ -41,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -50,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -773,7 +773,7 @@ func (cancellationScopeSource) NewScope(events chan<- sdkDisplay.Event, isPrevie
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				sdkDisplay.NewEvent(sdkDisplay.StdoutColorEvent, sdkDisplay.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -781,7 +781,7 @@ func (cancellationScopeSource) NewScope(events chan<- sdkDisplay.Event, isPrevie
 				cancelSource.Cancel()
 			} else {
 				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				sdkDisplay.NewEvent(sdkDisplay.StdoutColorEvent, sdkDisplay.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})

@@ -1,6 +1,7 @@
-package engine
+package display
 
 import (
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -131,7 +132,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 // TranslateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
-func TranslateDetailedDiff(step *StepEventMetadata) *resource.ObjectDiff {
+func TranslateDetailedDiff(step *sdkDisplay.StepEventMetadata) *resource.ObjectDiff {
 	contract.Assert(step.DetailedDiff != nil)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to

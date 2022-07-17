@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
@@ -220,7 +221,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 		// We stop reading from the event stream as soon as we see the CancelEvent,
 		// which will also signal the display/persist components to shutdown too.
-		if e.Type == engine.CancelEvent {
+		if e.Type == sdkDisplay.CancelEvent {
 			break
 		}
 	}
@@ -306,7 +307,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 }
 
 func isDebugDiagEvent(e sdkDisplay.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
+	return e.Type == sdkDisplay.DiagEvent && (e.Payload().(sdkDisplay.DiagEventPayload)).Severity == diag.Debug
 }
 
 type engineEventBatch struct {
@@ -407,7 +408,7 @@ func persistEngineEvents(
 			}
 
 			// Stop processing once we see the CancelEvent.
-			if e.Type == engine.CancelEvent {
+			if e.Type == sdkDisplay.CancelEvent {
 				sawCancelEvent = true
 				break
 			}

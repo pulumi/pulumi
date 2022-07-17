@@ -24,8 +24,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -179,8 +179,8 @@ func loadEvents(path string) ([]sdkDisplay.Event, error) {
 
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
-	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
+	if len(events) == 0 || events[len(events)-1].Type != sdkDisplay.CancelEvent {
+		events = append(events, sdkDisplay.NewEvent(sdkDisplay.CancelEvent, nil))
 	}
 
 	return events, nil

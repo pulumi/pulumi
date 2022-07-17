@@ -315,7 +315,7 @@ func renderDiff(
 	var details string
 	if metadata.DetailedDiff != nil {
 		var buf bytes.Buffer
-		if diff := sdkDisplay.TranslateDetailedDiff(&metadata); diff != nil {
+		if diff := TranslateDetailedDiff(&metadata); diff != nil {
 			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
 		} else {
 			PrintObject(

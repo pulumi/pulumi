@@ -24,6 +24,8 @@ import (
 	"strings"
 	"sync"
 
+	. "github.com/pulumi/pulumi/sdk/v3/go/common/display"
+
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -173,7 +175,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
-	defer func() { ctx.Events <- cancelEvent() }()
+	defer func() { ctx.Events <- NewCancelEvent() }()
 
 	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
 	if err != nil {
