@@ -270,7 +270,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
+func showProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan sdkDisplay.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout
@@ -348,7 +348,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 		close(progressOutput)
 	}()
 
-	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
+	showProgressOutput(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
 

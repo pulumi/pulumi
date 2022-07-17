@@ -72,7 +72,7 @@ func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	go ShowDiffEvents("test", eventChannel, doneChannel, Options{
+	go showDiffEvents("test", eventChannel, doneChannel, Options{
 		Color:                colors.Raw,
 		ShowConfig:           true,
 		ShowReplacementSteps: true,

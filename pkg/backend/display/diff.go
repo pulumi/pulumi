@@ -35,7 +35,7 @@ import (
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
-func ShowDiffEvents(op string, events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
+func showDiffEvents(op string, events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 

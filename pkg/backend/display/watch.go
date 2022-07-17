@@ -34,7 +34,7 @@ import (
 const timeFormat = "15:04:05.000"
 
 // ShowWatchEvents renders incoming engine events for display in Watch Mode.
-func ShowWatchEvents(op string, events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
+func showWatchEvents(op string, events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 	for e := range events {

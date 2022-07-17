@@ -89,7 +89,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
+func showJSONEvents(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
@@ -113,7 +113,7 @@ func ShowJSONEvents(events <-chan sdkDisplay.Event, done chan<- bool, opts Optio
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowPreviewDigest(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
+func showPreviewDigest(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 

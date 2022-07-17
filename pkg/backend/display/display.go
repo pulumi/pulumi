@@ -47,23 +47,23 @@ func ShowEvents(
 
 	if opts.JSONDisplay {
 		if isPreview && !streamPreview {
-			ShowPreviewDigest(events, done, opts)
+			showPreviewDigest(events, done, opts)
 		} else {
-			ShowJSONEvents(events, done, opts)
+			showJSONEvents(events, done, opts)
 		}
 		return
 	}
 
 	switch opts.Type {
 	case DisplayDiff:
-		ShowDiffEvents(op, events, done, opts)
+		showDiffEvents(op, events, done, opts)
 	case DisplayProgress:
-		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
+		showProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
 	case DisplayQuery:
 		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
 			"directly instead of through ShowEvents")
 	case DisplayWatch:
-		ShowWatchEvents(op, events, done, opts)
+		showWatchEvents(op, events, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}
