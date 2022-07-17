@@ -233,40 +233,40 @@ func getEventUrnAndMetadata(event sdkDisplay.Event) (resource.URN, *sdkDisplay.S
 // Converts the colorization tags in a progress message and then actually writes the progress
 // message to the output stream.  This should be the only place in this file where we actually
 // process colorization tags.
-func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
+func (pd *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 	if progress.Message != "" {
-		progress.Message = display.opts.Color.Colorize(progress.Message)
+		progress.Message = pd.opts.Color.Colorize(progress.Message)
 	}
 
 	if progress.Action != "" {
-		progress.Action = display.opts.Color.Colorize(progress.Action)
+		progress.Action = pd.opts.Color.Colorize(progress.Action)
 	}
 
 	if progress.ID != "" {
 		// don't repeat the same output if there is no difference between the last time we
 		// printed it and now.
-		lastProgress, has := display.printedProgressCache[progress.ID]
+		lastProgress, has := pd.printedProgressCache[progress.ID]
 		if has && lastProgress.Message == progress.Message && lastProgress.Action == progress.Action {
 			return
 		}
 
-		display.printedProgressCache[progress.ID] = progress
+		pd.printedProgressCache[progress.ID] = progress
 	}
 
-	if !display.isTerminal {
+	if !pd.isTerminal {
 		// We're about to display something.  Reset our spinner so that it will go on the next line.
-		display.nonInteractiveSpinner.Reset()
+		pd.nonInteractiveSpinner.Reset()
 	}
 
-	display.progressOutput <- progress
+	pd.progressOutput <- progress
 }
 
-func (display *ProgressDisplay) writeSimpleMessage(msg string) {
-	display.colorizeAndWriteProgress(makeMessageProgress(msg))
+func (pd *ProgressDisplay) writeSimpleMessage(msg string) {
+	pd.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
-func (display *ProgressDisplay) writeBlankLine() {
-	display.writeSimpleMessage(" ")
+func (pd *ProgressDisplay) writeBlankLine() {
+	pd.writeSimpleMessage(" ")
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
@@ -358,11 +358,11 @@ func showProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 
 // Gets the padding necessary to prepend to a message in order to keep it aligned in the
 // terminal.
-func (display *ProgressDisplay) getMessagePadding(
+func (pd *ProgressDisplay) getMessagePadding(
 	uncolorizedColumns []string, columnIndex int, maxColumnLengths []int) string {
 
 	extraWhitespace := " "
-	if columnIndex >= 0 && display.isTerminal {
+	if columnIndex >= 0 && pd.isTerminal {
 		column := uncolorizedColumns[columnIndex]
 		maxLength := maxColumnLengths[columnIndex]
 		extraWhitespace = messagePadding(column, maxLength, 2)
@@ -375,22 +375,22 @@ func (display *ProgressDisplay) getMessagePadding(
 // status, then some amount of optional padding, then some amount of msgWithColors, then the
 // suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
 // the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(
+func (pd *ProgressDisplay) getPaddedMessage(
 	colorizedColumns, uncolorizedColumns []string, maxColumnLengths []int) string {
 
 	colorizedMessage := ""
 
 	for i := 0; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(uncolorizedColumns, i-1, maxColumnLengths)
+		padding := pd.getMessagePadding(uncolorizedColumns, i-1, maxColumnLengths)
 		colorizedMessage += padding + colorizedColumns[i]
 	}
 
-	if display.isTerminal {
+	if pd.isTerminal {
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
 		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - 1
+		maxMsgLength := pd.terminalWidth - 1
 		if maxMsgLength < 0 {
 			maxMsgLength = 0
 		}
@@ -401,64 +401,64 @@ func (display *ProgressDisplay) getPaddedMessage(
 	return colorizedMessage
 }
 
-func (display *ProgressDisplay) uncolorizeString(v string) string {
-	uncolorized, has := display.colorizedToUncolorized[v]
+func (pd *ProgressDisplay) uncolorizeString(v string) string {
+	uncolorized, has := pd.colorizedToUncolorized[v]
 	if !has {
 		uncolorized = colors.Never.Colorize(v)
-		display.colorizedToUncolorized[v] = uncolorized
+		pd.colorizedToUncolorized[v] = uncolorized
 	}
 
 	return uncolorized
 }
 
-func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
+func (pd *ProgressDisplay) uncolorizeColumns(columns []string) []string {
 	uncolorizedColumns := make([]string, len(columns))
 
 	for i, v := range columns {
-		uncolorizedColumns[i] = display.uncolorizeString(v)
+		uncolorizedColumns[i] = pd.uncolorizeString(v)
 	}
 
 	return uncolorizedColumns
 }
 
-func (display *ProgressDisplay) refreshSingleRow(id string, row Row, maxColumnLengths []int) {
+func (pd *ProgressDisplay) refreshSingleRow(id string, row Row, maxColumnLengths []int) {
 	colorizedColumns := row.ColorizedColumns()
-	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
-	display.refreshColumns(id, colorizedColumns, maxColumnLengths)
+	colorizedColumns[pd.suffixColumn] += row.ColorizedSuffix()
+	pd.refreshColumns(id, colorizedColumns, maxColumnLengths)
 }
 
-func (display *ProgressDisplay) refreshColumns(
+func (pd *ProgressDisplay) refreshColumns(
 	id string, colorizedColumns []string, maxColumnLengths []int) {
 
-	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
+	uncolorizedColumns := pd.uncolorizeColumns(colorizedColumns)
 
-	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
+	msg := pd.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
 	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
 	// asserts in later display functions if we try to show it
 	if msg != "" {
-		if display.isTerminal {
-			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+		if pd.isTerminal {
+			pd.colorizeAndWriteProgress(makeActionProgress(id, msg))
 		} else {
-			display.writeSimpleMessage(msg)
+			pd.writeSimpleMessage(msg)
 		}
 	}
 }
 
 // Ensure our stored dimension info is up to date.
-func (display *ProgressDisplay) updateTerminalDimensions() {
+func (pd *ProgressDisplay) updateTerminalDimensions() {
 	// don't do any refreshing if we're not in a terminal
-	if display.isTerminal {
+	if pd.isTerminal {
 		currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
 		contract.IgnoreError(err)
 
-		if currentTerminalWidth != display.terminalWidth ||
-			currentTerminalHeight != display.terminalHeight {
-			display.terminalWidth = currentTerminalWidth
-			display.terminalHeight = currentTerminalHeight
+		if currentTerminalWidth != pd.terminalWidth ||
+			currentTerminalHeight != pd.terminalHeight {
+			pd.terminalWidth = currentTerminalWidth
+			pd.terminalHeight = currentTerminalHeight
 
 			// also clear our display cache as we want to reprint all lines.
-			display.printedProgressCache = make(map[string]Progress)
+			pd.printedProgressCache = make(map[string]Progress)
 		}
 	}
 }
@@ -472,7 +472,7 @@ type treeNode struct {
 	childNodes []*treeNode
 }
 
-func (display *ProgressDisplay) getOrCreateTreeNode(
+func (pd *ProgressDisplay) getOrCreateTreeNode(
 	result *[]*treeNode, urn resource.URN, row ResourceRow, urnToTreeNode map[resource.URN]*treeNode) *treeNode {
 
 	node, has := urnToTreeNode[urn]
@@ -489,7 +489,7 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	urnToTreeNode[urn] = node
 
 	// if it's the not the root item, attach it as a child node to an appropriate parent item.
-	if urn != "" && urn != display.stackUrn {
+	if urn != "" && urn != pd.stackUrn {
 		var parentURN resource.URN
 
 		res := row.Step().Res
@@ -497,17 +497,17 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 			parentURN = res.Parent
 		}
 
-		parentRow, hasParentRow := display.eventUrnToResourceRow[parentURN]
+		parentRow, hasParentRow := pd.eventUrnToResourceRow[parentURN]
 
 		if !hasParentRow {
 			// If we haven't heard about this node's parent, then  just parent it to the stack.
 			// Note: getting the parent row for the stack-urn will always succeed as we ensure that
 			// such a row is always there in ensureHeaderAndStackRows
-			parentURN = display.stackUrn
-			parentRow = display.eventUrnToResourceRow[parentURN]
+			parentURN = pd.stackUrn
+			parentRow = pd.eventUrnToResourceRow[parentURN]
 		}
 
-		parentNode := display.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
+		parentNode := pd.getOrCreateTreeNode(result, parentURN, parentRow, urnToTreeNode)
 		parentNode.childNodes = append(parentNode.childNodes, node)
 		return node
 	}
@@ -516,23 +516,23 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	return node
 }
 
-func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
+func (pd *ProgressDisplay) generateTreeNodes() []*treeNode {
 	result := []*treeNode{}
 
 	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
+		row:              pd.headerRow,
+		colorizedColumns: pd.headerRow.ColorizedColumns(),
 	})
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
-	for urn, row := range display.eventUrnToResourceRow {
-		display.getOrCreateTreeNode(&result, urn, row, urnToTreeNode)
+	for urn, row := range pd.eventUrnToResourceRow {
+		pd.getOrCreateTreeNode(&result, urn, row, urnToTreeNode)
 	}
 
 	return result
 }
 
-func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
+func (pd *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
 
 	childIndentation := indentation + "│  "
 	lastChildIndentation := indentation + "   "
@@ -554,11 +554,11 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 		}
 
 		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
-		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
+		pd.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
 	}
 }
 
-func (display *ProgressDisplay) convertNodesToRows(
+func (pd *ProgressDisplay) convertNodesToRows(
 	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int) {
 
 	for _, node := range nodes {
@@ -567,12 +567,12 @@ func (display *ProgressDisplay) convertNodesToRows(
 		}
 
 		colorizedColumns := make([]string, len(node.colorizedColumns))
-		uncolorisedColumns := display.uncolorizeColumns(node.colorizedColumns)
+		uncolorisedColumns := pd.uncolorizeColumns(node.colorizedColumns)
 
 		for i, colorizedColumn := range node.colorizedColumns {
 			columnWidth := utf8.RuneCountInString(uncolorisedColumns[i])
 
-			if i == display.suffixColumn {
+			if i == pd.suffixColumn {
 				columnWidth += maxSuffixLength
 				colorizedColumns[i] = colorizedColumn + node.colorizedSuffix
 			} else {
@@ -586,7 +586,7 @@ func (display *ProgressDisplay) convertNodesToRows(
 
 		*rows = append(*rows, colorizedColumns)
 
-		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
+		pd.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
 	}
 }
 
@@ -614,36 +614,36 @@ func sortNodes(nodes []*treeNode) {
 	}
 }
 
-func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(nodes []*treeNode) []*treeNode {
+func (pd *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(nodes []*treeNode) []*treeNode {
 	result := []*treeNode{}
 
 	for _, node := range nodes {
-		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
+		node.childNodes = pd.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
 		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
 			continue
 		}
 
-		display.displayOrderCounter++
-		node.row.SetDisplayOrderIndex(display.displayOrderCounter)
+		pd.displayOrderCounter++
+		node.row.SetDisplayOrderIndex(pd.displayOrderCounter)
 		result = append(result, node)
 	}
 
 	return result
 }
 
-func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
-	if display.isTerminal && display.headerRow != nil {
+func (pd *ProgressDisplay) refreshAllRowsIfInTerminal() {
+	if pd.isTerminal && pd.headerRow != nil {
 		// make sure our stored dimension info is up to date
-		display.updateTerminalDimensions()
+		pd.updateTerminalDimensions()
 
-		rootNodes := display.generateTreeNodes()
-		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+		rootNodes := pd.generateTreeNodes()
+		rootNodes = pd.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 		sortNodes(rootNodes)
-		display.addIndentations(rootNodes, true /*isRoot*/, "")
+		pd.addIndentations(rootNodes, true /*isRoot*/, "")
 
 		maxSuffixLength := 0
-		for _, v := range display.suffixesArray {
+		for _, v := range pd.suffixesArray {
 			runeCount := utf8.RuneCountInString(v)
 			if runeCount > maxSuffixLength {
 				maxSuffixLength = runeCount
@@ -652,18 +652,18 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 		var rows [][]string
 		var maxColumnLengths []int
-		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
+		pd.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
 
 		removeInfoColumnIfUnneeded(rows)
 
 		for i, row := range rows {
-			display.refreshColumns(fmt.Sprintf("%v", i), row, maxColumnLengths)
+			pd.refreshColumns(fmt.Sprintf("%v", i), row, maxColumnLengths)
 		}
 
 		systemID := len(rows)
 
 		printedHeader := false
-		for _, payload := range display.systemEventPayloads {
+		for _, payload := range pd.systemEventPayloads {
 			msg := payload.Color.Colorize(payload.Message)
 			lines := splitIntoDisplayableLines(msg)
 
@@ -673,18 +673,18 @@ func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
 
 			if !printedHeader {
 				printedHeader = true
-				display.colorizeAndWriteProgress(makeActionProgress(
+				pd.colorizeAndWriteProgress(makeActionProgress(
 					fmt.Sprintf("%v", systemID), " "))
 				systemID++
 
-				display.colorizeAndWriteProgress(makeActionProgress(
+				pd.colorizeAndWriteProgress(makeActionProgress(
 					fmt.Sprintf("%v", systemID),
 					colors.Yellow+"System Messages"+colors.Reset))
 				systemID++
 			}
 
 			for _, line := range lines {
-				display.colorizeAndWriteProgress(makeActionProgress(
+				pd.colorizeAndWriteProgress(makeActionProgress(
 					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
 				systemID++
 			}
@@ -708,11 +708,11 @@ func removeInfoColumnIfUnneeded(rows [][]string) {
 // Performs all the work at the end once we've heard about the last message from the sdkDisplay.
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
-func (display *ProgressDisplay) processEndSteps() {
+func (pd *ProgressDisplay) processEndSteps() {
 	// Figure out the rows that are currently in progress.
 	inProgressRows := []ResourceRow{}
 
-	for _, v := range display.eventUrnToResourceRow {
+	for _, v := range pd.eventUrnToResourceRow {
 		if !v.IsDone() {
 			inProgressRows = append(inProgressRows, v)
 		}
@@ -720,13 +720,13 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Transition the display to the 'done' state.  This will transitively cause all
 	// rows to become done.
-	display.done = true
+	pd.done = true
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
-	if !display.isTerminal {
+	if !pd.isTerminal {
 		for _, v := range inProgressRows {
-			display.refreshSingleRow("", v, nil)
+			pd.refreshSingleRow("", v, nil)
 		}
 	}
 
@@ -734,26 +734,26 @@ func (display *ProgressDisplay) processEndSteps() {
 	// messages from a status message (since we're going to print them all) below.  Note, this will
 	// only do something in a terminal.  This is what we want, because if we're not in a terminal we
 	// don't really want to reprint any finished items we've already printed.
-	display.refreshAllRowsIfInTerminal()
+	pd.refreshAllRowsIfInTerminal()
 
 	// Render several "sections" of output based on available data as applicable.
-	display.writeBlankLine()
-	wroteDiagnosticHeader := display.printDiagnostics()
-	wrotePolicyViolations := display.printPolicyViolations()
-	display.printOutputs()
+	pd.writeBlankLine()
+	wroteDiagnosticHeader := pd.printDiagnostics()
+	wrotePolicyViolations := pd.printPolicyViolations()
+	pd.printOutputs()
 	// If no policies violated, print policy packs applied.
 	if !wrotePolicyViolations {
-		display.printSummary(wroteDiagnosticHeader)
+		pd.printSummary(wroteDiagnosticHeader)
 	}
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
 // resource. If no diagnostics were emitted, prints nothing.
-func (display *ProgressDisplay) printDiagnostics() bool {
+func (pd *ProgressDisplay) printDiagnostics() bool {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
-	for _, row := range display.eventUrnToResourceRow {
+	for _, row := range pd.eventUrnToResourceRow {
 		// The header for the diagnogistics grouped by resource, e.g. "aws:apigateway:RestApi (accountsApi):"
 		wroteResourceHeader := false
 
@@ -767,7 +767,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			if id != 0 {
 				// For the non-default stream merge all the messages from the stream into a single
 				// message.
-				p := display.mergeStreamPayloadsToSinglePayload(payloads)
+				p := pd.mergeStreamPayloadsToSinglePayload(payloads)
 				payloads = []sdkDisplay.DiagEventPayload{p}
 			}
 
@@ -778,7 +778,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 					continue
 				}
 
-				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
+				msg := pd.renderProgressDiagEvent(v, true /*includePrefix:*/)
 
 				lines := splitIntoDisplayableLines(msg)
 				if len(lines) == 0 {
@@ -788,28 +788,28 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				// If we haven't printed the Diagnostics header, do so now.
 				if !wroteDiagnosticHeader {
 					wroteDiagnosticHeader = true
-					display.writeSimpleMessage(
-						display.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
+					pd.writeSimpleMessage(
+						pd.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
 				}
 				// If we haven't printed the header for the resource, do so now.
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.writeSimpleMessage("  " +
-						display.opts.Color.Colorize(
+					pd.writeSimpleMessage("  " +
+						pd.opts.Color.Colorize(
 							colors.BrightBlue+columns[typeColumn]+" ("+columns[nameColumn]+"):"+colors.Reset))
 				}
 
 				for _, line := range lines {
 					line = strings.TrimRightFunc(line, unicode.IsSpace)
-					display.writeSimpleMessage("    " + line)
+					pd.writeSimpleMessage("    " + line)
 				}
 
 				wrote = true
 			}
 
 			if wrote {
-				display.writeBlankLine()
+				pd.writeBlankLine()
 			}
 		}
 
@@ -819,10 +819,10 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 
 // printPolicyViolations prints a new "Policy Violation:" section with all of the violations
 // grouped by policy pack. If no policy violations were encountered, prints nothing.
-func (display *ProgressDisplay) printPolicyViolations() bool {
+func (pd *ProgressDisplay) printPolicyViolations() bool {
 	// Loop through every resource and gather up all policy violations encountered.
 	var policyEvents []sdkDisplay.PolicyViolationEventPayload
-	for _, row := range display.eventUrnToResourceRow {
+	for _, row := range pd.eventUrnToResourceRow {
 		policyPayloads := row.PolicyPayloads()
 		if len(policyPayloads) == 0 {
 			continue
@@ -863,7 +863,7 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 	})
 
 	// Print every policy violation, printing a new header when necessary.
-	display.writeSimpleMessage(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
+	pd.writeSimpleMessage(pd.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
 
 	for _, policyEvent := range policyEvents {
 		// Print the individual policy event.
@@ -879,55 +879,55 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			policyEvent.PolicyName,
 			policyEvent.ResourceURN.Type(),
 			policyEvent.ResourceURN.Name())
-		display.writeSimpleMessage(policyNameLine)
+		pd.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.
 		message := strings.ReplaceAll(policyEvent.Message, "\n", "\n    ")
 		messageLine := fmt.Sprintf("    %s", message)
-		display.writeSimpleMessage(messageLine)
+		pd.writeSimpleMessage(messageLine)
 	}
 	return true
 }
 
 // printOutputs prints the Stack's outputs for the display in a new section, if appropriate.
-func (display *ProgressDisplay) printOutputs() {
+func (pd *ProgressDisplay) printOutputs() {
 	// Printing the stack's outputs wasn't desired.
-	if display.opts.SuppressOutputs {
+	if pd.opts.SuppressOutputs {
 		return
 	}
 	// Cannot display outputs for the stack if we don't know its URN.
-	if display.stackUrn == "" {
+	if pd.stackUrn == "" {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+	stackStep := pd.eventUrnToResourceRow[pd.stackUrn].Step()
 
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources)
+		stackStep, 1, pd.isPreview, pd.opts.Debug,
+		false /* refresh */, pd.opts.ShowSameResources)
 	if props != "" {
-		display.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
-		display.writeSimpleMessage(props)
+		pd.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
+		pd.writeSimpleMessage(props)
 	}
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
-func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
+func (pd *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
-	if display.summaryEventPayload == nil {
+	if pd.summaryEventPayload == nil {
 		return
 	}
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
-	display.writeSimpleMessage(msg)
+	msg := renderSummaryEvent(*pd.summaryEventPayload, wroteDiagnosticHeader, pd.opts)
+	pd.writeSimpleMessage(msg)
 }
 
-func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
+func (pd *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 	payloads []sdkDisplay.DiagEventPayload) sdkDisplay.DiagEventPayload {
 	buf := bytes.Buffer{}
 
 	for _, p := range payloads {
-		buf.WriteString(display.renderProgressDiagEvent(p, false /*includePrefix:*/))
+		buf.WriteString(pd.renderProgressDiagEvent(p, false /*includePrefix:*/))
 	}
 
 	firstPayload := payloads[0]
@@ -959,24 +959,24 @@ func splitIntoDisplayableLines(msg string) []string {
 	return lines
 }
 
-func (display *ProgressDisplay) processTick() {
+func (pd *ProgressDisplay) processTick() {
 	// Got a tick.  Update the progress display if we're in a terminal.  If we're not,
 	// print a hearbeat message every 10 seconds after our last output so that the user
 	// knows something is going on.  This is also helpful for hosts like jenkins that
 	// often timeout a process if output is not seen in a while.
-	display.currentTick++
+	pd.currentTick++
 
-	if display.isTerminal {
-		display.refreshAllRowsIfInTerminal()
+	if pd.isTerminal {
+		pd.refreshAllRowsIfInTerminal()
 	} else {
 		// Update the spinner to let the user know that that work is still happening.
-		display.nonInteractiveSpinner.Tick()
+		pd.nonInteractiveSpinner.Tick()
 	}
 }
 
-func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *sdkDisplay.StepEventMetadata) ResourceRow {
+func (pd *ProgressDisplay) getRowForURN(urn resource.URN, metadata *sdkDisplay.StepEventMetadata) ResourceRow {
 	// If there's already a row for this URN, return it.
-	row, has := display.eventUrnToResourceRow[urn]
+	row, has := pd.eventUrnToResourceRow[urn]
 	if has {
 		return row
 	}
@@ -990,64 +990,64 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *sdkDisp
 	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
 	// recorded root events that we want to reassociate with this URN.
 	if isRootURN(urn) {
-		display.stackUrn = urn
+		pd.stackUrn = urn
 
-		if row, has = display.eventUrnToResourceRow[""]; has {
+		if row, has = pd.eventUrnToResourceRow[""]; has {
 			row.SetStep(step)
-			display.eventUrnToResourceRow[urn] = row
-			delete(display.eventUrnToResourceRow, "")
+			pd.eventUrnToResourceRow[urn] = row
+			delete(pd.eventUrnToResourceRow, "")
 			return row
 		}
 	}
 
 	row = &resourceRowData{
-		display:              display,
-		tick:                 display.currentTick,
+		display:              pd,
+		tick:                 pd.currentTick,
 		diagInfo:             &DiagInfo{},
 		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
 
-	display.eventUrnToResourceRow[urn] = row
+	pd.eventUrnToResourceRow[urn] = row
 
-	display.ensureHeaderAndStackRows()
-	display.resourceRows = append(display.resourceRows, row)
+	pd.ensureHeaderAndStackRows()
+	pd.resourceRows = append(pd.resourceRows, row)
 	return row
 }
 
-func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
+func (pd *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 	switch event.Type {
 	case sdkDisplay.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
 		payload := event.Payload().(sdkDisplay.PreludeEventPayload)
-		preludeEventString := renderPreludeEvent(payload, display.opts)
-		if display.isTerminal {
-			display.processNormalEvent(sdkDisplay.NewEvent(sdkDisplay.DiagEvent, sdkDisplay.DiagEventPayload{
+		preludeEventString := renderPreludeEvent(payload, pd.opts)
+		if pd.isTerminal {
+			pd.processNormalEvent(sdkDisplay.NewEvent(sdkDisplay.DiagEvent, sdkDisplay.DiagEventPayload{
 				Ephemeral: false,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
 				Message:   preludeEventString,
 			}))
 		} else {
-			display.writeSimpleMessage(preludeEventString)
+			pd.writeSimpleMessage(preludeEventString)
 		}
 		return
 	case sdkDisplay.SummaryEvent:
 		// keep track of the summary event so that we can display it after all other
 		// resource-related events we receive.
 		payload := event.Payload().(sdkDisplay.SummaryEventPayload)
-		display.summaryEventPayload = &payload
+		pd.summaryEventPayload = &payload
 		return
 	case sdkDisplay.DiagEvent:
-		msg := display.renderProgressDiagEvent(event.Payload().(sdkDisplay.DiagEventPayload), true /*includePrefix:*/)
+		msg := pd.renderProgressDiagEvent(event.Payload().(sdkDisplay.DiagEventPayload), true /*includePrefix:*/)
 		if msg == "" {
 			return
 		}
 	case sdkDisplay.StdoutColorEvent:
-		display.handleSystemEvent(event.Payload().(sdkDisplay.StdoutEventPayload))
+		pd.handleSystemEvent(event.Payload().(sdkDisplay.StdoutEventPayload))
 		return
 	}
 
@@ -1056,7 +1056,7 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 
 	// If we're suppressing reads from the tree-view, then convert notifications about reads into
 	// ephemeral messages that will go into the info column.
-	if metadata != nil && !display.opts.ShowReads {
+	if metadata != nil && !pd.opts.ShowReads {
 		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
 			// just flat out ignore read discards/replace.  They're only relevant in the context of
 			// 'reads', and we only present reads as an ephemeral diagnostic anyways.
@@ -1069,7 +1069,7 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(sdkDisplay.NewEvent(sdkDisplay.DiagEvent, sdkDisplay.DiagEventPayload{
+			pd.processNormalEvent(sdkDisplay.NewEvent(sdkDisplay.DiagEvent, sdkDisplay.DiagEventPayload{
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
@@ -1082,16 +1082,16 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 	if eventUrn == "" {
 		// If this event has no URN, associate it with the stack. Note that there may not yet be a stack resource, in
 		// which case this is a no-op.
-		eventUrn = display.stackUrn
+		eventUrn = pd.stackUrn
 	}
-	isRootEvent := eventUrn == display.stackUrn
+	isRootEvent := eventUrn == pd.stackUrn
 
-	row := display.getRowForURN(eventUrn, metadata)
+	row := pd.getRowForURN(eventUrn, metadata)
 
 	// Don't bother showing certain events (for example, things that are unchanged). However
 	// always show the root 'stack' resource so we can indicate that it's still running, and
 	// also so we have something to attach unparented diagnostic events to.
-	hideRowIfUnnecessary := metadata != nil && !shouldShow(*metadata, display.opts) && !isRootEvent
+	hideRowIfUnnecessary := metadata != nil && !shouldShow(*metadata, pd.opts) && !isRootEvent
 	// Always show row if there's a policy violation event. Policy violations prevent resource
 	// registration, so if we don't show the row, the violation gets attributed to the stack
 	// resource rather than the resources whose policy failed.
@@ -1104,12 +1104,12 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 		step := event.Payload().(sdkDisplay.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
 	} else if event.Type == sdkDisplay.ResourceOutputsEvent {
-		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
+		isRefresh := pd.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(sdkDisplay.ResourceOutputsEventPayload).Metadata
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
-		if step.URN == display.stackUrn {
-			display.seenStackOutputs = true
+		if step.URN == pd.stackUrn {
+			pd.seenStackOutputs = true
 		}
 
 		row.SetStep(step)
@@ -1118,8 +1118,8 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
 		hasMeaningfulOutput := isRefresh ||
-			!display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
-		if !display.isTerminal && !hasMeaningfulOutput {
+			!pd.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
+		if !pd.isTerminal && !hasMeaningfulOutput {
 			return
 		}
 	} else if event.Type == sdkDisplay.ResourceOperationFailed {
@@ -1134,83 +1134,83 @@ func (display *ProgressDisplay) processNormalEvent(event sdkDisplay.Event) {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	if display.isTerminal {
+	if pd.isTerminal {
 		// if we're in a terminal, then refresh everything so that all our columns line up
-		display.refreshAllRowsIfInTerminal()
+		pd.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, just print out this single row.
-		display.refreshSingleRow("", row, nil)
+		pd.refreshSingleRow("", row, nil)
 	}
 }
 
-func (display *ProgressDisplay) handleSystemEvent(payload sdkDisplay.StdoutEventPayload) {
+func (pd *ProgressDisplay) handleSystemEvent(payload sdkDisplay.StdoutEventPayload) {
 	// Make sure we have a header to display
-	display.ensureHeaderAndStackRows()
+	pd.ensureHeaderAndStackRows()
 
-	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+	pd.systemEventPayloads = append(pd.systemEventPayloads, payload)
 
-	if display.isTerminal {
+	if pd.isTerminal {
 		// if we're in a terminal, then refresh everything.  The system events will come after
 		// all the normal rows
-		display.refreshAllRowsIfInTerminal()
+		pd.refreshAllRowsIfInTerminal()
 	} else {
 		// otherwise, in a non-terminal, just print out the actual event.
-		display.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
+		pd.writeSimpleMessage(renderStdoutColorEvent(payload, pd.opts))
 	}
 }
 
-func (display *ProgressDisplay) ensureHeaderAndStackRows() {
-	if display.headerRow == nil {
+func (pd *ProgressDisplay) ensureHeaderAndStackRows() {
+	if pd.headerRow == nil {
 		// about to make our first status message.  make sure we present the header line first.
-		display.headerRow = &headerRowData{display: display}
+		pd.headerRow = &headerRowData{display: pd}
 	}
 
 	// we've added at least one row to the table.  make sure we have a row to designate the
 	// stack if we haven't already heard about it yet.  This also ensures that as we build
 	// the tree we can always guarantee there's a 'root' to parent anything to.
-	_, hasStackRow := display.eventUrnToResourceRow[display.stackUrn]
+	_, hasStackRow := pd.eventUrnToResourceRow[pd.stackUrn]
 	if hasStackRow {
 		return
 	}
 
 	stackRow := &resourceRowData{
-		display:              display,
-		tick:                 display.currentTick,
+		display:              pd,
+		tick:                 pd.currentTick,
 		diagInfo:             &DiagInfo{},
 		policyPayloads:       policyPayloads,
 		step:                 sdkDisplay.StepEventMetadata{Op: deploy.OpSame},
 		hideRowIfUnnecessary: false,
 	}
 
-	display.eventUrnToResourceRow[display.stackUrn] = stackRow
-	display.resourceRows = append(display.resourceRows, stackRow)
+	pd.eventUrnToResourceRow[pd.stackUrn] = stackRow
+	pd.resourceRows = append(pd.resourceRows, stackRow)
 }
 
-func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan sdkDisplay.Event) {
+func (pd *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan sdkDisplay.Event) {
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
 	for {
 		select {
 		case <-ticker.C:
-			display.processTick()
+			pd.processTick()
 
 		case event := <-events:
 			if event.Type == "" || event.Type == sdkDisplay.CancelEvent {
 				// Engine finished sending events.  Do all the final processing and return
 				// from this local func.  This will print out things like full diagnostic
 				// events, as well as the summary event from the sdkDisplay.
-				display.processEndSteps()
+				pd.processEndSteps()
 				return
 			}
 
-			display.processNormalEvent(event)
+			pd.processNormalEvent(event)
 		}
 	}
 }
 
-func (display *ProgressDisplay) renderProgressDiagEvent(payload sdkDisplay.DiagEventPayload, includePrefix bool) string {
-	if payload.Severity == diag.Debug && !display.opts.Debug {
+func (pd *ProgressDisplay) renderProgressDiagEvent(payload sdkDisplay.DiagEventPayload, includePrefix bool) string {
+	if payload.Severity == diag.Debug && !pd.opts.Debug {
 		return ""
 	}
 
@@ -1222,17 +1222,17 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload sdkDisplay.DiagE
 	return strings.TrimRightFunc(msg, unicode.IsSpace)
 }
 
-func (display *ProgressDisplay) getStepDoneDescription(step sdkDisplay.StepEventMetadata, failed bool) string {
+func (pd *ProgressDisplay) getStepDoneDescription(step sdkDisplay.StepEventMetadata, failed bool) string {
 	makeError := func(v string) string {
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
-	op := display.getStepOp(step)
+	op := pd.getStepOp(step)
 
-	if display.isPreview {
+	if pd.isPreview {
 		// During a preview, when we transition to done, we'll print out summary text describing the step instead of a
 		// past-tense verb describing the step that was performed.
-		return deploy.Color(op) + display.getPreviewDoneText(step) + colors.Reset
+		return deploy.Color(op) + pd.getPreviewDoneText(step) + colors.Reset
 	}
 
 	getDescription := func() string {
@@ -1302,7 +1302,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step sdkDisplay.StepEvent
 	return deploy.Color(op) + getDescription() + colors.Reset
 }
 
-func (display *ProgressDisplay) getPreviewText(step sdkDisplay.StepEventMetadata) string {
+func (pd *ProgressDisplay) getPreviewText(step sdkDisplay.StepEventMetadata) string {
 	switch step.Op {
 	case deploy.OpSame:
 		return ""
@@ -1341,7 +1341,7 @@ func (display *ProgressDisplay) getPreviewText(step sdkDisplay.StepEventMetadata
 
 // getPreviewDoneText returns a textual representation for this step, suitable for display during a preview once the
 // preview has completed.
-func (display *ProgressDisplay) getPreviewDoneText(step sdkDisplay.StepEventMetadata) string {
+func (pd *ProgressDisplay) getPreviewDoneText(step sdkDisplay.StepEventMetadata) string {
 	switch step.Op {
 	case deploy.OpSame:
 		return ""
@@ -1369,7 +1369,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step sdkDisplay.StepEventMeta
 	return ""
 }
 
-func (display *ProgressDisplay) getStepOp(step sdkDisplay.StepEventMetadata) display.StepOp {
+func (pd *ProgressDisplay) getStepOp(step sdkDisplay.StepEventMetadata) display.StepOp {
 	op := step.Op
 
 	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
@@ -1380,11 +1380,11 @@ func (display *ProgressDisplay) getStepOp(step sdkDisplay.StepEventMetadata) dis
 	// Note: in non-interactive mode we can show these all as individual steps.  This only applies
 	// to interactive mode, where there is only one line shown per resource, and we want it to be as
 	// clear as possible
-	if display.isTerminal {
+	if pd.isTerminal {
 		// During preview, show the steps for replacing as a single 'replace' plan.
 		// Once done, show the steps for replacing as a single 'replaced' step.
 		// During update, we'll show these individual steps.
-		if display.isPreview || display.done {
+		if pd.isPreview || pd.done {
 			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 				return deploy.OpReplace
 			}
@@ -1394,12 +1394,12 @@ func (display *ProgressDisplay) getStepOp(step sdkDisplay.StepEventMetadata) dis
 	return op
 }
 
-func (display *ProgressDisplay) getStepOpLabel(step sdkDisplay.StepEventMetadata, done bool) string {
-	return deploy.Prefix(display.getStepOp(step), done) + colors.Reset
+func (pd *ProgressDisplay) getStepOpLabel(step sdkDisplay.StepEventMetadata, done bool) string {
+	return deploy.Prefix(pd.getStepOp(step), done) + colors.Reset
 }
 
-func (display *ProgressDisplay) getStepInProgressDescription(step sdkDisplay.StepEventMetadata) string {
-	op := display.getStepOp(step)
+func (pd *ProgressDisplay) getStepInProgressDescription(step sdkDisplay.StepEventMetadata) string {
+	op := pd.getStepOp(step)
 
 	if isRootStack(step) && op == deploy.OpSame {
 		// most of the time a stack is unchanged.  in that case we just show it as "running->done".
@@ -1408,8 +1408,8 @@ func (display *ProgressDisplay) getStepInProgressDescription(step sdkDisplay.Ste
 	}
 
 	getDescription := func() string {
-		if display.isPreview {
-			return display.getPreviewText(step)
+		if pd.isPreview {
+			return pd.getPreviewText(step)
 		}
 
 		switch op {
