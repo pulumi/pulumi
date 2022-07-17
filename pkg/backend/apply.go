@@ -46,7 +46,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- sdkDisplay.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -89,9 +89,9 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// panics and we can't know whether or not we were in the middle of writing to this channel when the panic occurred.
 	//
 	// Instead of using a `defer`, we manually close `eventsChannel` on every exit of this function.
-	eventsChannel := make(chan engine.Event)
+	eventsChannel := make(chan sdkDisplay.Event)
 
-	var events []engine.Event
+	var events []sdkDisplay.Event
 	go func() {
 		// pull the events from the channel and store them locally
 		for e := range eventsChannel {
@@ -133,7 +133,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) result.Result {
+	events []sdkDisplay.Event, opts UpdateOptions) result.Result {
 	for {
 		var response string
 
@@ -230,7 +230,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	return changes, res
 }
 
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
+func createDiff(updateKind apitype.UpdateKind, events []sdkDisplay.Event, displayOpts display.Options) string {
 	buff := &bytes.Buffer{}
 
 	seen := make(map[resource.URN]engine.StepEventMetadata)

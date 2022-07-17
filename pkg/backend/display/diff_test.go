@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func loadEvents(path string) (events []engine.Event, err error) {
+func loadEvents(path string) (events []sdkDisplay.Event, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening '%v': %w", path, err)
@@ -46,8 +46,8 @@ func loadEvents(path string) (events []engine.Event, err error) {
 
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
-	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
+	if len(events) == 0 || events[len(events)-1].Type != sdkDisplay.CancelEvent {
+		events = append(events, sdkDisplay.NewEvent(sdkDisplay.CancelEvent, nil))
 	}
 
 	return events, nil
@@ -67,7 +67,7 @@ func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool)
 		require.NoError(t, err)
 	}
 
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	eventChannel, doneChannel := make(chan sdkDisplay.Event), make(chan bool)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

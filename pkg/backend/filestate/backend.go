@@ -465,7 +465,7 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) PackPolicies(
 	ctx context.Context, policyPackRef backend.PolicyPackReference,
 	cancellationScopes backend.CancellationScopeSource,
-	callerEventsOpt chan<- engine.Event) result.Result {
+	callerEventsOpt chan<- sdkDisplay.Event) result.Result {
 
 	return result.Error("File state backend does not support resource policy")
 }
@@ -544,7 +544,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	events chan<- sdkDisplay.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -563,14 +563,14 @@ func (b *localBackend) apply(
 	}
 
 	// Spawn a display loop to show events on the CLI.
-	displayEvents := make(chan engine.Event)
+	displayEvents := make(chan sdkDisplay.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name,
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
-	engineEvents := make(chan engine.Event)
+	engineEvents := make(chan sdkDisplay.Event)
 
 	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
@@ -707,7 +707,7 @@ func (b *localBackend) apply(
 
 // query executes a query program against the resource outputs of a locally hosted stack.
 func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event) result.Result {
+	callerEventsOpt chan<- sdkDisplay.Event) result.Result {
 
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }

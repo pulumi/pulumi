@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -18,24 +18,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
+// ConvertEngineEvent converts a raw sdkDisplay.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
 // EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, error) {
+func ConvertEngineEvent(e sdkDisplay.Event, showSecrets bool) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
 	// Error to return if the payload doesn't match expected.
 	eventTypePayloadMismatch := fmt.Errorf("unexpected payload for event type %v", e.Type)
 
 	switch e.Type {
-	case engine.CancelEvent:
+	case sdkDisplay.CancelEvent:
 		apiEvent.CancelEvent = &apitype.CancelEvent{}
 
-	case engine.StdoutColorEvent:
-		p, ok := e.Payload().(engine.StdoutEventPayload)
+	case sdkDisplay.StdoutColorEvent:
+		p, ok := e.Payload().(sdkDisplay.StdoutEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -44,8 +44,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Color:   string(p.Color),
 		}
 
-	case engine.DiagEvent:
-		p, ok := e.Payload().(engine.DiagEventPayload)
+	case sdkDisplay.DiagEvent:
+		p, ok := e.Payload().(sdkDisplay.DiagEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -58,8 +58,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Ephemeral: p.Ephemeral,
 		}
 
-	case engine.PolicyViolationEvent:
-		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
+	case sdkDisplay.PolicyViolationEvent:
+		p, ok := e.Payload().(sdkDisplay.PolicyViolationEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -74,8 +74,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			EnforcementLevel:     string(p.EnforcementLevel),
 		}
 
-	case engine.PreludeEvent:
-		p, ok := e.Payload().(engine.PreludeEventPayload)
+	case sdkDisplay.PreludeEvent:
+		p, ok := e.Payload().(sdkDisplay.PreludeEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -88,8 +88,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Config: cfg,
 		}
 
-	case engine.SummaryEvent:
-		p, ok := e.Payload().(engine.SummaryEventPayload)
+	case sdkDisplay.SummaryEvent:
+		p, ok := e.Payload().(sdkDisplay.SummaryEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -105,8 +105,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPacks:     p.PolicyPacks,
 		}
 
-	case engine.ResourcePreEvent:
-		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+	case sdkDisplay.ResourcePreEvent:
+		p, ok := e.Payload().(sdkDisplay.ResourcePreEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -115,8 +115,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Planning: p.Planning,
 		}
 
-	case engine.ResourceOutputsEvent:
-		p, ok := e.Payload().(engine.ResourceOutputsEventPayload)
+	case sdkDisplay.ResourceOutputsEvent:
+		p, ok := e.Payload().(sdkDisplay.ResourceOutputsEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -125,8 +125,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Planning: p.Planning,
 		}
 
-	case engine.ResourceOperationFailed:
-		p, ok := e.Payload().(engine.ResourceOperationFailedPayload)
+	case sdkDisplay.ResourceOperationFailed:
+		p, ok := e.Payload().(sdkDisplay.ResourceOperationFailedPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -143,7 +143,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 	return apiEvent, nil
 }
 
-func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
+func convertStepEventMetadata(md sdkDisplay.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
 	keys := make([]string, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = string(v)
@@ -201,7 +201,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 //
 // IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
 // in the resource state will be lost and unrecoverable.
-func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
+func convertStepEventStateMetadata(md *sdkDisplay.StepEventStateMetadata,
 	showSecrets bool) *apitype.StepEventStateMetadata {
 
 	if md == nil {
@@ -230,28 +230,28 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 	}
 }
 
-// ConvertJSONEvent converts an apitype.EngineEvent from the Pulumi REST API into a raw engine.Event
+// ConvertJSONEvent converts an apitype.EngineEvent from the Pulumi REST API into a raw sdkDisplay.Event
 // Returns an error if the engine event is unknown or not in an expected format.
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
-	var event engine.Event
+func ConvertJSONEvent(apiEvent apitype.EngineEvent) (sdkDisplay.Event, error) {
+	var event sdkDisplay.Event
 
 	switch {
 	case apiEvent.CancelEvent != nil:
-		event = engine.NewEvent(engine.CancelEvent, nil)
+		event = sdkDisplay.NewEvent(sdkDisplay.CancelEvent, nil)
 
 	case apiEvent.StdoutEvent != nil:
 		p := apiEvent.StdoutEvent
-		event = engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.StdoutColorEvent, sdkDisplay.StdoutEventPayload{
 			Message: p.Message,
 			Color:   colors.Colorization(p.Color),
 		})
 
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
-		event = engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.DiagEvent, sdkDisplay.DiagEventPayload{
 			URN:       resource.URN(p.URN),
 			Prefix:    p.Prefix,
 			Message:   p.Message,
@@ -263,7 +263,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.PolicyEvent != nil:
 		p := apiEvent.PolicyEvent
-		event = engine.NewEvent(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.PolicyViolationEvent, sdkDisplay.PolicyViolationEventPayload{
 			ResourceURN:       resource.URN(p.ResourceURN),
 			Message:           p.Message,
 			Color:             colors.Colorization(p.Color),
@@ -277,7 +277,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		p := apiEvent.PreludeEvent
 
 		// Convert the config bag.
-		event = engine.NewEvent(engine.PreludeEvent, engine.PreludeEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.PreludeEvent, sdkDisplay.PreludeEventPayload{
 			Config: p.Config,
 		})
 
@@ -288,7 +288,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		for op, count := range p.ResourceChanges {
 			changes[display.StepOp(op)] = count
 		}
-		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.SummaryEvent, sdkDisplay.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
@@ -297,21 +297,21 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.ResourcePreEvent != nil:
 		p := apiEvent.ResourcePreEvent
-		event = engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.ResourcePreEvent, sdkDisplay.ResourcePreEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOutputsEvent != nil:
 		p := apiEvent.ResOutputsEvent
-		event = engine.NewEvent(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.ResourceOutputsEvent, sdkDisplay.ResourceOutputsEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOpFailedEvent != nil:
 		p := apiEvent.ResOpFailedEvent
-		event = engine.NewEvent(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
+		event = sdkDisplay.NewEvent(sdkDisplay.ResourceOperationFailed, sdkDisplay.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
 			Steps:    p.Steps,
@@ -324,7 +324,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	return event, nil
 }
 
-func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
+func convertJSONStepEventMetadata(md apitype.StepEventMetadata) sdkDisplay.StepEventMetadata {
 	keys := make([]resource.PropertyKey, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = resource.PropertyKey(v)
@@ -368,7 +368,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 		res = new
 	}
 
-	return engine.StepEventMetadata{
+	return sdkDisplay.StepEventMetadata{
 		Op:   display.StepOp(md.Op),
 		URN:  resource.URN(md.URN),
 		Type: tokens.Type(md.Type),
@@ -390,7 +390,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 //
 // IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
 // in the resource state will be lost and unrecoverable.
-func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engine.StepEventStateMetadata {
+func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *sdkDisplay.StepEventStateMetadata {
 	if md == nil {
 		return nil
 	}
@@ -402,7 +402,7 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 	outputs, err := stack.DeserializeProperties(md.Outputs, crypter, crypter)
 	contract.IgnoreError(err)
 
-	return &engine.StepEventStateMetadata{
+	return &sdkDisplay.StepEventStateMetadata{
 		Type: tokens.Type(md.Type),
 		URN:  resource.URN(md.URN),
 

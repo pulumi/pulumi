@@ -754,7 +754,7 @@ type cancellationScopeSource int
 
 var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- sdkDisplay.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{

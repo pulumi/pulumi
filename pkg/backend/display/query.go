@@ -20,14 +20,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ShowQueryEvents displays query events on the CLI.
-func ShowQueryEvents(op string, events <-chan engine.Event,
+func ShowQueryEvents(op string, events <-chan sdkDisplay.Event,
 	done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
@@ -56,8 +56,8 @@ func ShowQueryEvents(op string, events <-chan engine.Event,
 			spinner.Reset()
 
 			out := os.Stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
+			if event.Type == sdkDisplay.DiagEvent {
+				payload := event.Payload().(sdkDisplay.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = os.Stderr
 				}
@@ -68,27 +68,27 @@ func ShowQueryEvents(op string, events <-chan engine.Event,
 				fprintIgnoreError(out, msg)
 			}
 
-			if event.Type == engine.CancelEvent {
+			if event.Type == sdkDisplay.CancelEvent {
 				return
 			}
 		}
 	}
 }
 
-func renderQueryEvent(event engine.Event, opts Options) string {
+func renderQueryEvent(event sdkDisplay.Event, opts Options) string {
 	switch event.Type {
-	case engine.CancelEvent:
+	case sdkDisplay.CancelEvent:
 		return ""
 
-	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
+	case sdkDisplay.StdoutColorEvent:
+		return renderStdoutColorEvent(event.Payload().(sdkDisplay.StdoutEventPayload), opts)
 
 	// Includes stdout of the query process.
-	case engine.DiagEvent:
-		return renderQueryDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
+	case sdkDisplay.DiagEvent:
+		return renderQueryDiagEvent(event.Payload().(sdkDisplay.DiagEventPayload), opts)
 
-	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
-		engine.ResourceOutputsEvent, engine.ResourcePreEvent:
+	case sdkDisplay.PreludeEvent, sdkDisplay.SummaryEvent, sdkDisplay.ResourceOperationFailed,
+		sdkDisplay.ResourceOutputsEvent, sdkDisplay.ResourcePreEvent:
 
 		contract.Failf("query mode does not support resource operations")
 		return ""
@@ -99,7 +99,7 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	}
 }
 
-func renderQueryDiagEvent(payload engine.DiagEventPayload, opts Options) string {
+func renderQueryDiagEvent(payload sdkDisplay.DiagEventPayload, opts Options) string {
 	// Ignore debug messages unless we're in debug mode.
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""

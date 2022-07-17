@@ -25,17 +25,17 @@ import (
 
 	"github.com/dustin/go-humanize/english"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
-func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowDiffEvents(op string, events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
@@ -63,7 +63,7 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 		close(done)
 	}()
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
+	seen := make(map[resource.URN]sdkDisplay.StepEventMetadata)
 
 	for {
 		select {
@@ -73,8 +73,8 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 			spinner.Reset()
 
 			out := stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
+			if event.Type == sdkDisplay.DiagEvent {
+				payload := event.Payload().(sdkDisplay.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = stderr
 				}
@@ -85,42 +85,42 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 				fprintIgnoreError(out, msg)
 			}
 
-			if event.Type == engine.CancelEvent {
+			if event.Type == sdkDisplay.CancelEvent {
 				return
 			}
 		}
 	}
 }
 
-func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(event sdkDisplay.Event, seen map[resource.URN]sdkDisplay.StepEventMetadata, opts Options) string {
 
 	switch event.Type {
-	case engine.CancelEvent:
+	case sdkDisplay.CancelEvent:
 		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
-	case engine.PreludeEvent:
-		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
-	case engine.SummaryEvent:
+	case sdkDisplay.PreludeEvent:
+		return renderPreludeEvent(event.Payload().(sdkDisplay.PreludeEventPayload), opts)
+	case sdkDisplay.SummaryEvent:
 		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
-	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
+		return renderSummaryEvent(event.Payload().(sdkDisplay.SummaryEventPayload), wroteDiagnosticHeader, opts)
+	case sdkDisplay.StdoutColorEvent:
+		return renderStdoutColorEvent(event.Payload().(sdkDisplay.StdoutEventPayload), opts)
 
 		// Resource operations have very specific displays for either diff or progress displays.
 		// These functions should not be directly used by the progress display without validating
 		// that the display is appropriate for both.
-	case engine.ResourceOperationFailed:
-		return renderDiffResourceOperationFailedEvent(event.Payload().(engine.ResourceOperationFailedPayload), opts)
-	case engine.ResourceOutputsEvent:
-		return renderDiffResourceOutputsEvent(event.Payload().(engine.ResourceOutputsEventPayload), seen, opts)
-	case engine.ResourcePreEvent:
-		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
-	case engine.DiagEvent:
-		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
-	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
+	case sdkDisplay.ResourceOperationFailed:
+		return renderDiffResourceOperationFailedEvent(event.Payload().(sdkDisplay.ResourceOperationFailedPayload), opts)
+	case sdkDisplay.ResourceOutputsEvent:
+		return renderDiffResourceOutputsEvent(event.Payload().(sdkDisplay.ResourceOutputsEventPayload), seen, opts)
+	case sdkDisplay.ResourcePreEvent:
+		return renderDiffResourcePreEvent(event.Payload().(sdkDisplay.ResourcePreEventPayload), seen, opts)
+	case sdkDisplay.DiagEvent:
+		return renderDiffDiagEvent(event.Payload().(sdkDisplay.DiagEventPayload), opts)
+	case sdkDisplay.PolicyViolationEvent:
+		return renderDiffPolicyViolationEvent(event.Payload().(sdkDisplay.PolicyViolationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -128,22 +128,22 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 	}
 }
 
-func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
+func renderDiffDiagEvent(payload sdkDisplay.DiagEventPayload, opts Options) string {
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
+func renderDiffPolicyViolationEvent(payload sdkDisplay.PolicyViolationEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
+func renderStdoutColorEvent(payload sdkDisplay.StdoutEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader bool, opts Options) string {
+func renderSummaryEvent(event sdkDisplay.SummaryEventPayload, wroteDiagnosticHeader bool, opts Options) string {
 
 	changes := event.ResourceChanges
 
@@ -267,7 +267,7 @@ func renderPolicyPacks(out io.Writer, policyPacks map[string]string, opts Option
 	}
 }
 
-func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
+func renderPreludeEvent(event sdkDisplay.PreludeEventPayload, opts Options) string {
 	// Only if we have been instructed to show configuration values will we print anything during the prelude.
 	if !opts.ShowConfig {
 		return ""
@@ -290,7 +290,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 }
 
 func renderDiffResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts Options) string {
+	payload sdkDisplay.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -304,9 +304,9 @@ func renderDiffResourceOperationFailedEvent(
 
 func renderDiff(
 	out io.Writer,
-	metadata engine.StepEventMetadata,
+	metadata sdkDisplay.StepEventMetadata,
 	planning, debug bool,
-	seen map[resource.URN]engine.StepEventMetadata,
+	seen map[resource.URN]sdkDisplay.StepEventMetadata,
 	opts Options) {
 
 	indent := getIndent(metadata, seen)
@@ -315,7 +315,7 @@ func renderDiff(
 	var details string
 	if metadata.DetailedDiff != nil {
 		var buf bytes.Buffer
-		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
+		if diff := sdkDisplay.TranslateDetailedDiff(&metadata); diff != nil {
 			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
 		} else {
 			PrintObject(
@@ -333,8 +333,8 @@ func renderDiff(
 }
 
 func renderDiffResourcePreEvent(
-	payload engine.ResourcePreEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
+	payload sdkDisplay.ResourcePreEventPayload,
+	seen map[resource.URN]sdkDisplay.StepEventMetadata,
 	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
@@ -350,8 +350,8 @@ func renderDiffResourcePreEvent(
 }
 
 func renderDiffResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
+	payload sdkDisplay.ResourceOutputsEventPayload,
+	seen map[resource.URN]sdkDisplay.StepEventMetadata,
 	opts Options) string {
 
 	out := &bytes.Buffer{}

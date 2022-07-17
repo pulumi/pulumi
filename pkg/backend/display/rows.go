@@ -22,12 +22,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -45,9 +45,9 @@ type Row interface {
 type ResourceRow interface {
 	Row
 
-	Step() engine.StepEventMetadata
-	SetStep(step engine.StepEventMetadata)
-	AddOutputStep(step engine.StepEventMetadata)
+	Step() sdkDisplay.StepEventMetadata
+	SetStep(step sdkDisplay.StepEventMetadata)
+	AddOutputStep(step sdkDisplay.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -58,10 +58,10 @@ type ResourceRow interface {
 	SetFailed()
 
 	DiagInfo() *DiagInfo
-	PolicyPayloads() []engine.PolicyViolationEventPayload
+	PolicyPayloads() []sdkDisplay.PolicyViolationEventPayload
 
-	RecordDiagEvent(diagEvent engine.Event)
-	RecordPolicyViolationEvent(diagEvent engine.Event)
+	RecordDiagEvent(diagEvent sdkDisplay.Event)
+	RecordPolicyViolationEvent(diagEvent sdkDisplay.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -115,8 +115,8 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step        engine.StepEventMetadata
-	outputSteps []engine.StepEventMetadata
+	step        sdkDisplay.StepEventMetadata
+	outputSteps []sdkDisplay.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -126,7 +126,7 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo       *DiagInfo
-	policyPayloads []engine.PolicyViolationEventPayload
+	policyPayloads []sdkDisplay.PolicyViolationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -153,15 +153,15 @@ func (data *resourceRowData) SetHideRowIfUnnecessary(value bool) {
 	data.hideRowIfUnnecessary = value
 }
 
-func (data *resourceRowData) Step() engine.StepEventMetadata {
+func (data *resourceRowData) Step() sdkDisplay.StepEventMetadata {
 	return data.step
 }
 
-func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
+func (data *resourceRowData) SetStep(step sdkDisplay.StepEventMetadata) {
 	data.step = step
 }
 
-func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
+func (data *resourceRowData) AddOutputStep(step sdkDisplay.StepEventMetadata) {
 	data.outputSteps = append(data.outputSteps, step)
 }
 
@@ -181,12 +181,12 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
 }
 
-func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	payload := event.Payload().(engine.DiagEventPayload)
+func (data *resourceRowData) RecordDiagEvent(event sdkDisplay.Event) {
+	payload := event.Payload().(sdkDisplay.DiagEventPayload)
 	data.recordDiagEventPayload(payload)
 }
 
-func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayload) {
+func (data *resourceRowData) recordDiagEventPayload(payload sdkDisplay.DiagEventPayload) {
 	diagInfo := data.diagInfo
 	diagInfo.LastDiag = &payload
 
@@ -195,7 +195,7 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 	}
 
 	if diagInfo.StreamIDToDiagPayloads == nil {
-		diagInfo.StreamIDToDiagPayloads = make(map[int32][]engine.DiagEventPayload)
+		diagInfo.StreamIDToDiagPayloads = make(map[int32][]sdkDisplay.DiagEventPayload)
 	}
 
 	payloads := diagInfo.StreamIDToDiagPayloads[payload.StreamID]
@@ -219,13 +219,13 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 }
 
 // PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
-func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
+func (data *resourceRowData) PolicyPayloads() []sdkDisplay.PolicyViolationEventPayload {
 	return data.policyPayloads
 }
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
-func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
+func (data *resourceRowData) RecordPolicyViolationEvent(event sdkDisplay.Event) {
+	pePayload := event.Payload().(sdkDisplay.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
@@ -401,13 +401,13 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
+func getDiffInfo(step sdkDisplay.StepEventMetadata, action apitype.UpdateKind) string {
 	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if step.DetailedDiff != nil {
-			diff = engine.TranslateDetailedDiff(&step)
+			diff = sdkDisplay.TranslateDetailedDiff(&step)
 		} else if diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)

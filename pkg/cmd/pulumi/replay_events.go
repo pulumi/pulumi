@@ -98,7 +98,7 @@ func newReplayEventsCmd() *cobra.Command {
 				return fmt.Errorf("error reading events: %w", err)
 			}
 
-			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+			eventChannel, doneChannel := make(chan sdkDisplay.Event), make(chan bool)
 
 			if delay != 0 {
 				time.Sleep(delay)
@@ -152,14 +152,14 @@ func newReplayEventsCmd() *cobra.Command {
 	return cmd
 }
 
-func loadEvents(path string) ([]engine.Event, error) {
+func loadEvents(path string) ([]sdkDisplay.Event, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening '%v': %w", path, err)
 	}
 	defer contract.IgnoreClose(f)
 
-	var events []engine.Event
+	var events []sdkDisplay.Event
 	dec := json.NewDecoder(f)
 	for {
 		var jsonEvent apitype.EngineEvent

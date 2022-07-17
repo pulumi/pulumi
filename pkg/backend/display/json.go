@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -89,7 +89,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowJSONEvents(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
@@ -103,7 +103,7 @@ func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) 
 		sequence++
 
 		// In the event of cancellation, break out of the loop.
-		if e.Type == engine.CancelEvent {
+		if e.Type == sdkDisplay.CancelEvent {
 			break
 		}
 	}
@@ -113,7 +113,7 @@ func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) 
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowPreviewDigest(events <-chan sdkDisplay.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
@@ -121,21 +121,21 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 	var digest display.PreviewDigest
 	for e := range events {
 		// In the event of cancellation, break out of the loop immediately.
-		if e.Type == engine.CancelEvent {
+		if e.Type == sdkDisplay.CancelEvent {
 			break
 		}
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
 		// Events occurring early:
-		case engine.PreludeEvent:
+		case sdkDisplay.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
-			digest.Config = e.Payload().(engine.PreludeEventPayload).Config
+			digest.Config = e.Payload().(sdkDisplay.PreludeEventPayload).Config
 
 		// Events throughout the execution:
-		case engine.DiagEvent:
+		case sdkDisplay.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload().(engine.DiagEventPayload)
+			p := e.Payload().(sdkDisplay.DiagEventPayload)
 			if !p.Ephemeral && p.Severity != diag.Debug {
 				digest.Diagnostics = append(digest.Diagnostics, display.PreviewDiagnostic{
 					URN:      p.URN,
@@ -143,17 +143,17 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 					Severity: p.Severity,
 				})
 			}
-		case engine.StdoutColorEvent:
+		case sdkDisplay.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
-			p := e.Payload().(engine.StdoutEventPayload)
+			p := e.Payload().(sdkDisplay.StdoutEventPayload)
 			digest.Diagnostics = append(digest.Diagnostics, display.PreviewDiagnostic{
 				Message:  colors.Never.Colorize(p.Message),
 				Severity: diag.Info,
 			})
-		case engine.ResourcePreEvent:
+		case sdkDisplay.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
-			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+			if m := e.Payload().(sdkDisplay.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
 				var detailedDiff map[string]display.PropertyDiff
 				if m.DetailedDiff != nil {
 					detailedDiff = make(map[string]display.PropertyDiff)
@@ -195,17 +195,17 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 				digest.Steps = append(digest.Steps, step)
 			}
-		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
+		case sdkDisplay.ResourceOutputsEvent, sdkDisplay.ResourceOperationFailed:
 		// Because we are only JSON serializing previews, we don't need to worry about outputs
 		// resolving or operations failing.
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent:
+		case sdkDisplay.PolicyViolationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
-		case engine.SummaryEvent:
+		case sdkDisplay.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
-			p := e.Payload().(engine.SummaryEventPayload)
+			p := e.Payload().(sdkDisplay.SummaryEventPayload)
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt
