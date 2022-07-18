@@ -1273,13 +1273,14 @@ func getPluginInfoOrPath(
 		for _, p2 := range projectPlugins {
 			if p2.Kind == p1.Kind && p2.Name == p1.Name {
 				if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
-					return nil, "", errors.Errorf("Multiple project plugins with kind %s, name %s, version %s", p1.Kind, p1.Name, p1.Version)
+					return nil, "", fmt.Errorf("multiple project plugins with kind %s, name %s, version %s", p1.Kind, p1.Name, p1.Version)
 				}
 			}
 		}
 	}
 
 	for _, plugin := range projectPlugins {
+		fmt.Fprintf(os.Stdout, "Checking project plugin %s %s %s\n", plugin.Kind, plugin.Name, plugin.Version)
 		if plugin.Kind != kind {
 			continue
 		}

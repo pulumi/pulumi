@@ -1,0 +1,10 @@
+
+	name: test-yaml
+	runtime: yaml
+	description: "Test Pulumi YAML"
+
+	providers:
+	- name: aws
+		version: 1.0.0
+		path: ../bin/aws
+	

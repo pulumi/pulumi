@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -894,4 +895,29 @@ func TestMissingErrorText(t *testing.T) {
 			assert.Equal(t, tt.ExpectedError, err.Error())
 		})
 	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestUnmarshalProjectWithProviderList(t *testing.T) {
+	t.Parallel()
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
+
+	//write to pyaml
+	err := ioutil.WriteFile(pyaml, []byte(`name: test-yaml
+runtime: yaml
+description: "Test Pulumi YAML"
+
+providers:
+- name: aws
+  version: 1.0.0
+  path: ../bin/aws`), 0644)
+	assert.NoError(t, err)
+
+	proj, err := LoadProject(pyaml)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(proj.Providers))
+	assert.Equal(t, "aws", proj.Providers[0].Name)
+	assert.Equal(t, "1.0.0", proj.Providers[0].Version)
+	assert.Equal(t, "../bin/aws", proj.Providers[0].Path)
 }
