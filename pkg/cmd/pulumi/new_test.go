@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
@@ -84,7 +84,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.Error(t, err)
 }
 
@@ -104,7 +104,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
@@ -130,7 +130,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
@@ -155,7 +155,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
@@ -183,7 +183,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
@@ -208,7 +208,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 		yes:               true,
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	removeStack(t, stackName)
@@ -252,7 +252,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		yes:               true,
 	}
 
-	assert.NoError(t, runNew(args))
+	assert.NoError(t, runNew(context.Background(), args))
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
@@ -283,7 +283,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	removeStack(t, stackName)
@@ -308,7 +308,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	removeStack(t, stackName)
@@ -340,7 +340,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project with this name already exists")
 }
@@ -366,7 +366,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project with this name already exists")
 }
@@ -396,7 +396,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -426,7 +426,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
@@ -458,7 +458,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	}
 
-	err := runNew(args)
+	err := runNew(context.Background(), args)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project name may only contain")
 }
@@ -478,7 +478,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	}
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	err := runNew(newArgs{
+	err := runNew(context.Background(), newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("not#valid", ""),
@@ -488,7 +488,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "project name may only contain")
 
-	err = runNew(newArgs{
+	err = runNew(context.Background(), newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock("", ""),
@@ -515,7 +515,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			templateNameOrURL: "",
 		}
 
-		err := runNew(args)
+		err := runNew(context.Background(), args)
 		assert.Error(t, err)
 
 		assert.Contains(t, err.Error(), "no template selected")
@@ -536,7 +536,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			templateNameOrURL: template,
 		}
 
-		err := runNew(args)
+		err := runNew(context.Background(), args)
 		assert.Error(t, err)
 
 		assert.Contains(t, err.Error(), "not found")
@@ -558,7 +558,7 @@ func TestInvalidTemplateName(t *testing.T) {
 			yes:               true,
 		}
 
-		err := runNew(args)
+		err := runNew(context.Background(), args)
 		assert.Error(t, err)
 
 		assert.Contains(t, err.Error(), "not found")

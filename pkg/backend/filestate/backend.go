@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -307,7 +307,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, err := b.getStack(stackName); err == nil {
+	if _, _, err := b.getStack(ctx, stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -332,7 +332,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	snapshot, path, err := b.getStack(stackName)
+	snapshot, path, err := b.getStack(ctx, stackName)
 
 	switch {
 	case gcerrors.Code(err) == gcerrors.NotFound:
@@ -379,7 +379,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	defer b.Unlock(ctx, stack.Ref())
 
 	stackName := stack.Ref().Name()
-	snapshot, _, err := b.getStack(stackName)
+	snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return false, err
 	}
@@ -403,7 +403,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +557,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(stackName, op)
+	update, err := b.newUpdate(ctx, stackName, op)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -729,7 +729,7 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stack.Ref().Name()
-	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
+	target, err := b.getTarget(ctx, stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -764,7 +764,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stk backend.Stack) (*apitype.UntypedDeployment, error) {
 
 	stackName := stk.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -799,12 +799,12 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err = b.getStack(stackName)
+	_, _, err = b.getStack(ctx, stackName)
 	if err != nil {
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

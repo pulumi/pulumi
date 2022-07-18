@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)
 				}

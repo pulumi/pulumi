@@ -159,36 +159,35 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	v, ok, err := currentProjectStack.Config.Get(key, path)
 	if err != nil {
 		return err
-	}
-	if ok {
-		if v.Secure() {
-			var err error
-			if decrypter, err = getStackDecrypter(currentStack); err != nil {
-				return fmt.Errorf("could not create a decrypter: %w", err)
-			}
-		} else {
-			decrypter = config.NewPanicCrypter()
-		}
-
-		encrypter, cerr := getStackEncrypter(destinationStack)
-		if cerr != nil {
-			return cerr
-		}
-
-		val, err := v.Copy(decrypter, encrypter)
-		if err != nil {
-			return err
-		}
-
-		err = destinationProjectStack.Config.Set(key, val, path)
-		if err != nil {
-			return err
-		}
-
-		return saveProjectStack(destinationStack, destinationProjectStack)
+	} else if !ok {
+		return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 	}
 
-	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+	if v.Secure() {
+		var err error
+		if decrypter, err = getStackDecrypter(currentStack); err != nil {
+			return fmt.Errorf("could not create a decrypter: %w", err)
+		}
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	encrypter, cerr := getStackEncrypter(destinationStack)
+	if cerr != nil {
+		return cerr
+	}
+
+	val, err := v.Copy(decrypter, encrypter)
+	if err != nil {
+		return err
+	}
+
+	err = destinationProjectStack.Config.Set(key, val, path)
+	if err != nil {
+		return err
+	}
+
+	return saveProjectStack(destinationStack, destinationProjectStack)
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,
@@ -469,6 +468,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -515,7 +515,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}
@@ -579,6 +579,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -616,7 +617,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}

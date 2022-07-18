@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	if err != nil {
 		return err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, stack.DefaultSecretsProvider)
 	if err != nil {
 		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
 	}
