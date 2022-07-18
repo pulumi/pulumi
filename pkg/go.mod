@@ -161,13 +161,6 @@ require (
 )
 
 require (
-	github.com/gofrs/flock v0.7.1 // indirect
-	github.com/pulumi/pulumi/sdk v0.0.0-20200321193742-f095e64d0f8e // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
-	k8s.io/klog v1.0.0 // indirect
-)
-
-require (
 	cloud.google.com/go/compute v1.5.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/kms v1.1.0 // indirect
@@ -193,7 +186,6 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/pulumi/pulumi/pkg v1.14.1
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
