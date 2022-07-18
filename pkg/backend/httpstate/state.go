@@ -48,14 +48,8 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(ctx context.Context, initialToken string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
-
-	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
-	if err != nil {
-		return nil, err
-	}
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
@@ -63,33 +57,42 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 		ticker := time.NewTicker(duration / 2)
 		defer ticker.Stop()
 
+		token := initialToken
+		var currentError error
+
+		renew := func() {
+			newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
+
+			// If we get an error from the backend, leave `err` set and surface it during
+			// the next request for a lease token.
+			if err != nil {
+				logging.V(3).Infof("error renewing lease: %v", err)
+				currentError = fmt.Errorf("renewing lease: %w", err)
+
+				ticker.Stop()
+			} else {
+				token = newToken
+			}
+		}
+
+		// Is an initial lease renewal?
+		// renew()
+
 		for {
 			select {
 			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
-				// If we get an error from the backend, leave `err` set and surface it during
-				// the next request for a lease token.
-				if err != nil {
-					logging.V(3).Infof("error renewing lease: %v", err)
-					err = fmt.Errorf("renewing lease: %w", err)
-
-					ticker.Stop()
-				} else {
-					token = newToken
-				}
-
+				renew()
 			case c, ok := <-requests:
 				if !ok {
 					close(done)
 					return
 				}
 
-				// err will be non-nil if the last call to RenewUpdateLease failed.
-				resp := tokenResponse{err: err}
-				if err == nil {
-					resp.token = token
+				if currentError == nil {
+					c <- tokenResponse{token: token}
+				} else {
+					c <- tokenResponse{err: currentError}
 				}
-				c <- resp
 			}
 		}
 	}()
