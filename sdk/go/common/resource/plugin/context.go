@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Context is used to group related operations together so that
@@ -48,16 +47,16 @@ type Context struct {
 // host's.
 func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, project *workspace.Project) (*Context, error) {
+	parentSpan opentracing.Span) (*Context, error) {
 
 	root := ""
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan, project)
+	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan)
 }
 
 // Variation of NewContext that also sets known project Root.
 func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, project *workspace.Project) (*Context, error) {
+	parentSpan opentracing.Span) (*Context, error) {
 
 	if d == nil {
 		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
@@ -74,7 +73,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, project)
+		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, nil)
 		if err != nil {
 			return nil, err
 		}

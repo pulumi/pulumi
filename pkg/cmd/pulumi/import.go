@@ -256,7 +256,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectNa
 		return false, err
 	}
 	sink := cmdutil.Diag()
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil, nil)
+	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	if err != nil {
 		return false, err
 	}
