@@ -80,7 +80,8 @@ func setCommandGroups(cmd *cobra.Command, cgs []commandGroup) {
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
 		if c != cmd.Root() {
-			c.Usage()
+			err := c.Usage()
+			contract.IgnoreError(err)
 			return
 		}
 
