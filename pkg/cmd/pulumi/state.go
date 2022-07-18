@@ -104,7 +104,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	if err != nil {
 		height = 15
 	}
-	if height < len(options) {
+	if height > len(options) {
 		height = len(options)
 	}
 
