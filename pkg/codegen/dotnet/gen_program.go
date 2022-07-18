@@ -258,15 +258,26 @@ func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-func (g *generator) findFunctionSchema(function string) (*schema.Function, bool) {
+func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{}) {
+	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  fmt.Sprintf(reason, args...),
+		Subject:  location,
+	})
+}
+
+func (g *generator) findFunctionSchema(function string, location *hcl.Range) (*schema.Function, bool) {
 	function = LowerCamelCase(function)
 	for _, pkg := range g.program.PackageReferences() {
 		for it := pkg.Functions().Range(); it.Next(); {
 			if strings.HasSuffix(it.Token(), function) {
 				fn, err := it.Function()
+
 				if err != nil {
+					g.warnf(location, "Could not find function schema for '%s'; err %s", function, err.Error())
 					return nil, false
 				}
+
 				return fn, true
 			}
 		}
@@ -286,7 +297,8 @@ func (g *generator) isFunctionInvoke(localVariable *pcl.LocalVariable) (*schema.
 			_, fullFunctionName := g.functionName(args)
 			functionNameParts := strings.Split(fullFunctionName, ".")
 			functionName := functionNameParts[len(functionNameParts)-1]
-			return g.findFunctionSchema(functionName)
+			location := value.SyntaxNode().Range().Ptr()
+			return g.findFunctionSchema(functionName, location)
 		}
 	}
 
