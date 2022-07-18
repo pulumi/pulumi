@@ -252,8 +252,8 @@ func NewPulumiCmd() *cobra.Command {
 				newNewCmd(),
 				newUpCmd(),
 				newDestroyCmd(),
-				newWatchCmd(),
 				newPreviewCmd(),
+				newCancelCmd(),
 			},
 		},
 		{
@@ -261,6 +261,10 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newStackCmd(),
 				newConfigCmd(),
+				newConsoleCmd(),
+				newImportCmd(),
+				newRefreshCmd(),
+				newStateCmd(),
 			},
 		},
 		{
@@ -279,22 +283,11 @@ func NewPulumiCmd() *cobra.Command {
 			},
 		},
 		{
-			Name: "Advanced Commands",
-			Commands: []*cobra.Command{
-				newCancelCmd(),
-				newImportCmd(),
-				newRefreshCmd(),
-				newStateCmd(),
-			},
-		},
-		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
-				newLogsCmd(),
-				newPluginCmd(),
 				newVersionCmd(),
-				newConsoleCmd(),
 				newAboutCmd(),
+				newPluginCmd(),
 				newSchemaCmd(),
 			},
 		},
@@ -315,6 +308,8 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newQueryCmd(),
 				newConvertCmd(),
+				newWatchCmd(),
+				newLogsCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
