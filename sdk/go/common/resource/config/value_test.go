@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -215,12 +216,14 @@ func TestDecryptingValue(t *testing.T) {
 
 type passThroughDecrypter struct{}
 
-func (d passThroughDecrypter) DecryptValue(ciphertext string) (string, error) {
+func (d passThroughDecrypter) DecryptValue(
+	ctx context.Context, ciphertext string) (string, error) {
 	return ciphertext, nil
 }
 
-func (d passThroughDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	return DefaultBulkDecrypt(d, ciphertexts)
+func (d passThroughDecrypter) BulkDecrypt(
+	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(ctx, d, ciphertexts)
 }
 
 func TestSecureValues(t *testing.T) {

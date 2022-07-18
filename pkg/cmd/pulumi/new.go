@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -65,7 +66,7 @@ type newArgs struct {
 	yes               bool
 }
 
-func runNew(args newArgs) error {
+func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -298,7 +299,7 @@ func runNew(args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		err = handleConfig(ctx, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -407,11 +408,12 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := commandContext()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
 			args.yes = args.yes || skipConfirmations()
-			return runNew(args)
+			return runNew(ctx, args)
 		}),
 	}
 
@@ -824,6 +826,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // If stackConfig is non-nil and a config value exists in stackConfig, it will be used as the default
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
+	ctx context.Context,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
@@ -910,7 +913,7 @@ func promptForConfig(
 		// Encrypt the value if needed.
 		var v config.Value
 		if secret {
-			enc, err := encrypter.EncryptValue(value)
+			enc, err := encrypter.EncryptValue(ctx, value)
 			if err != nil {
 				return nil, err
 			}
