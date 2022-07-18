@@ -94,25 +94,27 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	disableProviderPreview bool, project *workspace.Project) (Host, error) {
 
 	// Create plugin info from providers
-	providerPlugins := make([]*workspace.PluginInfo, 0, len(project.Providers))
-	for _, providerOpts := range project.Providers {
-		//Go to path
-		v, err := semver.Parse(providerOpts.Version)
-		if err != nil {
-			return nil, err
-		}
-		//Assert existence of provider
-		_, err = os.Stat(providerOpts.Path)
-		if err != nil {
-			return nil, fmt.Errorf("could not find provider binary at path %s", providerOpts.Path)
-		}
+	providerPlugins := make([]*workspace.PluginInfo, 0)
+	if project != nil {
+		for _, providerOpts := range project.Providers {
+			//Go to path
+			v, err := semver.Parse(providerOpts.Version)
+			if err != nil {
+				return nil, err
+			}
+			//Assert existence of provider
+			_, err = os.Stat(providerOpts.Path)
+			if err != nil {
+				return nil, fmt.Errorf("could not find provider binary at path %s", providerOpts.Path)
+			}
 
-		providerPlugins = append(providerPlugins, &workspace.PluginInfo{
-			Name:    providerOpts.Name,
-			Kind:    workspace.ResourcePlugin,
-			Path:    providerOpts.Path,
-			Version: &v,
-		})
+			providerPlugins = append(providerPlugins, &workspace.PluginInfo{
+				Name:    providerOpts.Name,
+				Kind:    workspace.ResourcePlugin,
+				Path:    providerOpts.Path,
+				Version: &v,
+			})
+		}
 	}
 
 	host := &defaultHost{
