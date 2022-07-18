@@ -117,24 +117,27 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task AddRemoveListPlugins()
         {
+            // verion for the aws plugin
+            var version = "5.10.0";
+            var plugin = "aws";
             using var workspace = await LocalWorkspace.CreateAsync();
 
             var plugins = await workspace.ListPluginsAsync();
-            if (plugins.Any(p => p.Name == "aws" && p.Version == "3.0.0"))
+            if (plugins.Any(p => p.Name == plugin && p.Version == version))
             {
-                await workspace.RemovePluginAsync("aws", "3.0.0");
+                await workspace.RemovePluginAsync(plugin, version);
                 plugins = await workspace.ListPluginsAsync();
-                Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
+                Assert.DoesNotContain(plugins, p => p.Name == plugin && p.Version == version);
             }
 
-            await workspace.InstallPluginAsync("aws", "v3.0.0");
+            await workspace.InstallPluginAsync(plugin, $"v{version}");
             plugins = await workspace.ListPluginsAsync();
-            var aws = plugins.FirstOrDefault(p => p.Name == "aws" && p.Version == "3.0.0");
+            var aws = plugins.FirstOrDefault(p => p.Name == plugin && p.Version == version);
             Assert.NotNull(aws);
 
-            await workspace.RemovePluginAsync("aws", "3.0.0");
+            await workspace.RemovePluginAsync(plugin, version);
             plugins = await workspace.ListPluginsAsync();
-            Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
+            Assert.DoesNotContain(plugins, p => p.Name == plugin && p.Version == version);
         }
 
         [Fact]
