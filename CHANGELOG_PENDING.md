@@ -10,6 +10,9 @@
 - [cli/config] Allow `pulumi config cp --path` between objects.
   [#10147](https://github.com/pulumi/pulumi/pull/10147)
 
+- [codegen/schema] Support stack reference as a resource
+  [#10163](https://github.com/pulumi/pulumi/pull/10163)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
