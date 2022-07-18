@@ -11,7 +11,7 @@
   [#10147](https://github.com/pulumi/pulumi/pull/10147)
 
 - [codegen/schema] Support stack reference as a resource
-  [#10163](https://github.com/pulumi/pulumi/pull/10163)
+  [#10171](https://github.com/pulumi/pulumi/pull/10171)
 
 ### Bug Fixes
 
