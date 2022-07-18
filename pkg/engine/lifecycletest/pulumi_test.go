@@ -1827,7 +1827,8 @@ func TestAliases(t *testing.T) {
 		aliases: n3Aliases,
 	}}, []display.StepOp{deploy.OpSame}, false)
 
-	err := snap.NormalizeURNReferences()
+	var err error
+	snap, err = snap.NormalizeURNReferences()
 	assert.Nil(t, err)
 }
 
