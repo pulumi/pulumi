@@ -1176,19 +1176,29 @@ func getPluginInfoOrPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool, projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
 
+	for _, p1 := range projectPlugins {
+		for _, p2 := range projectPlugins {
+			if p2.Kind == p1.Kind && p2.Name == p1.Name {
+				if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
+					return nil, "", errors.Errorf("Multiple project plugins with kind %s, name %s, version %s", p1.Kind, p1.Name, p1.Version)
+				}
+			}
+		}
+	}
+
 	for _, plugin := range projectPlugins {
-		if plugin.Name != name {
+		if plugin.Kind != kind {
 			continue
 		}
-		if plugin.Kind != kind {
+		if plugin.Name != name {
 			continue
 		}
 		if plugin.Version != nil && version != nil {
 			if !plugin.Version.Equals(*version) {
+				logging.Warningf("Project plugin %s with version %s is incompatible with requested version %s.\n", name, plugin.Version, version)
 				continue
 			}
 		}
-		// Maybe we should throw an error if, say, there are multiple of the same name/version?
 		path := plugin.Path
 		// figure out the proper plugin path
 		return plugin, path, nil

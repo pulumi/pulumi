@@ -420,8 +420,7 @@ func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	return host.languageRuntime.GetRequiredPlugins(info)
 }
 
-func (host *pluginHost) GetProjectPlugins() map[string]*workspace.PluginInfo {
-	panic("not implemented")
+func (host *pluginHost) GetProjectPlugins() []*workspace.PluginInfo {
 	return nil
 }
 

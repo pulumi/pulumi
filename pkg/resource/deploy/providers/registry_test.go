@@ -79,7 +79,7 @@ func (host *testPluginHost) ResolvePlugin(
 	return nil, nil
 }
 
-func (host *testPluginHost) GetProjectPlugins() map[string]*workspace.PluginInfo {
+func (host *testPluginHost) GetProjectPlugins() []*workspace.PluginInfo {
 	return nil
 }
 

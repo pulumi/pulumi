@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
@@ -100,6 +101,12 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		if err != nil {
 			return nil, err
 		}
+		//Assert existence of provider
+		_, err = os.Stat(providerOpts.Path)
+		if err != nil {
+			return nil, fmt.Errorf("could not find provider binary at path %s", providerOpts.Path)
+		}
+
 		providerPlugins = append(providerPlugins, &workspace.PluginInfo{
 			Name:    providerOpts.Name,
 			Kind:    workspace.ResourcePlugin,
