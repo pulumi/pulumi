@@ -189,8 +189,8 @@ export function run(
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-
-        tsnode.register({
+        const tsn: typeof tsnode = require("ts-node");
+        tsn.register({
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
