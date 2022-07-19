@@ -11,6 +11,9 @@
     "dependencies": {
         "@grpc/grpc-js": "~1.3.8",
         "@logdna/tail-file": "^2.0.6",
+        "@opentelemetry/api": "^1.1.0",
+        "@opentelemetry/exporter-zipkin": "^1.4.0",
+        "@opentelemetry/sdk-node": "^0.30.0",
         "@pulumi/query": "^0.3.0",
         "google-protobuf": "^3.5.0",
         "ini": "^2.0.0",

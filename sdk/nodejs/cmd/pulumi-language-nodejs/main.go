@@ -169,6 +169,7 @@ type nodeLanguageHost struct {
 	nodeargs      string
 }
 
+// TODO: Find location where we update nodeargs with tracing information.
 func newLanguageHost(
 	engineAddress, tracing string,
 	typescript bool, tsconfigpath,
@@ -538,6 +539,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 		if host.tsconfigpath != "" {
 			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
+		// TODO: Inject Environment Variables Here!
+		// TraceID
+		// Zipkin URI
 
 		nodeargs, err := shlex.Split(host.nodeargs)
 		if err != nil {
@@ -698,6 +702,7 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	}, nil
 }
 
+// TODO: Mikhail told me this doesn't happen during Pulumi up? Trace this path.
 func (host *nodeLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
@@ -705,6 +710,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	if err != nil {
 		return err
 	}
+
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
