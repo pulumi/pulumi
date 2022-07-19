@@ -175,11 +175,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet, projectPlugins []*workspace.PluginInfo) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
-		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, nil)
+		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
