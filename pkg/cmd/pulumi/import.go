@@ -597,7 +597,7 @@ func newImportCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
-		"Do not perform a preview before performing the import")
+		"Do not calculate a preview before performing the import")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
