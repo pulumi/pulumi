@@ -35,10 +35,13 @@ func (nameInfo) Format(name string) string {
 	return makeValidIdentifier(name)
 }
 
-// lowerExpression amends the expression with intrinsics for C# generation.
-func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
+func (g *generator) rewriteExpression(expr model.Expression, typ model.Type, rewriteApplies bool) model.Expression {
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+	var diags hcl.Diagnostics
+	if rewriteApplies {
+		expr, diags = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+	}
+
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	diags = diags.Extend(convertDiags)
 	if g.asyncInit {
@@ -50,18 +53,17 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	return expr
 }
 
+// lowerExpression amends the expression with intrinsics for C# generation.
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
+	rewriteApplies := true
+	return g.rewriteExpression(expr, typ, rewriteApplies)
+}
+
 // lowerExpressionWithoutApplies is the same as lowerExpression
-// but without rewriting applies. Make especially for function invokes that are returning outputs
+// but without rewriting applies. Made especially for function invokes that are returning outputs
 func (g *generator) lowerExpressionWithoutApplies(expr model.Expression, typ model.Type) model.Expression {
-	expr = pcl.RewritePropertyReferences(expr)
-	expr, diags := pcl.RewriteConversions(expr, typ)
-	if g.asyncInit {
-		expr = g.awaitInvokes(expr)
-	} else {
-		expr = g.outputInvokes(expr)
-	}
-	contract.Assertf(diags.HasErrors() == false, "expected no errors in conversion, got: %v", diags.Error())
-	return expr
+	rewriteApplies := false
+	return g.rewriteExpression(expr, typ, rewriteApplies)
 }
 
 // awaitInvokes wraps each call to `invoke` with a call to the `await` intrinsic. This rewrite should only be used

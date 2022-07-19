@@ -147,16 +147,6 @@ func GenerateProgramWithOptions(
 	return files, g.diagnostics, nil
 }
 
-func GenerateProgramForImport(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	importOptions := GenerateProgramOptions{
-		// for import, we want to generate C# code that
-		// is compatible with old versions of .NET
-		implicitResourceArgsTypeName: false,
-	}
-
-	return GenerateProgramWithOptions(program, importOptions)
-}
-
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	defaultOptions := GenerateProgramOptions{
 		// by default, we generate C# code that targets .NET 6

@@ -18,9 +18,8 @@ func TestGenerateProgram(t *testing.T) {
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
 			},
-			GenProgram:           GenerateProgram,
-			TestCases:            test.PulumiPulumiProgramTests,
-			AcceptCodegenChanges: false,
+			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		},
 	)
 }
