@@ -295,7 +295,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	defer t.Close()
 	args = append(args, "--event-log", t.Filename)
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		preOpts.ProgressStreams,      /* additionalOutput */
+		preOpts.ErrorProgressStreams, /* additionalErrorOutput */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
@@ -391,7 +396,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, upOpts.ErrorProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 	}
@@ -471,7 +476,12 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, "--event-log", t.Filename)
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		refreshOpts.ProgressStreams,      /* additionalOutputs */
+		refreshOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
@@ -546,7 +556,12 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, "--event-log", t.Filename)
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		destroyOpts.ProgressStreams,      /* additionalOutputs */
+		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
@@ -607,7 +622,12 @@ func (s *Stack) History(ctx context.Context,
 		args = append(args, "--page-size", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
 	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutputs */, args...)
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutputs */
+		nil, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
@@ -684,6 +704,7 @@ func (s *Stack) Cancel(ctx context.Context) error {
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
 		nil, /* additionalOutput */
+		nil, /* additionalErrorOutput */
 		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
@@ -838,6 +859,7 @@ const secretSentinel = "[secret]"
 func (s *Stack) runPulumiCmdSync(
 	ctx context.Context,
 	additionalOutput []io.Writer,
+	additionalErrorOutput []io.Writer,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -860,7 +882,14 @@ func (s *Stack) runPulumiCmdSync(
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
 
-	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
+	stdout, stderr, errCode, err := runPulumiCommandSync(
+		ctx,
+		s.Workspace().WorkDir(),
+		additionalOutput,
+		additionalErrorOutput,
+		env,
+		args...,
+	)
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}

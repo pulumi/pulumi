@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -1119,6 +1120,66 @@ func TestNestedStackFails(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestErrorProgressStreams(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pName := "inline_error_progress_streams"
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	logLevel := uint(4)
+	debugOptions := debug.LoggingOptions{
+		LogToStdErr: true,
+		LogLevel:    &logLevel,
+	}
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err := s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// -- pulumi up --
+	var upErr bytes.Buffer
+	upRes, err := s.Up(ctx, optup.ErrorProgressStreams(&upErr), optup.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, upErr.String(), upRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, upRes.StdErr)
+
+	// -- pulumi refresh --
+	var refErr bytes.Buffer
+	refRes, err := s.Refresh(ctx, optrefresh.ErrorProgressStreams(&refErr), optrefresh.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, refErr.String(), refRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, refRes.StdErr)
+
+	// -- pulumi destroy --
+	var desErr bytes.Buffer
+	desRes, err := s.Destroy(ctx, optdestroy.ErrorProgressStreams(&desErr), optdestroy.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, desErr.String(), desRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, desRes.StdErr)
 }
 
 func TestProgressStreams(t *testing.T) {
