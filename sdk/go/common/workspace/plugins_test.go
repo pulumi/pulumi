@@ -911,7 +911,7 @@ description: "Test Pulumi YAML"
 providers:
 - name: aws
   version: 1.0.0
-  path: ../bin/aws`), 0644)
+  path: ../bin/aws`), 0600)
 	assert.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)

@@ -1219,7 +1219,8 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version, projectPlugins []*PluginInfo) (string, string, error) {
+func GetPluginPath(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (string, string, error) {
 	info, path, err := getPluginInfoOrPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", "", err
@@ -1242,7 +1243,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version, projec
 	return "", path, err
 }
 
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version, projectPlugins []*PluginInfo) (*PluginInfo, error) {
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (*PluginInfo, error) {
 	info, path, err := getPluginInfoOrPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
@@ -1266,14 +1268,17 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version, projec
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
 func getPluginInfoOrPath(
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool, projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
+	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
+	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
 
 	for _, p1 := range projectPlugins {
 		for _, p2 := range projectPlugins {
 			if p2.Kind == p1.Kind && p2.Name == p1.Name {
 				if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
-					return nil, "", fmt.Errorf("multiple project plugins with kind %s, name %s, version %s", p1.Kind, p1.Name, p1.Version)
+					return nil, "", fmt.Errorf(
+						"multiple project plugins with kind %s, name %s, version %s",
+						p1.Kind, p1.Name, p1.Version)
 				}
 			}
 		}
@@ -1289,7 +1294,9 @@ func getPluginInfoOrPath(
 		}
 		if plugin.Version != nil && version != nil {
 			if !plugin.Version.Equals(*version) {
-				logging.Warningf("Project plugin %s with version %s is incompatible with requested version %s.\n", name, plugin.Version, version)
+				logging.Warningf(
+					"Project plugin %s with version %s is incompatible with requested version %s.\n",
+					name, plugin.Version, version)
 				continue
 			}
 		}
