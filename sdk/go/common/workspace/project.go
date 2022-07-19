@@ -65,6 +65,7 @@ type ProjectOptions struct {
 
 type ProviderOptions struct {
 	Name    string `json:"name" yaml:"name"`
+	Kind    string `json:"kind" yaml:"kind"`
 	Version string `json:"version" yaml:"version"`
 	Path    string `json:"path" yaml:"path"`
 }

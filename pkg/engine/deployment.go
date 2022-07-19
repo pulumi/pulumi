@@ -51,9 +51,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	// Will host already have been properly initialized? If not, this will need more rethinking.
 	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, config, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan)
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj)
 	if err != nil {
 		return "", "", nil, err
 	}

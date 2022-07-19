@@ -122,6 +122,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
 
+		fmt.Printf("Calling newPlugin with bin: %s\n", path)
+
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
 		if err != nil {

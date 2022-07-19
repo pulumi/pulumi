@@ -92,7 +92,6 @@ type Host interface {
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, project *workspace.Project) (Host, error) {
-
 	// Create plugin info from providers
 	providerPlugins := make([]*workspace.PluginInfo, 0)
 	if project != nil {
@@ -107,12 +106,24 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 			if err != nil {
 				return nil, fmt.Errorf("could not find provider binary at path %s", providerOpts.Path)
 			}
+			var kind workspace.PluginKind
+
+			switch providerOpts.Kind {
+			case "provider", "":
+				kind = workspace.ResourcePlugin
+			case "analyzer":
+				kind = workspace.AnalyzerPlugin
+			case "language":
+				kind = workspace.LanguagePlugin
+			default:
+				return nil, fmt.Errorf("invalid provider kind %s", providerOpts.Kind)
+			}
 
 			providerPlugins = append(providerPlugins, &workspace.PluginInfo{
-				Name:    providerOpts.Name,
-				Kind:    workspace.ResourcePlugin,
-				Path:    providerOpts.Path,
-				Version: &v,
+				Name:         providerOpts.Name,
+				Kind:         kind,
+				ExplicitPath: providerOpts.Path,
+				Version:      &v,
 			})
 		}
 	}

@@ -142,6 +142,8 @@ func (err *MissingError) Error() string {
 		includePath = " or on your $PATH"
 	}
 
+	fmt.Printf("New Missing Error: %+v\n", err.Info)
+
 	if err.Info.Version != nil {
 		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
 			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
@@ -512,6 +514,7 @@ func (source *fallbackSource) Download(
 type PluginInfo struct {
 	Name              string          // the simple name of the plugin.
 	Path              string          // the path that a plugin was loaded from.
+	ExplicitPath      string          // the path that a plugin is known to exist at.
 	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version // the plugin's semantic version, if present.
 	Size              int64           // the size of the plugin, in bytes.
@@ -1226,7 +1229,12 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 		return "", "", err
 	}
 
+	//This function is caled GetPluginPath. It calls getPluginInfoOrPath, which returns info, path.
+	//But path *is not used* in this function when it returns correctly. What gives?
 	if info != nil {
+		if info.ExplicitPath != "" {
+			return filepath.Dir(info.ExplicitPath), info.ExplicitPath, nil
+		}
 		matchDir, err := info.DirPath()
 		if err != nil {
 			return "", "", err
@@ -1272,20 +1280,21 @@ func getPluginInfoOrPath(
 	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
 
-	for _, p1 := range projectPlugins {
-		for _, p2 := range projectPlugins {
-			if p2.Kind == p1.Kind && p2.Name == p1.Name {
-				if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
-					return nil, "", fmt.Errorf(
-						"multiple project plugins with kind %s, name %s, version %s",
-						p1.Kind, p1.Name, p1.Version)
+	for i, p1 := range projectPlugins {
+		for j, p2 := range projectPlugins {
+			if j < i {
+				if p2.Kind == p1.Kind && p2.Name == p1.Name {
+					if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
+						return nil, "", fmt.Errorf(
+							"multiple project plugins with kind %s, name %s, version %s",
+							p1.Kind, p1.Name, p1.Version)
+					}
 				}
 			}
 		}
 	}
 
 	for _, plugin := range projectPlugins {
-		fmt.Fprintf(os.Stdout, "Checking project plugin %s %s %s\n", plugin.Kind, plugin.Name, plugin.Version)
 		if plugin.Kind != kind {
 			continue
 		}
@@ -1300,9 +1309,7 @@ func getPluginInfoOrPath(
 				continue
 			}
 		}
-		path := plugin.Path
-		// figure out the proper plugin path
-		return plugin, path, nil
+		return plugin, plugin.ExplicitPath, nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
