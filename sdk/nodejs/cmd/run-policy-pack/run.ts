@@ -16,7 +16,7 @@ import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
-import { parseConfigFileTextToJson } from "typescript";
+import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
@@ -165,18 +165,10 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // just tell ts-node to not load project options at all. This helps with cases like
     // pulumi/pulumi#1772.
     const tsConfigPath = "tsconfig.json";
-    const skipProject = !fs.existsSync(tsConfigPath);
-
-    let compilerOptions: object;
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
 
     if (opts.typeScript) {
+        const skipProject = !fs.existsSync(tsConfigPath);
+        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         tsnode.register({
             typeCheck: true,
             skipProject: skipProject,

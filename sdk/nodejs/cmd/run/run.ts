@@ -23,6 +23,7 @@ import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as stack from "../../runtime/stack";
 import * as settings from "../../runtime/settings";
+import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 
 import * as mod from ".";
@@ -187,7 +188,7 @@ export function run(
 
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-        const compilerOptions = loadCompilerOptions(tsConfigPath);
+        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
 
         tsnode.register({
             transpileOnly,
@@ -363,18 +364,4 @@ ${defaultMessage}`);
 
     // Construct a `Stack` resource to represent the outputs of the program.
     return stack.runInPulumiStack(runProgram);
-}
-
-function loadCompilerOptions(tsConfigPath: string): object {
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        // Using local `require("typescript")` to avoid always loading
-        // and only load on-demand, avoid up to 300s overhead in Node runtime.
-        const typescript = require("typescript");
-        const tsConfig = typescript.parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        return tsConfig["compilerOptions"] ?? {};
-    } catch (err) {
-        log.debug(`Ignoring error in loadCompilerOptions(${tsConfigPath}}): ${err}`);
-        return {};
-    }
 }
