@@ -71,52 +71,65 @@ func (c *commandGroup) commandWidth() int {
 	return width
 }
 
-func setCommandGroups(cmd *cobra.Command, cgs []commandGroup) {
+func displayCommands(cgs []commandGroup) {
+	width := 0
 	for _, cg := range cgs {
+		newWidth := cg.commandWidth()
+		if newWidth > width {
+			width = newWidth
+		}
+	}
+
+	for _, cg := range cgs {
+		if cg.commandWidth() == 0 {
+			continue
+		}
+		fmt.Printf("%s:\n", cg.Name)
+		for _, com := range cg.Commands {
+			if com.Hidden {
+				continue
+			}
+			spacing := strings.Repeat(" ", width-len(com.Name()))
+			fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+		}
+		fmt.Println()
+	}
+}
+
+func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
+	for _, cg := range rootCgs {
 		for _, com := range cg.Commands {
 			cmd.AddCommand(com)
 		}
 	}
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+
+		header := c.Long
+		if header == "" {
+			header = c.Short
+		}
+
+		if header != "" {
+			fmt.Println(strings.TrimSpace(header))
+			fmt.Println()
+		}
+
 		if c != cmd.Root() {
-			err := c.Usage()
-			contract.IgnoreError(err)
+			fmt.Print(c.UsageString())
 			return
 		}
-
-		width := 0
-		for _, cg := range cgs {
-			newWidth := cg.commandWidth()
-			if newWidth > width {
-				width = newWidth
-			}
-		}
-
-		fmt.Println(cmd.Long)
-		fmt.Println()
 
 		fmt.Println("Usage:")
 		fmt.Println("  pulumi [command]")
 		fmt.Println()
 
-		for _, cg := range cgs {
-			if cg.commandWidth() == 0 {
-				continue
-			}
-			fmt.Printf("%s:\n", cg.Name)
-			for _, com := range cg.Commands {
-				if com.Hidden {
-					continue
-				}
-				spacing := strings.Repeat(" ", width-len(com.Name()))
-				fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
-			}
-			fmt.Println()
-		}
+		displayCommands(rootCgs)
 
 		fmt.Println("Flags:")
 		fmt.Println(cmd.Flags().FlagUsages())
+
+		fmt.Println(`Use "pulumi [command] --help" for more information about a command.`)
 	})
 }
 
