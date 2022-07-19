@@ -57,11 +57,11 @@ func newTokenSource(
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	ts := &tokenSource{requests: requests, done: done}
-	go ts.handleRequsts(ctx, initialToken, backend.client, update, duration)
+	go ts.handleRequests(ctx, initialToken, backend.client, update, duration)
 	return ts, nil
 }
 
-func (ts *tokenSource) handleRequsts(
+func (ts *tokenSource) handleRequests(
 	ctx context.Context,
 	initialToken string,
 	client *client.Client,
