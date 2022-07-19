@@ -52,6 +52,7 @@ type GenerateProgramOptions struct {
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
 }
 
@@ -328,11 +329,7 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, impo
 
 	var tokenRange hcl.Range
 	pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
-	pkgName := pkg
-	if pkg == "pulumi" && mod == "providers" {
-		pkgName = name
-	}
-	vPath, err := g.getVersionPath(program, pkgName)
+	vPath, err := g.getVersionPath(program, pkg)
 	if err != nil {
 		panic(err)
 	}
@@ -349,12 +346,7 @@ func (g *generator) collectImports(
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
-
-			pkgName := pkg
-			if pkg == "pulumi" && mod == "providers" {
-				pkgName = name
-			}
-			vPath, err := g.getVersionPath(program, pkgName)
+			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				panic(err)
 			}
@@ -472,9 +464,6 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	info, _ := g.getGoPackageInfo(pkg)
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
-	} else if pkg == "pulumi" && mod == "providers" {
-		pkg = name
-		mod = ""
 	}
 
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
@@ -616,13 +605,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	var modOrAlias string
-	if pkg == "pulumi" && mod == "providers" {
-		modOrAlias = typ
-		typ = "Provider"
-	} else {
-		modOrAlias = g.getModOrAlias(pkg, mod)
-	}
+	modOrAlias := g.getModOrAlias(pkg, mod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
