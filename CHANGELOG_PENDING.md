@@ -1,5 +1,9 @@
 ### Improvements
 
+- [auto/go] Adds the ability to capture incremental `stderr`
+  via the new option `ErrorProgressStreams`.
+  [#10179](https://github.com/pulumi/pulumi/pull/10179)
+
 - [cli/plugins] Warn that using GITHUB_REPOSITORY_OWNER is deprecated.
   [#10142](https://github.com/pulumi/pulumi/pull/10142)
 

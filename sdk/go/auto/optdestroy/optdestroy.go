@@ -52,10 +52,17 @@ func TargetDependents() Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
+	})
+}
+
+// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+func ErrorProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ErrorProgressStreams = writers
 	})
 }
 
@@ -105,8 +112,10 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
