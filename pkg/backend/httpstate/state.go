@@ -48,50 +48,51 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, initialToken string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(
+	ctx context.Context,
+	initialToken string,
+	backend *cloudBackend,
+	update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
 
 	requests, done := make(chan tokenRequest), make(chan bool)
 	go func() {
-		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
-		ticker := time.NewTicker(duration / 2)
-		defer ticker.Stop()
+		// We will renew the lease after 50% of the duration has elapsed to allow time for retries.
+		renewTicker := time.NewTicker(duration / 2)
+		defer renewTicker.Stop()
 
-		token := initialToken
-		var currentError error
-
-		renew := func() {
-			newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
-
-			// If we get an error from the backend, leave `err` set and surface it during
-			// the next request for a lease token.
-			if err != nil {
-				logging.V(3).Infof("error renewing lease: %v", err)
-				currentError = fmt.Errorf("renewing lease: %w", err)
-
-				ticker.Stop()
-			} else {
-				token = newToken
-			}
+		state := struct {
+			token string // most recently renewed token
+			error error  // non-nil indicates a terminal error state
+		}{
+			token: initialToken,
 		}
-
-		// Is an initial lease renewal?
-		// renew()
 
 		for {
 			select {
-			case <-ticker.C:
-				renew()
+			case <-renewTicker.C:
+				newToken, err := backend.client.RenewUpdateLease(ctx,
+					update, state.token, duration)
+
+				// If we get an error from the backend, we enter a terminal error state; all
+				// further GetToken requests will return an error.
+				if err != nil {
+					logging.V(3).Infof("error renewing lease: %v", err)
+					state.error = fmt.Errorf("renewing lease: %w", err)
+
+					renewTicker.Stop()
+				} else {
+					state.token = newToken
+				}
 			case c, ok := <-requests:
 				if !ok {
 					close(done)
 					return
 				}
-
-				if currentError == nil {
-					c <- tokenResponse{token: token}
+				if state.error == nil {
+					c <- tokenResponse{token: state.token}
 				} else {
-					c <- tokenResponse{err: currentError}
+					c <- tokenResponse{err: state.error}
 				}
 			}
 		}
