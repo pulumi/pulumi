@@ -67,6 +67,8 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while len(RPC_MANAGER.rpcs) > 0:
             await asyncio.sleep(0)
+            if RPC_MANAGER.unhandled_exception is not None:
+                break
             log.debug(
                 f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding"
             )
