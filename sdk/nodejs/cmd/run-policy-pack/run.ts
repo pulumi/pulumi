@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ import * as tsnode from "ts-node";
 import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as runtime from "../../runtime";
+import * as settings from "../../runtime/settings";
+import * as stack from "../../runtime/stack";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -242,7 +243,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", runtime.disconnectSync);
+    process.on("exit", settings.disconnectSync);
 
     opts.programStarted();
 
@@ -286,5 +287,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         }
     };
 
-    return opts.runInStack ? runtime.runInPulumiStack(runProgram) : runProgram();
+    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
 }
