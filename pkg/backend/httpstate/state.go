@@ -56,49 +56,53 @@ func newTokenSource(
 	duration time.Duration) (*tokenSource, error) {
 
 	requests, done := make(chan tokenRequest), make(chan bool)
-	go func() {
-		// We will renew the lease after 50% of the duration has elapsed to allow time for retries.
-		renewTicker := time.NewTicker(duration / 2)
-		defer renewTicker.Stop()
+	ts := &tokenSource{requests: requests, done: done}
+	go ts.handleRequsts(ctx, initialToken, backend.client, update, duration)
+	return ts, nil
+}
 
-		state := struct {
-			token string // most recently renewed token
-			error error  // non-nil indicates a terminal error state
-		}{
-			token: initialToken,
-		}
+func (ts *tokenSource) handleRequsts(
+	ctx context.Context,
+	initialToken string,
+	client *client.Client,
+	update client.UpdateIdentifier,
+	duration time.Duration) {
 
-		for {
-			select {
-			case <-renewTicker.C:
-				newToken, err := backend.client.RenewUpdateLease(ctx,
-					update, state.token, duration)
+	// We will renew the lease after 50% of the duration has elapsed to allow time for retries.
+	renewTicker := time.NewTicker(duration / 2)
+	defer renewTicker.Stop()
 
-				// If we get an error from the backend, we enter a terminal error state; all
-				// further GetToken requests will return an error.
-				if err != nil {
-					logging.V(3).Infof("error renewing lease: %v", err)
-					state.error = fmt.Errorf("renewing lease: %w", err)
+	state := struct {
+		token string // most recently renewed token
+		error error  // non-nil indicates a terminal error state
+	}{
+		token: initialToken,
+	}
 
-					renewTicker.Stop()
-				} else {
-					state.token = newToken
-				}
-			case c, ok := <-requests:
-				if !ok {
-					close(done)
-					return
-				}
-				if state.error == nil {
-					c <- tokenResponse{token: state.token}
-				} else {
-					c <- tokenResponse{err: state.error}
-				}
+	for {
+		select {
+		case <-renewTicker.C:
+			newToken, err := client.RenewUpdateLease(ctx, update, state.token, duration)
+			// If renew failed, all further GetToken requests will return this error.
+			if err != nil {
+				logging.V(3).Infof("error renewing lease: %v", err)
+				state.error = fmt.Errorf("renewing lease: %w", err)
+				renewTicker.Stop()
+			} else {
+				state.token = newToken
+			}
+		case c, ok := <-ts.requests:
+			if !ok {
+				close(ts.done)
+				return
+			}
+			if state.error == nil {
+				c <- tokenResponse{token: state.token}
+			} else {
+				c <- tokenResponse{err: state.error}
 			}
 		}
-	}()
-
-	return &tokenSource{requests: requests, done: done}, nil
+	}
 }
 
 func (ts *tokenSource) Close() {
