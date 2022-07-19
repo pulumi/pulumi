@@ -759,6 +759,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 
 	for {
 
+		const buffer = 5
 		_, height, err := terminal.GetSize(0)
 		if err != nil {
 			height = 15
@@ -768,6 +769,8 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if height > len(options) {
 			height = len(options)
 		}
+
+		height = height - buffer
 		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", height, len(options))
 		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
@@ -777,7 +780,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
-			PageSize: height - 5,
+			PageSize: height,
 		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
