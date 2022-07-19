@@ -139,9 +139,19 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(mod string, nodeBin string) (string, error) {
-	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
-	cmd := exec.Command(nodeBin, "-e", program)
+func locateModule(ctx context.Context, mod string, nodeBin string) (string, error) {
+	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
+
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		"locateModule",
+		opentracing.Tag{Key: "module", Value: mod},
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "args", Value: args})
+
+	defer tracingSpan.Finish()
+
+	cmd := exec.Command(nodeBin, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -483,14 +493,14 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(runPath, nodeBin)
+	runPath, err = locateModule(ctx, runPath, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
 
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(responseChannel, req, nodeBin, runPath, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
+	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
@@ -500,7 +510,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
-func (host *nodeLanguageHost) execNodejs(
+func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
 	nodeBin, runPath, address, pipesDirectory string) {
 
@@ -547,6 +557,13 @@ func (host *nodeLanguageHost) execNodejs(
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env
+
+		tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+			"execNodejs",
+			opentracing.Tag{Key: "component", Value: "exec.Command"},
+			opentracing.Tag{Key: "command", Value: nodeBin},
+			opentracing.Tag{Key: "args", Value: nodeargs})
+		defer tracingSpan.Finish()
 
 		if err := cmd.Run(); err != nil {
 			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does

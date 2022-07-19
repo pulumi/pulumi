@@ -29,6 +29,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const pulumiPackage = "pulumi"
 const LogicalNamePropertyKey = "__logicalName"
 
 type bindOptions struct {

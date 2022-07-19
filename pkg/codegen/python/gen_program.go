@@ -46,6 +46,7 @@ type generator struct {
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	g, err := newGenerator(program)
 	if err != nil {
 		return nil, nil, err

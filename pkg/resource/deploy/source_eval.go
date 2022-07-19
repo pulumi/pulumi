@@ -350,7 +350,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(tokens.AsQName(string(req.Package().Name()))), nil
+		return providers.NewDenyDefaultProvider(tokens.QName(string(req.Package().Name()))), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.

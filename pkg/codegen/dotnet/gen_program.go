@@ -79,6 +79,7 @@ const pulumiPackage = "pulumi"
 func GenerateProgramWithOptions(
 	program *pcl.Program,
 	options GenerateProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
@@ -434,9 +435,6 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == pulumiPackage && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -468,14 +466,11 @@ func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == pulumiPackage && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
-	if g.compatibilities[pkg] == "kubernetes20" {
+	if g.compatibilities[pkg] == "kubernetes20" && module != "" {
 		namespace = fmt.Sprintf("Types.Inputs.%s", namespace)
 	}
 
