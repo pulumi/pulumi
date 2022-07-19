@@ -14,9 +14,10 @@
 
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
-import { getStackResource, unknownValue } from "./runtime";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
+import { getStackResource } from "./runtime/stack";
+import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
 import * as log from "./log";
 
