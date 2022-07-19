@@ -460,7 +460,7 @@ func newNewCmd() *cobra.Command {
 		// If we have any templates, show them.
 		if len(templates) > 0 {
 			fmt.Println()
-			fmt.Printf("You have %d templates available. To view them interactively, run `pulumi new`.\n", len(templates))
+			fmt.Printf("There are %d locally installed templates.\n", len(templates))
 		}
 	})
 
@@ -499,7 +499,7 @@ func newNewCmd() *cobra.Command {
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
-		"Lists templates installed on the user's machine")
+		"List locally installed templates and exit")
 
 	return cmd
 }
