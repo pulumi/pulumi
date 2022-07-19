@@ -44,8 +44,8 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "[PREVIEW] Show aggregated resource logs for a stack",
-		Long: "[PREVIEW] Show aggregated resource logs for a stack\n" +
+		Short: "Show aggregated resource logs for a stack",
+		Long: "[EXPERIMENTAL] aggregated resource logs for a stack\n" +
 			"\n" +
 			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +

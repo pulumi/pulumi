@@ -251,6 +251,7 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Project Commands",
 			Commands: []*cobra.Command{
 				newNewCmd(),
+				newConfigCmd(),
 				newUpCmd(),
 				newDestroyCmd(),
 				newPreviewCmd(),
@@ -261,7 +262,6 @@ func NewPulumiCmd() *cobra.Command {
 			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newStackCmd(),
-				newConfigCmd(),
 				newConsoleCmd(),
 				newImportCmd(),
 				newRefreshCmd(),
@@ -284,12 +284,17 @@ func NewPulumiCmd() *cobra.Command {
 			},
 		},
 		{
+			Name: "Plugin Commands",
+			Commands: []*cobra.Command{
+				newPluginCmd(),
+				newSchemaCmd(),
+			},
+		},
+		{
 			Name: "Other Commands",
 			Commands: []*cobra.Command{
 				newVersionCmd(),
 				newAboutCmd(),
-				newPluginCmd(),
-				newSchemaCmd(),
 			},
 		},
 
