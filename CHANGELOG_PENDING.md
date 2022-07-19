@@ -38,3 +38,6 @@
   
 - [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
   [#10155](https://github.com/pulumi/pulumi/pull/10155)
+
+- [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
+  [#10164](https://github.com/pulumi/pulumi/pull/10164)
