@@ -100,11 +100,6 @@ jobs:
 
           # test_integration skipped
 
-          - run: make test_integration_subpkgs
-            require-build: true
-            test-parallelism: 4
-            test-parallelism-windows: 1
-
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
