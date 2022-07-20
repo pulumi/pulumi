@@ -15,10 +15,7 @@
 package rpcutil
 
 import (
-	"fmt"
-	"math/rand"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 
