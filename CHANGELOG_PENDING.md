@@ -20,7 +20,7 @@
 - [backends] When logging in to a file backend, validate that the bucket is accessible.
   [#10012](https://github.com/pulumi/pulumi/pull/10012)
 
-- [backends] Expose context.Context from pulumi.Context
+- [sdk/go] Expose context.Context from pulumi.Context
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
 ### Bug Fixes
