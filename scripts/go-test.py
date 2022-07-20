@@ -72,12 +72,11 @@ if shutil.which('gotestsum') is not None:
     junit_file = str(test_results_dir.joinpath(f'{test_run}.xml'))
     args = ['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--rerun-fails=2', '--packages', pkgs, '--'] + \
         opts
-
-    print(' '.join(args))
-    if not dryrun:
-        sp.check_call(args, shell=False)
 else:
     args = ['go', 'test'] + args
-    print(' '.join(args))
-    if not dryrun:
-        sp.check_call(args, shell=False)
+
+if shutil.which('gotta-watch-em-all') is not None:
+    args = ['gotta-watch-em-all', '--check-interval', '250', '--report-every-nth', '10', '--show-command', '--show-free', '--'] + args
+
+if not dryrun:
+    sp.check_call(args, shell=False)

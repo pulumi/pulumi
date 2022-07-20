@@ -203,6 +203,11 @@ jobs:
           repo: pulumi/pulumictl
           tag: v0.0.32
           cache: enable
+      - name: Install gotta-watch-em-all
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: gotta-watch-em-all
+          version: 0.3.1
       - name: Install gotestsum
         uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
