@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -539,9 +539,9 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 		if host.tsconfigpath != "" {
 			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
-		// TODO: Inject Environment Variables Here!
-		// TraceID
-		// Zipkin URI
+		if host.tracing != "" {
+			env = append(env, "PULUMI_NODEJS_TRACING_URI="+host.tracing)
+		}
 
 		nodeargs, err := shlex.Split(host.nodeargs)
 		if err != nil {
@@ -554,7 +554,7 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 			logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
 		}
 
-		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+		// Now spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
 		cmd := exec.Command(nodeBin, nodeargs...)

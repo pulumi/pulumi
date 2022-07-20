@@ -24,6 +24,7 @@ import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
 import { Inputs } from "../../output";
+import * as tracing from "../../runtime/tracing";
 
 import * as mod from ".";
 
@@ -175,6 +176,8 @@ export function run(
 
     // If this is a typescript project, we'll want to load node-ts.
     const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
+    // If tracing is enabled, capture the URI to which we will send traces.
+    const tracingUrl: string = process.env["PULUMI_NODEJS_TRACING_URI"] ?? "";
 
     // We provide reasonable defaults for many ts options, meaning you don't need to have a tsconfig.json present
     // if you want to use TypeScript with Pulumi. However, ts-node's default behavior is to walk up from the cwd to
@@ -194,6 +197,12 @@ export function run(
         compilerOptions = tsConfig["compilerOptions"] ?? {};
     } catch (e) {
         compilerOptions = {};
+    }
+
+    if (tracingUrl) {
+      // Dynamically import the tracing module.
+      const trace: typeof tracing = await import("../../runtime/tracing");
+      trace.start(tracingUrl);
     }
 
     if (typeScript) {
