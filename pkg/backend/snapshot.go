@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -623,8 +623,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap := sm.snap()
-	if err := snap.NormalizeURNReferences(); err != nil {
+	snap, err := sm.snap().NormalizeURNReferences()
+	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 	if err := sm.persister.Save(snap); err != nil {

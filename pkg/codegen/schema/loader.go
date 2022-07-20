@@ -165,7 +165,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		if err != nil {
 			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
-		if err := pkgPlugin.InstallWithContext(context.Background(), reader, false); err != nil {
+		if err := pkgPlugin.InstallWithContext(context.Background(), workspace.TarPlugin(reader), false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
@@ -198,6 +198,10 @@ func schemaIsEmpty(schemaBytes []byte) bool {
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	if pkg == "pulumi" {
+		return DefaultPulumiPackageReference, nil
+	}
+
 	l.m.Lock()
 	defer l.m.Unlock()
 

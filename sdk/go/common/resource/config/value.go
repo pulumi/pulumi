@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -71,7 +72,7 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 		return string(json), nil
 	}
 
-	return decrypter.DecryptValue(c.value)
+	return decrypter.DecryptValue(context.TODO(), c.value)
 }
 
 func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
@@ -97,7 +98,7 @@ func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
 
 			val = NewSecureObjectValue(string(json))
 		} else {
-			enc, eerr := encrypter.EncryptValue(raw)
+			enc, eerr := encrypter.EncryptValue(context.TODO(), raw)
 			if eerr != nil {
 				return Value{}, eerr
 			}
@@ -282,7 +283,7 @@ func reencryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (i
 				return nil, err
 			}
 
-			encVal, err := encrypter.EncryptValue(raw)
+			encVal, err := encrypter.EncryptValue(context.TODO(), raw)
 			if err != nil {
 				return nil, err
 			}
@@ -324,7 +325,7 @@ func reencryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (i
 func decryptObject(v interface{}, decrypter Decrypter) (interface{}, error) {
 	decryptIt := func(val interface{}) (interface{}, error) {
 		if isSecure, secureVal := isSecureValue(val); isSecure {
-			return decrypter.DecryptValue(secureVal)
+			return decrypter.DecryptValue(context.TODO(), secureVal)
 		}
 		return decryptObject(val, decrypter)
 	}

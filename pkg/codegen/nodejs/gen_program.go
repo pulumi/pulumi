@@ -48,6 +48,7 @@ type generator struct {
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
@@ -361,9 +362,6 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	if pkg == "pulumi" && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.Package)

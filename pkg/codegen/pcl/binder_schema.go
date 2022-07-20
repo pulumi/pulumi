@@ -142,9 +142,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 	if r, ok := n.(*Resource); ok {
 		token, tokenRange := getResourceToken(r)
-		packageName, _, _, _ := DecomposeToken(token, tokenRange)
-		if packageName != "pulumi" {
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName != pulumiPackage {
 			packageNames.Add(packageName)
+		} else if mod == "providers" {
+			packageNames.Add(name)
 		}
 	}
 
@@ -157,9 +159,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if !ok {
 			return nil
 		}
-		packageName, _, _, _ := DecomposeToken(token, tokenRange)
-		if packageName != "pulumi" {
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName != pulumiPackage {
 			packageNames.Add(packageName)
+		} else if mod == "providers" {
+			packageNames.Add(name)
 		}
 		return nil
 	})
