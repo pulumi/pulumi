@@ -25,15 +25,15 @@ builds:
 - &pulumibin
   id: pulumi
   binary: pulumi
-  builder: prebuilt
   goos: ['linux', 'darwin', 'windows']
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
   ignore:
     - goos: windows
       goarch: arm64
+  builder: prebuilt
   prebuilt:
-    path: goreleaser-{{ .Os }}/{{ .Name }}_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/{{ .Name }}{{ .Ext }}
+    path: goreleaser-{{ .Os }}/{{ trimsuffix .Name .Ext }}_{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/{{ .Name }}
   mod_timestamp: '{{ .CommitTimestamp }}'
 - <<: *pulumibin
   id: pulumi-language-go
@@ -50,13 +50,15 @@ builds:
 - <<: *pulumibin
   id: pulumi-language-java
   binary: pulumi-language-java
+  builder: prebuilt
   prebuilt:
-    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
+    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
 - <<: *pulumibin
   id: pulumi-language-yaml
   binary: pulumi-language-yaml
+  builder: prebuilt
   prebuilt:
-    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
+    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
 
 archives:
 - wrap_in_directory: pulumi
