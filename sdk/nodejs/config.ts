@@ -15,7 +15,7 @@
 import { RunError } from "./errors";
 import { getProject } from "./metadata";
 import { Output } from "./output";
-import { getConfig } from "./runtime";
+import { getConfig } from "./runtime/config";
 
 function makeSecret<T>(value: T): Output<T> {
     return new Output(
