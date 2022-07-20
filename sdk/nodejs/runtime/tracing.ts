@@ -25,78 +25,41 @@
 //   • Add Zipkin URI as Env Var when booting.
 //   • Accept TraceID and Zipkin URI from the NodeJS side.
 
-import * as opentelemetry from "@opentelemetry/sdk-node";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
-import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
+import * as packageJson from "../package.json";
 import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
-import  { BatchSpanProcessor, BasicTracerProvider } from "@opentelemetry/sdk-trace-base";
+import { BatchSpanProcessor, BasicTracerProvider } from "@opentelemetry/sdk-trace-base";
+import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 
 // The name is reported to the trace exporter and associates all traces from
 // the NodeJS runtime grouping them.
 const serviceName = 'pulumi-nodejs-language-host';
 
-// This global variable is initialized with the "start" function. Using a global
-// ensures the tracer is not deallocated during the course of execution.
-let sdk: opentelemetry.NodeSDK;
-
-// This function starts the tracing engine using Zipkin as a backend.
+// This function starts the tracing engine using Zipkin as a backend, and automatically
+// instruments gRPC calls with tracing information.
 export function start(destinationUrl: string) {
-  
-  const zipkin = configureZipkinExporter(destinationUrl);
+  // Set up gRPC instrumentation.
+  registerInstrumentations({
+    instrumentations: [
+      new GrpcInstrumentation(),
+    ],
+  });
 
-  // TODO: Initialize:
-  //       • TraceProvider
-  //       • TraceExporter
-  //       • Instrumentation (for gRPC)
-  
+  const zipkin = new ZipkinExporter({ url: destinationUrl});
+  const resource = Resource.default().merge(
+    new Resource({
+      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
+      [SemanticResourceAttributes.SERVICE_VERSION]: packageJson.version,
+    })
+  );
+
   // A TraceProvider is a factory for traces. When a new trace is created,
   // either through a library call or automatically as part of gRPC hooks,
   // the trace is created by the TraceProvider.
-  const provider = new BasicTracerProvider({
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
-    }),
+   const provider = new BasicTracerProvider({
+    resource,
   });
 
   provider.addSpanProcessor(new BatchSpanProcessor(zipkin))
+  // This allows other modules to create traces using this provider.
   provider.register();
-
-  // TODO: Remove SDK everything.
-  // Initialize the SDK global variable.
-  sdk = new opentelemetry.NodeSDK({
-    serviceName: serviceName,
-    traceExporter: configureZipkinExporter(destinationUrl),
-    instrumentations: [getNodeAutoInstrumentations()]
-  });
-
-  sdk.start();
 }
-
-function configureZipkinExporter(destinationUrl: string): ZipkinExporter {
-  const zipkinOptions = {
-    url: destinationUrl,
-  };
-  return new ZipkinExporter(options);
-}
-
-function tracerProvider: BasicTracerProvider {
-  const provider = 
-  });
-}
-
-function newTracer(): opentelemetry.NodeSDK {
-  return opentelemetry.NodeSDK({
-    
-  });  
-}
-
-// For troubleshooting, set the log level to DiagLogLevel.DEBUG
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
-
-
-// TODO: Span processing
-// TODO: Set trace exporter.
-// TODO: What is getNodeAutoInstrumentations?
-
-
-
