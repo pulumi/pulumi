@@ -15,67 +15,96 @@ changelog:
 
 builds:
 
-- &pulumibin
-  id: pulumi
+- id: pulumi
   binary: pulumi
   dir: pkg
   main: ./cmd/pulumi
   gobinary: ../scripts/go-wrapper.sh
-  env:
-  - CGO_ENABLED=0
-  - GO111MODULE=on
-  goos: ['linux', 'darwin', 'windows']
-  goarch: ['amd64', 'arm64']
-  goamd64: ['v1']
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
   ignore:
     - goos: windows
       goarch: arm64
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   mod_timestamp: '{{ .CommitTimestamp }}'
-- <<: *pulumibin
-  id: pulumi-language-go
-  binary: pulumi-language-go
-  dir: sdk
-  main: ./go/pulumi-language-go
-- <<: *pulumibin
-  id: pulumi-language-nodejs
+- id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk
   main: ./nodejs/cmd/pulumi-language-nodejs
-- <<: *pulumibin
-  id: pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk
   main: ./python/cmd/pulumi-language-python
-- <<: *pulumibin
-  id: pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-dotnet
   binary: pulumi-language-dotnet
   dir: sdk
   main: ./dotnet/cmd/pulumi-language-dotnet
-- <<: *pulumibin
-  id: pulumi-language-java
-  binary: pulumi-language-java
-  prebuilt:
-    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
-- <<: *pulumibin
-  id: pulumi-language-yaml
-  binary: pulumi-language-yaml
-  prebuilt:
-    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
-
-archives:
-- wrap_in_directory: pulumi
-  format_overrides:
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
     - goos: windows
-      format: zip
-  replacements:
-    amd64: x64
-  files:
-    - src: bin/{{ .Os }}/*
-      dst: '.'
-      strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+- id: pulumi-language-go
+  binary: pulumi-language-go
+  dir: sdk
+  main: ./go/pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - darwin
+    - linux
+    - windows
+  ignore:
+    - goos: windows
+      goarch: arm64
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
