@@ -17,6 +17,9 @@
 - [codegen/schema] Support stack reference as a resource
   [#10174](https://github.com/pulumi/pulumi/pull/10174)
 
+- [backends] When logging in to a file backend, validate that the bucket is accessible.
+  [#10012](https://github.com/pulumi/pulumi/pull/10012)
+
 - [cli] Groups `pulumi help` commands by category
   [#10170](https://github.com/pulumi/pulumi/pull/10170)
 
