@@ -72,7 +72,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			OpenTracingServerInterceptor(parentSpan, options...),
-			LoggingServerInterceptor(logFile),
+			debugServerInterceptor(),
 		),
 		grpc.MaxRecvMsgSize(maxRPCMessageSize),
 	)
