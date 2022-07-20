@@ -60,7 +60,8 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 			return nil, errors.Wrap(err, "could not load current project")
 		}
 	}
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan, project)
+	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions,
+		disableProviderPreview, parentSpan, project)
 }
 
 // Variation of NewContext that also sets known project Root. Additionally accepts Project
