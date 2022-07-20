@@ -99,7 +99,7 @@ func (i *debugInterceptor) clearLogFile() {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	err := ioutil.WriteFile(i.logFile, []byte{}, 0644)
+	err := ioutil.WriteFile(i.logFile, []byte{}, 0600)
 	contract.AssertNoError(err)
 }
 
@@ -107,7 +107,7 @@ func (i *debugInterceptor) record(log debugInterceptorLogEntry) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	contract.AssertNoError(err)
 	defer contract.IgnoreClose(f)
 
