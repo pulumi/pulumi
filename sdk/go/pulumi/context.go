@@ -146,6 +146,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	return context, nil
 }
 
+// Context returns the base context used to instantiate the current context.
+func (ctx *Context) Context() context.Context {
+	return ctx.ctx
+}
+
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.
 func (ctx *Context) Close() error {
 	if ctx.engineConn != nil {
