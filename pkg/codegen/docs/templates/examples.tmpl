@@ -1,7 +1,7 @@
 {{ define "examples" -}}
 {{ htmlSafe "<div><pulumi-examples>" }}
 
-## Example Usage
+<h2 id="example-usage">Example Usage</h2>
 
 {{ htmlSafe "<div><pulumi-chooser type=\"language\" options=\"typescript,python,go,csharp,java,yaml\"></pulumi-chooser></div>" }}
 
@@ -11,16 +11,10 @@
 {{ range $key, $val := .Snippets }}
 {{ htmlSafe "<div>" }}
 {{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
-
-{{ htmlSafe $val }}
-
+{{ markdownify $val }}
 {{ htmlSafe "</pulumi-choosable>" }}
 {{ htmlSafe "</div>" }}
-
 {{ end }}
-
 {{ end }}
-
 {{ htmlSafe "</pulumi-examples></div>" }}
-
 {{ end }}

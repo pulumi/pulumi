@@ -1,7 +1,6 @@
 {{ define "properties" }}
 
 {{- range $lang, $props := . }}
-
 <div>
 <pulumi-choosable type="language" values="{{- if eq $lang "nodejs" -}}{{ print "javascript,typescript" }}{{- else -}}{{ print $lang }}{{- end -}}">
 <dl class="resources-properties">
@@ -23,7 +22,5 @@
 </dl>
 </pulumi-choosable>
 </div>
-
 {{- end }}
-
 {{- end }}

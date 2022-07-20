@@ -13,7 +13,7 @@
 {{- end }}
 
 <!-- Create resource -->
-## Create a {{ .Header.Title }} Resource {#create}
+<h2>Create a {{ .Header.Title }} Resource {#create}</h2>
 
 {{- if eq .LangChooserLanguages "" }}
 <div>
@@ -104,40 +104,35 @@
 </pulumi-choosable>
 </div>
 
-## {{ .Header.Title }} Resource Properties {#properties}
+<h2 id="properties">{{ .Header.Title }} Resource Properties</h2>
+<p>To learn more about resource properties and how to use them, see <a href="/docs/intro/concepts/inputs-outputs/">Inputs and Outputs</a> in the Architecture and Concepts docs.</p>
+<h3>Inputs</h3>
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
-
-### Inputs
-
-The {{ .Header.Title }} resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
+<p>The {{ .Header.Title }} resource accepts the following <a href="/docs/intro/concepts/inputs-outputs/">input</a> properties:</p>
 
 {{ template "properties" .InputProperties }}
 
-<!-- Output properties -->
-### Outputs
-
-All [input](#inputs) properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following output properties:
-
+<h3>Outputs</h3>
+<p>All <a href="#inputs">input</a> properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following output properties:</p>
 {{ template "properties" .OutputProperties }}
 
 <!-- Methods -->
 {{- if ne (len .Methods) 0 }}
-## {{ .Header.Title }} Resource Methods {#methods}
+<h2>{{ .Header.Title }} Resource Methods {#methods}</h2>
 
 {{ range .Methods }}
-### {{ .Title }} Method {#method_{{ .Title }}}
+<h3>{{ .Title }} Method {#method_{{ .Title }}}</h3>
 
 {{- if .DeprecationMessage }}
 <p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
 {{- end }}
 
-{{ htmlSafe .Comment }}
+{{ markdownify .Comment }}
 {{- if ne (len .ExamplesSection) 0 }}
 {{ template "examples" .ExamplesSection }}
 {{- end }}
 
-#### Using {{ .Title }}
+<h4>Using {{ .Title }}</h4>
 
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
@@ -172,13 +167,12 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 {{ if ne (len .InputProperties) 0 }}
-
-The following arguments are supported:
+<p>The following arguments are supported:</p>
 {{ template "properties" .InputProperties }}
 {{ end }}
 
 {{ if ne (len .OutputProperties) 0 }}
-#### {{ .Title }} Result {#method_{{ .Title }}_result}
+<h4>{{ .Title }} Result {#method_{{ .Title }}_result}</h4>
 {{ template "properties" .OutputProperties }}
 {{ end }}
 
@@ -187,9 +181,9 @@ The following arguments are supported:
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}
-## Look up an Existing {{.Header.Title}} Resource {#look-up}
+<h2>Look up an Existing {{.Header.Title}} Resource {#look-up}</h2>
 
-Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
+<p>Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.</p>
 
 {{- if eq .LangChooserLanguages "" }}
 <div>
@@ -284,7 +278,7 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 
 <div>
 <pulumi-choosable type="language" values="typescript,javascript,python,go,csharp,java">
-The following state arguments are supported:
+<p>The following state arguments are supported:</p>
 {{ template "properties" .StateInputs }}
 </pulumi-choosable>
 </div>
@@ -294,7 +288,7 @@ The following state arguments are supported:
 <!-- Supporting types -->
 {{ if ne (len .NestedTypes) 0 }}
 
-## Supporting Types
+<h2 id="supporting-types">Supporting Types</h2>
 
 {{ range .NestedTypes }}
 
@@ -308,7 +302,7 @@ The following state arguments are supported:
 
 {{ if .ImportDocs  }}
 
-## Import
+<h2 id="import">Import</h2>
 
 {{ htmlSafe .ImportDocs }}
 
