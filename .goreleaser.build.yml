@@ -2,10 +2,6 @@ dist: goreleaser
 
 project_name: pulumi
 
-before:
-  hooks:
-    - ./scripts/prep-for-goreleaser.sh
-
 release:
   disable: true
 
