@@ -1709,6 +1709,8 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
 	}
 	if err := ioutil.WriteFile(filepath.Join(projdir, "Pulumi.yaml"), bytes, 0644); err != nil {
+		return "", "", fmt.Errorf("error writing Pulumi.yaml: %w", err)
+	}
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {
