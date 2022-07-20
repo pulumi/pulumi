@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -51,7 +52,15 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	parentSpan opentracing.Span) (*Context, error) {
 
 	root := ""
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan, nil)
+	projPath, err := workspace.DetectProjectPath()
+	var project *workspace.Project
+	if err == nil && projPath != "" {
+		project, err = workspace.LoadProject(projPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not load current project")
+		}
+	}
+	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan, project)
 }
 
 // Variation of NewContext that also sets known project Root. Additionally accepts Project
