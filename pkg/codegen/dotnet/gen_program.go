@@ -464,8 +464,10 @@ func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]stri
 	var csharpInputPropertyNameMap = make(map[string]string)
 	if r.Schema != nil {
 		for _, inputProperty := range r.Schema.InputProperties {
-			if val, ok := inputProperty.Language["csharp"]; ok {
-				csharpInputPropertyNameMap[inputProperty.Name] = val.(CSharpPropertyInfo).Name
+			if val1, ok := inputProperty.Language["csharp"]; ok {
+				if val2, ok := val1.(CSharpPropertyInfo); ok {
+					csharpInputPropertyNameMap[inputProperty.Name] = val2.Name
+				}
 			}
 		}
 	}

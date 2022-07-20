@@ -36,6 +36,11 @@ type packageSchema struct {
 	functionTokenMap map[string]string
 }
 
+type packageOpts struct {
+	version           string
+	pluginDownloadURL string
+}
+
 func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
 	contract.Assert(ps != nil)
 
@@ -68,37 +73,50 @@ func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string,
 	return res, token, ok, err
 }
 
+type PackageInfo struct {
+	name    string
+	version string
+}
+
 type PackageCache struct {
 	m sync.RWMutex
 
-	entries map[string]*packageSchema
+	// cache by (name, version)
+	entries map[PackageInfo]*packageSchema
 }
 
 func NewPackageCache() *PackageCache {
 	return &PackageCache{
-		entries: map[string]*packageSchema{},
+		entries: map[PackageInfo]*packageSchema{},
 	}
 }
 
-func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
+func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
-	schema, ok := c.entries[name]
+	schema, ok := c.entries[pkg]
 	return schema, ok
 }
 
 // loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
 // GetSchema method.
-//
-// TODO: schema and provider versions
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*packageSchema, error) {
-	if s, ok := c.getPackageSchema(name); ok {
+// If a version is passed in, the cache will be bypassed and the package will be reloaded.
+func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
+	pkgInfo := PackageInfo{
+		name:    name,
+		version: version,
+	}
+	if s, ok := c.getPackageSchema(pkgInfo); ok {
 		return s, nil
 	}
 
-	version := (*semver.Version)(nil)
-	pkg, err := schema.LoadPackageReference(loader, name, version)
+	var versionSemver *semver.Version
+	if v, err := semver.Make(version); err == nil {
+		versionSemver = &v
+	}
+
+	pkg, err := schema.LoadPackageReference(loader, name, versionSemver)
 	if err != nil {
 		return nil, err
 	}
@@ -121,10 +139,7 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	if s, ok := c.entries[name]; ok {
-		return s, nil
-	}
-	c.entries[name] = schema
+	c.entries[pkgInfo] = schema
 
 	return schema, nil
 }
@@ -135,9 +150,60 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
+// getPkgOpts gets the package options from an unbound resource node.
+func (b *binder) getPkgOpts(node *Resource) packageOpts {
+	node.VariableType = model.NewObjectType(map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
+	})
+	var rangeKey, rangeValue model.Type
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range())
+				rangeKey, rangeValue = rk, rv
+			}
+		}
+	}
+
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+
+	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		if item, ok := item.(*model.Block); ok && item.Type == "options" {
+			options = item
+			break
+		}
+	}
+
+	pkgOpts := packageOpts{}
+	// Typecheck the options block.
+	if options != nil {
+		resourceOptions := &ResourceOptions{}
+		for _, item := range options.Body.Items {
+			switch item := item.(type) {
+			case *model.Attribute:
+				switch item.Name {
+				case "version":
+					pkgOpts.version = modelExprToString(&item.Value)
+				case "pluginDownloadURL":
+					pkgOpts.pluginDownloadURL = modelExprToString(&item.Value)
+				}
+			}
+		}
+		node.Options = resourceOptions
+	}
+
+	return pkgOpts
+}
+
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(n Node) error {
-	// TODO: package versions
+	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
 	if r, ok := n.(*Resource); ok {
@@ -148,6 +214,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		} else {
 			packageNames.Add(packageName)
 		}
+		pkgOpts = b.getPkgOpts(r)
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
@@ -170,10 +237,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	contract.Assert(len(diags) == 0)
 
 	for _, name := range packageNames.SortedValues() {
-		if _, ok := b.referencedPackages[name]; ok {
+		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" {
 			continue
 		}
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name)
+
+		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
 		if err != nil {
 			return err
 		}

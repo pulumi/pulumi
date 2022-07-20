@@ -181,6 +181,10 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		}
 
 		packageName := "@pulumi/" + p.Name
+		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		if err != nil {
+			return err
+		}
 		if langInfo, found := p.Language["nodejs"]; found {
 			nodeInfo, ok := langInfo.(NodePackageInfo)
 			if ok && nodeInfo.PackageName != "" {
@@ -389,6 +393,8 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 func moduleName(module string, pkg *schema.Package) string {
 	// Normalize module.
 	if pkg != nil {
+		err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		contract.AssertNoError(err)
 		if lang, ok := pkg.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {

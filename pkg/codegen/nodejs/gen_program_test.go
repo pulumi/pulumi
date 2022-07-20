@@ -42,3 +42,39 @@ func testGenerateProgramBatch(t *testing.T, testCases []test.ProgramTest) {
 			TestCases:  testCases,
 		})
 }
+
+func TestGenerateProgramVersionSelection(t *testing.T) {
+	t.Parallel()
+
+	expectedVersion := map[string]test.PkgVersionInfo{
+		"aws-resource-options": {
+			Pkg:          "\"@pulumi/aws\"",
+			OpAndVersion: "\"4.38.0\"",
+		},
+	}
+
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, true)
+			},
+			GenProgram: GenerateProgram,
+			TestCases: []test.ProgramTest{
+				{
+					Directory:   "aws-resource-options",
+					Description: "Resource Options",
+					MockPluginVersions: map[string]string{
+						"aws": "4.38.0",
+					},
+				},
+			},
+
+			IsGenProject:    true,
+			GenProject:      GenerateProject,
+			ExpectedVersion: expectedVersion,
+			DependencyFile:  "package.json",
+		})
+}

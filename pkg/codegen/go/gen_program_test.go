@@ -40,6 +40,45 @@ func TestGenerateProgram(t *testing.T) {
 		})
 }
 
+func TestGenerateProgramVersionSelection(t *testing.T) {
+	t.Parallel()
+
+	expectedVersion := map[string]test.PkgVersionInfo{
+		"aws-resource-options": {
+			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
+			OpAndVersion: "v4.38.0",
+		},
+	}
+
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "go",
+			Extension:  "go",
+			OutputFile: "main.go",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, "../../../../../../../sdk")
+			},
+			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+				// Prevent tests from interfering with each other
+				return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
+			},
+			TestCases: []test.ProgramTest{
+				{
+					Directory:   "aws-resource-options",
+					Description: "Resource Options",
+					MockPluginVersions: map[string]string{
+						"aws": "4.38.0",
+					},
+				},
+			},
+
+			IsGenProject:    true,
+			GenProject:      GenerateProject,
+			ExpectedVersion: expectedVersion,
+			DependencyFile:  "go.mod",
+		})
+}
+
 func TestCollectImports(t *testing.T) {
 	t.Parallel()
 
@@ -69,7 +108,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath, nil)))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}

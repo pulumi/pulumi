@@ -64,7 +64,10 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	var pkgSchema *packageSchema
 
 	var ok bool
-	pkgSchema, ok = b.options.packageCache.entries[pkg]
+	pkgInfo := PackageInfo{
+		name: pkg,
+	}
+	pkgSchema, ok = b.options.packageCache.entries[pkgInfo]
 	if !ok {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
