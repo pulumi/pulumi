@@ -146,7 +146,6 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	return context, nil
 }
 
-
 // Context returns the base context used to instantiate the current context.
 func (ctx *Context) Context() context.Context {
 	return ctx.ctx
@@ -254,131 +253,6 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
-		pr, err := ctx.resolveProviderReference(provider)
-		if err != nil {
-			return err
-		}
-		providerRef = pr
-	}
-
-	// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
-	if args == nil {
-		args = struct{}{}
-	}
-	resolvedArgs, _, err := marshalInput(args, anyType, false)
-	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
-	}
-
-	resolvedArgsMap := resource.PropertyMap{}
-	if resolvedArgs.IsObject() {
-		resolvedArgsMap = resolvedArgs.ObjectValue()
-	}
-
-	rpcArgs, err := plugin.MarshalProperties(
-		resolvedArgsMap,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-			KeepSecrets:   true,
-			KeepResources: ctx.keepResources,
-		}),
-	)
-	if err != nil {
-		return fmt.Errorf("marshaling arguments: %w", err)
-	}
-
-	// Now, invoke the RPC to the provider synchronously.
-	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:               tok,
-		Args:              rpcArgs,
-		Provider:          providerRef,
-		Version:           options.Version,
-		PluginDownloadURL: options.PluginDownloadURL,
-		AcceptResources:   !disableResourceReferences,
-	})
-	if err != nil {
-		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return err
-	}
-
-	// If there were any failures from the provider, return them.
-	if len(resp.Failures) > 0 {
-		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
-		var ferr error
-		for _, failure := range resp.Failures {
-			ferr = multierror.Append(ferr,
-				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
-		}
-		return ferr
-	}
-
-	// Otherwise, simply unmarshal the output properties and return the result.
-	outProps, err := plugin.UnmarshalProperties(
-		resp.Return,
-		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-			KeepSecrets:   true,
-			KeepResources: true,
-		}),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	// fail if there are secrets returned from the invoke
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
-	if err != nil {
-		return err
-	}
-	if hasSecret {
-		return errors.New("unexpected secret result returned to invoke call")
-	}
-	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
-	return nil
-}
-
-// Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
-//
-// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
-func (ctx *Context) InvokeYAML(tok string, args interface{}, result interface{}, opts map[string]map[string]string) (err error) {
-	if tok == "" {
-		return errors.New("invoke token must not be empty")
-	}
-
-	resultV := reflect.ValueOf(result)
-	if !(resultV.Kind() == reflect.Ptr &&
-		(resultV.Elem().Kind() == reflect.Struct ||
-			(resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String))) {
-		return errors.New("result must be a pointer to a struct or map value")
-	}
-
-	options := &invokeOptions{}
-	for k1, v1 := range opts {
-		switch k1 {
-		case "provider", "Provider":
-			options.Provider = &ProviderResourceState{}
-			for k2, v2 := range v1 {
-				switch k2 {
-					case ""
-				case "region":
-				}
-			}
-		}
-	}
-
-	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
-	if err = ctx.beginRPC(); err != nil {
-		return err
-	}
-	defer ctx.endRPC(err)
-
-	var providerRef string
-	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
-	if err != nil {
-		return err
-	}
-	if provider := providers[getPackage(tok)]; provider != nil {
-		provider.addTransformation()
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
 			return err
