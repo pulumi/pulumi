@@ -190,13 +190,12 @@ type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 type ProgramCodegenOptions struct {
-	Language             string
-	Extension            string
-	OutputFile           string
-	Check                CheckProgramOutput
-	GenProgram           GenProgram
-	TestCases            []ProgramTest
-	AcceptCodegenChanges bool
+	Language   string
+	Extension  string
+	OutputFile string
+	Check      CheckProgramOutput
+	GenProgram GenProgram
+	TestCases  []ProgramTest
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -217,7 +216,7 @@ func TestProgramCodegen(
 	}
 
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
-	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) || testcase.AcceptCodegenChanges
+	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
