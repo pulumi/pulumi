@@ -4,7 +4,6 @@ project_name: pulumi
 
 before:
   hooks:
-    - ./scripts/get-language-providers.sh
     - ./scripts/prep-for-goreleaser.sh
 
 blobs:
