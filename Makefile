@@ -109,6 +109,9 @@ test_fast:: build get_schemas
 
 test_build:: $(TEST_ALL_DEPS)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
+	cd tests/testprovider &&
+
+
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_output_values
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc

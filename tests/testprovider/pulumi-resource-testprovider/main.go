@@ -17,11 +17,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -31,6 +35,62 @@ const (
 	providerName = "testprovider"
 	version      = "0.0.1"
 )
+
+func rawMessage(v interface{}) schema.RawMessage {
+	bytes, err := json.Marshal(v)
+	contract.Assert(err == nil)
+	return bytes
+}
+
+func GetSchema() *schema.PackageSpec {
+	return &schema.PackageSpec{
+		Name:    providerName,
+		Version: version,
+		Resources: map[string]schema.ResourceSpec{
+			"testprovider:index:Echo": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"echo": schema.PropertySpec{
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"echo"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"echo": schema.PropertySpec{
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+				RequiredInputs: []string{"echo"},
+			},
+		},
+		Language: map[string]schema.RawMessage{
+			"csharp": rawMessage(map[string]interface{}{
+				"packageReferences": map[string]string{
+					"Pulumi": "3.*",
+				},
+			}),
+			"go": rawMessage(map[string]interface{}{
+				"generateResourceContainerTypes": true,
+				"importBasePath":                 "github.com/pulumi/pulumi/tests/testprovider/sdk/go/testprovider",
+			}),
+			"nodejs": rawMessage(map[string]interface{}{
+				"dependencies": map[string]string{
+					"@pulumi/pulumi": "^3.0.0",
+				},
+			}),
+			"python": rawMessage(map[string]interface{}{
+				"requires": map[string]string{
+					"pulumi": ">=3.0.0,<4.0.0",
+				},
+			}),
+		},
+	}
+}
 
 // Minimal set of methods to implement a basic provider.
 type resourceProvider interface {
@@ -184,7 +244,14 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
-	return &rpc.GetSchemaResponse{}, nil
+	schemaJSON, err := json.MarshalIndent(GetSchema(), "", "    ")
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling Pulumi schema")
+	}
+
+	return &rpc.GetSchemaResponse{
+		Schema: string(schemaJSON),
+	}, nil
 }
 
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
