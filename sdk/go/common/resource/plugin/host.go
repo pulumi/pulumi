@@ -94,33 +94,28 @@ type Host interface {
 func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, project *workspace.Project) (Host, error) {
 	// Create plugin info from providers
-	providerPlugins := make([]*workspace.PluginInfo, 0)
+	projectPlugins := make([]*workspace.PluginInfo, 0)
 	if project != nil {
 		for _, providerOpts := range project.Providers {
-			//Go to path
-			var v *semver.Version
-			if providerOpts.Version != "" {
-				ver, err := semver.Parse(providerOpts.Version)
-				if err != nil {
-					return nil, err
-				}
-				v = &ver
-			}
-
-			//Assert existence of provider
-			_, err := os.Stat(providerOpts.Path)
+			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
 			if err != nil {
-				return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+				return nil, err
 			}
-
-			pluginInfo := &workspace.PluginInfo{
-				Name:    providerOpts.Name,
-				Kind:    workspace.ResourcePlugin,
-				Version: v,
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, languageOpts := range project.LanguagePlugins {
+			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			if err != nil {
+				return nil, err
 			}
-			pluginInfo.Path = filepath.Join(providerOpts.Path, pluginInfo.File())
-
-			providerPlugins = append(providerPlugins)
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, analyzerOpts := range project.Analyzers {
+			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
 		}
 	}
 
@@ -136,7 +131,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 		closer:                  new(sync.Once),
-		projectPlugins:          providerPlugins,
+		projectPlugins:          projectPlugins,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -163,6 +158,30 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	}()
 
 	return host, nil
+}
+
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (*workspace.PluginInfo, error) {
+	var v *semver.Version
+	if providerOpts.Version != "" {
+		ver, err := semver.Parse(providerOpts.Version)
+		if err != nil {
+			return nil, err
+		}
+		v = &ver
+	}
+
+	_, err := os.Stat(providerOpts.Path)
+	if err != nil {
+		return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+	}
+
+	pluginInfo := &workspace.PluginInfo{
+		Name:    providerOpts.Name,
+		Kind:    k,
+		Version: v,
+	}
+	pluginInfo.Path = filepath.Join(providerOpts.Path, pluginInfo.File())
+	return pluginInfo, nil
 }
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
