@@ -1,0 +1,3 @@
+"use strict";
+// const pulumi = require("@pulumi/pulumi");
+// TODO: the above still pulls in "typescript" dependency...
