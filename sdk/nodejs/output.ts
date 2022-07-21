@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Resource } from "./resource";
-import * as runtime from "./runtime";
+import * as settings from "./runtime/settings";
 import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
@@ -357,7 +357,7 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
 async function applyHelperAsync<T, U>(
     allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
     func: (t: T) => Input<U>, runWithUnknowns: boolean) {
-    if (runtime.isDryRun()) {
+    if (settings.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
         const applyDuringPreview = isKnown || runWithUnknowns;

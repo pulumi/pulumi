@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,49 +55,54 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 // references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
 // of a resource in the resources map.
 //
-// Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
-func (snap *Snapshot) NormalizeURNReferences() error {
-	if snap != nil {
-		aliased := make(map[resource.URN]resource.URN)
-		fixUrn := func(urn resource.URN) resource.URN {
-			if newUrn, has := aliased[urn]; has {
-				return newUrn
-			}
-			return urn
-		}
-		for _, state := range snap.Resources {
-			// Fix up any references to URNs
-			state.Parent = fixUrn(state.Parent)
-			for i, dependency := range state.Dependencies {
-				state.Dependencies[i] = fixUrn(dependency)
-			}
-			for k, deps := range state.PropertyDependencies {
-				for i, dep := range deps {
-					state.PropertyDependencies[k][i] = fixUrn(dep)
-				}
-			}
-			if state.Provider != "" {
-				ref, err := providers.ParseReference(state.Provider)
-				contract.AssertNoError(err)
-				ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
-				contract.AssertNoError(err)
-				state.Provider = ref.String()
-			}
+// Note: This method does not modify the snapshot (and resource.States
+// in the snapshot) in-place, but returns an independent structure,
+// with minimal copying necessary.
+func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
+	if snap == nil {
+		return nil, nil
+	}
 
-			// Add to aliased maps
-			for _, alias := range state.Aliases {
-				// For ease of implementation, some SDKs may end up creating the same alias to the
-				// same resource multiple times.  That's fine, only error if we see the same alias,
-				// but it maps to *different* resources.
-				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
-					return fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
-				}
-				aliased[alias] = state.URN
+	aliased := make(map[resource.URN]resource.URN)
+	for _, state := range snap.Resources {
+		// Add to aliased maps
+		for _, alias := range state.Aliases {
+			// For ease of implementation, some SDKs may end up creating the same alias to the
+			// same resource multiple times.  That's fine, only error if we see the same alias,
+			// but it maps to *different* resources.
+			if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
+				return nil, fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
 			}
+			aliased[alias] = state.URN
 		}
 	}
 
-	return nil
+	fixUrn := func(urn resource.URN) resource.URN {
+		if newUrn, has := aliased[urn]; has {
+			// TODO should this recur to see if newUrn is simiarly aliased?
+			return newUrn
+		}
+		return urn
+	}
+
+	fixProvider := func(provider string) string {
+		ref, err := providers.ParseReference(provider)
+		contract.AssertNoError(err)
+		ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
+		contract.AssertNoError(err)
+		return ref.String()
+	}
+
+	fixResource := func(old *resource.State) *resource.State {
+		return newStateBuilder(old).
+			withUpdatedParent(fixUrn).
+			withUpdatedDependencies(fixUrn).
+			withUpdatedPropertyDependencies(fixUrn).
+			withUpdatedProvider(fixProvider).
+			build()
+	}
+
+	return snap.withUpdatedResources(fixResource), nil
 }
 
 // VerifyIntegrity checks a snapshot to ensure it is well-formed.  Because of the cost of this operation,
@@ -219,4 +224,25 @@ func (snap *Snapshot) GlobUrn(urn resource.URN) []resource.URN {
 		urns[i] = resource.URN(u)
 	}
 	return urns
+}
+
+// Applies a non-mutating modification for every resource.State in the
+// Snapshot, returns the edited Snapshot.
+func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resource.State) *Snapshot {
+	old := snap.Resources
+	new := []*resource.State{}
+	edited := false
+	for _, s := range old {
+		n := update(s)
+		if n != s {
+			edited = true
+		}
+		new = append(new, n)
+	}
+	if !edited {
+		return snap
+	}
+	newSnap := *snap // shallow copy
+	newSnap.Resources = new
+	return &newSnap
 }

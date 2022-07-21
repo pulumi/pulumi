@@ -100,6 +100,11 @@ jobs:
 
           # test_integration skipped
 
+          - run: make test_integration_subpkgs
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 1
+
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
@@ -215,21 +220,19 @@ jobs:
         with:
           name: pulumi-${{ runner.os }}-${{ runner.arch }}
           path: artifacts/go
-      - name: Install pulumi-language-python-exec
-        run: |
-          mkdir -p bin
-          cp sdk/python/cmd/pulumi-language-python-exec bin/
       - name: Install Pulumi Go Binaries
         run: |
+          echo "Running prep script to put artifacts in bin"
+          ./scripts/prep-for-goreleaser.sh $(go env GOOS)
+
           echo "Checking contents of artifacts/go"
           find artifacts/go
-          mkdir -p bin
           mv artifacts/go/pulumi*/* $PWD/bin/
           chmod a+x $PWD/bin/*
+
           echo "Checking contents of $PWD/bin"
           find $PWD/bin
-      - name: Add ./bin to PATH
-        run: |
+
           LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo $LOCAL_PATH >> $GITHUB_PATH

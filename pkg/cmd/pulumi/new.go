@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -64,9 +65,10 @@ type newArgs struct {
 	stack             string
 	templateNameOrURL string
 	yes               bool
+	listTemplates     bool
 }
 
-func runNew(args newArgs) error {
+func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -299,7 +301,7 @@ func runNew(args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		err = handleConfig(ctx, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -372,6 +374,18 @@ func newNewCmd() *cobra.Command {
 		prompt:      promptForValue,
 	}
 
+	getTemplates := func() ([]workspace.Template, error) {
+		// Attempt to retrieve available templates.
+		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
+		if err != nil {
+			logging.Warningf("could not retrieve templates: %v", err)
+			return []workspace.Template{}, err
+		}
+
+		// Get the list of templates.
+		return repo.Templates()
+	}
+
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
@@ -408,11 +422,27 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := commandContext()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
+			if args.listTemplates {
+				templates, err := getTemplates()
+				if err != nil {
+					logging.Warningf("could not list templates: %v", err)
+					return err
+				}
+				available, _ := templatesToOptionArrayAndMap(templates, true)
+				fmt.Println("")
+				fmt.Println("Available Templates:")
+				for _, t := range available {
+					fmt.Printf("  %s\n", t)
+				}
+				return nil
+			}
+
 			args.yes = args.yes || skipConfirmations()
-			return runNew(args)
+			return runNew(ctx, args)
 		}),
 	}
 
@@ -422,15 +452,7 @@ func newNewCmd() *cobra.Command {
 		// Show default help.
 		defaultHelp(cmd, args)
 
-		// Attempt to retrieve available templates.
-		repo, err := workspace.RetrieveTemplates("", false /*offline*/, workspace.TemplateKindPulumiProject)
-		if err != nil {
-			logging.Warningf("could not retrieve templates: %v", err)
-			return
-		}
-
-		// Get the list of templates.
-		templates, err := repo.Templates()
+		templates, err := getTemplates()
 		if err != nil {
 			logging.Warningf("could not list templates: %v", err)
 			return
@@ -438,12 +460,8 @@ func newNewCmd() *cobra.Command {
 
 		// If we have any templates, show them.
 		if len(templates) > 0 {
-			available, _ := templatesToOptionArrayAndMap(templates, true)
-			fmt.Println("")
-			fmt.Println("Available Templates:")
-			for _, t := range available {
-				fmt.Printf("  %s\n", t)
-			}
+			fmt.Println()
+			fmt.Printf("There are %d locally installed templates.\n", len(templates))
 		}
 	})
 
@@ -480,6 +498,9 @@ func newNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
+	cmd.PersistentFlags().BoolVarP(
+		&args.listTemplates, "list-templates", "l", false,
+		"List locally installed templates and exit")
 
 	return cmd
 }
@@ -826,6 +847,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // If stackConfig is non-nil and a config value exists in stackConfig, it will be used as the default
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
+	ctx context.Context,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
@@ -912,7 +934,7 @@ func promptForConfig(
 		// Encrypt the value if needed.
 		var v config.Value
 		if secret {
-			enc, err := encrypter.EncryptValue(value)
+			enc, err := encrypter.EncryptValue(ctx, value)
 			if err != nil {
 				return nil, err
 			}

@@ -199,7 +199,8 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
+	upTemplateNameOrURL := func(ctxt context.Context,
+		templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -303,7 +304,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(ctxt, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -393,6 +394,7 @@ func newUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipPreview || skipConfirmations()
 
 			interactive := cmdutil.Interactive()
@@ -450,7 +452,7 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				return upTemplateNameOrURL(args[0], opts)
+				return upTemplateNameOrURL(ctx, args[0], opts)
 			}
 
 			return upWorkingDirectory(opts)
@@ -601,6 +603,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
+	ctx context.Context,
 	s backend.Stack,
 	templateNameOrURL string,
 	template workspace.Template,
@@ -639,7 +642,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}

@@ -175,6 +175,14 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 | Linux/macOS x64 | [![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi/actions/workflows/master.yml) |
 | Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi)   |
 
+#### EOL Releases
+
+The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
+
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-3.0/).
+
+* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-2.0/).
+
 ### Languages
 
 |    | Language | Status | Runtime |
