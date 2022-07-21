@@ -3,27 +3,27 @@
 set -euo pipefail
 
 bench() {
-    hyperfine --prepare "../script/setup-benchmark.sh" \
+    hyperfine -n "$1 pulumi:$(pulumi version) command:'pulumi up -y'" \
+              --prepare "../script/setup-benchmark.sh" \
               --cleanup "pulumi destroy -y" \
               "pulumi up -y"
 }
 
 pushd "$1"
-pulumi stack rm -y || echo "preparing.."
 
+../script/setup-benchmark.sh
 pulumi stack init benchmark
 
-echo "Control: $(pulumi version)"
-bench
+bench control
 
 export PATH=~/.pulumi-dev/bin:$PATH
-yarn link @pulumi/pulumi
-yarn install
-echo "Test: $(pulumi version)"
-bench
-yarn unlink @pulumi/pulumi
-yarn install --force
+yarn -s link @pulumi/pulumi
+yarn -s install
 
-pulumi stack rm -y
+bench test
+
+yarn -s unlink @pulumi/pulumi
+yarn -s install --force
+pulumi stack rm -y >/dev/null
 
 popd
