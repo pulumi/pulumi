@@ -1,5 +1,9 @@
 ### Improvements
 
+- [auto/go] Adds the ability to capture incremental `stderr`
+  via the new option `ErrorProgressStreams`.
+  [#10179](https://github.com/pulumi/pulumi/pull/10179)
+
 - [cli/plugins] Warn that using GITHUB_REPOSITORY_OWNER is deprecated.
   [#10142](https://github.com/pulumi/pulumi/pull/10142)
 
@@ -9,6 +13,18 @@
 
 - [cli/config] Allow `pulumi config cp --path` between objects.
   [#10147](https://github.com/pulumi/pulumi/pull/10147)
+
+- [codegen/schema] Support stack reference as a resource
+  [#10174](https://github.com/pulumi/pulumi/pull/10174)
+
+- [backends] When logging in to a file backend, validate that the bucket is accessible.
+  [#10012](https://github.com/pulumi/pulumi/pull/10012)
+
+- [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
+  [#10198](https://github.com/pulumi/pulumi/pull/10198)
+
+- [sdk/go] Expose context.Context from pulumi.Context
+  [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
 ### Bug Fixes
 
@@ -31,3 +47,6 @@
   
 - [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
   [#10155](https://github.com/pulumi/pulumi/pull/10155)
+
+- [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
+  [#10164](https://github.com/pulumi/pulumi/pull/10164)

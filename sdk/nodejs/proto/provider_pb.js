@@ -3253,7 +3253,8 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    sequencenumber: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    sequencenumber: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    randomseed: msg.getRandomseed_asB64()
   };
 
   if (includeInstance) {
@@ -3307,6 +3308,10 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
     case 4:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setSequencenumber(value);
+      break;
+    case 5:
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setRandomseed(value);
       break;
     default:
       reader.skipField();
@@ -3364,6 +3369,13 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
   if (f !== 0) {
     writer.writeInt32(
       4,
+      f
+    );
+  }
+  f = message.getRandomseed_asU8();
+  if (f.length > 0) {
+    writer.writeBytes(
+      5,
       f
     );
   }
@@ -3477,6 +3489,48 @@ proto.pulumirpc.CheckRequest.prototype.getSequencenumber = function() {
  */
 proto.pulumirpc.CheckRequest.prototype.setSequencenumber = function(value) {
   return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional bytes randomSeed = 5;
+ * @return {!(string|Uint8Array)}
+ */
+proto.pulumirpc.CheckRequest.prototype.getRandomseed = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * optional bytes randomSeed = 5;
+ * This is a type-conversion wrapper around `getRandomseed()`
+ * @return {string}
+ */
+proto.pulumirpc.CheckRequest.prototype.getRandomseed_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getRandomseed()));
+};
+
+
+/**
+ * optional bytes randomSeed = 5;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getRandomseed()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CheckRequest.prototype.getRandomseed_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getRandomseed()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+ */
+proto.pulumirpc.CheckRequest.prototype.setRandomseed = function(value) {
+  return jspb.Message.setProto3BytesField(this, 5, value);
 };
 
 

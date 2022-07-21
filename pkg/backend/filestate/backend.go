@@ -153,6 +153,14 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
+	isAcc, err := bucket.IsAccessible(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
+	}
+	if !isAcc {
+		return nil, fmt.Errorf("bucket %s is not accessible", u)
+	}
+
 	// Allocate a unique lock ID for this backend instance.
 	lockID, err := uuid.NewV4()
 	if err != nil {

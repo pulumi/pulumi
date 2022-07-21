@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ import * as path from "path";
 import * as tsnode from "ts-node";
 import * as ini from "ini";
 import * as semver from "semver";
-import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as runtime from "../../runtime";
+import * as stack from "../../runtime/stack";
+import * as settings from "../../runtime/settings";
+import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 
 import * as mod from ".";
@@ -185,19 +186,11 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
-    const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-
-    let compilerOptions: object;
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
-
     if (typeScript) {
-        tsnode.register({
+        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
+        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const tsn: typeof tsnode = require("ts-node");
+        tsn.register({
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
@@ -264,7 +257,7 @@ ${defaultMessage}`);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", runtime.disconnectSync);
+    process.on("exit", settings.disconnectSync);
 
     programStarted();
 
@@ -370,5 +363,5 @@ ${defaultMessage}`);
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    return runtime.runInPulumiStack(runProgram);
+    return stack.runInPulumiStack(runProgram);
 }
