@@ -60,13 +60,13 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		}
 	}
 	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions,
-		disableProviderPreview, parentSpan, project)
+		disableProviderPreview, parentSpan, project.Plugins)
 }
 
 // Variation of NewContext that also sets known project Root. Additionally accepts Project
 func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, project *workspace.Project) (*Context, error) {
+	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
 
 	if d == nil {
 		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
@@ -83,7 +83,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, project.Plugins)
+		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, plugins)
 		if err != nil {
 			return nil, err
 		}
