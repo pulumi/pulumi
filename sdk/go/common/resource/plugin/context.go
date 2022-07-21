@@ -83,7 +83,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, project)
+		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, project.Plugins)
 		if err != nil {
 			return nil, err
 		}

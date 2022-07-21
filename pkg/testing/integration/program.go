@@ -1691,7 +1691,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
-	// Modify the pulumi project file in the temp dir
+	//Modify the pulumi project file in the temp dir
 	//if it has any local references to plugins
 	dir, err := workspace.DetectProjectPathFrom(projdir)
 	if err != nil {
@@ -1701,9 +1701,23 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if err != nil {
 		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
 	}
-	for _, provider := range proj.Providers {
-		if !filepath.IsAbs(provider.Path) {
-			provider.Path = filepath.Join(projdir, provider.Path)
+
+	if proj.Plugins != nil {
+		for _, provider := range proj.Plugins.Providers {
+			if !filepath.IsAbs(provider.Path) {
+				provider.Path = filepath.Join(projdir, provider.Path)
+			}
+		}
+		for _, language := range proj.Plugins.Languages {
+			if !filepath.IsAbs(language.Path) {
+				language.Path = filepath.Join(projdir, language.Path)
+			}
+		}
+
+		for _, analyzer := range proj.Plugins.Analyzers {
+			if !filepath.IsAbs(analyzer.Path) {
+				analyzer.Path = filepath.Join(projdir, analyzer.Path)
+			}
 		}
 	}
 	bytes, err := yaml.Marshal(proj)

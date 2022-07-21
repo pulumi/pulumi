@@ -1226,8 +1226,6 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 		return "", err
 	}
 
-	//This function is caled GetPluginPath. It calls getPluginInfoOrPath, which returns info, path.
-	//But path *is not used* in this function when it returns correctly. What gives?
 	if info != nil {
 		contract.Assert(info.Path == filepath.Dir(path))
 	}
@@ -1294,7 +1292,9 @@ func getPluginInfoAndPath(
 				continue
 			}
 		}
-		return plugin, plugin.Path, nil
+
+		path := filepath.Join(plugin.Path, plugin.File())
+		return plugin, path, nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We

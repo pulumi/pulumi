@@ -907,17 +907,18 @@ func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	err := ioutil.WriteFile(pyaml, []byte(`name: test-yaml
 runtime: yaml
 description: "Test Pulumi YAML"
-
+plugins:
 providers:
-- name: aws
-  version: 1.0.0
-  path: ../bin/aws`), 0600)
+  - name: aws
+    version: 1.0.0
+    path: ../bin/aws`), 0600)
 	assert.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proj.Providers))
-	assert.Equal(t, "aws", proj.Providers[0].Name)
-	assert.Equal(t, "1.0.0", proj.Providers[0].Version)
-	assert.Equal(t, "../bin/aws", proj.Providers[0].Path)
+	assert.NotNil(t, proj.Plugins)
+	assert.Equal(t, 1, len(proj.Plugins.Providers))
+	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
+	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
+	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
 }

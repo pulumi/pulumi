@@ -69,6 +69,12 @@ type PluginOptions struct {
 	Path    string `json:"path" yaml:"path"`
 }
 
+type Plugins struct {
+	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
+	Languages []PluginOptions `json:"languages,omitempty" yaml:"languages,omitempty"`
+	Analyzers []PluginOptions `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -109,9 +115,7 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
-	Providers       []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
-	LanguagePlugins []PluginOptions `json:"languagePlugins,omitempty" yaml:"languagePlugins,omitempty"`
-	Analyzers       []PluginOptions `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
+	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 func (proj *Project) Validate() error {

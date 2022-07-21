@@ -92,25 +92,25 @@ type Host interface {
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
-	disableProviderPreview bool, project *workspace.Project) (Host, error) {
+	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]*workspace.PluginInfo, 0)
-	if project != nil {
-		for _, providerOpts := range project.Providers {
+	if plugins != nil {
+		for _, providerOpts := range plugins.Providers {
 			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
-		for _, languageOpts := range project.LanguagePlugins {
+		for _, languageOpts := range plugins.Languages {
 			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
-		for _, analyzerOpts := range project.Analyzers {
+		for _, analyzerOpts := range plugins.Analyzers {
 			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
 			if err != nil {
 				return nil, err
@@ -177,10 +177,10 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 
 	pluginInfo := &workspace.PluginInfo{
 		Name:    providerOpts.Name,
+		Path:    filepath.Clean(providerOpts.Path),
 		Kind:    k,
 		Version: v,
 	}
-	pluginInfo.Path = filepath.Join(providerOpts.Path, pluginInfo.File())
 	return pluginInfo, nil
 }
 
