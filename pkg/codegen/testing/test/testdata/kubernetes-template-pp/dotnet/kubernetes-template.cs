@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Kubernetes = Pulumi.Kubernetes;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var argocd_serverDeployment = new Kubernetes.Apps.V1.Deployment("argocd_serverDeployment", new()
     {

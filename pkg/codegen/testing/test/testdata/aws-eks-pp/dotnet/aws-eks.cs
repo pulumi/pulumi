@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-await Deployment.RunAsync(async() => 
+return await Deployment.RunAsync(async() => 
 {
     // VPC
     var eksVpc = new Aws.Ec2.Vpc("eksVpc", new()

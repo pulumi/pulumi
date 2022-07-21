@@ -3,7 +3,7 @@ using System.Text.Json;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     // Create a policy with multiple Condition keys
     var policy = new Aws.Iam.Policy("policy", new()

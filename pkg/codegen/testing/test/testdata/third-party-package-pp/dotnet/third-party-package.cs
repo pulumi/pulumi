@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Other = ThirdParty.Other;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var Other = new Other.Thing("Other", new()
     {

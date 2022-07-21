@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Pulumi;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("haha business"));
 

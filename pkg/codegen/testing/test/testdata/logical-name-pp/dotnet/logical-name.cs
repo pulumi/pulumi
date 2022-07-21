@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Random = Pulumi.Random;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var resourceLexicalName = new Random.RandomPet("aA-Alpha_alpha.🤯⁉️");
 

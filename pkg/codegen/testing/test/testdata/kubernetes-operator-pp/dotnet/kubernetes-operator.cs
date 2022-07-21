@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Kubernetes = Pulumi.Kubernetes;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var pulumi_kubernetes_operatorDeployment = new Kubernetes.Apps.V1.Deployment("pulumi_kubernetes_operatorDeployment", new()
     {

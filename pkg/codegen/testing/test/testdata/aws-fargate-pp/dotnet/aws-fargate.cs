@@ -3,7 +3,7 @@ using System.Text.Json;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var vpc = Aws.Ec2.GetVpc.Invoke(new()
     {

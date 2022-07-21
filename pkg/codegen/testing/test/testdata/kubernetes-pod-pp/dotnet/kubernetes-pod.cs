@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Kubernetes = Pulumi.Kubernetes;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var bar = new Kubernetes.Core.V1.Pod("bar", new()
     {

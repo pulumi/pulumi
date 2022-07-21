@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using AzureNative = Pulumi.AzureNative;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var frontDoor = new AzureNative.Network.FrontDoor("frontDoor", new()
     {

@@ -5,7 +5,7 @@ using System.Text.Json;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     // Create a bucket and expose a website index document
     var siteBucket = new Aws.S3.Bucket("siteBucket", new()

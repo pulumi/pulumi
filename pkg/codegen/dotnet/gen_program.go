@@ -370,7 +370,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	if g.asyncInit {
 		asyncKeywordWhenNeeded = "async"
 	}
-	g.Fprintf(w, "await Deployment.RunAsync(%s() => \n", asyncKeywordWhenNeeded)
+	g.Fprintf(w, "return await Deployment.RunAsync(%s() => \n", asyncKeywordWhenNeeded)
 	g.Fprint(w, "{\n")
 }
 

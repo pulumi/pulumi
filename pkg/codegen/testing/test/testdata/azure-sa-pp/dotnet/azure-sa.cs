@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Azure = Pulumi.Azure;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var config = new Config();
     var storageAccountNameParam = config.Require("storageAccountNameParam");

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var aws_vpc = new Aws.Ec2.Vpc("aws_vpc", new()
     {

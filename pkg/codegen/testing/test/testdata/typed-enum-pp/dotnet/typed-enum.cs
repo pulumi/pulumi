@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using AzureNative = Pulumi.AzureNative;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var someString = "foobar";
 

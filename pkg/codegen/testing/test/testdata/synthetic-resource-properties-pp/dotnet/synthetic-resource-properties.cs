@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Pulumi;
 using Synthetic = Pulumi.Synthetic.Synthetic;
 
-await Deployment.RunAsync(() => 
+return await Deployment.RunAsync(() => 
 {
     var rt = new Synthetic.ResourceProperties.Root("rt");
 
