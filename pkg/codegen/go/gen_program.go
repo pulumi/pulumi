@@ -119,7 +119,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err))
+		return nil, g.diagnostics, fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err)
 	}
 
 	files := map[string][]byte{
