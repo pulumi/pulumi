@@ -511,8 +511,7 @@ func (source *fallbackSource) Download(
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
 	Name              string          // the simple name of the plugin.
-	Path              string          // the path that a plugin was loaded from.
-	ExplicitPath      string          // the path that a plugin is known to exist at.
+	Path              string          // the path that a plugin was loaded from (this will always be a directory)
 	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version // the plugin's semantic version, if present.
 	Size              int64           // the size of the plugin, in bytes.
@@ -1221,42 +1220,30 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []*PluginInfo) (string, string, error) {
-	info, path, err := getPluginInfoOrPath(kind, name, version, true /* skipMetadata */, projectPlugins)
+	projectPlugins []*PluginInfo) (string, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	//This function is caled GetPluginPath. It calls getPluginInfoOrPath, which returns info, path.
 	//But path *is not used* in this function when it returns correctly. What gives?
 	if info != nil {
-		if info.ExplicitPath != "" {
-			return filepath.Dir(info.ExplicitPath), info.ExplicitPath, nil
-		}
-		matchDir, err := info.DirPath()
-		if err != nil {
-			return "", "", err
-		}
-
-		matchPath, err := info.FilePath()
-		if err != nil {
-			return "", "", err
-		}
-
-		return matchDir, matchPath, nil
+		contract.Assert(info.Path == filepath.Dir(path))
 	}
 
-	return "", path, err
+	return path, err
 }
 
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	projectPlugins []*PluginInfo) (*PluginInfo, error) {
-	info, path, err := getPluginInfoOrPath(kind, name, version, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
 
 	if info != nil {
+		contract.Assert(info.Path == filepath.Dir(path))
 		return info, nil
 	}
 
@@ -1269,11 +1256,11 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	return info, nil
 }
 
-// getPluginInfoOrPath searches for a compatible plugin kind, name, and version and returns either:
+// getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:
 //  * if found as an ambient plugin, nil and the path to the executable
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
-func getPluginInfoOrPath(
+func getPluginInfoAndPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
 	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
@@ -1307,7 +1294,7 @@ func getPluginInfoOrPath(
 				continue
 			}
 		}
-		return plugin, plugin.ExplicitPath, nil
+		return plugin, plugin.Path, nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We

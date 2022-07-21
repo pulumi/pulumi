@@ -98,7 +98,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	if project != nil {
 		for _, providerOpts := range project.Providers {
 			//Go to path
-			var v *semver.Version = nil
+			var v *semver.Version
 			if providerOpts.Version != "" {
 				ver, err := semver.Parse(providerOpts.Version)
 				if err != nil {
@@ -112,22 +112,10 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 			if err != nil {
 				return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
 			}
-			var kind workspace.PluginKind
-
-			switch providerOpts.Kind {
-			case "provider", "":
-				kind = workspace.ResourcePlugin
-			case "analyzer":
-				kind = workspace.AnalyzerPlugin
-			case "language":
-				kind = workspace.LanguagePlugin
-			default:
-				return nil, fmt.Errorf("invalid provider kind %s", providerOpts.Kind)
-			}
 
 			pluginInfo := &workspace.PluginInfo{
 				Name:    providerOpts.Name,
-				Kind:    kind,
+				Kind:    workspace.ResourcePlugin,
 				Version: v,
 			}
 			pluginInfo.Path = filepath.Join(providerOpts.Path, pluginInfo.File())
