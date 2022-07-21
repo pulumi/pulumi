@@ -25,8 +25,8 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -46,7 +46,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- event.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -89,15 +89,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// panics and we can't know whether or not we were in the middle of writing to this channel when the panic occurred.
 	//
 	// Instead of using a `defer`, we manually close `eventsChannel` on every exit of this function.
-	eventsChannel := make(chan engine.Event)
+	eventsChannel := make(chan event.Event)
 
-	var events []engine.Event
+	var events []event.Event
 	go func() {
 		// pull the events from the channel and store them locally
 		for e := range eventsChannel {
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.SummaryEvent {
+			if e.Type == event.ResourcePreEvent ||
+				e.Type == event.ResourceOutputsEvent ||
+				e.Type == event.SummaryEvent {
 
 				events = append(events, e)
 			}
@@ -133,7 +133,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) result.Result {
+	events []event.Event, opts UpdateOptions) result.Result {
 	for {
 		var response string
 
@@ -230,15 +230,15 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	return changes, res
 }
 
-func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
+func createDiff(updateKind apitype.UpdateKind, events []event.Event, displayOpts display.Options) string {
 	buff := &bytes.Buffer{}
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
+	seen := make(map[resource.URN]event.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
 		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg != "" && e.Type != engine.SummaryEvent {
+		if msg != "" && e.Type != event.SummaryEvent {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
 		}

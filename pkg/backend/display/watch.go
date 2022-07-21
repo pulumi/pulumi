@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -34,47 +34,47 @@ import (
 const timeFormat = "15:04:05.000"
 
 // ShowWatchEvents renders incoming engine events for display in Watch Mode.
-func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowWatchEvents(op string, events <-chan event.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 	for e := range events {
 		// In the event of cancelation, break out of the loop immediately.
-		if e.Type == engine.CancelEvent {
+		if e.Type == event.CancelEvent {
 			break
 		}
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
 		// Events occurring early:
-		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
+		case event.PreludeEvent, event.SummaryEvent, event.StdoutColorEvent:
 			// Ignore it
 			continue
-		case engine.PolicyViolationEvent:
+		case event.PolicyViolationEvent:
 			// At this point in time, we don't handle policy events as part of pulumi watch
 			continue
-		case engine.DiagEvent:
+		case event.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload().(engine.DiagEventPayload)
+			p := e.Payload().(event.DiagEventPayload)
 			resourceName := ""
 			if p.URN != "" {
 				resourceName = string(p.URN.Name())
 			}
 			PrintfWithWatchPrefix(time.Now(), resourceName,
 				"%s", renderDiffDiagEvent(p, opts))
-		case engine.ResourcePreEvent:
-			p := e.Payload().(engine.ResourcePreEventPayload)
+		case event.ResourcePreEvent:
+			p := e.Payload().(event.ResourcePreEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"%s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
-		case engine.ResourceOutputsEvent:
-			p := e.Payload().(engine.ResourceOutputsEventPayload)
+		case event.ResourceOutputsEvent:
+			p := e.Payload().(event.ResourceOutputsEventPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"done %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())
 			}
-		case engine.ResourceOperationFailed:
-			p := e.Payload().(engine.ResourceOperationFailedPayload)
+		case event.ResourceOperationFailed:
+			p := e.Payload().(event.ResourceOperationFailedPayload)
 			if shouldShow(p.Metadata, opts) {
 				PrintfWithWatchPrefix(time.Now(), string(p.Metadata.URN.Name()),
 					"failed %s %s\n", p.Metadata.Op, p.Metadata.URN.Type())

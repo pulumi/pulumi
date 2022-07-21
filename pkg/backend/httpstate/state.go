@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -159,7 +160,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
 // the update logs or drilling into the timeline of an update.
-func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.Event) error {
+func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []event.Event) error {
 	contract.Assert(u.tokenSource != nil)
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
@@ -189,14 +190,14 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 // posting them to the Pulumi service.
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
-	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool) {
+	events <-chan event.Event, done chan<- bool, opts display.Options, isPreview bool) {
 	// We take the channel of engine events and pass them to separate components that will display
 	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
 	// they see a CancelEvent, and when finished, close the "done" channel.
-	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
+	displayEvents := make(chan event.Event) // Note: unbuffered, but we assume it won't matter in practice.
 	displayEventsDone := make(chan bool)
 
-	persistEvents := make(chan engine.Event, 100)
+	persistEvents := make(chan event.Event, 100)
 	persistEventsDone := make(chan bool)
 
 	// We close our own done channel when both of the dependent components have finished.
@@ -220,7 +221,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 		// We stop reading from the event stream as soon as we see the CancelEvent,
 		// which will also signal the display/persist components to shutdown too.
-		if e.Type == engine.CancelEvent {
+		if e.Type == event.CancelEvent {
 			break
 		}
 	}
@@ -305,20 +306,20 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
-func isDebugDiagEvent(e engine.Event) bool {
-	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
+func isDebugDiagEvent(e event.Event) bool {
+	return e.Type == event.DiagEvent && (e.Payload().(event.DiagEventPayload)).Severity == diag.Debug
 }
 
 type engineEventBatch struct {
 	sequenceStart int
-	events        []engine.Event
+	events        []event.Event
 }
 
 // persistEngineEvents reads from a channel of engine events and persists them on the
 // Pulumi Service. This is the data that powers the logs display.
 func persistEngineEvents(
 	update *cloudUpdate, persistDebugEvents bool,
-	events <-chan engine.Event, done chan<- bool) {
+	events <-chan event.Event, done chan<- bool) {
 	// A single update can emit hundreds, if not thousands, or tens of thousands of
 	// engine events. We transmit engine events in large batches to reduce the overhead
 	// associated with each HTTP request to the service. We also send multiple HTTP
@@ -342,7 +343,7 @@ func persistEngineEvents(
 		close(done)
 	}()
 
-	var eventBatch []engine.Event
+	var eventBatch []event.Event
 	maxDelayTicker := time.NewTicker(maxTransmissionDelay)
 
 	// We maintain a sequence counter for each event to ensure that the Pulumi Service can
@@ -407,7 +408,7 @@ func persistEngineEvents(
 			}
 
 			// Stop processing once we see the CancelEvent.
-			if e.Type == engine.CancelEvent {
+			if e.Type == event.CancelEvent {
 				sawCancelEvent = true
 				break
 			}

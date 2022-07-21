@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -281,7 +282,7 @@ type CancellationScope interface {
 // CancellationScopeSource provides a source for cancellation scopes.
 type CancellationScopeSource interface {
 	// NewScope creates a new cancellation scope.
-	NewScope(events chan<- engine.Event, isPreview bool) CancellationScope
+	NewScope(events chan<- event.Event, isPreview bool) CancellationScope
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.

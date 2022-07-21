@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -37,7 +37,7 @@ import (
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan event.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
@@ -69,7 +69,7 @@ func ShowEvents(
 	}
 }
 
-func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
+func logJSONEvent(encoder *json.Encoder, event event.Event, opts Options, seq int) error {
 	apiEvent, err := ConvertEngineEvent(event, false /* showSecrets */)
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq i
 	return encoder.Encode(apiEvent)
 }
 
-func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
+func startEventLogger(events <-chan event.Event, done chan<- bool, opts Options) (<-chan event.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
 	logFile, err := os.Create(opts.EventLogPath)
 	if err != nil {
@@ -105,7 +105,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 		return events, done
 	}
 
-	outEvents, outDone := make(chan engine.Event), make(chan bool)
+	outEvents, outDone := make(chan event.Event), make(chan bool)
 	go func() {
 		defer close(done)
 		defer func() {
@@ -123,7 +123,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 
 			outEvents <- e
 
-			if e.Type == engine.CancelEvent {
+			if e.Type == event.CancelEvent {
 				break
 			}
 		}
@@ -144,7 +144,7 @@ func (s *nopSpinner) Reset() {
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
-func isRootStack(step engine.StepEventMetadata) bool {
+func isRootStack(step event.StepEventMetadata) bool {
 	return isRootURN(step.URN)
 }
 
@@ -153,7 +153,7 @@ func isRootURN(urn resource.URN) bool {
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step engine.StepEventMetadata, opts Options) bool {
+func shouldShow(step event.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -14,20 +15,20 @@ type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)
 
 // RunQuery executes a query program against the resource outputs of a locally hosted stack.
 func RunQuery(ctx context.Context, b Backend, op QueryOperation,
-	callerEventsOpt chan<- engine.Event, newQuery MakeQuery) result.Result {
+	callerEventsOpt chan<- event.Event, newQuery MakeQuery) result.Result {
 	q, err := newQuery(ctx, op)
 	if err != nil {
 		return result.FromError(err)
 	}
 
 	// Render query output to CLI.
-	displayEvents := make(chan engine.Event)
+	displayEvents := make(chan event.Event)
 	displayDone := make(chan bool)
 	go display.ShowQueryEvents("running query", displayEvents, displayDone, op.Opts.Display)
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
-	engineEvents := make(chan engine.Event)
+	engineEvents := make(chan event.Event)
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {

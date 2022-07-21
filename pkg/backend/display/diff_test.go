@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -19,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func loadEvents(path string) (events []engine.Event, err error) {
+func loadEvents(path string) (events []event.Event, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening '%v': %w", path, err)
@@ -67,7 +68,7 @@ func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool)
 		require.NoError(t, err)
 	}
 
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	eventChannel, doneChannel := make(chan event.Event), make(chan bool)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

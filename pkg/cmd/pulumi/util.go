@@ -41,12 +41,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -754,7 +754,7 @@ type cancellationScopeSource int
 
 var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
 
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
+func (cancellationScopeSource) NewScope(events chan<- event.Event, isPreview bool) backend.CancellationScope {
 	cancelContext, cancelSource := cancel.NewContext(context.Background())
 
 	c := &cancellationScope{
@@ -773,7 +773,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				event.NewEvent(event.StdoutColorEvent, event.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -781,7 +781,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 				cancelSource.Cancel()
 			} else {
 				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				event.NewEvent(event.StdoutColorEvent, event.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})

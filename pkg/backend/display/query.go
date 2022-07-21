@@ -20,14 +20,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ShowQueryEvents displays query events on the CLI.
-func ShowQueryEvents(op string, events <-chan engine.Event,
+func ShowQueryEvents(op string, events <-chan event.Event,
 	done chan<- bool, opts Options) {
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
@@ -52,54 +52,54 @@ func ShowQueryEvents(op string, events <-chan engine.Event,
 		select {
 		case <-ticker.C:
 			spinner.Tick()
-		case event := <-events:
+		case e := <-events:
 			spinner.Reset()
 
 			out := os.Stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
+			if e.Type == event.DiagEvent {
+				payload := e.Payload().(event.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
 					out = os.Stderr
 				}
 			}
 
-			msg := renderQueryEvent(event, opts)
+			msg := renderQueryEvent(e, opts)
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
 
-			if event.Type == engine.CancelEvent {
+			if e.Type == event.CancelEvent {
 				return
 			}
 		}
 	}
 }
 
-func renderQueryEvent(event engine.Event, opts Options) string {
-	switch event.Type {
-	case engine.CancelEvent:
+func renderQueryEvent(e event.Event, opts Options) string {
+	switch e.Type {
+	case event.CancelEvent:
 		return ""
 
-	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
+	case event.StdoutColorEvent:
+		return renderStdoutColorEvent(e.Payload().(event.StdoutEventPayload), opts)
 
 	// Includes stdout of the query process.
-	case engine.DiagEvent:
-		return renderQueryDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
+	case event.DiagEvent:
+		return renderQueryDiagEvent(e.Payload().(event.DiagEventPayload), opts)
 
-	case engine.PreludeEvent, engine.SummaryEvent, engine.ResourceOperationFailed,
-		engine.ResourceOutputsEvent, engine.ResourcePreEvent:
+	case event.PreludeEvent, event.SummaryEvent, event.ResourceOperationFailed,
+		event.ResourceOutputsEvent, event.ResourcePreEvent:
 
 		contract.Failf("query mode does not support resource operations")
 		return ""
 
 	default:
-		contract.Failf("unknown event type '%s'", event.Type)
+		contract.Failf("unknown event type '%s'", e.Type)
 		return ""
 	}
 }
 
-func renderQueryDiagEvent(payload engine.DiagEventPayload, opts Options) string {
+func renderQueryDiagEvent(payload event.DiagEventPayload, opts Options) string {
 	// Ignore debug messages unless we're in debug mode.
 	if payload.Severity == diag.Debug && !opts.Debug {
 		return ""

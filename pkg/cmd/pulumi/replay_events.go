@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/type/event"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -98,7 +98,7 @@ func newReplayEventsCmd() *cobra.Command {
 				return fmt.Errorf("error reading events: %w", err)
 			}
 
-			eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+			eventChannel, doneChannel := make(chan event.Event), make(chan bool)
 
 			if delay != 0 {
 				time.Sleep(delay)
@@ -152,14 +152,14 @@ func newReplayEventsCmd() *cobra.Command {
 	return cmd
 }
 
-func loadEvents(path string) ([]engine.Event, error) {
+func loadEvents(path string) ([]event.Event, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening '%v': %w", path, err)
 	}
 	defer contract.IgnoreClose(f)
 
-	var events []engine.Event
+	var events []event.Event
 	dec := json.NewDecoder(f)
 	for {
 		var jsonEvent apitype.EngineEvent
@@ -179,8 +179,8 @@ func loadEvents(path string) ([]engine.Event, error) {
 
 	// If there are no events or if the event stream does not terminate with a cancel event,
 	// synthesize one here.
-	if len(events) == 0 || events[len(events)-1].Type != engine.CancelEvent {
-		events = append(events, engine.NewEvent(engine.CancelEvent, nil))
+	if len(events) == 0 || events[len(events)-1].Type != event.CancelEvent {
+		events = append(events, event.NewEvent(event.CancelEvent, nil))
 	}
 
 	return events, nil
