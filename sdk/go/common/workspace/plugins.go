@@ -1219,27 +1219,22 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
+func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, error) {
 	info, path, err := getPluginInfoOrPath(kind, name, version, true /* skipMetadata */)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	if info != nil {
-		matchDir, err := info.DirPath()
-		if err != nil {
-			return "", "", err
-		}
-
 		matchPath, err := info.FilePath()
 		if err != nil {
-			return "", "", err
+			return "", err
 		}
 
-		return matchDir, matchPath, nil
+		return matchPath, nil
 	}
 
-	return "", path, err
+	return path, err
 }
 
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*PluginInfo, error) {
