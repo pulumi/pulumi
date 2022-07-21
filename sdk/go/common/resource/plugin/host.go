@@ -17,6 +17,7 @@ package plugin
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/blang/semver"
@@ -97,14 +98,19 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	if project != nil {
 		for _, providerOpts := range project.Providers {
 			//Go to path
-			v, err := semver.Parse(providerOpts.Version)
-			if err != nil {
-				return nil, err
+			var v *semver.Version = nil
+			if providerOpts.Version != "" {
+				ver, err := semver.Parse(providerOpts.Version)
+				if err != nil {
+					return nil, err
+				}
+				v = &ver
 			}
+
 			//Assert existence of provider
-			_, err = os.Stat(providerOpts.Path)
+			_, err := os.Stat(providerOpts.Path)
 			if err != nil {
-				return nil, fmt.Errorf("could not find provider binary at path %s", providerOpts.Path)
+				return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
 			}
 			var kind workspace.PluginKind
 
@@ -119,12 +125,14 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 				return nil, fmt.Errorf("invalid provider kind %s", providerOpts.Kind)
 			}
 
-			providerPlugins = append(providerPlugins, &workspace.PluginInfo{
-				Name:         providerOpts.Name,
-				Kind:         kind,
-				ExplicitPath: providerOpts.Path,
-				Version:      &v,
-			})
+			pluginInfo := &workspace.PluginInfo{
+				Name:    providerOpts.Name,
+				Kind:    kind,
+				Version: v,
+			}
+			pluginInfo.Path = filepath.Join(providerOpts.Path, pluginInfo.File())
+
+			providerPlugins = append(providerPlugins)
 		}
 	}
 

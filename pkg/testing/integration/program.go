@@ -1691,6 +1691,8 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
+	// Modify the pulumi project file in the temp dir
+	//if it has any local references to plugins
 	dir, err := workspace.DetectProjectPathFrom(projdir)
 	if err != nil {
 		return "", "", err
@@ -1708,7 +1710,8 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if err != nil {
 		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(projdir, "Pulumi.yaml"), bytes, 0644); err != nil {
+
+	if err := ioutil.WriteFile(dir, bytes, 0644); err != nil {
 		return "", "", fmt.Errorf("error writing Pulumi.yaml: %w", err)
 	}
 

@@ -63,9 +63,8 @@ type ProjectOptions struct {
 	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
 }
 
-type ProviderOptions struct {
+type PluginOptions struct {
 	Name    string `json:"name" yaml:"name"`
-	Kind    string `json:"kind" yaml:"kind"`
 	Version string `json:"version" yaml:"version"`
 	Path    string `json:"path" yaml:"path"`
 }
@@ -110,7 +109,7 @@ type Project struct {
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
-	Providers []*ProviderOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
+	Providers []PluginOptions `json:"providers,omitempty" yaml:"providers,omitempty"`
 }
 
 func (proj *Project) Validate() error {

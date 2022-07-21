@@ -142,8 +142,6 @@ func (err *MissingError) Error() string {
 		includePath = " or on your $PATH"
 	}
 
-	fmt.Printf("New Missing Error: %+v\n", err.Info)
-
 	if err.Info.Version != nil {
 		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
 			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
