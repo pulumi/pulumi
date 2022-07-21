@@ -43,7 +43,6 @@ type State struct {
 	Aliases                 []URN                 // TODO
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
-	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 }
 
@@ -53,7 +52,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, sequenceNumber int, retainOnDelete bool) *State {
+	importID ID, retainOnDelete bool) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -78,7 +77,6 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
 		ImportID:                importID,
-		SequenceNumber:          sequenceNumber,
 		RetainOnDelete:          retainOnDelete,
 	}
 
