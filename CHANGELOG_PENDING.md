@@ -20,6 +20,15 @@
 - [codegen/schema] Support stack reference as a resource
   [#10174](https://github.com/pulumi/pulumi/pull/10174)
 
+- [backends] When logging in to a file backend, validate that the bucket is accessible.
+  [#10012](https://github.com/pulumi/pulumi/pull/10012)
+
+- [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
+  [#10198](https://github.com/pulumi/pulumi/pull/10198)
+
+- [sdk/go] Expose context.Context from pulumi.Context
+  [#10190](https://github.com/pulumi/pulumi/pull/10190)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
@@ -41,3 +50,6 @@
   
 - [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
   [#10155](https://github.com/pulumi/pulumi/pull/10155)
+
+- [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
+  [#10164](https://github.com/pulumi/pulumi/pull/10164)

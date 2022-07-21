@@ -19,7 +19,9 @@ import { Provider } from "./provider";
 import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
+import * as settings from "../runtime/settings";
+import * as rpc from "../runtime/rpc";
+import * as config from "../runtime/config";
 import { parseArgs } from "./internals";
 
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
@@ -327,7 +329,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             resp.setUrn(await output(result.urn).promise());
 
-            const [state, stateDependencies] = await runtime.serializeResourceProperties(`construct(${type}, ${name})`, result.state);
+            const [state, stateDependencies] = await rpc.serializeResourceProperties(`construct(${type}, ${name})`, result.state);
             const stateDependenciesMap = resp.getStatedependenciesMap();
             for (const [key, resources] of stateDependencies) {
                 const deps = new provproto.ConstructResponse.PropertyDependencies();
@@ -337,7 +339,7 @@ class Server implements grpc.UntypedServiceImplementation {
             resp.setState(structproto.Struct.fromJavaScript(state));
 
             // Wait for RPC operations to complete.
-            await runtime.waitForRPCs();
+            await settings.waitForRPCs();
 
             callback(undefined, resp);
         } catch (e) {
@@ -395,7 +397,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             if (result.outputs) {
                 const [ret, retDependencies] =
-                    await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+                    await rpc.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
                 const returnDependenciesMap = resp.getReturndependenciesMap();
                 for (const [key, resources] of retDependencies) {
                     const deps = new provproto.CallResponse.ReturnDependencies();
@@ -417,7 +419,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             // Wait for RPC operations to complete.
-            await runtime.waitForRPCs();
+            await settings.waitForRPCs();
 
             callback(undefined, resp);
         } catch (e) {
@@ -478,7 +480,7 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         throw new Error("fatal: Missing <engine> address");
     }
 
-    runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
+    settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
         req.getMonitorendpoint(), req.getDryrun());
 
     const pulumiConfig: {[key: string]: string} = {};
@@ -488,7 +490,7 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
             pulumiConfig[k] = v;
         }
     }
-    runtime.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
+    config.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
 }
 
 /**
@@ -498,10 +500,10 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
 export async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
 
-    const deserializedInputs = runtime.deserializeProperties(inputsStruct);
+    const deserializedInputs = rpc.deserializeProperties(inputsStruct);
     for (const k of Object.keys(deserializedInputs)) {
         const input = deserializedInputs[k];
-        const isSecret = runtime.isRpcSecret(input);
+        const isSecret = rpc.isRpcSecret(input);
         const depsUrns: resource.URN[] = inputDependencies.get(k)?.getUrnsList() ?? [];
 
         if (!isSecret && (depsUrns.length === 0 || containsOutputs(input) || await isResourceReference(input, depsUrns))) {
@@ -514,7 +516,7 @@ export async function deserializeInputs(inputsStruct: any, inputDependencies: an
             // Note: If the value is or contains an unknown value, the Output will mark its value as
             // unknown automatically, so we just pass true for isKnown here.
             const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
-            result[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+            result[k] = new Output(deps, Promise.resolve(rpc.unwrapRpcSecret(input)), Promise.resolve(true),
                 Promise.resolve(isSecret), Promise.resolve([]));
         }
     }
@@ -630,7 +632,7 @@ export async function main(provider: Provider, args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
+        "grpc.max_receive_message_length": settings.maxRPCMessageSize,
     });
 
     // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It
@@ -667,7 +669,7 @@ function createProviderResource(ref: string): resource.ProviderResource {
     const typeParts = type.split(":");
     const typName = typeParts.length > 2 ? typeParts[2] : "";
 
-    const resourcePackage = runtime.getResourcePackage(typName, /*version:*/ "");
+    const resourcePackage = rpc.getResourcePackage(typName, /*version:*/ "");
     if (resourcePackage) {
         return resourcePackage.constructProvider(urnName, type, urn);
     }

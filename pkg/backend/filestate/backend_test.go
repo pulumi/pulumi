@@ -395,3 +395,12 @@ func TestRenameWorks(t *testing.T) {
 	assert.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
+
+func TestLoginToNonExistingFolderFails(t *testing.T) {
+	t.Parallel()
+
+	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
+	b, err := New(cmdutil.Diag(), fakeDir)
+	assert.Error(t, err)
+	assert.Nil(t, b)
+}

@@ -174,8 +174,9 @@ jobs:
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi.whl
-            path: sdk/python/lib/dist/*.whl
+          name: pulumi.whl
+          path: sdk/python/lib/dist/*.whl
+          retention-days: 2
 
   build_node_sdk:
     name: Build Pulumi Node SDK tarball
@@ -226,8 +227,9 @@ jobs:
       - name: Upload pulumi-node-sdk.tgz
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-node-sdk.tgz
-            path: sdk/nodejs/bin/*.tgz
+          name: pulumi-node-sdk.tgz
+          path: sdk/nodejs/bin/*.tgz
+          retention-days: 2
 
   build_dotnet_sdk:
     name: Build Pulumi .NET SDK NuGet packages
@@ -270,5 +272,6 @@ jobs:
       - name: Upload the NuGet packages
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-nuget-packages
-            path: sdk/dotnet/nupkgs/*.nupkg
+          name: pulumi-nuget-packages
+          path: sdk/dotnet/nupkgs/*.nupkg
+          retention-days: 2
