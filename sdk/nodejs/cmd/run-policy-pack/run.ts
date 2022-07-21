@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@ import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
-import { parseConfigFileTextToJson } from "typescript";
+import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as runtime from "../../runtime";
+import * as settings from "../../runtime/settings";
+import * as stack from "../../runtime/stack";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -164,19 +165,12 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // just tell ts-node to not load project options at all. This helps with cases like
     // pulumi/pulumi#1772.
     const tsConfigPath = "tsconfig.json";
-    const skipProject = !fs.existsSync(tsConfigPath);
-
-    let compilerOptions: object;
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
 
     if (opts.typeScript) {
-        tsnode.register({
+        const skipProject = !fs.existsSync(tsConfigPath);
+        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const tsn: typeof tsnode = require("ts-node");
+        tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compilerOptions: {
@@ -242,7 +236,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", runtime.disconnectSync);
+    process.on("exit", settings.disconnectSync);
 
     opts.programStarted();
 
@@ -286,5 +280,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         }
     };
 
-    return opts.runInStack ? runtime.runInPulumiStack(runProgram) : runProgram();
+    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
 }
