@@ -23,6 +23,9 @@
 - [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
   [#10198](https://github.com/pulumi/pulumi/pull/10198)
 
+- [sdk/go] Expose context.Context from pulumi.Context
+  [#10190](https://github.com/pulumi/pulumi/pull/10190)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.

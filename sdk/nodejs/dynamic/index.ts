@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 import { Inputs } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
+import * as settings from "../runtime/settings";
+import * as serializeClosure from "../runtime/closure/serializeClosure";
+
 
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -164,18 +166,23 @@ export interface ResourceProvider {
 const providerCache = new WeakMap<ResourceProvider, Promise<string>>();
 
 function serializeProvider(provider: ResourceProvider): Promise<string> {
+    // Load runtime/closure on demand, as its dependencies are slow to load.
+    //
+    // See https://www.typescriptlang.org/docs/handbook/modules.html#optional-module-loading-and-other-advanced-loading-scenarios
+    const sc: typeof serializeClosure = require("../runtime/closure/serializeClosure");
+
     let result: Promise<string>;
     // caching is enabled by default as of 3.0
-    if (runtime.cacheDynamicProviders()) {
+    if (settings.cacheDynamicProviders()) {
         const cachedProvider = providerCache.get(provider);
         if (cachedProvider) {
             result = cachedProvider;
         } else {
-            result = runtime.serializeFunction(() => provider).then(sf => sf.text);
+            result = sc.serializeFunction(() => provider).then(sf => sf.text);
             providerCache.set(provider, result);
         }
     } else {
-        result = runtime.serializeFunction(() => provider).then(sf => sf.text);
+        result = sc.serializeFunction(() => provider).then(sf => sf.text);
     }
     return result;
 }
