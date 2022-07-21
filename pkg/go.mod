@@ -7,6 +7,8 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 // Working around https://github.com/sergi/go-diff/issues/123
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
+replace github.com/xanzy/ssh-agent => github.com/aaronfriel/ssh-agent v0.5.0
+
 require (
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.22.0
@@ -50,7 +52,7 @@ require (
 	github.com/zclconf/go-cty v1.10.0
 	gocloud.dev v0.24.0
 	gocloud.dev/secrets/hashivault v0.24.0
-	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -136,7 +138,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886 // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -162,7 +164,7 @@ require (
 	cloud.google.com/go/compute v1.5.0 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/kms v1.1.0 // indirect
-	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.9.0 // indirect
