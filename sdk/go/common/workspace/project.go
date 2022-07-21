@@ -65,7 +65,7 @@ type ProjectOptions struct {
 
 type PluginOptions struct {
 	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version" yaml:"version"`
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	Path    string `json:"path" yaml:"path"`
 }
 

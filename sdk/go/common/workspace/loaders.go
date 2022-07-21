@@ -99,7 +99,6 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
-	//TODO: configure project.Plugins
 	err = project.Validate()
 	if err != nil {
 		return nil, err
