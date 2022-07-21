@@ -271,7 +271,7 @@ func NewPulumiCmd() *cobra.Command {
 
 		// Common commands:
 		{
-			Name: "Project Commands",
+			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
 				newNewCmd(),
 				newConfigCmd(),
