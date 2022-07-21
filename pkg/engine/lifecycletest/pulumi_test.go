@@ -186,7 +186,7 @@ func TestCheckFailureRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, randomSeed []byte int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
 				},
 			}, nil
@@ -235,7 +235,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, randomSeed []byte int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
 						Property: "someprop",
 						Reason:   "field is not valid",
@@ -3039,13 +3039,13 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				CheckF: func(
 					urn resource.URN,
 					olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					randomSeed []byte int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// make a deterministic autoname
 					if _, has := news["name"]; !has {
 						if name, has := olds["name"]; has {
 							news["name"] = name
 						} else {
-							name, err := resource.NewUniqueHexV2(urn, sequenceNumber, urn.Name().String(), -1, -1)
+							name, err := resource.NewUniqueHexV2(urn, randomSeed []byte, urn.Name().String(), -1, -1)
 							assert.Nil(t, err)
 							generatedName = resource.NewStringProperty(name)
 							news["name"] = generatedName
@@ -3127,7 +3127,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
 }
 
-func TestSequenceNumberResetsAfterReplace(t *testing.T) {
+func TestrandomSeed []byteResetsAfterReplace(t *testing.T) {
 	t.Parallel()
 
 	// This test is to check that after we've done a replace with an unknown sequence number the
@@ -3150,8 +3150,8 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 				CheckF: func(
 					urn resource.URN,
 					olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					news["name"] = names[sequenceNumber]
+					randomSeed []byte int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news["name"] = names[randomSeed []byte]
 					return news, nil, nil
 				},
 				DiffF: func(
@@ -3211,7 +3211,7 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 	assert.Equal(t, names[1], snap.Resources[1].Outputs["name"])
 
 	// Mutate the snapshot that we've lost the sequence number and run an update that will cause a replace
-	snap.Resources[1].SequenceNumber = 0
+	snap.Resources[1].randomSeed []byte = 0
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
@@ -4841,7 +4841,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 					return news, resource.StatusOK, nil
 				},
 				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					randomSeed []byte int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					if news["foo"].StringValue() == "bad" {
 						return nil, []plugin.CheckFailure{
 							{Property: resource.PropertyKey("foo"), Reason: "Bad foo"},

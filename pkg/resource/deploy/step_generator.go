@@ -466,9 +466,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 			}
 
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, 0)
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, nil)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, 0)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, nil)
 		}
 
 		if err != nil {
@@ -761,7 +761,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, 0)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, nil)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {

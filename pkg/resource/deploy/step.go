@@ -957,7 +957,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, 0)
+		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, nil)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -997,7 +997,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, 0)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, nil)
 	if err != nil {
 		return rst, nil, err
 	}
