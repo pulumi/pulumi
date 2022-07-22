@@ -165,9 +165,18 @@ namespace Pulumi
                 // If we logged any exceptions, then return with a
                 // special error code stating as such so that our host
                 // does not print out another set of errors.
-                return (loggedExceptionCount > 0)
+                var exitCode = (loggedExceptionCount > 0)
                     ? _processExitedAfterLoggingUserActionableMessage
                     : 1;
+
+                // We set the exit code explicitly here in case users
+                // do not bubble up the exit code themselves to
+                // top-level entry point of the program. For example
+                // when they `await Deployment.RunAsync()` instead of 
+                // `return await Deployment.RunAsync()`
+                Environment.ExitCode = exitCode;
+
+                return exitCode;
             }
 
             private async Task<bool> LogExceptionToErrorStream(Exception exception)
