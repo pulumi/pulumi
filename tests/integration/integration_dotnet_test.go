@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -364,20 +365,20 @@ func TestConstructDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructDotnet(t, test.expectedResourceCount, test.env,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env []string, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component", "dotnet"),
-		Dependencies: []string{"Pulumi"},
+		ProviderPlugins: providers,
+		Env:             env,
+		Dir:             filepath.Join("construct_component", "dotnet"),
+		Dependencies:    []string{"Pulumi"},
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
@@ -423,8 +424,6 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowDotnet(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
-
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
 	// module to run `yarn install && yarn link @pulumi/pulumi` in the .NET program's directory, allowing
@@ -434,10 +433,11 @@ func TestConstructSlowDotnet(t *testing.T) {
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	opts := &integration.ProgramTestOptions{
-		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir:          filepath.Join("construct_component_slow", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Quick:        true,
+		ProviderPlugins: []workspace.PluginOptions{testComponentSlowOptions(t)},
+		Env:             []string{testYarnLinkPulumiEnv},
+		Dir:             filepath.Join("construct_component_slow", "dotnet"),
+		Dependencies:    []string{"Pulumi"},
+		Quick:           true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -484,22 +484,21 @@ func TestConstructPlainDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainDotnet(t, test.expectedResourceCount, test.env,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
-	env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int, env []string, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component_plain", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Quick:        true,
+		Env:             env,
+		ProviderPlugins: providers,
+		Dir:             filepath.Join("construct_component_plain", "dotnet"),
+		Dependencies:    []string{"Pulumi"},
+		Quick:           true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -532,9 +531,10 @@ func TestConstructMethodsDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_methods", test.componentDir)),
+				},
 				Dir:          filepath.Join("construct_component_methods", "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
@@ -574,9 +574,10 @@ func TestConstructProviderDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join(testDir, test.componentDir)),
+				},
 				Dir:          filepath.Join(testDir, "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,

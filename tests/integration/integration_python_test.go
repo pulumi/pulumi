@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -560,19 +561,19 @@ func TestConstructPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPython(t, test.expectedResourceCount, test.env,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPython(t *testing.T, expectedResourceCount int, env []string, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env: env,
-		Dir: filepath.Join("construct_component", "python"),
+		ProviderPlugins: providers,
+		Env:             env,
+		Dir:             filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -621,8 +622,6 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowPython(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
-
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
 	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
@@ -632,8 +631,9 @@ func TestConstructSlowPython(t *testing.T) {
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "python"),
+		ProviderPlugins: []workspace.PluginOptions{testComponentSlowOptions(t)},
+		Env:             []string{testYarnLinkPulumiEnv},
+		Dir:             filepath.Join("construct_component_slow", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -683,17 +683,16 @@ func TestConstructPlainPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainPython(t, test.expectedResourceCount, test.env,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_plain", test.componentDir))))
 		})
 	}
 }
 
 func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
-	env ...string) *integration.ProgramTestOptions {
+	env []string, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "python"),
@@ -732,9 +731,10 @@ func TestConstructMethodsPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_methods", test.componentDir)),
+				},
 				Dir: filepath.Join("construct_component_methods", "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -779,9 +779,10 @@ func TestConstructProviderPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join(testDir, test.componentDir)),
+				},
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),

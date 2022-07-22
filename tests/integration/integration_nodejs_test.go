@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -894,20 +895,19 @@ func TestConstructNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructNode(t, test.expectedResourceCount, pathEnv))
+				optsForConstructNode(t, test.expectedResourceCount,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructNode(t *testing.T, expectedResourceCount int, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		ProviderPlugins: providers,
+		Dir:             filepath.Join("construct_component", "nodejs"),
+		Dependencies:    []string{"@pulumi/pulumi"},
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
@@ -955,14 +955,13 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowNode(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		Env:          []string{pathEnv},
-		Dir:          filepath.Join("construct_component_slow", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
+		ProviderPlugins: []workspace.PluginOptions{testComponentSlowOptions(t)},
+		Dir:             filepath.Join("construct_component_slow", "nodejs"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -1001,21 +1000,20 @@ func TestConstructPlainNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainNode(t, test.expectedResourceCount, pathEnv))
+				optsForConstructPlainNode(t, test.expectedResourceCount,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_plain", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component_plain", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
+		ProviderPlugins: providers,
+		Dir:             filepath.Join("construct_component_plain", "nodejs"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -1048,9 +1046,10 @@ func TestConstructMethodsNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_methods", test.componentDir)),
+				},
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
@@ -1094,9 +1093,10 @@ func TestConstructProviderNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join(testDir, test.componentDir)),
+				},
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
@@ -1140,7 +1140,9 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	expectedError := "intentional error from within an apply"
 
 	opts := &integration.ProgramTestOptions{
-		Env:           []string{pathEnv(t, filepath.Join(dir, componentDir))},
+		ProviderPlugins: []workspace.PluginOptions{
+			pluginOptions(t, "testcomponent", filepath.Join(dir, componentDir)),
+		},
 		Dir:           filepath.Join(dir, "nodejs"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		Quick:         true,

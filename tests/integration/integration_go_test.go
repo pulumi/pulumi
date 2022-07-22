@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -451,18 +452,18 @@ func TestConstructGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
-			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, test.env,
+				pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+				pluginOptions(t, "testcomponent", filepath.Join("construct_component", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructGo(t *testing.T, expectedResourceCount int, env []string, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env: env,
-		Dir: filepath.Join("construct_component", "go"),
+		ProviderPlugins: providers,
+		Env:             env,
+		Dir:             filepath.Join("construct_component", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
@@ -511,8 +512,6 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
-
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
 	// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
@@ -522,8 +521,9 @@ func TestConstructSlowGo(t *testing.T) {
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "go"),
+		ProviderPlugins: []workspace.PluginOptions{testComponentSlowOptions(t)},
+		Env:             []string{testYarnLinkPulumiEnv},
+		Dir:             filepath.Join("construct_component_slow", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
@@ -574,19 +574,18 @@ func TestConstructPlainGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainGo(t, test.expectedResourceCount,
+					pluginOptions(t, "testprovider", filepath.Join("..", "testprovider")),
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_plain", test.componentDir))))
 		})
 	}
 }
 
-func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, providers ...workspace.PluginOptions) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env: env,
-		Dir: filepath.Join("construct_component_plain", "go"),
+		ProviderPlugins: providers,
+		Dir:             filepath.Join("construct_component_plain", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v2",
 		},
@@ -623,9 +622,10 @@ func TestConstructMethodsGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: append(test.env, pathEnv),
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join("construct_component_methods", test.componentDir)),
+				},
 				Dir: filepath.Join("construct_component_methods", "go"),
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
@@ -671,9 +671,10 @@ func TestConstructProviderGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
+				ProviderPlugins: []workspace.PluginOptions{
+					pluginOptions(t, "testcomponent", filepath.Join(testDir, test.componentDir)),
+				},
 				Dir: filepath.Join(testDir, "go"),
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
