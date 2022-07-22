@@ -38,7 +38,7 @@ type projectGeneratorFunc func(directory string, project workspace.Project, p *p
 func newConvertCmd() *cobra.Command {
 	var outDir string
 	var language string
-	var installDeps bool
+	var generateOnly bool
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -110,7 +110,7 @@ func newConvertCmd() *cobra.Command {
 
 			defer ctx.Close()
 
-			if installDeps {
+			if !generateOnly {
 				if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 					return result.FromError(err)
 				}
@@ -133,7 +133,7 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(
 		//nolint:lll
-		&installDeps, "install-dependencies", true, "Whether to install dependencies specified in the pulumi project")
+		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	return cmd
 }

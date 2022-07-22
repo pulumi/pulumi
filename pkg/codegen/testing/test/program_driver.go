@@ -69,8 +69,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: allProgLanguages.Except("python"),
-		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
+		SkipCompile: allProgLanguages.Except("python").Except("dotnet"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
@@ -140,11 +139,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "functions",
 		Description: "Functions",
-		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8077]
-		// Blocked on dotnet:
-		//   TODO[pulumi/pulumi#8078]
-		//   TODO[pulumi/pulumi#8079]
 	},
 	{
 		Directory:   "output-funcs-aws",
