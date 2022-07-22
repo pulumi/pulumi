@@ -26,7 +26,6 @@ import (
 )
 
 // newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
-// It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:     "gen-completion <SHELL>",
