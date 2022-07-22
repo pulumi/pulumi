@@ -706,9 +706,11 @@ func BatteryTest(t *testing.T, opts *ProgramTestOptions, langOpts []BatteryTestO
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCyclePrepare()
 	assert.NoError(t, err)
-
+	//run get projinfo
+	projinfo, err := pt.getProjinfo(pt.projdir)
+	assert.NoError(t, err)
 	//Assert runtime is YAML
-	assert.Equal(pt.proj.Runtime, "yaml")
+	assert.Equal(t, projinfo.Proj.Runtime.Name(), "yaml")
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
 	for _, langOpt := range langOpts {
@@ -717,17 +719,36 @@ func BatteryTest(t *testing.T, opts *ProgramTestOptions, langOpts []BatteryTestO
 		err := os.Mkdir(subdir, 0755)
 		assert.NoError(t, err)
 
-		args := []string{"--language", langOpt.Language, "--output", subdir}
+		args := []string{"convert", "--language", langOpt.Language, "--out", subdir}
 
 		//convert to new language
 		err = pt.runPulumiCommand("convert", args, pt.tmpdir, false)
+		assert.NoError(t, err)
+
+		TransformProject(func(proj *workspace.Project) *workspace.Project {
+			proj.Name = tokens.PackageName(fmt.Sprintf("%s-%s", proj.Name, langOpt.Language))
+			return proj
+		}, subdir)
 
 		//Configure opts
-		langPtOpts := opts.With(*langOpt.Opts).With(ProgramTestOptions{
-			Dir: subdir,
+		langPtOpts := ProgramTestOptions{}
+		if opts != nil {
+			langPtOpts = *opts
+		}
+		if langOpt.Opts != nil {
+			langPtOpts = langPtOpts.With(*langOpt.Opts)
+		}
+		langPtOpts = langPtOpts.With(ProgramTestOptions{
+			Dir:       subdir,
+			StackName: langPtOpts.GetStackName().String() + "-" + langOpt.Language,
 		})
-
-		ProgramTest(t, &langPtOpts)
+		t.Run(langOpt.Language, func(t *testing.T) {
+			ProgramTest(t, &langPtOpts)
+		})
+		//clean up subdir
+		if err := os.RemoveAll(subdir); err != nil {
+			t.Errorf("error removing subdir: %v", err)
+		}
 	}
 }
 
@@ -753,7 +774,6 @@ type ProgramTester struct {
 	tmpdir         string              // the temporary directory we use for our test environment
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
-	proj           *workspace.Project  // the project we use for this run
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -1730,44 +1750,27 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
-	//Modify the pulumi project file in the temp dir
-	//if it has any local references to plugins
-	dir, err := workspace.DetectProjectPathFrom(projdir)
-	if err != nil {
-		return "", "", err
-	}
-	proj, err := workspace.LoadProject(dir)
-	if err != nil {
-		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
-	}
+	TransformProject(func(proj *workspace.Project) *workspace.Project {
+		if proj.Plugins != nil {
+			for _, provider := range proj.Plugins.Providers {
+				if !filepath.IsAbs(provider.Path) {
+					provider.Path = filepath.Join(projdir, provider.Path)
+				}
+			}
+			for _, language := range proj.Plugins.Languages {
+				if !filepath.IsAbs(language.Path) {
+					language.Path = filepath.Join(projdir, language.Path)
+				}
+			}
 
-	if proj.Plugins != nil {
-		for _, provider := range proj.Plugins.Providers {
-			if !filepath.IsAbs(provider.Path) {
-				provider.Path = filepath.Join(projdir, provider.Path)
+			for _, analyzer := range proj.Plugins.Analyzers {
+				if !filepath.IsAbs(analyzer.Path) {
+					analyzer.Path = filepath.Join(projdir, analyzer.Path)
+				}
 			}
 		}
-		for _, language := range proj.Plugins.Languages {
-			if !filepath.IsAbs(language.Path) {
-				language.Path = filepath.Join(projdir, language.Path)
-			}
-		}
-
-		for _, analyzer := range proj.Plugins.Analyzers {
-			if !filepath.IsAbs(analyzer.Path) {
-				analyzer.Path = filepath.Join(projdir, analyzer.Path)
-			}
-		}
-	}
-	bytes, err := yaml.Marshal(proj)
-	pt.proj = proj
-	if err != nil {
-		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
-	}
-
-	if err := ioutil.WriteFile(dir, bytes, 0600); err != nil {
-		return "", "", fmt.Errorf("error writing project: %w", err)
-	}
+		return proj
+	}, projdir)
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {
@@ -2245,4 +2248,33 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
+}
+
+type ProjectTransform func(*workspace.Project) *workspace.Project
+
+func TransformProject(transform ProjectTransform, projdir string) error {
+
+	//Modify the pulumi project file in the temp dir
+	//if it has any local references to plugins
+	dir, err := workspace.DetectProjectPathFrom(projdir)
+	if err != nil {
+		return err
+	}
+	proj, err := workspace.LoadProject(dir)
+	if err != nil {
+		return fmt.Errorf("error loading project %q: %w", dir, err)
+	}
+
+	proj = transform(proj)
+
+	bytes, err := yaml.Marshal(proj)
+	if err != nil {
+		return fmt.Errorf("error marshalling project %q: %w", dir, err)
+	}
+
+	if err := ioutil.WriteFile(dir, bytes, 0600); err != nil {
+		return fmt.Errorf("error writing project: %w", err)
+	}
+	return nil
+
 }
