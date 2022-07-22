@@ -26,8 +26,11 @@
 - [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
   [#10198](https://github.com/pulumi/pulumi/pull/10198)
 
-- [sdk/go] Expose context.Context from pulumi.Context
+- [sdk/go] Expose context.Context from pulumi.Context.
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
+
+- [engine] Remove sequence numbers from the engine and provider interfaces.
+  [#10203](https://github.com/pulumi/pulumi/pull/10203)
 
 ### Bug Fixes
 
@@ -47,7 +50,7 @@
 
 - [sdk/go] Remove the `AsName` and `AsQName` asserting functions.
   [#10156](https://github.com/pulumi/pulumi/pull/10156)
-  
+
 - [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
   [#10155](https://github.com/pulumi/pulumi/pull/10155)
 
