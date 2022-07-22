@@ -1219,8 +1219,9 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, error) {
-	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */)
+func GetPluginPath(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (string, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -1232,8 +1233,9 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	return path, err
 }
 
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(kind, name, version, false)
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (*PluginInfo, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -1257,8 +1259,43 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*Plug
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
 func getPluginInfoAndPath(
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool) (*PluginInfo, string, error) {
+	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
+	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
+
+	for i, p1 := range projectPlugins {
+		for j, p2 := range projectPlugins {
+			if j < i {
+				if p2.Kind == p1.Kind && p2.Name == p1.Name {
+					if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
+						return nil, "", fmt.Errorf(
+							"multiple project plugins with kind %s, name %s, version %s",
+							p1.Kind, p1.Name, p1.Version)
+					}
+				}
+			}
+		}
+	}
+
+	for _, plugin := range projectPlugins {
+		if plugin.Kind != kind {
+			continue
+		}
+		if plugin.Name != name {
+			continue
+		}
+		if plugin.Version != nil && version != nil {
+			if !plugin.Version.Equals(*version) {
+				logging.Warningf(
+					"Project plugin %s with version %s is incompatible with requested version %s.\n",
+					name, plugin.Version, version)
+				continue
+			}
+		}
+
+		path := filepath.Join(plugin.Path, plugin.File())
+		return plugin, path, nil
+	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
 	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.

@@ -78,6 +78,11 @@ func (host *testPluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
+
+func (host *testPluginHost) GetProjectPlugins() []*workspace.PluginInfo {
+	return nil
+}
+
 func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return nil, nil

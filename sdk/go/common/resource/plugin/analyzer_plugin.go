@@ -55,7 +55,8 @@ var _ Analyzer = (*analyzer)(nil)
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
+		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1),
+		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	}
@@ -95,7 +96,7 @@ func NewPolicyAnalyzer(
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	pluginPath, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
+		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	} else if pluginPath == "" {

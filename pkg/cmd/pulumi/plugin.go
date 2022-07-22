@@ -77,7 +77,8 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 		return nil, err
 	}
 	for _, plugin := range plugins {
-		if path, _ := workspace.GetPluginPath(plugin.Kind, plugin.Name, plugin.Version); path != "" {
+		if path, _ := workspace.GetPluginPath(plugin.Kind, plugin.Name,
+			plugin.Version, ctx.Host.GetProjectPlugins()); path != "" {
 			err = plugin.SetFileMetadata(path)
 			if err != nil {
 				return nil, err
