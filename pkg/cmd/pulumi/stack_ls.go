@@ -216,11 +216,6 @@ func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSumma
 		}
 
 		if httpBackend, ok := b.(httpstate.Backend); ok {
-			if stackHistory, err := httpBackend.GetHistory(commandContext(), summary.Name(), 1, 1); err == nil {
-				if len(stackHistory) > 0 {
-					summaryJSON.LastStatus = string(stackHistory[0].Result)
-				}
-			}
 			if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
 				summaryJSON.URL = consoleURL
 			}
