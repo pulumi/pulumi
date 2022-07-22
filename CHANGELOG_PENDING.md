@@ -58,3 +58,6 @@
 
 - [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
   [#10164](https://github.com/pulumi/pulumi/pull/10164)
+  
+- [cli] Revert "Add last status to `pulumi stack ls` output #10059"
+  [#10221](https://github.com/pulumi/pulumi/pull/10221)
