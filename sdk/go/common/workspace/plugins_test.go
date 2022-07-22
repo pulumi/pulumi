@@ -908,7 +908,7 @@ func TestUnmarshalProjectWithProviderList(t *testing.T) {
 runtime: yaml
 description: "Test Pulumi YAML"
 plugins:
-providers:
+  providers:
   - name: aws
     version: 1.0.0
     path: ../bin/aws`), 0600)
