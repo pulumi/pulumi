@@ -57,4 +57,4 @@
   [#10164](https://github.com/pulumi/pulumi/pull/10164)
 
 - [cli] Revert "Add last status to `pulumi stack ls` output #10059"
-  [#](https://github.com/pulumi/pulumi/pull/)
+  [#10221](https://github.com/pulumi/pulumi/pull/10221)
