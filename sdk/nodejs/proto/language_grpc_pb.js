@@ -32,6 +32,39 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_AboutResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.AboutResponse)) {
+    throw new Error('Expected argument of type pulumirpc.AboutResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_AboutResponse(buffer_arg) {
+  return pulumi_language_pb.AboutResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetProgramDependenciesRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetProgramDependenciesRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetProgramDependenciesRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetProgramDependenciesRequest(buffer_arg) {
+  return pulumi_language_pb.GetProgramDependenciesRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetProgramDependenciesResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.GetProgramDependenciesResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetProgramDependenciesResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetProgramDependenciesResponse(buffer_arg) {
+  return pulumi_language_pb.GetProgramDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetRequiredPluginsRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.GetRequiredPluginsRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRequiredPluginsRequest');
@@ -160,6 +193,30 @@ installDependencies: {
     requestDeserialize: deserialize_pulumirpc_InstallDependenciesRequest,
     responseSerialize: serialize_pulumirpc_InstallDependenciesResponse,
     responseDeserialize: deserialize_pulumirpc_InstallDependenciesResponse,
+  },
+  // About returns information about the runtime for this language.
+about: {
+    path: '/pulumirpc.LanguageRuntime/About',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: pulumi_language_pb.AboutResponse,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_AboutResponse,
+    responseDeserialize: deserialize_pulumirpc_AboutResponse,
+  },
+  // GetProgramDependencies returns the set of dependencies required by the program.
+getProgramDependencies: {
+    path: '/pulumirpc.LanguageRuntime/GetProgramDependencies',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.GetProgramDependenciesRequest,
+    responseType: pulumi_language_pb.GetProgramDependenciesResponse,
+    requestSerialize: serialize_pulumirpc_GetProgramDependenciesRequest,
+    requestDeserialize: deserialize_pulumirpc_GetProgramDependenciesRequest,
+    responseSerialize: serialize_pulumirpc_GetProgramDependenciesResponse,
+    responseDeserialize: deserialize_pulumirpc_GetProgramDependenciesResponse,
   },
 };
 

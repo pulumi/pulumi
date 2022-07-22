@@ -51,6 +51,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -844,4 +846,13 @@ func (host *pythonLanguageHost) InstallDependencies(
 	}
 
 	return nil
+}
+
+func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (host *pythonLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }

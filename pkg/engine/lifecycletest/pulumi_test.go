@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -2549,6 +2550,15 @@ func (ctx *updateContext) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
 	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 	return nil
+}
+
+func (ctx *updateContext) About(_ context.Context, _ *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (ctx *updateContext) GetProgramDependencies(
+	_ context.Context, _ *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
 
 func TestLanguageClient(t *testing.T) {
