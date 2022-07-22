@@ -26,6 +26,9 @@
 - [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
   [#10198](https://github.com/pulumi/pulumi/pull/10198)
 
+- [cli] Expose `gen-completion` command when running `pulumi --help`.
+  [#10218](https://github.com/pulumi/pulumi/pull/10218)
+
 - [sdk/go] Expose context.Context from pulumi.Context
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
@@ -55,6 +58,6 @@
 
 - [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
   [#10164](https://github.com/pulumi/pulumi/pull/10164)
-
+  
 - [cli] Revert "Add last status to `pulumi stack ls` output #10059"
   [#10221](https://github.com/pulumi/pulumi/pull/10221)
