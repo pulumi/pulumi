@@ -26,6 +26,9 @@
 - [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
   [#10198](https://github.com/pulumi/pulumi/pull/10198)
 
+- [cli] Expose `gen-completion` command when running `pulumi --help`.
+  [#10218](https://github.com/pulumi/pulumi/pull/10218)
+
 - [sdk/go] Expose context.Context from pulumi.Context
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
