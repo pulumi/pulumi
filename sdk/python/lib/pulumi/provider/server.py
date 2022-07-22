@@ -329,7 +329,8 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     argp.add_argument("--logflow", action="store_true", help="Currently ignored")
     argp.add_argument("--logtostderr", action="store_true", help="Currently ignored")
 
-    engine_address: str = argp.parse_args().engine
+    args, unknown = argp.parse_known_args()
+    engine_address: str = args.engine
 
     async def serve() -> None:
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
