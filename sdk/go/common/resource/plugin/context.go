@@ -50,17 +50,21 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span) (*Context, error) {
 
-	root := ""
+	// TODO: I think really this ought to just take plugins *workspace.Plugins as an arg, but yaml depends on
+	// this function so *sigh*. For now just see if there's a project we should be using, and use it if there
+	// is.
 	projPath, err := workspace.DetectProjectPath()
-	var project *workspace.Project
+	var plugins *workspace.Plugins
 	if err == nil && projPath != "" {
-		project, err = workspace.LoadProject(projPath)
-		if err != nil {
-			project = nil
+		project, err := workspace.LoadProject(projPath)
+		if err == nil {
+			plugins = project.Plugins
 		}
 	}
+
+	root := ""
 	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions,
-		disableProviderPreview, parentSpan, project.Plugins)
+		disableProviderPreview, parentSpan, plugins)
 }
 
 // Variation of NewContext that also sets known project Root. Additionally accepts Project
