@@ -54,7 +54,7 @@ func newConvertCmd() *cobra.Command {
 			switch language {
 			case "csharp", "c#":
 				projectGenerator = dotnet.GenerateProject
-			case langGo:
+			case "go":
 				projectGenerator = gogen.GenerateProject
 			case "typescript":
 				projectGenerator = nodejs.GenerateProject

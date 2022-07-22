@@ -51,8 +51,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -849,10 +847,91 @@ func (host *pythonLanguageHost) InstallDependencies(
 }
 
 func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+	errCouldNotGet := func(err error) (*pulumirpc.AboutResponse, error) {
+		return nil, fmt.Errorf("failed to get version: %w", err)
+	}
+
+	var cmd *exec.Cmd
+	// if CommandPath has an error, then so will Command. The error can
+	// therefore be ignored as redundant.
+	pyexe, _, _ := python.CommandPath()
+	cmd, err := python.Command(ctx, "--version")
+	if err != nil {
+		return nil, err
+	}
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return errCouldNotGet(err)
+	}
+	version := strings.TrimPrefix(string(out), "Python ")
+
+	return &pulumirpc.AboutResponse{
+		Executable: pyexe,
+		Version:    version,
+	}, nil
+}
+
+// Calls a python command as pulumi would. This means we need to accommodate for
+// a virtual environment if it exists.
+func (host *pythonLanguageHost) callPythonCommand(ctx context.Context, args ...string) (string, error) {
+	if host.virtualenvPath == "" {
+		return callPythonCommandNoEnvironment(ctx, args...)
+	}
+	// We now know that a virtual environment exists.
+	cmd := python.VirtualEnvCommand(host.virtualenvPath, "python", args...)
+	result, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+// Call a python command in a runtime agnostic way. Call python from the path.
+// Do not use a virtual environment.
+func callPythonCommandNoEnvironment(ctx context.Context, args ...string) (string, error) {
+	cmd, err := python.Command(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+
+	var result []byte
+	if result, err = cmd.Output(); err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+type pipDependency struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 func (host *pythonLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
+	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
+	if !req.TransitiveDependencies {
+		cmdArgs = append(cmdArgs, "--not-required")
+
+	}
+	out, err := host.callPythonCommand(ctx, cmdArgs...)
+	if err != nil {
+		return nil, err
+	}
+	var result []pipDependency
+	err = json.Unmarshal([]byte(out), &result)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
+	}
+
+	dependencies := make([]*pulumirpc.DependencyInfo, len(result))
+	for i, dep := range result {
+		dependencies[i] = &pulumirpc.DependencyInfo{
+			Name:    dep.Name,
+			Version: dep.Version,
+		}
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: dependencies,
+	}, nil
 }
