@@ -29,6 +29,8 @@
 - [sdk/go] Expose context.Context from pulumi.Context
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
+- [cli/plugins] Add local plugin linkage in `Pulumi.yaml`.
+  [#10146](https://github.com/pulumi/pulumi/pull/10146)
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.

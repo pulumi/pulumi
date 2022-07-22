@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Context is used to group related operations together so that
@@ -49,14 +50,27 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span) (*Context, error) {
 
+	// TODO: I think really this ought to just take plugins *workspace.Plugins as an arg, but yaml depends on
+	// this function so *sigh*. For now just see if there's a project we should be using, and use it if there
+	// is.
+	projPath, err := workspace.DetectProjectPath()
+	var plugins *workspace.Plugins
+	if err == nil && projPath != "" {
+		project, err := workspace.LoadProject(projPath)
+		if err == nil {
+			plugins = project.Plugins
+		}
+	}
+
 	root := ""
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan)
+	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions,
+		disableProviderPreview, parentSpan, plugins)
 }
 
-// Variation of NewContext that also sets known project Root.
+// Variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span) (*Context, error) {
+	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
 
 	if d == nil {
 		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
@@ -73,7 +87,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview)
+		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, plugins)
 		if err != nil {
 			return nil, err
 		}
