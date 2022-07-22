@@ -69,3 +69,12 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 func (p *languageRuntime) InstallDependencies(directory string) error {
 	return nil
 }
+
+func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+	return plugin.AboutInfo{}, nil
+}
+
+func (p *languageRuntime) GetProgramDependencies(
+	info plugin.ProgInfo, transitiveDependencies bool) ([]plugin.DependencyInfo, error) {
+	return nil, nil
+}
