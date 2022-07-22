@@ -34,6 +34,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	multierror "github.com/hashicorp/go-multierror"
 	"gopkg.in/yaml.v2"
 
@@ -308,6 +309,12 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+}
+
+type BatteryTestOptions struct {
+	Language string
+	Version  *semver.Version
+	Opts     *ProgramTestOptions
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -693,6 +700,37 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	assert.NoError(t, err)
 }
 
+func BatteryTest(t *testing.T, opts *ProgramTestOptions, langOpts []BatteryTestOptions) {
+	//Initialize
+	prepareProgram(t, opts)
+	pt := newProgramTester(t, opts)
+	err := pt.TestLifeCyclePrepare()
+	assert.NoError(t, err)
+
+	//Assert runtime is YAML
+	assert.Equal(pt.proj.Runtime, "yaml")
+
+	//Instantiate new directories and run pulumi convert on each language with new directories as output.
+	for _, langOpt := range langOpts {
+		//create subdirectory under pt.tmpdir
+		subdir := filepath.Join(pt.tmpdir, langOpt.Language)
+		err := os.Mkdir(subdir, 0755)
+		assert.NoError(t, err)
+
+		args := []string{"--language", langOpt.Language, "--output", subdir}
+
+		//convert to new language
+		err = pt.runPulumiCommand("convert", args, pt.tmpdir, false)
+
+		//Configure opts
+		langPtOpts := opts.With(*langOpt.Opts).With(ProgramTestOptions{
+			Dir: subdir,
+		})
+
+		ProgramTest(t, &langPtOpts)
+	}
+}
+
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
 func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	prepareProgram(t, opts)
@@ -715,6 +753,7 @@ type ProgramTester struct {
 	tmpdir         string              // the temporary directory we use for our test environment
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
+	proj           *workspace.Project  // the project we use for this run
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -1721,6 +1760,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		}
 	}
 	bytes, err := yaml.Marshal(proj)
+	pt.proj = proj
 	if err != nil {
 		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
 	}
