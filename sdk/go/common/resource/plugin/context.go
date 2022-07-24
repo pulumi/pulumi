@@ -46,7 +46,7 @@ type Context struct {
 // that the host is "owned" by this context from here forwards, such
 // that when the context's resources are reclaimed, so too are the
 // host's.
-func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
+func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span) (*Context, error) {
 
@@ -63,12 +63,12 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	}
 
 	root := ""
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions,
+	return NewContextWithRoot(d, statusD, host, pwd, root, runtimeOptions,
 		disableProviderPreview, parentSpan, plugins)
 }
 
 // Variation of NewContext that also sets known project Root. Additionally accepts Plugins
-func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
+func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
 
@@ -87,7 +87,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview, plugins)
+		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins)
 		if err != nil {
 			return nil, err
 		}

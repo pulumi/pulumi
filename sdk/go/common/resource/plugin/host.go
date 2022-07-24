@@ -91,7 +91,7 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
+func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]*workspace.PluginInfo, 0)
@@ -121,7 +121,6 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 
 	host := &defaultHost{
 		ctx:                     ctx,
-		config:                  config,
 		runtimeOptions:          runtimeOptions,
 		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins:         make(map[string]*languagePlugin),
@@ -199,7 +198,6 @@ type pluginLoadRequest struct {
 
 type defaultHost struct {
 	ctx                     *Context                         // the shared context for this host.
-	config                  ConfigSource                     // the source for provider configuration parameters.
 	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
