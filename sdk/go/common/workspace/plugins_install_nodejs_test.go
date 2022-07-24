@@ -18,7 +18,6 @@
 package workspace
 
 import (
-	"os"
 	"testing"
 )
 
@@ -34,6 +33,6 @@ func TestNodeNPMInstall(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestNodeYarnInstall(t *testing.T) {
-	os.Setenv("PULUMI_PREFER_YARN", "true")
+	t.Setenv("PULUMI_PREFER_YARN", "true")
 	testPluginInstall(t, "node_modules", tarball)
 }

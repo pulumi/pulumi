@@ -44,7 +44,7 @@ func TestNPMInstall(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
-	os.Setenv("PULUMI_PREFER_YARN", "true")
+	t.Setenv("PULUMI_PREFER_YARN", "true")
 	testInstall(t, "yarn", false /*production*/)
 	testInstall(t, "yarn", true /*production*/)
 }

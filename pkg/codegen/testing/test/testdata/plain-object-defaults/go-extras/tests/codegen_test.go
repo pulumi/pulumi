@@ -16,7 +16,6 @@ package codegentest
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -77,7 +76,7 @@ func TestTransitiveObjectDefaults(t *testing.T) {
 
 // We already have that defaults for resources. We test that they translate through objects.
 func TestDefaultResource(t *testing.T) {
-	os.Setenv("PULUMI_K8S_CLIENT_BURST", "42")
+	t.Setenv("PULUMI_K8S_CLIENT_BURST", "42")
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := example.NewFoo(ctx, "foo", &example.FooArgs{
 			KubeClientSettings:       example.KubeClientSettingsPtr(&example.KubeClientSettingsArgs{}),
