@@ -68,6 +68,10 @@ func TestActivateVirtualEnv(t *testing.T) {
 			input:    []string{"PYTHONHOME=foo", "FOO=blah"},
 			expected: []string{"FOO=blah", fmt.Sprintf("PATH=%s", venvDir)},
 		},
+		{
+			input:    []string{"PythonHome=foo", "Path=bar"},
+			expected: []string{fmt.Sprintf("Path=%s%sbar", venvDir, string(os.PathListSeparator))},
+		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
