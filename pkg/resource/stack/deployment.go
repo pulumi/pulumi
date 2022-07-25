@@ -328,7 +328,6 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
 		ImportID:                res.ImportID,
-		SequenceNumber:          res.SequenceNumber,
 		RetainOnDelete:          res.RetainOnDelete,
 	}
 
@@ -513,7 +512,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID, res.SequenceNumber, res.RetainOnDelete), nil
+		res.ImportID, res.RetainOnDelete), nil
 }
 
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,

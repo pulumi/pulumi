@@ -29,11 +29,15 @@
 - [cli] Expose `gen-completion` command when running `pulumi --help`.
   [#10218](https://github.com/pulumi/pulumi/pull/10218)
 
-- [sdk/go] Expose context.Context from pulumi.Context
+- [sdk/go] Expose context.Context from pulumi.Context.
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
 - [cli/plugins] Add local plugin linkage in `Pulumi.yaml`.
   [#10146](https://github.com/pulumi/pulumi/pull/10146)
+
+- [engine] Remove sequence numbers from the engine and provider interfaces.
+  [#10203](https://github.com/pulumi/pulumi/pull/10203)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
@@ -52,12 +56,15 @@
 
 - [sdk/go] Remove the `AsName` and `AsQName` asserting functions.
   [#10156](https://github.com/pulumi/pulumi/pull/10156)
-  
+
 - [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
   [#10155](https://github.com/pulumi/pulumi/pull/10155)
 
 - [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
   [#10164](https://github.com/pulumi/pulumi/pull/10164)
-  
+
 - [cli] Revert "Add last status to `pulumi stack ls` output #10059"
   [#10221](https://github.com/pulumi/pulumi/pull/10221)
+
+- [python] Fix overriding of PATH on Windows.
+  [#10236](https://github.com/pulumi/pulumi/pull/10236)

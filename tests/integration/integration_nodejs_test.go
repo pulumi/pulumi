@@ -734,7 +734,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 			secretsProvider := stackInfo.Deployment.SecretsProviders
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
@@ -747,7 +747,6 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 			_, ok = out["ciphertext"]
 			assert.True(t, ok)
-			os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 		},
 	})
 

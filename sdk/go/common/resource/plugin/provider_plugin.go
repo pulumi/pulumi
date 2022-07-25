@@ -566,7 +566,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -602,10 +602,9 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:            string(urn),
-		Olds:           molds,
-		News:           mnews,
-		SequenceNumber: int32(sequenceNumber),
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

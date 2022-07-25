@@ -38,6 +38,16 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
                 )
+        self.About = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/About',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.AboutResponse.FromString,
+                )
+        self.GetProgramDependencies = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/GetProgramDependencies',
+                request_serializer=pulumi_dot_language__pb2.GetProgramDependenciesRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.GetProgramDependenciesResponse.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
@@ -73,6 +83,20 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def About(self, request, context):
+        """About returns information about the runtime for this language.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetProgramDependencies(self, request, context):
+        """GetProgramDependencies returns the set of dependencies required by the program.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -95,6 +119,16 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.InstallDependencies,
                     request_deserializer=pulumi_dot_language__pb2.InstallDependenciesRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.InstallDependenciesResponse.SerializeToString,
+            ),
+            'About': grpc.unary_unary_rpc_method_handler(
+                    servicer.About,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=pulumi_dot_language__pb2.AboutResponse.SerializeToString,
+            ),
+            'GetProgramDependencies': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetProgramDependencies,
+                    request_deserializer=pulumi_dot_language__pb2.GetProgramDependenciesRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.GetProgramDependenciesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -173,5 +207,39 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_stream(request, target, '/pulumirpc.LanguageRuntime/InstallDependencies',
             pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
             pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def About(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/About',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_language__pb2.AboutResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetProgramDependencies(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetProgramDependencies',
+            pulumi_dot_language__pb2.GetProgramDependenciesRequest.SerializeToString,
+            pulumi_dot_language__pb2.GetProgramDependenciesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
