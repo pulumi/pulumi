@@ -1,0 +1,67 @@
+resources:
+  siteBucket:
+    type: aws:s3:Bucket
+  testFileAsset:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::FileAsset: file.txt
+  testStringAsset:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::StringAsset: <h1>File contents</h1>
+  testRemoteAsset:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::RemoteAsset: https://pulumi.test
+  testFileArchive:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::FileArchive: file.tar.gz
+  testRemoteArchive:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::RemoteArchive: https://pulumi.test/foo.tar.gz
+  testAssetArchive:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${siteBucket}
+      # Reference the s3.Bucket object
+      source:
+        Fn::AssetArchive:
+          file.txt:
+            Fn::FileAsset: file.txt
+          string.txt:
+            Fn::StringAsset: <h1>File contents</h1>
+          remote.txt:
+            Fn::RemoteAsset: https://pulumi.test
+          file.tar:
+            Fn::FileArchive: file.tar.gz
+          remote.tar:
+            Fn::RemoteArchive: https://pulumi.test/foo.tar.gz
+          .nestedDir:
+            Fn::AssetArchive:
+              file.txt:
+                Fn::FileAsset: file.txt
+              string.txt:
+                Fn::StringAsset: <h1>File contents</h1>
+              remote.txt:
+                Fn::RemoteAsset: https://pulumi.test
+              file.tar:
+                Fn::FileArchive: file.tar.gz
+              remote.tar:
+                Fn::RemoteArchive: https://pulumi.test/foo.tar.gz
