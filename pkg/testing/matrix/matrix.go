@@ -1,3 +1,17 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package matrix
 
 import (
@@ -36,6 +50,11 @@ type projectGeneratorFunc func(directory string, project workspace.Project, p *p
 func MatrixTest(t *testing.T, opts *i.ProgramTestOptions, langOpts []MatrixTestOption) {
 
 	dir := opts.Dir
+	if !filepath.IsAbs(dir) {
+		pwd, err := os.Getwd()
+		assert.NoError(t, err)
+		dir = filepath.Join(pwd, dir)
+	}
 	projfile := filepath.Join(dir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	assert.NoError(t, err)
@@ -72,18 +91,39 @@ func MatrixTest(t *testing.T, opts *i.ProgramTestOptions, langOpts []MatrixTestO
 		}
 	}
 
-	//name := projinfo.Proj.Name
+	//Replace relative paths with absolute paths
+
+	if proj.Plugins != nil {
+		for _, provider := range proj.Plugins.Providers {
+			if !filepath.IsAbs(provider.Path) {
+				provider.Path = filepath.Join(dir, provider.Path)
+			}
+		}
+		for _, language := range proj.Plugins.Languages {
+			if !filepath.IsAbs(language.Path) {
+				language.Path = filepath.Join(dir, language.Path)
+			}
+		}
+
+		for _, analyzer := range proj.Plugins.Analyzers {
+			if !filepath.IsAbs(analyzer.Path) {
+				analyzer.Path = filepath.Join(dir, analyzer.Path)
+			}
+		}
+	}
+
+	assert.NoError(t, err)
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
 	for _, langOpt := range langOpts {
 
 		var projectGenerator projectGeneratorFunc
 		switch langOpt.Language {
-		case "csharp":
+		case "dotnet":
 			projectGenerator = dotnetgen.GenerateProject
 		case "go":
 			projectGenerator = gogen.GenerateProject
-		case "typescript":
+		case "nodejs":
 			projectGenerator = jsgen.GenerateProject
 		case "python":
 			projectGenerator = pygen.GenerateProject
@@ -92,16 +132,24 @@ func MatrixTest(t *testing.T, opts *i.ProgramTestOptions, langOpts []MatrixTestO
 		case "yaml": // nolint: goconst
 			projectGenerator = yamlgen.GenerateProject
 		default:
-			projectGenerator = nil
+			assert.FailNow(t, "Unsupported language: "+langOpt.Language)
 		}
 
-		assert.NotEqual(t, projectGenerator, nil)
-
 		subdir := filepath.Join(dir, langOpt.Language)
+		//check if subdir exists
+		if _, err := os.Stat(subdir); !os.IsNotExist(err) {
+			assert.NoError(t, os.RemoveAll(subdir))
+		}
+
+		//create subdir
+		err = os.MkdirAll(subdir, 0755)
+		assert.NoError(t, err)
 
 		//This feels a little sketchy to me but the alternative is to go in and modify it after it's been written to file.
 		//Either that or just don't mutate the name.
 		//projinfo.Proj.Name = tokens.PackageName(fmt.Sprintf("%s-%s", name, langOpt.Language))
+
+		//generate project
 
 		err = projectGenerator(subdir, *proj, pclProgram)
 		assert.NoError(t, err)
@@ -121,8 +169,10 @@ func MatrixTest(t *testing.T, opts *i.ProgramTestOptions, langOpts []MatrixTestO
 			i.ProgramTest(t, &langPtOpts)
 		})
 		//clean up subdir
-		if err := os.RemoveAll(subdir); err != nil {
-			t.Errorf("error removing subdir: %v", err)
-		}
+
+		/*
+			if err := os.RemoveAll(subdir); err != nil {
+				t.Errorf("error removing subdir: %v", err)
+			}*/
 	}
 }
