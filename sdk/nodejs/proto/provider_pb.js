@@ -3253,7 +3253,6 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    sequencenumber: jspb.Message.getFieldWithDefault(msg, 4, 0),
     randomseed: msg.getRandomseed_asB64()
   };
 
@@ -3304,10 +3303,6 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
-      break;
-    case 4:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setSequencenumber(value);
       break;
     case 5:
       var value = /** @type {!Uint8Array} */ (reader.readBytes());
@@ -3363,13 +3358,6 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
       3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getSequencenumber();
-  if (f !== 0) {
-    writer.writeInt32(
-      4,
-      f
     );
   }
   f = message.getRandomseed_asU8();
@@ -3471,24 +3459,6 @@ proto.pulumirpc.CheckRequest.prototype.clearNews = function() {
  */
 proto.pulumirpc.CheckRequest.prototype.hasNews = function() {
   return jspb.Message.getField(this, 3) != null;
-};
-
-
-/**
- * optional int32 sequenceNumber = 4;
- * @return {number}
- */
-proto.pulumirpc.CheckRequest.prototype.getSequencenumber = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
-};
-
-
-/**
- * @param {number} value
- * @return {!proto.pulumirpc.CheckRequest} returns this
- */
-proto.pulumirpc.CheckRequest.prototype.setSequencenumber = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 

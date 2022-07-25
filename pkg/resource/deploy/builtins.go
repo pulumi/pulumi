@@ -66,7 +66,7 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
 func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := urn.Type()
 	if typ != stackReferenceType {

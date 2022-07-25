@@ -168,7 +168,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", 0, false)
+		nil, false, nil, nil, nil, "", false)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -248,13 +248,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if url := req.PluginDownloadURL(); url != "" {
 			providers.SetProviderURL(inputs, url)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, 0)
+		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "", 0, false)
+			nil, nil, nil, "", false)
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, nil, false
@@ -341,7 +341,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "", 1, false)
+			false, nil, nil, provider, nil, false, nil, nil, nil, "", false)
 		steps = append(steps, newImportDeploymentStep(i.deployment, new))
 	}
 

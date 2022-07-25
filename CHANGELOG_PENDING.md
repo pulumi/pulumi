@@ -29,11 +29,15 @@
 - [cli] Expose `gen-completion` command when running `pulumi --help`.
   [#10218](https://github.com/pulumi/pulumi/pull/10218)
 
-- [sdk/go] Expose context.Context from pulumi.Context
+- [sdk/go] Expose context.Context from pulumi.Context.
   [#10190](https://github.com/pulumi/pulumi/pull/10190)
 
 - [cli/plugins] Add local plugin linkage in `Pulumi.yaml`.
   [#10146](https://github.com/pulumi/pulumi/pull/10146)
+
+- [engine] Remove sequence numbers from the engine and provider interfaces.
+  [#10203](https://github.com/pulumi/pulumi/pull/10203)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
