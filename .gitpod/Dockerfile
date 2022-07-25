@@ -3,10 +3,10 @@ USER gitpod
 
 ENV PATH="$HOME/.pulumi:$HOME/.pulumi/bin:$PATH"
 
-# Install .NET Core 3.1 SDK binaries on Ubuntu 20.04
-# Source: https://dev.to/carlos487/installing-dotnet-core-in-ubuntu-20-04-6jh
+# Install .NET 6SDK binaries on Ubuntu
+# Based on: https://dev.to/carlos487/installing-dotnet-core-in-ubuntu-20-04-6jh
 RUN mkdir -p /home/gitpod/dotnet && \
-     curl -fsSL https://download.visualstudio.microsoft.com/download/pr/f65a8eb0-4537-4e69-8ff3-1a80a80d9341/cc0ca9ff8b9634f3d9780ec5915c1c66/dotnet-sdk-3.1.201-linux-x64.tar.gz \
+     curl -fsSL https://download.visualstudio.microsoft.com/download/pr/0e83f50a-0619-45e6-8f16-dc4f41d1bb16/e0de908b2f070ef9e7e3b6ddea9d268c/dotnet-sdk-6.0.302-linux-x64.tar.gz \
      | tar xz -C /home/gitpod/dotnet && \
      wget -qO- https://github.com/pulumi/pulumictl/releases/download/v0.0.28/pulumictl-v0.0.28-linux-amd64.tar.gz | sudo tar zxvf - -C /usr/local/bin
 
