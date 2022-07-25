@@ -1,0 +1,10 @@
+name: empty
+runtime: yaml
+description: A YAML program which outputs a scalar.
+
+outputs:
+  int: 1
+  float: 0.5
+  string: "hello"
+  bool: true
+

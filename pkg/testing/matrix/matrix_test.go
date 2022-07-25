@@ -21,11 +21,33 @@ import (
 	i "github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func TestSimpleMatrixTest(t *testing.T) {
+func TestEmpty(t *testing.T) {
 	t.Parallel()
 
 	opts := &i.ProgramTestOptions{
-		Dir: "tests/simple",
+		Dir: "tests/empty",
+	}
+	langsOpts := allLanguages()
+
+	Test(t, opts, langsOpts)
+}
+
+func TestScalar(t *testing.T) {
+	t.Parallel()
+
+	opts := &i.ProgramTestOptions{
+		Dir: "tests/scalar",
+	}
+	langsOpts := allLanguages()
+
+	Test(t, opts, langsOpts)
+}
+
+func TestStructured(t *testing.T) {
+	t.Parallel()
+
+	opts := &i.ProgramTestOptions{
+		Dir: "tests/structured",
 	}
 	langsOpts := allLanguages()
 

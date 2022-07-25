@@ -1,3 +1,4 @@
-name: simple
-runtime: python
+name: empty
+runtime: yaml
 description: An empty YAML program.
+

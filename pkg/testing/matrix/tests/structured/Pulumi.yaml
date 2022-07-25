@@ -1,0 +1,12 @@
+name: empty
+runtime: yaml
+description: A YAML program which outputs a scalar.
+
+outputs:
+  struct:
+    foo: "foo"
+    bar: "bar"
+  array:
+    - "foo"
+    - "bar"
+

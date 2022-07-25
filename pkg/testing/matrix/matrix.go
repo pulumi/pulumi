@@ -65,7 +65,7 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 	//Assert runtime is YAML
 	assert.Equal(t, projinfo.Proj.Runtime.Name(), "yaml")
 
-	pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	assert.NoError(t, err)
 
 	proj, pclProgram, err := yamlgen.Eject(pwd, nil)
@@ -170,9 +170,8 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 		})
 		//clean up subdir
 
-		/*
-			if err := os.RemoveAll(subdir); err != nil {
-				t.Errorf("error removing subdir: %v", err)
-			}*/
+		if err := os.RemoveAll(subdir); err != nil {
+			t.Errorf("error removing subdir: %v", err)
+		}
 	}
 }
