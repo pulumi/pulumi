@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,7 +73,7 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 
 	pkg := getTestPackage(t)
 
-	d := DocLanguageHelper{}
+	d := dotnetgen.DocLanguageHelper{}
 	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Bucket.html"
 	link := d.GetDocLinkForResourceType(pkg, "doesNotMatter", "Pulumi.Aws.S3.Bucket")
 	assert.Equal(t, expected, link)
@@ -86,7 +87,7 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	namespaces := map[string]string{
 		"s3": "S3",
 	}
-	d := DocLanguageHelper{
+	d := dotnetgen.DocLanguageHelper{
 		Namespaces: namespaces,
 	}
 	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html"

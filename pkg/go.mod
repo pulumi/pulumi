@@ -3,6 +3,7 @@ module github.com/pulumi/pulumi/pkg/v3
 go 1.17
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
+replace github.com/pulumi/pulumi/pkg/v3 => ../pkg
 
 // Working around https://github.com/sergi/go-diff/issues/123
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0

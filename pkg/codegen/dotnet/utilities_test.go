@@ -1,4 +1,4 @@
-package dotnet
+package dotnet_test
 
 import (
 	"testing"

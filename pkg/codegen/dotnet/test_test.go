@@ -1,4 +1,4 @@
-package dotnet
+package dotnet_test
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	dotnetgen "github.com/pulumi/pulumi/pkg/v3/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -121,7 +122,7 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 		case "random":
 			result[i] = dep{"Pulumi.Random", test.RandomSchema}
 		default:
-			result[i] = dep{fmt.Sprintf("Pulumi.%s", Title(d)), ""}
+			result[i] = dep{fmt.Sprintf("Pulumi.%s", dotnetgen.Title(d)), ""}
 		}
 	}
 	return result

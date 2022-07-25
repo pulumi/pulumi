@@ -1,4 +1,4 @@
-package gen
+package gen_test
 
 import (
 	"fmt"
