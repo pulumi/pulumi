@@ -29,11 +29,11 @@ func TestSimpleMatrixTest(t *testing.T) {
 	}
 	langsOpts := allLanguages()
 
-	MatrixTest(t, opts, langsOpts)
+	Test(t, opts, langsOpts)
 }
 
-func allLanguages() []MatrixTestOption {
-	return []MatrixTestOption{
+func allLanguages() []TestOption {
+	return []TestOption{
 		{
 			Language: "go",
 			Version:  &semver.Version{Major: 1, Minor: 7, Patch: 0},

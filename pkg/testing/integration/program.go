@@ -1691,7 +1691,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
-	TransformProject(func(proj *workspace.Project) *workspace.Project {
+	err = TransformProject(func(proj *workspace.Project) *workspace.Project {
 		if proj.Plugins != nil {
 			for _, provider := range proj.Plugins.Providers {
 				if !filepath.IsAbs(provider.Path) {
@@ -1712,6 +1712,10 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		}
 		return proj
 	}, projdir)
+
+	if err != nil {
+		return "", "", err
+	}
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {

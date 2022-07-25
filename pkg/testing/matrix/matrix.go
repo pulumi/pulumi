@@ -39,7 +39,7 @@ import (
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
-type MatrixTestOption struct {
+type TestOption struct {
 	Language string
 	Version  *semver.Version //Array of versions?
 	Opts     *i.ProgramTestOptions
@@ -47,7 +47,7 @@ type MatrixTestOption struct {
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
-func MatrixTest(t *testing.T, opts *i.ProgramTestOptions, langOpts []MatrixTestOption) {
+func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 
 	dir := opts.Dir
 	if !filepath.IsAbs(dir) {
