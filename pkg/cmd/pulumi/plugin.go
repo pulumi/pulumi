@@ -58,7 +58,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	if err != nil {
 		return nil, err
 	}
