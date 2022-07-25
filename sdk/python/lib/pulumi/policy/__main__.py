@@ -59,7 +59,7 @@ def main():
         runpy.run_path(program, run_name="__main__")
         successful = True
     except Exception:
-        pulumi.log.error("Program failed with an unhandled exception:")
+        pulumi.log.debug("Program failed with an unhandled exception:")
         pulumi.log.error(traceback.format_exc())
     finally:
         sys.stdout.flush()
