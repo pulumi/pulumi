@@ -308,6 +308,9 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+
+	// Extra provider plugins
+	ProviderPlugins []workspace.PluginOptions
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1691,8 +1694,6 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
-	//Modify the pulumi project file in the temp dir
-	//if it has any local references to plugins
 	dir, err := workspace.DetectProjectPathFrom(projdir)
 	if err != nil {
 		return "", "", err
@@ -1702,6 +1703,15 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
 	}
 
+	// Add extra provider plugins
+	if len(pt.opts.ProviderPlugins) > 0 {
+		if proj.Plugins == nil {
+			proj.Plugins = &workspace.Plugins{}
+		}
+		proj.Plugins.Providers = append(proj.Plugins.Providers, pt.opts.ProviderPlugins...)
+	}
+
+	//Modify the pulumi project file in the temp dir if it has any local references to plugins
 	if proj.Plugins != nil {
 		for _, provider := range proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
@@ -1720,6 +1730,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 			}
 		}
 	}
+
 	bytes, err := yaml.Marshal(proj)
 	if err != nil {
 		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
