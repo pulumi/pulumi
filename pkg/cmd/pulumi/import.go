@@ -597,7 +597,7 @@ func newImportCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
-		"Do not perform a preview before performing the refresh")
+		"Do not calculate a preview before performing the import")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -607,7 +607,7 @@ func newImportCmd() *cobra.Command {
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
-		"Automatically approve and perform the refresh after previewing it")
+		"Automatically approve and perform the import after previewing it")
 	cmd.PersistentFlags().BoolVarP(
 		&protectResources, "protect", "", true,
 		"Allow resources to be imported with protection from deletion enabled")

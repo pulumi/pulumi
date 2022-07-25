@@ -42,10 +42,7 @@ func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 func TestReadingGitRepo(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
-	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
-	defer func() {
-		os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
-	}()
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 
 	e := pul_testing.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -163,26 +160,10 @@ func TestReadingGitRepo(t *testing.T) {
 
 	// Confirm that data can be inferred from the CI system if unavailable.
 	// Fake running under Travis CI.
-	varsToSave := []string{"TRAVIS", "TRAVIS_BRANCH"}
-	origEnvVars := make(map[string]string)
-	for _, varName := range varsToSave {
-		origEnvVars[varName] = os.Getenv(varName)
-	}
-	defer func() {
-		for _, varName := range varsToSave {
-			orig := origEnvVars[varName]
-			if orig == "" {
-				os.Unsetenv(varName)
-			} else {
-				os.Setenv(varName, orig)
-			}
-		}
-	}()
-
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
-	os.Setenv("TRAVIS", "1")
-	os.Setenv("TRAVIS_BRANCH", "branch-from-ci")
-	os.Setenv("GITHUB_REF", "branch-from-ci")
+	t.Setenv("TRAVIS", "1")
+	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
+	t.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
@@ -203,10 +184,7 @@ func TestReadingGitRepo(t *testing.T) {
 func TestReadingGitLabMetadata(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
-	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
-	defer func() {
-		os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
-	}()
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 
 	e := pul_testing.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()

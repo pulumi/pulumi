@@ -25,13 +25,8 @@ func TestConsoleURL(t *testing.T) {
 
 	//nolint:paralleltest // sets env var, must be run in isolation
 	t.Run("HonorEnvVar", func(t *testing.T) {
-		initial := os.Getenv("PULUMI_CONSOLE_DOMAIN")
-		defer func() {
-			os.Setenv("PULUMI_CONSOLE_DOMAIN", initial)
-		}()
-
 		// Honor the PULUMI_CONSOLE_DOMAIN environment variable.
-		os.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
+		t.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
 		assert.Equal(t,
 			"https://pulumi-console.contoso.com/1/2",
 			cloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))
