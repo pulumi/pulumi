@@ -236,7 +236,8 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		logging.V(preparePluginVerboseLog).Infof("Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
+		logging.V(preparePluginVerboseLog).Infof(
+			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
 	tarball, err := workspace.DownloadToFile(plugin, withProgress, retry)

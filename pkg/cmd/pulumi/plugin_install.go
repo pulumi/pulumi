@@ -145,7 +145,8 @@ func newPluginInstallCmd() *cobra.Command {
 						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color)
 					}
 					retry := func(err error, attempt int, limit int, delay time.Duration) {
-						cmdutil.Diag().Warningf(diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+						cmdutil.Diag().Warningf(
+							diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
 					}
 
 					r, err := workspace.DownloadToFile(install, withProgress, retry)
