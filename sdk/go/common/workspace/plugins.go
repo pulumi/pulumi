@@ -809,6 +809,81 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
+// DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
+// This has some
+func DownloadToFile(
+	pkgPlugin PluginInfo,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
+
+	tryDownload := func(dst io.WriteCloser) error {
+		defer dst.Close()
+		tarball, expectedByteCount, err := pkgPlugin.Download()
+		if err != nil {
+			return err
+		}
+		if wrapper != nil {
+			tarball = wrapper(tarball, expectedByteCount)
+		}
+		defer tarball.Close()
+		copiedByteCount, err := io.Copy(dst, tarball)
+		if err != nil {
+			return err
+		}
+		if copiedByteCount != expectedByteCount {
+			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
+				expectedByteCount, copiedByteCount, pkgPlugin)
+		}
+		return nil
+	}
+
+	tryDownloadToFile := func() (string, error) {
+		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		if err != nil {
+			return "", err
+		}
+		err = tryDownload(file)
+		if err != nil {
+			err2 := os.Remove(file.Name())
+			if err2 != nil {
+				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
+			}
+			return "", err
+		}
+		return file.Name(), nil
+	}
+
+	downloadToFileWithRetry := func() (string, error) {
+		delay := 80 * time.Millisecond
+		for attempt := 0; ; attempt++ {
+			tempFile, err := tryDownloadToFile()
+			if err == nil {
+				return tempFile, nil
+			}
+
+			if err != nil && attempt >= 5 {
+				return "", err
+			}
+			if retry != nil {
+				retry(err, attempt+1, 5, delay)
+			}
+			time.Sleep(delay)
+			delay = delay * 2
+		}
+	}
+
+	tarball, err := downloadToFileWithRetry()
+	if err != nil {
+		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+	}
+	reader, err := os.Open(tarball)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
+	}
+	return reader, nil
+
+}
+
 type PluginContent interface {
 	io.Closer
 
