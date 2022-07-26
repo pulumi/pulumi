@@ -68,3 +68,6 @@
 
 - [python] Fix overriding of PATH on Windows.
   [#10236](https://github.com/pulumi/pulumi/pull/10236)
+
+- [dotnet/codgen] Allow specified root namespace to be suffixed with "Pulumi" when generating packages
+  [#10245](https://github.com/pulumi/pulumi/pull/10245)
