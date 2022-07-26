@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -195,14 +196,18 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 	var hasPath bool
 	var result []string
 	for _, env := range environ {
-		if strings.HasPrefix(env, "PATH=") {
+		split := strings.SplitN(env, "=", 2)
+		contract.Assert(len(split) == 2)
+		key, value := split[0], split[1]
+
+		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
+		if strings.EqualFold(key, "PATH") {
 			hasPath = true
 			// Prepend the virtual environment bin directory to PATH so any calls to run
 			// python or pip will use the binaries in the virtual environment.
-			originalValue := env[len("PATH="):]
-			path := fmt.Sprintf("PATH=%s%s%s", virtualEnvBin, string(os.PathListSeparator), originalValue)
+			path := fmt.Sprintf("%s=%s%s%s", key, virtualEnvBin, string(os.PathListSeparator), value)
 			result = append(result, path)
-		} else if strings.HasPrefix(env, "PYTHONHOME=") {
+		} else if strings.EqualFold(key, "PYTHONHOME") {
 			// Skip PYTHONHOME to "unset" this value.
 		} else {
 			result = append(result, env)

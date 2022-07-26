@@ -165,7 +165,11 @@ message CheckRequest {
     string urn = 1;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
     google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
-    int32 sequenceNumber = 4;        // the sequence number for this resource, or 0 if sequence is unknown.
+
+    // We used to send sequenceNumber but that has been replaced by randomSeed.
+    reserved 4;
+    reserved "sequenceNumber";
+
     bytes randomSeed = 5;            // a deterministically random hash, primarily intended for global unique naming.
 }
 

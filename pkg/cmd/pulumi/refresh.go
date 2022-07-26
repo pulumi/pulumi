@@ -216,7 +216,7 @@ func newRefreshCmd() *cobra.Command {
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not perform a preview before performing the refresh")
+		"Do not calculate a preview before performing the refresh")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

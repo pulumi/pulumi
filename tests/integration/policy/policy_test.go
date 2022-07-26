@@ -37,7 +37,7 @@ func TestPolicyWithConfig(t *testing.T) {
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_w_config")
 	e.RunCommand("yarn", "install")
-	os.Setenv("TEST_POLICY_PACK", policyPackName)
+	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
 	publishPolicyPackWithVersion(e, orgName, `"0.0.1"`)
@@ -114,7 +114,7 @@ func TestPolicyWithoutConfig(t *testing.T) {
 	policyPackName := fmt.Sprintf("%s-%x", "test-policy-pack", time.Now().UnixNano())
 	e.ImportDirectory("policy_pack_wo_config")
 	e.RunCommand("yarn", "install")
-	os.Setenv("TEST_POLICY_PACK", policyPackName)
+	t.Setenv("TEST_POLICY_PACK", policyPackName)
 
 	// Publish the Policy Pack twice.
 	e.RunCommand("pulumi", "policy", "publish", orgName)

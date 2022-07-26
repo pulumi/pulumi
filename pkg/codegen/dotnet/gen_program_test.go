@@ -14,7 +14,7 @@ func TestGenerateProgram(t *testing.T) {
 		test.ProgramCodegenOptions{
 			Language:   "dotnet",
 			Extension:  "cs",
-			OutputFile: "MyStack.cs",
+			OutputFile: "Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
 			},
