@@ -11,7 +11,7 @@ using Pulumi;
 namespace Other.Example
 {
     [ExampleResourceType("example::OtherResource")]
-    public partial class OtherResource : Pulumi.ComponentResource
+    public partial class OtherResource : global::Pulumi.ComponentResource
     {
         [Output("foo")]
         public Output<Other.Example.Resource?> Foo { get; private set; } = null!;
@@ -43,7 +43,7 @@ namespace Other.Example
         }
     }
 
-    public sealed class OtherResourceArgs : Pulumi.ResourceArgs
+    public sealed class OtherResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
         public Input<Other.Example.Resource>? Foo { get; set; }

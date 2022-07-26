@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     /// <summary>
     /// Options for tuning the Kubernetes client used by a Provider.
     /// </summary>
-    public sealed class KubeClientSettingsArgs : Pulumi.ResourceArgs
+    public sealed class KubeClientSettingsArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// Maximum burst for throttle. Default value is 10.

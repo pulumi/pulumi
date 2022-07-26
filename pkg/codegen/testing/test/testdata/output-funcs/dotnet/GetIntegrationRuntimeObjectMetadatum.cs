@@ -27,7 +27,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class GetIntegrationRuntimeObjectMetadatumArgs : Pulumi.InvokeArgs
+    public sealed class GetIntegrationRuntimeObjectMetadatumArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The factory name.
@@ -58,7 +58,7 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class GetIntegrationRuntimeObjectMetadatumInvokeArgs : Pulumi.InvokeArgs
+    public sealed class GetIntegrationRuntimeObjectMetadatumInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The factory name.

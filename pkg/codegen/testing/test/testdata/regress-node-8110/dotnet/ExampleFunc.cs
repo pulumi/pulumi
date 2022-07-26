@@ -16,7 +16,7 @@ namespace Pulumi.My8110
     }
 
 
-    public sealed class ExampleFuncArgs : Pulumi.InvokeArgs
+    public sealed class ExampleFuncArgs : global::Pulumi.InvokeArgs
     {
         [Input("enums")]
         private List<Union<string, Pulumi.My8110.MyEnum>>? _enums;

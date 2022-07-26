@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example.Inputs
 {
 
-    public sealed class PetArgs : Pulumi.ResourceArgs
+    public sealed class PetArgs : global::Pulumi.ResourceArgs
     {
         [Input("name")]
         public Input<string>? Name { get; set; }

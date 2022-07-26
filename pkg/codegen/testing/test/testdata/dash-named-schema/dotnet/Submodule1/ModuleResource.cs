@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.FooBar.Submodule1
 {
     [FooBarResourceType("foo-bar:submodule1:ModuleResource")]
-    public partial class ModuleResource : Pulumi.CustomResource
+    public partial class ModuleResource : global::Pulumi.CustomResource
     {
         [Output("thing")]
         public Output<Pulumi.FooBar.Outputs.TopLevel?> Thing { get; private set; } = null!;
@@ -58,7 +58,7 @@ namespace Pulumi.FooBar.Submodule1
         }
     }
 
-    public sealed class ModuleResourceArgs : Pulumi.ResourceArgs
+    public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("thing")]
         public Input<Pulumi.FooBar.Inputs.TopLevelArgs>? Thing { get; set; }

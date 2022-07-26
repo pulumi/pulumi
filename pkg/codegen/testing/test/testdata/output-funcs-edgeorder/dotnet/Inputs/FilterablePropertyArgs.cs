@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Different types of filters supported and its values.
     /// </summary>
-    public sealed class FilterablePropertyArgs : Pulumi.ResourceArgs
+    public sealed class FilterablePropertyArgs : global::Pulumi.ResourceArgs
     {
         [Input("supportedValues", required: true)]
         private InputList<string>? _supportedValues;

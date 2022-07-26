@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Component")]
-    public partial class Component : Pulumi.CustomResource
+    public partial class Component : global::Pulumi.CustomResource
     {
         [Output("provider")]
         public Output<Pulumi.Kubernetes.Provider?> Provider { get; private set; } = null!;
@@ -64,7 +64,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class ComponentArgs : Pulumi.ResourceArgs
+    public sealed class ComponentArgs : global::Pulumi.ResourceArgs
     {
         [Input("metadata")]
         public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }

@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Mypkg.Inputs
 {
 
-    public sealed class GetAmiIdsFilterArgs : Pulumi.InvokeArgs
+    public sealed class GetAmiIdsFilterArgs : global::Pulumi.InvokeArgs
     {
         [Input("name", required: true)]
         public string Name { get; set; } = null!;

@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Workload")]
-    public partial class Workload : Pulumi.CustomResource
+    public partial class Workload : global::Pulumi.CustomResource
     {
         [Output("pod")]
         public Output<Pulumi.Kubernetes.Types.Outputs.Core.V1.Pod?> Pod { get; private set; } = null!;
@@ -58,7 +58,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class WorkloadArgs : Pulumi.ResourceArgs
+    public sealed class WorkloadArgs : global::Pulumi.ResourceArgs
     {
         public WorkloadArgs()
         {

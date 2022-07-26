@@ -25,7 +25,7 @@ namespace Pulumi.Example
     }
 
 
-    public sealed class FuncWithAllOptionalInputsArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A
@@ -45,7 +45,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A

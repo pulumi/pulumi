@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::God")]
-    public partial class God : Pulumi.CustomResource
+    public partial class God : global::Pulumi.CustomResource
     {
         [Output("backwards")]
         public Output<Pulumi.Example.Dog?> Backwards { get; private set; } = null!;
@@ -58,7 +58,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class GodArgs : Pulumi.ResourceArgs
+    public sealed class GodArgs : global::Pulumi.ResourceArgs
     {
         public GodArgs()
         {

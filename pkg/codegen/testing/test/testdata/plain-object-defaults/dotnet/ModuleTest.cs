@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example:index:moduleTest")]
-    public partial class ModuleTest : Pulumi.CustomResource
+    public partial class ModuleTest : global::Pulumi.CustomResource
     {
         /// <summary>
         /// Create a ModuleTest resource with the given unique name, arguments, and options.
@@ -54,7 +54,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class ModuleTestArgs : Pulumi.ResourceArgs
+    public sealed class ModuleTestArgs : global::Pulumi.ResourceArgs
     {
         [Input("mod1")]
         public Input<Pulumi.Example.Mod1.Inputs.TypArgs>? Mod1 { get; set; }

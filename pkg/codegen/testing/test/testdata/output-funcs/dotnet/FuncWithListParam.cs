@@ -25,7 +25,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithListParamArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithListParamArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private List<string>? _a;
@@ -43,7 +43,7 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class FuncWithListParamInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithListParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private InputList<string>? _a;

@@ -13,7 +13,7 @@ namespace Pulumi.Example
     /// The provider type for the kubernetes package.
     /// </summary>
     [ExampleResourceType("pulumi:providers:example")]
-    public partial class Provider : Pulumi.ProviderResource
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -40,7 +40,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// BETA FEATURE - Options to configure the Helm Release resource.

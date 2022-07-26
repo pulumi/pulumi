@@ -16,7 +16,7 @@ namespace Pulumi.Mongodbatlas
     }
 
 
-    public sealed class GetCustomDbRolesArgs : Pulumi.InvokeArgs
+    public sealed class GetCustomDbRolesArgs : global::Pulumi.InvokeArgs
     {
         public GetCustomDbRolesArgs()
         {

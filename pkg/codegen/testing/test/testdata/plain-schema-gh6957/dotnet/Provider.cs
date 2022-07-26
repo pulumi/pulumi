@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Xyz
 {
     [XyzResourceType("pulumi:providers:xyz")]
-    public partial class Provider : Pulumi.ProviderResource
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -37,7 +37,7 @@ namespace Pulumi.Xyz
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         public ProviderArgs()
         {

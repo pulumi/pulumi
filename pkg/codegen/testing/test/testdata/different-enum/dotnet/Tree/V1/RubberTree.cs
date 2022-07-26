@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Plant.Tree.V1
 {
     [PlantResourceType("plant:tree/v1:RubberTree")]
-    public partial class RubberTree : Pulumi.CustomResource
+    public partial class RubberTree : global::Pulumi.CustomResource
     {
         [Output("container")]
         public Output<Pulumi.Plant.Outputs.Container?> Container { get; private set; } = null!;
@@ -71,7 +71,7 @@ namespace Pulumi.Plant.Tree.V1
         }
     }
 
-    public sealed class RubberTreeArgs : Pulumi.ResourceArgs
+    public sealed class RubberTreeArgs : global::Pulumi.ResourceArgs
     {
         [Input("container")]
         public Input<Pulumi.Plant.Inputs.ContainerArgs>? Container { get; set; }
@@ -97,7 +97,7 @@ namespace Pulumi.Plant.Tree.V1
         }
     }
 
-    public sealed class RubberTreeState : Pulumi.ResourceArgs
+    public sealed class RubberTreeState : global::Pulumi.ResourceArgs
     {
         [Input("farm")]
         public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }

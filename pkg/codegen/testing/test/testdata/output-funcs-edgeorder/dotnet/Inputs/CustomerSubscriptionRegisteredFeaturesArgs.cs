@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Represents subscription registered features
     /// </summary>
-    public sealed class CustomerSubscriptionRegisteredFeaturesArgs : Pulumi.ResourceArgs
+    public sealed class CustomerSubscriptionRegisteredFeaturesArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// Name of subscription registered feature

@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example.Nested.Inputs
 {
 
-    public sealed class Baz : Pulumi.InvokeArgs
+    public sealed class Baz : global::Pulumi.InvokeArgs
     {
         [Input("hello")]
         public string? Hello { get; set; }
