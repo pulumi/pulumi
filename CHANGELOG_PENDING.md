@@ -68,3 +68,6 @@
 
 - [python] Fix overriding of PATH on Windows.
   [#10236](https://github.com/pulumi/pulumi/pull/10236)
+
+- [dotnet/sdk] Serialize immutable arrays initialized by default.
+  [#10247](https://github.com/pulumi/pulumi/pull/10247)
