@@ -1,3 +1,8 @@
+### Breaking
+
+- [engine] Engine always encrypts secret return values in Invoke
+  [#10239](https://github.com/pulumi/pulumi/pull/10239)
+
 ### Improvements
 
 - [auto/go] Adds the ability to capture incremental `stderr`
