@@ -42,5 +42,6 @@ namespace Pulumi.FooBar
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

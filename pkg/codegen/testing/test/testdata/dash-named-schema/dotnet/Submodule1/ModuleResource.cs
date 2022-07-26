@@ -66,5 +66,6 @@ namespace Pulumi.FooBar.Submodule1
         public ModuleResourceArgs()
         {
         }
+        public static new ModuleResourceArgs Empty => new ModuleResourceArgs();
     }
 }

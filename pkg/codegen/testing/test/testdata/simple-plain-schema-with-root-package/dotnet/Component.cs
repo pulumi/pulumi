@@ -102,5 +102,6 @@ namespace Pulumi.Example
         public ComponentArgs()
         {
         }
+        public static new ComponentArgs Empty => new ComponentArgs();
     }
 }

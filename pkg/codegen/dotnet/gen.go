@@ -687,6 +687,10 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 	}
 	fmt.Fprintf(w, "%s    }\n", indent)
 
+	// override Empty static property from inherited ResourceArgs
+	// and make it return a concrete args type instead of inherited ResourceArgs
+	fmt.Fprintf(w, "%s    public static new %s Empty => new %s();\n", indent, pt.name, pt.name)
+
 	// Close the class.
 	fmt.Fprintf(w, "%s}\n", indent)
 

@@ -64,5 +64,6 @@ namespace Pulumi.Xyz
         public StaticPageArgs()
         {
         }
+        public static new StaticPageArgs Empty => new StaticPageArgs();
     }
 }

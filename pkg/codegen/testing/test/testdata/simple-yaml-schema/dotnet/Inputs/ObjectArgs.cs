@@ -53,5 +53,6 @@ namespace Pulumi.Example.Inputs
         public ObjectArgs()
         {
         }
+        public static new ObjectArgs Empty => new ObjectArgs();
     }
 }

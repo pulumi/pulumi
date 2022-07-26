@@ -43,6 +43,7 @@ namespace Pulumi.Example
         {
             B = "defValue";
         }
+        public static new FuncWithAllOptionalInputsArgs Empty => new FuncWithAllOptionalInputsArgs();
     }
 
     public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
@@ -63,6 +64,7 @@ namespace Pulumi.Example
         {
             B = "defValue";
         }
+        public static new FuncWithAllOptionalInputsInvokeArgs Empty => new FuncWithAllOptionalInputsInvokeArgs();
     }
 
 

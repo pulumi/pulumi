@@ -62,6 +62,7 @@ namespace Pulumi.Myedgeorder
         public ListProductFamiliesArgs()
         {
         }
+        public static new ListProductFamiliesArgs Empty => new ListProductFamiliesArgs();
     }
 
     public sealed class ListProductFamiliesInvokeArgs : Pulumi.InvokeArgs
@@ -99,6 +100,7 @@ namespace Pulumi.Myedgeorder
         public ListProductFamiliesInvokeArgs()
         {
         }
+        public static new ListProductFamiliesInvokeArgs Empty => new ListProductFamiliesInvokeArgs();
     }
 
 

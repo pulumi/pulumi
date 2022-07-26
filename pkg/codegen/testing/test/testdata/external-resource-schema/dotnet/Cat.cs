@@ -69,5 +69,6 @@ namespace Pulumi.Example
         public CatArgs()
         {
         }
+        public static new CatArgs Empty => new CatArgs();
     }
 }

@@ -28,6 +28,7 @@ namespace Other.Example
         public ArgFunctionArgs()
         {
         }
+        public static new ArgFunctionArgs Empty => new ArgFunctionArgs();
     }
 
     public sealed class ArgFunctionInvokeArgs : Pulumi.InvokeArgs
@@ -38,6 +39,7 @@ namespace Other.Example
         public ArgFunctionInvokeArgs()
         {
         }
+        public static new ArgFunctionInvokeArgs Empty => new ArgFunctionInvokeArgs();
     }
 
 

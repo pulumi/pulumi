@@ -18,5 +18,6 @@ namespace Pulumi.Example.Inputs
         public ConfigMapArgs()
         {
         }
+        public static new ConfigMapArgs Empty => new ConfigMapArgs();
     }
 }

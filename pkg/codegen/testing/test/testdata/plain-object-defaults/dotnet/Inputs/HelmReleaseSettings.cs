@@ -38,5 +38,6 @@ namespace Pulumi.Example.Inputs
             Driver = Utilities.GetEnv("PULUMI_K8S_HELM_DRIVER") ?? "secret";
             PluginsPath = Utilities.GetEnv("PULUMI_K8S_HELM_PLUGINS_PATH");
         }
+        public static new HelmReleaseSettings Empty => new HelmReleaseSettings();
     }
 }

@@ -63,5 +63,6 @@ namespace Pulumi.Example
         public ResourceInputArgs()
         {
         }
+        public static new ResourceInputArgs Empty => new ResourceInputArgs();
     }
 }

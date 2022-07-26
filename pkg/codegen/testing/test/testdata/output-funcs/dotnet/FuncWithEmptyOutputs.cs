@@ -36,6 +36,7 @@ namespace Pulumi.Mypkg
         public FuncWithEmptyOutputsArgs()
         {
         }
+        public static new FuncWithEmptyOutputsArgs Empty => new FuncWithEmptyOutputsArgs();
     }
 
     public sealed class FuncWithEmptyOutputsInvokeArgs : Pulumi.InvokeArgs
@@ -49,6 +50,7 @@ namespace Pulumi.Mypkg
         public FuncWithEmptyOutputsInvokeArgs()
         {
         }
+        public static new FuncWithEmptyOutputsInvokeArgs Empty => new FuncWithEmptyOutputsInvokeArgs();
     }
 
 

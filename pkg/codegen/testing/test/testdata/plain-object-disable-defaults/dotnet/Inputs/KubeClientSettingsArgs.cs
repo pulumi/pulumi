@@ -35,5 +35,6 @@ namespace Pulumi.Example.Inputs
             Burst = Utilities.GetEnvInt32("PULUMI_K8S_CLIENT_BURST");
             Qps = Utilities.GetEnvDouble("PULUMI_K8S_CLIENT_QPS");
         }
+        public static new KubeClientSettingsArgs Empty => new KubeClientSettingsArgs();
     }
 }

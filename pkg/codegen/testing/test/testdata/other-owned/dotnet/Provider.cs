@@ -44,5 +44,6 @@ namespace Other.Example
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

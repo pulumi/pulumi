@@ -36,5 +36,6 @@ namespace Pulumi.Myedgeorder.Inputs
         public ConfigurationFiltersArgs()
         {
         }
+        public static new ConfigurationFiltersArgs Empty => new ConfigurationFiltersArgs();
     }
 }

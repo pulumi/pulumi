@@ -65,5 +65,6 @@ namespace Pulumi.Example
         public ModuleTestArgs()
         {
         }
+        public static new ModuleTestArgs Empty => new ModuleTestArgs();
     }
 }

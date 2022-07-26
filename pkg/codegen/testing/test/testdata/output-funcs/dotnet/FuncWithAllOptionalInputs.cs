@@ -42,6 +42,7 @@ namespace Pulumi.Mypkg
         public FuncWithAllOptionalInputsArgs()
         {
         }
+        public static new FuncWithAllOptionalInputsArgs Empty => new FuncWithAllOptionalInputsArgs();
     }
 
     public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
@@ -61,6 +62,7 @@ namespace Pulumi.Mypkg
         public FuncWithAllOptionalInputsInvokeArgs()
         {
         }
+        public static new FuncWithAllOptionalInputsInvokeArgs Empty => new FuncWithAllOptionalInputsInvokeArgs();
     }
 
 

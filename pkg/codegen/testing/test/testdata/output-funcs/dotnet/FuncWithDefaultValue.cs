@@ -37,6 +37,7 @@ namespace Pulumi.Mypkg
         {
             B = "b-default";
         }
+        public static new FuncWithDefaultValueArgs Empty => new FuncWithDefaultValueArgs();
     }
 
     public sealed class FuncWithDefaultValueInvokeArgs : Pulumi.InvokeArgs
@@ -51,6 +52,7 @@ namespace Pulumi.Mypkg
         {
             B = "b-default";
         }
+        public static new FuncWithDefaultValueInvokeArgs Empty => new FuncWithDefaultValueInvokeArgs();
     }
 
 

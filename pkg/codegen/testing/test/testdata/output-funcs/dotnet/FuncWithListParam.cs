@@ -41,6 +41,7 @@ namespace Pulumi.Mypkg
         public FuncWithListParamArgs()
         {
         }
+        public static new FuncWithListParamArgs Empty => new FuncWithListParamArgs();
     }
 
     public sealed class FuncWithListParamInvokeArgs : Pulumi.InvokeArgs
@@ -59,6 +60,7 @@ namespace Pulumi.Mypkg
         public FuncWithListParamInvokeArgs()
         {
         }
+        public static new FuncWithListParamInvokeArgs Empty => new FuncWithListParamInvokeArgs();
     }
 
 

@@ -51,5 +51,6 @@ namespace Pulumi.Example.Inputs
             Question = Utilities.GetEnv("PULUMI_THE_QUESTION") ?? "<unknown>";
             Thinker = "not a good interaction";
         }
+        public static new LayeredTypeArgs Empty => new LayeredTypeArgs();
     }
 }

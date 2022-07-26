@@ -56,6 +56,7 @@ namespace Pulumi.Mypkg
         public GetIntegrationRuntimeObjectMetadatumArgs()
         {
         }
+        public static new GetIntegrationRuntimeObjectMetadatumArgs Empty => new GetIntegrationRuntimeObjectMetadatumArgs();
     }
 
     public sealed class GetIntegrationRuntimeObjectMetadatumInvokeArgs : Pulumi.InvokeArgs
@@ -87,6 +88,7 @@ namespace Pulumi.Mypkg
         public GetIntegrationRuntimeObjectMetadatumInvokeArgs()
         {
         }
+        public static new GetIntegrationRuntimeObjectMetadatumInvokeArgs Empty => new GetIntegrationRuntimeObjectMetadatumInvokeArgs();
     }
 
 

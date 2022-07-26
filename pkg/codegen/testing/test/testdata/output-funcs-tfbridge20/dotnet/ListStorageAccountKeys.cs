@@ -50,6 +50,7 @@ namespace Pulumi.Mypkg
         public ListStorageAccountKeysArgs()
         {
         }
+        public static new ListStorageAccountKeysArgs Empty => new ListStorageAccountKeysArgs();
     }
 
     public sealed class ListStorageAccountKeysInvokeArgs : Pulumi.InvokeArgs
@@ -75,6 +76,7 @@ namespace Pulumi.Mypkg
         public ListStorageAccountKeysInvokeArgs()
         {
         }
+        public static new ListStorageAccountKeysInvokeArgs Empty => new ListStorageAccountKeysInvokeArgs();
     }
 
 

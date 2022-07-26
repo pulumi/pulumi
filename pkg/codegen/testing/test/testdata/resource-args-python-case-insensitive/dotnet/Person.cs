@@ -77,5 +77,6 @@ namespace Pulumi.Example
         public PersonArgs()
         {
         }
+        public static new PersonArgs Empty => new PersonArgs();
     }
 }

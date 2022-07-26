@@ -29,5 +29,6 @@ namespace Pulumi.My8110
         public ExampleFuncArgs()
         {
         }
+        public static new ExampleFuncArgs Empty => new ExampleFuncArgs();
     }
 }

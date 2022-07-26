@@ -21,5 +21,6 @@ namespace Pulumi.Example.Inputs
         public ObjectWithNodeOptionalInputsArgs()
         {
         }
+        public static new ObjectWithNodeOptionalInputsArgs Empty => new ObjectWithNodeOptionalInputsArgs();
     }
 }

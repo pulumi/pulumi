@@ -18,5 +18,6 @@ namespace Pulumi.Xyz.Inputs
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 }

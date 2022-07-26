@@ -56,6 +56,7 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsArgs()
         {
         }
+        public static new ListConfigurationsArgs Empty => new ListConfigurationsArgs();
     }
 
     public sealed class ListConfigurationsInvokeArgs : Pulumi.InvokeArgs
@@ -87,6 +88,7 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsInvokeArgs()
         {
         }
+        public static new ListConfigurationsInvokeArgs Empty => new ListConfigurationsInvokeArgs();
     }
 
 

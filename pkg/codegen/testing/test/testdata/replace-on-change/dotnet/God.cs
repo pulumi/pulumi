@@ -63,5 +63,6 @@ namespace Pulumi.Example
         public GodArgs()
         {
         }
+        public static new GodArgs Empty => new GodArgs();
     }
 }

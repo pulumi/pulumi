@@ -22,5 +22,6 @@ namespace Pulumi.Example.Mod1.Inputs
         {
             Val = Utilities.GetEnv("PULUMI_EXAMPLE_MOD1_DEFAULT") ?? "mod1";
         }
+        public static new TypArgs Empty => new TypArgs();
     }
 }

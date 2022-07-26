@@ -57,5 +57,6 @@ namespace Pulumi.Example
         public OtherResourceArgs()
         {
         }
+        public static new OtherResourceArgs Empty => new OtherResourceArgs();
     }
 }

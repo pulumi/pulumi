@@ -63,5 +63,6 @@ namespace Pulumi.Example
         public WorkloadArgs()
         {
         }
+        public static new WorkloadArgs Empty => new WorkloadArgs();
     }
 }

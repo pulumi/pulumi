@@ -80,5 +80,6 @@ namespace Pulumi.Example
         public ToyStoreArgs()
         {
         }
+        public static new ToyStoreArgs Empty => new ToyStoreArgs();
     }
 }

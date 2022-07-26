@@ -51,5 +51,6 @@ namespace Other.Example
         public FooResourceArgs()
         {
         }
+        public static new FooResourceArgs Empty => new FooResourceArgs();
     }
 }

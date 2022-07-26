@@ -33,5 +33,6 @@ namespace Pulumi.Example.Inputs
         public Foo()
         {
         }
+        public static new Foo Empty => new Foo();
     }
 }

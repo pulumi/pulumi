@@ -63,5 +63,6 @@ namespace Pulumi.Example
         public RecArgs()
         {
         }
+        public static new RecArgs Empty => new RecArgs();
     }
 }

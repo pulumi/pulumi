@@ -54,5 +54,6 @@ namespace Other.Example.Inputs
         public ObjectArgs()
         {
         }
+        public static new ObjectArgs Empty => new ObjectArgs();
     }
 }

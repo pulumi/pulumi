@@ -45,6 +45,7 @@ namespace Pulumi.Example
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 
     /// <summary>
@@ -61,6 +62,7 @@ namespace Pulumi.Example
         public FooGetKubeconfigArgs()
         {
         }
+        public static new FooGetKubeconfigArgs Empty => new FooGetKubeconfigArgs();
     }
 
     /// <summary>

@@ -79,5 +79,6 @@ namespace Pulumi.FooBar.Deeply/nested/module
         public ResourceArgs()
         {
         }
+        public static new ResourceArgs Empty => new ResourceArgs();
     }
 }
