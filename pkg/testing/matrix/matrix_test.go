@@ -21,41 +21,36 @@ import (
 	i "github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func TestEmpty(t *testing.T) {
+func TestAll(t *testing.T) {
 	t.Parallel()
-
-	opts := &i.ProgramTestOptions{
-		Dir: "tests/empty",
+	opts := []MatrixTestOptions{
+		{
+			Program: &i.ProgramTestOptions{
+				Dir: "tests/empty",
+			},
+			Languages: allLanguages(),
+		},
+		{
+			Program: &i.ProgramTestOptions{
+				Dir: "tests/scalar",
+			},
+			Languages: allLanguages(),
+		},
+		{
+			Program: &i.ProgramTestOptions{
+				Dir: "tests/structured",
+			},
+			Languages: allLanguages(),
+		},
 	}
-	langsOpts := allLanguages()
 
-	Test(t, opts, langsOpts)
+	for _, opt := range opts {
+		Test(t, opt)
+	}
 }
 
-func TestScalar(t *testing.T) {
-	t.Parallel()
-
-	opts := &i.ProgramTestOptions{
-		Dir: "tests/scalar",
-	}
-	langsOpts := allLanguages()
-
-	Test(t, opts, langsOpts)
-}
-
-func TestStructured(t *testing.T) {
-	t.Parallel()
-
-	opts := &i.ProgramTestOptions{
-		Dir: "tests/structured",
-	}
-	langsOpts := allLanguages()
-
-	Test(t, opts, langsOpts)
-}
-
-func allLanguages() []TestOption {
-	return []TestOption{
+func allLanguages() []LangTestOption {
+	return []LangTestOption{
 		{
 			Language: "go",
 			Version:  &semver.Version{Major: 1, Minor: 7, Patch: 0},

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -39,22 +40,44 @@ import (
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
-type TestOption struct {
+type LangTestOption struct {
 	Language string
 	Version  *semver.Version //Array of versions?
 	Opts     *i.ProgramTestOptions
 }
 
+type PluginOptions struct {
+	Name string
+	Kind workspace.PluginKind
+
+	// Build is the set of commands to run to build the plugin and SDK
+	// In the future we want to just generate the SDK using the plugin.
+	Build []exec.Cmd
+
+	// Bin is the path to the plugin to use.
+	Bin string
+
+	// SDK is the path to the SDK to use.
+	SDK string
+}
+
+type MatrixTestOptions struct {
+	Languages []LangTestOption
+	Program   *i.ProgramTestOptions
+	Plugins   []PluginOptions
+}
+
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
-func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
+func Test(t *testing.T, opts MatrixTestOptions) {
 
-	dir := opts.Dir
+	dir := opts.Program.Dir
 	if !filepath.IsAbs(dir) {
 		pwd, err := os.Getwd()
 		assert.NoError(t, err)
 		dir = filepath.Join(pwd, dir)
 	}
+
 	projfile := filepath.Join(dir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	assert.NoError(t, err)
@@ -91,6 +114,29 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 		}
 	}
 
+	//Execute build commands and add plugin links
+	for _, plugin := range opts.Plugins {
+		for _, cmd := range plugin.Build {
+			err := cmd.Run()
+			assert.NoError(t, err)
+		}
+		p := workspace.PluginOptions{
+			Name: plugin.Name,
+			Path: plugin.Bin,
+		}
+
+		//TODO: Generate SDKs for plugins
+
+		switch plugin.Kind {
+		case workspace.AnalyzerPlugin:
+			proj.Plugins.Analyzers = append(proj.Plugins.Analyzers, p)
+		case workspace.LanguagePlugin:
+			proj.Plugins.Languages = append(proj.Plugins.Languages, p)
+		case workspace.ResourcePlugin:
+			proj.Plugins.Providers = append(proj.Plugins.Providers, p)
+		}
+	}
+
 	//Replace relative paths with absolute paths
 
 	if proj.Plugins != nil {
@@ -115,7 +161,7 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 	assert.NoError(t, err)
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
-	for _, langOpt := range langOpts {
+	for _, langOpt := range opts.Languages {
 
 		var projectGenerator projectGeneratorFunc
 		switch langOpt.Language {
@@ -156,8 +202,8 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 
 		//Configure opts
 		langPtOpts := i.ProgramTestOptions{}
-		if opts != nil {
-			langPtOpts = *opts
+		if opts.Program != nil {
+			langPtOpts = *opts.Program
 		}
 		if langOpt.Opts != nil {
 			langPtOpts = langPtOpts.With(*langOpt.Opts)
@@ -170,8 +216,8 @@ func Test(t *testing.T, opts *i.ProgramTestOptions, langOpts []TestOption) {
 		})
 		//clean up subdir
 
-		if err := os.RemoveAll(subdir); err != nil {
-			t.Errorf("error removing subdir: %v", err)
-		}
+		t.Cleanup(func() {
+			os.RemoveAll(subdir)
+		})
 	}
 }
