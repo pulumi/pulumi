@@ -816,7 +816,7 @@ type PluginContent interface {
 }
 
 func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
-	return singleFilePlugin{F: f}
+	return singleFilePlugin{F: f, Kind: info.Kind, Name: info.Name}
 }
 
 type singleFilePlugin struct {
