@@ -1,0 +1,6 @@
+tests/*/dotnet
+tests/*/go
+tests/*/java
+tests/*/nodejs
+tests/*/python
+tests/*/yaml

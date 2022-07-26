@@ -45,7 +45,9 @@ func TestAll(t *testing.T) {
 	}
 
 	for _, opt := range opts {
-		Test(t, opt)
+		t.Run(opt.Program.Dir, func(t *testing.T) {
+			Test(t, opt)
+		})
 	}
 }
 

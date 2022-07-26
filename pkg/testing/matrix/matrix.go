@@ -216,8 +216,9 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		})
 		//clean up subdir
 
-		t.Cleanup(func() {
+		//Including this seems to cause all tests to fail.
+		/*t.Cleanup(func() {
 			os.RemoveAll(subdir)
-		})
+		})*/
 	}
 }
