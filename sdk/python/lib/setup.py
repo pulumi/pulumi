@@ -23,7 +23,7 @@ def readme():
 
 
 setup(name='pulumi',
-      version='3.99.99',
+      version='${VERSION}',
       description='Pulumi\'s Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',

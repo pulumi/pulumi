@@ -109,6 +109,10 @@ func IsRuntimeError(e error) bool {
 		return false
 	}
 
+	if IsUnexpectedEngineError(e) {
+		return false
+	}
+
 	if IsCompilationError(e) {
 		return false
 	}
