@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -140,14 +141,20 @@ func newPluginInstallCmd() *cobra.Command {
 				var payload workspace.PluginContent
 				var err error
 				if file == "" {
-					var size int64
-					var r io.ReadCloser
-					if r, size, err = install.Download(); err != nil {
+					withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color)
+					}
+					retry := func(err error, attempt int, limit int, delay time.Duration) {
+						cmdutil.Diag().Warningf(
+							diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+					}
+
+					r, err := workspace.DownloadToFile(install, withProgress, retry)
+					if err != nil {
 						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
-					payload = workspace.TarPlugin(
-						workspace.ReadCloserProgressBar(r, size, "Downloading plugin", displayOpts.Color),
-					)
+
+					payload = workspace.TarPlugin(r)
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)

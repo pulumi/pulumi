@@ -44,6 +44,9 @@
 - [engine] Remove sequence numbers from the engine and provider interfaces.
   [#10203](https://github.com/pulumi/pulumi/pull/10203)
 
+- [engine] The engine will retry plugin downloads that error.
+  [#10248](https://github.com/pulumi/pulumi/pull/10248)
+
 ### Bug Fixes
 
 - [cli] Only log github request headers at log level 11.
