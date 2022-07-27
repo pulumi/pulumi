@@ -56,15 +56,13 @@ builds:
 - <<: *pulumibin
   id: pulumi-language-java
   binary: pulumi-language-java
-  builder: prebuilt
   prebuilt:
-    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
+    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
 - <<: *pulumibin
   id: pulumi-language-yaml
   binary: pulumi-language-yaml
-  builder: prebuilt
   prebuilt:
-    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
+    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}{{ .Ext }}
 
 archives:
 - wrap_in_directory: pulumi
