@@ -36,6 +36,6 @@ func TestEnvOverrideGetCommandResults(t *testing.T) {
 	// We default PULUMI_DEBUG_COMMANDS to true
 	checkDebug("true")
 	// We can override the default
-	e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=false")
+	e.SetEnvVars("PULUMI_DEBUG_COMMANDS=false")
 	checkDebug("false")
 }
