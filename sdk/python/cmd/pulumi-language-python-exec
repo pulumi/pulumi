@@ -109,8 +109,7 @@ if __name__ == "__main__":
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:
-        pulumi.log.debug("Program failed with an unhandled exception:")
-        pulumi.log.error(traceback.format_exc())
+        pulumi.log.error("Program failed with an unhandled exception:\n"+traceback.format_exc())
     finally:
         loop.close()
         sys.stdout.flush()
