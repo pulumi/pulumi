@@ -271,24 +271,24 @@ func NewPulumiCmd() *cobra.Command {
 
 		// Common commands:
 		{
-			Name: "Deployment Commands",
+			Name: "Stack Management Commands",
 			Commands: []*cobra.Command{
 				newNewCmd(),
 				newConfigCmd(),
-				newUpCmd(),
-				newDestroyCmd(),
-				newPreviewCmd(),
-				newCancelCmd(),
-			},
-		},
-		{
-			Name: "Stack Management Commands",
-			Commands: []*cobra.Command{
 				newStackCmd(),
 				newConsoleCmd(),
 				newImportCmd(),
 				newRefreshCmd(),
 				newStateCmd(),
+			},
+		},
+		{
+			Name: "Deployment Commands",
+			Commands: []*cobra.Command{
+				newUpCmd(),
+				newDestroyCmd(),
+				newPreviewCmd(),
+				newCancelCmd(),
 			},
 		},
 		{
