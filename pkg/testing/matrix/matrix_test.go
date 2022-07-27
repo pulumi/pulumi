@@ -58,7 +58,8 @@ func TestAll(t *testing.T) {
 		},*/
 		{
 			Program: &i.ProgramTestOptions{
-				Dir: "tests/provider",
+				Dir:                      "tests/provider",
+				AllowEmptyPreviewChanges: true,
 			},
 			Languages: allLanguages(),
 			Plugins: []PluginOptions{
@@ -67,7 +68,7 @@ func TestAll(t *testing.T) {
 					Kind:  workspace.ResourcePlugin,
 					Build: []exec.Cmd{},
 					Bin:   "./bin",
-					Version: &semver.Version{
+					Version: semver.Version{
 						Major: 0,
 						Minor: 4,
 						Patch: 1,
@@ -88,10 +89,10 @@ func allLanguages() []LangTestOption {
 	return []LangTestOption{
 		{
 			Language: "go",
-			Version:  &semver.Version{Major: 1, Minor: 7, Patch: 0},
+			Version:  &semver.Version{Major: 1, Minor: 17, Patch: 0},
 			Opts:     nil,
 		},
-		{
+		/*{
 			Language: "python",
 			Version:  &semver.Version{Major: 3, Minor: 7, Patch: 0},
 			Opts:     nil,
@@ -110,6 +111,6 @@ func allLanguages() []LangTestOption {
 			Language: "yaml",
 			Version:  nil,
 			Opts:     nil,
-		},
+		},*/
 	}
 }

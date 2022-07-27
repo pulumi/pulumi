@@ -64,9 +64,10 @@ type ProjectOptions struct {
 }
 
 type PluginOptions struct {
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version,omitempty" yaml:"version,omitempty"`
-	Path    string `json:"path" yaml:"path"`
+	Name    string            `json:"name" yaml:"name"`
+	Version string            `json:"version,omitempty" yaml:"version,omitempty"`
+	Path    string            `json:"path" yaml:"path"`
+	SDKPath map[string]string //JSON, YAML tags deliberately ommitted
 }
 
 type Plugins struct {

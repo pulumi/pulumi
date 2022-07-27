@@ -97,21 +97,21 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	projectPlugins := make([]*workspace.PluginInfo, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
-			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
+			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin, ctx.Pwd)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, languageOpts := range plugins.Languages {
-			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin, ctx.Pwd)
 			if err != nil {
 				return nil, err
 			}
 			projectPlugins = append(projectPlugins, info)
 		}
 		for _, analyzerOpts := range plugins.Analyzers {
-			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin, ctx.Pwd)
 			if err != nil {
 				return nil, err
 			}
@@ -159,7 +159,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
-func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (*workspace.PluginInfo, error) {
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind, dir string) (*workspace.PluginInfo, error) {
 	var v *semver.Version
 	if providerOpts.Version != "" {
 		ver, err := semver.Parse(providerOpts.Version)
@@ -168,15 +168,19 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 		}
 		v = &ver
 	}
+	path := providerOpts.Path
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(dir, providerOpts.Path)
+	}
 
-	_, err := os.Stat(providerOpts.Path)
+	_, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+		return nil, fmt.Errorf("could not find provider folder at path %s", path)
 	}
 
 	pluginInfo := &workspace.PluginInfo{
 		Name:    providerOpts.Name,
-		Path:    filepath.Clean(providerOpts.Path),
+		Path:    path,
 		Kind:    k,
 		Version: v,
 	}

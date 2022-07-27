@@ -55,7 +55,7 @@ type LangTestOption struct {
 type PluginOptions struct {
 	Name    string
 	Kind    workspace.PluginKind
-	Version *semver.Version
+	Version semver.Version
 
 	// Build is the set of commands to run to build the plugin and SDK
 	// In the future we want to just generate the SDK using the plugin.
@@ -117,21 +117,37 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		}
 	}
 	if pclProgram == nil {
-		_, pclProgram, err = yamlgen.Eject(pwd, nil)
+		loader := schema.NewPluginLoader(ctx.Host)
+		_, pclProgram, err = yamlgen.Eject(pwd, loader)
 		assert.NoError(t, err)
 	}
 	assert.NotNil(t, proj)
 	assert.NotNil(t, pclProgram)
 
 	//Execute build commands and add plugin links
+	//NOTE: We currently have duplicate plugin links - this is because it is necessary
+	//to add a plugin link in the base YAML to allow the YAML to be parsed into PCL.
+	//This is undesirable and should be fixed.
 	for _, plugin := range opts.Plugins {
 		for _, cmd := range plugin.Build {
 			err := cmd.Run()
 			assert.NoError(t, err)
 		}
+
+		sdkPath := make(map[string]string)
+
+		for _, lang := range opts.Languages {
+			sdkDir := filepath.Join(dir, "sdk", lang.Language)
+			sdkPath[lang.Language] = sdkDir
+		}
+
+		assert.NotNil(t, plugin.Version)
+
 		p := workspace.PluginOptions{
-			Name: plugin.Name,
-			Path: plugin.Bin,
+			Name:    plugin.Name,
+			Path:    plugin.Bin,
+			Version: plugin.Version.String(),
+			SDKPath: sdkPath,
 		}
 
 		//TODO: Generate SDKs for plugins
@@ -171,8 +187,6 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		}
 	}
 
-	assert.NoError(t, err)
-
 	//Generate SDKs
 	pluginctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), false, nil, proj.Plugins)
@@ -181,11 +195,11 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	for _, plugin := range opts.Plugins {
 		assert.NotNil(t, plugin.Version)
 
-		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, plugin.Version)
+		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, &plugin.Version)
 		assert.NoError(t, err)
 		assert.NotNil(t, info)
 
-		provider, err := pluginctx.Host.Provider(tokens.Package(info.Name), plugin.Version)
+		provider, err := pluginctx.Host.Provider(tokens.Package(info.Name), &plugin.Version)
 		assert.NoError(t, err)
 		assert.NotNil(t, provider)
 
@@ -232,12 +246,28 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
 				assert.NoError(t, err)
 			}
+			if lang == "go" {
+				//remove go.mod and go.sum files if they exist
+				os.Remove(filepath.Join(sdkDir, "go.mod"))
+				os.Remove(filepath.Join(sdkDir, "go.sum"))
+
+				//run go mod init in the root of the sdk dir
+				cmd := exec.Command("go", "mod", "init")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				//assert.NoError(t, err)
+
+				//run go mod tidy in the root of the sdk dir
+				cmd = exec.Command("go", "mod", "tidy", "-compat=1.18")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				//assert.NoError(t, err)
+			}
 		}
 	}
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
 	for _, langOpt := range opts.Languages {
-
 		var projectGenerator projectGeneratorFunc
 		switch langOpt.Language {
 		case "dotnet":

@@ -148,8 +148,15 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// Build a go.mod based on the packages used by program
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
+	gomod.WriteString("go 1.17\n")
+	for _, provider := range project.Plugins.Providers {
+		if provider.SDKPath == nil {
+			continue
+		}
+		gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi-%s/sdk/go => %s\n", provider.Name, provider.SDKPath["go"]))
+	}
+
 	gomod.WriteString(`
-go 1.17
 
 require (
 	github.com/pulumi/pulumi/sdk/v3 v3.30.0

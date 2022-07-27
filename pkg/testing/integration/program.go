@@ -2119,7 +2119,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	// tidy to resolve all transitive dependencies including from local dependencies above
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy", "-compat=1.17"}, cwd)
 	if err != nil {
 		return err
 	}

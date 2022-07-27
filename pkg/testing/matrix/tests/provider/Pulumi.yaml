@@ -6,5 +6,13 @@ resources:
   ls:
     type: command:local:Command
     properties:
-      create: ls
-      dir: ./
+      create: echo hello
+      dir: ../
+
+plugins:
+  languages:
+    - name: yaml
+      path: /Users/hliuson/go/src/github.com/pulumi/pulumi-yaml/bin
+  providers:
+    - name: command
+      path: bin
