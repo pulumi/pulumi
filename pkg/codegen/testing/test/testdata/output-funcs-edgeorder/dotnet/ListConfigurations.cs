@@ -27,7 +27,7 @@ namespace Pulumi.Myedgeorder
     }
 
 
-    public sealed class ListConfigurationsArgs : Pulumi.InvokeArgs
+    public sealed class ListConfigurationsArgs : global::Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
         private List<Inputs.ConfigurationFilters>? _configurationFilters;
@@ -56,9 +56,10 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsArgs()
         {
         }
+        public static new ListConfigurationsArgs Empty => new ListConfigurationsArgs();
     }
 
-    public sealed class ListConfigurationsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ListConfigurationsInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
         private InputList<Inputs.ConfigurationFiltersArgs>? _configurationFilters;
@@ -87,6 +88,7 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsInvokeArgs()
         {
         }
+        public static new ListConfigurationsInvokeArgs Empty => new ListConfigurationsInvokeArgs();
     }
 
 

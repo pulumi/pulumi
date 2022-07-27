@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Configstation
 {
     [ConfigstationResourceType("pulumi:providers:configstation")]
-    public partial class Provider : Pulumi.ProviderResource
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -37,7 +37,7 @@ namespace Pulumi.Configstation
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// this is a relaxed string enum which can also be set via env var
@@ -49,5 +49,6 @@ namespace Pulumi.Configstation
         {
             FavoriteColor = Utilities.GetEnv("FAVE_COLOR");
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

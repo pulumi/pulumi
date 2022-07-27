@@ -74,7 +74,7 @@ namespace Pulumi.Plant
         }
     }
 
-    internal sealed class PlantResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class PlantResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public PlantResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {
