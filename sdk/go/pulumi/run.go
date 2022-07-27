@@ -82,7 +82,8 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 
 	err = RunWithContext(ctx, body)
 	if err != nil {
-		ctx.Log.Error(fmt.Sprintf("program failed: %v\n", err), nil)
+		err := ctx.Log.Error(fmt.Sprintf("program failed: %v\n", err), nil)
+		contract.AssertNoError(err)
 	}
 	return err
 }
