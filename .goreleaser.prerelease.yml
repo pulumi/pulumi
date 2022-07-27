@@ -61,8 +61,7 @@ builds:
     path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
 
 archives:
-- id: pulumi
-  wrap_in_directory: pulumi
+- wrap_in_directory: pulumi
   format_overrides:
     - goos: windows
       format: zip
