@@ -42,5 +42,6 @@ namespace Pulumi.My8110
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

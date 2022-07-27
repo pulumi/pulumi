@@ -57,6 +57,7 @@ namespace Pulumi.Example
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 
     /// <summary>
@@ -103,6 +104,7 @@ namespace Pulumi.Example
         public FooBarArgs()
         {
         }
+        public static new FooBarArgs Empty => new FooBarArgs();
     }
 
     /// <summary>
@@ -131,6 +133,7 @@ namespace Pulumi.Example
         public FooGenerateKubeconfigArgs()
         {
         }
+        public static new FooGenerateKubeconfigArgs Empty => new FooGenerateKubeconfigArgs();
     }
 
     /// <summary>

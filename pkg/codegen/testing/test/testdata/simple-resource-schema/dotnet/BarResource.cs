@@ -50,5 +50,6 @@ namespace Pulumi.Example
         public BarResourceArgs()
         {
         }
+        public static new BarResourceArgs Empty => new BarResourceArgs();
     }
 }

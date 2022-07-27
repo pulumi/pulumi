@@ -86,6 +86,7 @@ namespace Pulumi.Mypkg
         public GetAmiIdsArgs()
         {
         }
+        public static new GetAmiIdsArgs Empty => new GetAmiIdsArgs();
     }
 
     public sealed class GetAmiIdsInvokeArgs : Pulumi.InvokeArgs
@@ -148,6 +149,7 @@ namespace Pulumi.Mypkg
         public GetAmiIdsInvokeArgs()
         {
         }
+        public static new GetAmiIdsInvokeArgs Empty => new GetAmiIdsInvokeArgs();
     }
 
 

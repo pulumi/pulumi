@@ -67,5 +67,6 @@ namespace Pulumi.Registrygeoreplication
         public RegistryGeoReplicationArgs()
         {
         }
+        public static new RegistryGeoReplicationArgs Empty => new RegistryGeoReplicationArgs();
     }
 }

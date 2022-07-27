@@ -42,5 +42,6 @@ namespace Pulumi.Xyz
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

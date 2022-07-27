@@ -21,5 +21,6 @@ namespace Pulumi.Example.Nested.Inputs
         public BazArgs()
         {
         }
+        public static new BazArgs Empty => new BazArgs();
     }
 }

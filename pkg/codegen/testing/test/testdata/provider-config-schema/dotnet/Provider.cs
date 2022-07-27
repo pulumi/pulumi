@@ -49,5 +49,6 @@ namespace Pulumi.Configstation
         {
             FavoriteColor = Utilities.GetEnv("FAVE_COLOR");
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

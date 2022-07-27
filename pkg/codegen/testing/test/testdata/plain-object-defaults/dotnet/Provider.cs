@@ -51,5 +51,6 @@ namespace Pulumi.Example
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

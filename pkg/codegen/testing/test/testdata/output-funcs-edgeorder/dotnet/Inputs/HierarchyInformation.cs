@@ -42,5 +42,6 @@ namespace Pulumi.Myedgeorder.Inputs
         public HierarchyInformation()
         {
         }
+        public static new HierarchyInformation Empty => new HierarchyInformation();
     }
 }

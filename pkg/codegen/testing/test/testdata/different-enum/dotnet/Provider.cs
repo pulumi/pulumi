@@ -42,5 +42,6 @@ namespace Pulumi.Plant
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

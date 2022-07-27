@@ -83,5 +83,6 @@ namespace Pulumi.Plant.Tree.V1
         public NurseryArgs()
         {
         }
+        public static new NurseryArgs Empty => new NurseryArgs();
     }
 }

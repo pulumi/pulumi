@@ -56,6 +56,7 @@ namespace Pulumi.Mypkg
         public GetBastionShareableLinkArgs()
         {
         }
+        public static new GetBastionShareableLinkArgs Empty => new GetBastionShareableLinkArgs();
     }
 
     public sealed class GetBastionShareableLinkInvokeArgs : Pulumi.InvokeArgs
@@ -87,6 +88,7 @@ namespace Pulumi.Mypkg
         public GetBastionShareableLinkInvokeArgs()
         {
         }
+        public static new GetBastionShareableLinkInvokeArgs Empty => new GetBastionShareableLinkInvokeArgs();
     }
 
 

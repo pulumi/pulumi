@@ -28,5 +28,6 @@ namespace Pulumi.Example.Inputs
         {
             Val = "mod main";
         }
+        public static new TypArgs Empty => new TypArgs();
     }
 }

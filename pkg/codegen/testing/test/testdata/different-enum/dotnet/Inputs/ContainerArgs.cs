@@ -28,5 +28,6 @@ namespace Pulumi.Plant.Inputs
         {
             Brightness = Pulumi.Plant.ContainerBrightness.One;
         }
+        public static new ContainerArgs Empty => new ContainerArgs();
     }
 }

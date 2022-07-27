@@ -18,5 +18,6 @@ namespace Pulumi.FooBar.Inputs
         public TopLevelArgs()
         {
         }
+        public static new TopLevelArgs Empty => new TopLevelArgs();
     }
 }

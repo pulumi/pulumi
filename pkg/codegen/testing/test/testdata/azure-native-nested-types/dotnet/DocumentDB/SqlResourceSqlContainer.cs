@@ -160,5 +160,6 @@ namespace Pulumi.AzureNative.DocumentDB
         public SqlResourceSqlContainerArgs()
         {
         }
+        public static new SqlResourceSqlContainerArgs Empty => new SqlResourceSqlContainerArgs();
     }
 }

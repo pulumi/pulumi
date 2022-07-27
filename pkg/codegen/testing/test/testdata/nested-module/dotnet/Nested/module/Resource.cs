@@ -79,5 +79,6 @@ namespace Pulumi.Foo.Nested/module
         public ResourceArgs()
         {
         }
+        public static new ResourceArgs Empty => new ResourceArgs();
     }
 }

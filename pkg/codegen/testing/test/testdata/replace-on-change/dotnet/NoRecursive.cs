@@ -70,5 +70,6 @@ namespace Pulumi.Example
         public NoRecursiveArgs()
         {
         }
+        public static new NoRecursiveArgs Empty => new NoRecursiveArgs();
     }
 }

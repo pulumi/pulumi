@@ -41,6 +41,7 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamArgs()
         {
         }
+        public static new FuncWithDictParamArgs Empty => new FuncWithDictParamArgs();
     }
 
     public sealed class FuncWithDictParamInvokeArgs : Pulumi.InvokeArgs
@@ -59,6 +60,7 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamInvokeArgs()
         {
         }
+        public static new FuncWithDictParamInvokeArgs Empty => new FuncWithDictParamInvokeArgs();
     }
 
 

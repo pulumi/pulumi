@@ -45,5 +45,6 @@ namespace Pulumi.Example.MyModule
         public IamResourceArgs()
         {
         }
+        public static new IamResourceArgs Empty => new IamResourceArgs();
     }
 }

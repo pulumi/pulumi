@@ -26,5 +26,6 @@ namespace Pulumi.Mypkg.Inputs
         public GetAmiIdsFilterArgs()
         {
         }
+        public static new GetAmiIdsFilterArgs Empty => new GetAmiIdsFilterArgs();
     }
 }

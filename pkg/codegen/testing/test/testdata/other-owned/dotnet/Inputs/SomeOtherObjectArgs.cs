@@ -19,5 +19,6 @@ namespace Other.Example.Inputs
         public SomeOtherObjectArgs()
         {
         }
+        public static new SomeOtherObjectArgs Empty => new SomeOtherObjectArgs();
     }
 }

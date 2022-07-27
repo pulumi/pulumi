@@ -21,5 +21,6 @@ namespace Pulumi.Example.Nested.Inputs
         public Baz()
         {
         }
+        public static new Baz Empty => new Baz();
     }
 }

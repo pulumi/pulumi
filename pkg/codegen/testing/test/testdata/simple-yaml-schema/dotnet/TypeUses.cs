@@ -96,5 +96,6 @@ namespace Pulumi.Example
         public TypeUsesArgs()
         {
         }
+        public static new TypeUsesArgs Empty => new TypeUsesArgs();
     }
 }

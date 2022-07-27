@@ -24,5 +24,6 @@ namespace Pulumi.Mypkg.Inputs
         public BastionShareableLinkArgs()
         {
         }
+        public static new BastionShareableLinkArgs Empty => new BastionShareableLinkArgs();
     }
 }

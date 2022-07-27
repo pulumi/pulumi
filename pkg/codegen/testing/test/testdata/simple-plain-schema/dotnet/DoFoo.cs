@@ -24,5 +24,6 @@ namespace Pulumi.Example
         public DoFooArgs()
         {
         }
+        public static new DoFooArgs Empty => new DoFooArgs();
     }
 }

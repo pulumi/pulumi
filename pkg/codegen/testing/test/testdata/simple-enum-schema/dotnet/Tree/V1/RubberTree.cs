@@ -95,6 +95,7 @@ namespace Pulumi.Plant.Tree.V1
             Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
             Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;
         }
+        public static new RubberTreeArgs Empty => new RubberTreeArgs();
     }
 
     public sealed class RubberTreeState : Pulumi.ResourceArgs
@@ -106,5 +107,6 @@ namespace Pulumi.Plant.Tree.V1
         {
             Farm = "(unknown)";
         }
+        public static new RubberTreeState Empty => new RubberTreeState();
     }
 }

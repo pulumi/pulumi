@@ -77,3 +77,6 @@
 
 - [dotnet/sdk] Serialize immutable arrays initialized by default.
   [#10247](https://github.com/pulumi/pulumi/pull/10247)
+
+- [dotnet/codegen] Override static `Empty` property to return concrete argument types
+  [#10250](https://github.com/pulumi/pulumi/pull/10250)

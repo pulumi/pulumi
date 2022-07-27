@@ -21,6 +21,7 @@ namespace Pulumi.Mongodbatlas
         public GetCustomDbRolesArgs()
         {
         }
+        public static new GetCustomDbRolesArgs Empty => new GetCustomDbRolesArgs();
     }
 
 

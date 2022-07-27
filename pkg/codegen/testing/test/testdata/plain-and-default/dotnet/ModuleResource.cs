@@ -136,5 +136,6 @@ namespace Pulumi.FooBar
             Required_number = 42;
             Required_string = "buzzer";
         }
+        public static new ModuleResourceArgs Empty => new ModuleResourceArgs();
     }
 }

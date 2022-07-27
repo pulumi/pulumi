@@ -56,5 +56,6 @@ namespace Pulumi.Example.Inputs
         public PetArgs()
         {
         }
+        public static new PetArgs Empty => new PetArgs();
     }
 }

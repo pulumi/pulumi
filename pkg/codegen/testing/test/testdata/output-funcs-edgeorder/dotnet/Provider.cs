@@ -42,5 +42,6 @@ namespace Pulumi.Myedgeorder
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

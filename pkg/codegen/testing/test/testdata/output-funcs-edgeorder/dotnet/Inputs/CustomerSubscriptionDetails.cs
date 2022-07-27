@@ -42,5 +42,6 @@ namespace Pulumi.Myedgeorder.Inputs
         public CustomerSubscriptionDetails()
         {
         }
+        public static new CustomerSubscriptionDetails Empty => new CustomerSubscriptionDetails();
     }
 }
