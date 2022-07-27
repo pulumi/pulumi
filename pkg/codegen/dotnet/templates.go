@@ -100,7 +100,7 @@ namespace {{.Namespace}}
         }
     }
 
-    internal sealed class {{.Name}}ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class {{.Name}}ResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public {{.Name}}ResourceTypeAttribute(string type) : base(type, {{.ClassName}}.Version)
         {

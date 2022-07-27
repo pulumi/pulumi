@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Configuration filters
     /// </summary>
-    public sealed class ConfigurationFilters : Pulumi.InvokeArgs
+    public sealed class ConfigurationFilters : global::Pulumi.InvokeArgs
     {
         [Input("filterableProperty")]
         private List<Inputs.FilterableProperty>? _filterableProperty;

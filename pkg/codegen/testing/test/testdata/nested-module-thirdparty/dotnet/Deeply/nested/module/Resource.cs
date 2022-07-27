@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.FooBar.Deeply/nested/module
 {
     [FooBarResourceType("foo-bar:deeply/nested/module:Resource")]
-    public partial class Resource : Pulumi.CustomResource
+    public partial class Resource : global::Pulumi.CustomResource
     {
         [Output("baz")]
         public Output<string?> Baz { get; private set; } = null!;
@@ -62,7 +62,7 @@ namespace Pulumi.FooBar.Deeply/nested/module
         }
     }
 
-    public sealed class ResourceArgs : Pulumi.ResourceArgs
+    public sealed class ResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("baz")]
         private Input<string>? _baz;

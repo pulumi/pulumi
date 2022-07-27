@@ -19,7 +19,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithConstInputArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithConstInputArgs : global::Pulumi.InvokeArgs
     {
         [Input("plainInput")]
         public string? PlainInput { get; set; }

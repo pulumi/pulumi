@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example.Inputs
 {
 
-    public sealed class FooArgs : Pulumi.ResourceArgs
+    public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         [Input("a", required: true)]
         public bool A { get; set; }

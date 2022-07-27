@@ -27,7 +27,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class ListStorageAccountKeysArgs : Pulumi.InvokeArgs
+    public sealed class ListStorageAccountKeysArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.
@@ -53,7 +53,7 @@ namespace Pulumi.Mypkg
         public static new ListStorageAccountKeysArgs Empty => new ListStorageAccountKeysArgs();
     }
 
-    public sealed class ListStorageAccountKeysInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ListStorageAccountKeysInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.

@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::TypeUses")]
-    public partial class TypeUses : Pulumi.CustomResource
+    public partial class TypeUses : global::Pulumi.CustomResource
     {
         [Output("alpha")]
         public Output<Pulumi.Example.OutputOnlyEnumType?> Alpha { get; private set; } = null!;
@@ -79,7 +79,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class TypeUsesArgs : Pulumi.ResourceArgs
+    public sealed class TypeUsesArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
         public Input<Inputs.SomeOtherObjectArgs>? Bar { get; set; }

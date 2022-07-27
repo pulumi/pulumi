@@ -25,7 +25,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithDefaultValueArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDefaultValueArgs : global::Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
         public string A { get; set; } = null!;
@@ -40,7 +40,7 @@ namespace Pulumi.Mypkg
         public static new FuncWithDefaultValueArgs Empty => new FuncWithDefaultValueArgs();
     }
 
-    public sealed class FuncWithDefaultValueInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDefaultValueInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
         public Input<string> A { get; set; } = null!;

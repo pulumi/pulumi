@@ -27,7 +27,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class GetBastionShareableLinkArgs : Pulumi.InvokeArgs
+    public sealed class GetBastionShareableLinkArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the Bastion Host.
@@ -59,7 +59,7 @@ namespace Pulumi.Mypkg
         public static new GetBastionShareableLinkArgs Empty => new GetBastionShareableLinkArgs();
     }
 
-    public sealed class GetBastionShareableLinkInvokeArgs : Pulumi.InvokeArgs
+    public sealed class GetBastionShareableLinkInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the Bastion Host.

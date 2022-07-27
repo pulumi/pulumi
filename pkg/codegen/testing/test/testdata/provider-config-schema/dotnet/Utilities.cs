@@ -74,7 +74,7 @@ namespace Pulumi.Configstation
         }
     }
 
-    internal sealed class ConfigstationResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class ConfigstationResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public ConfigstationResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

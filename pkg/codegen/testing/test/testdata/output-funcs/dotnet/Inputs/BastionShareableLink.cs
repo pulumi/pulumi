@@ -13,7 +13,7 @@ namespace Pulumi.Mypkg.Inputs
     /// <summary>
     /// Bastion Shareable Link.
     /// </summary>
-    public sealed class BastionShareableLink : Pulumi.InvokeArgs
+    public sealed class BastionShareableLink : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Reference of the virtual machine resource.

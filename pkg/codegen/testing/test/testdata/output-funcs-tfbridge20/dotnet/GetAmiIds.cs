@@ -26,7 +26,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class GetAmiIdsArgs : Pulumi.InvokeArgs
+    public sealed class GetAmiIdsArgs : global::Pulumi.InvokeArgs
     {
         [Input("executableUsers")]
         private List<string>? _executableUsers;
@@ -89,7 +89,7 @@ namespace Pulumi.Mypkg
         public static new GetAmiIdsArgs Empty => new GetAmiIdsArgs();
     }
 
-    public sealed class GetAmiIdsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class GetAmiIdsInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("executableUsers")]
         private InputList<string>? _executableUsers;

@@ -25,7 +25,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithAllOptionalInputsArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A
@@ -45,7 +45,7 @@ namespace Pulumi.Mypkg
         public static new FuncWithAllOptionalInputsArgs Empty => new FuncWithAllOptionalInputsArgs();
     }
 
-    public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A

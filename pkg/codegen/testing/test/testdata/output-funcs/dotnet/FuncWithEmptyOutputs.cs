@@ -25,7 +25,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithEmptyOutputsArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithEmptyOutputsArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The Name of the FeatureGroup.
@@ -39,7 +39,7 @@ namespace Pulumi.Mypkg
         public static new FuncWithEmptyOutputsArgs Empty => new FuncWithEmptyOutputsArgs();
     }
 
-    public sealed class FuncWithEmptyOutputsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithEmptyOutputsInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The Name of the FeatureGroup.

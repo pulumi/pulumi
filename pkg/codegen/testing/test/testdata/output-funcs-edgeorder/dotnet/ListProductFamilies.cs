@@ -27,7 +27,7 @@ namespace Pulumi.Myedgeorder
     }
 
 
-    public sealed class ListProductFamiliesArgs : Pulumi.InvokeArgs
+    public sealed class ListProductFamiliesArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
@@ -65,7 +65,7 @@ namespace Pulumi.Myedgeorder
         public static new ListProductFamiliesArgs Empty => new ListProductFamiliesArgs();
     }
 
-    public sealed class ListProductFamiliesInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ListProductFamiliesInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details

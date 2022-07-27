@@ -13,7 +13,7 @@ namespace Pulumi.Example
     /// test new feature with resoruces
     /// </summary>
     [ExampleResourceType("example:index:Foo")]
-    public partial class Foo : Pulumi.CustomResource
+    public partial class Foo : global::Pulumi.CustomResource
     {
         /// <summary>
         /// A test for plain types
@@ -64,7 +64,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class FooArgs : Pulumi.ResourceArgs
+    public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         [Input("argument")]
         public string? Argument { get; set; }

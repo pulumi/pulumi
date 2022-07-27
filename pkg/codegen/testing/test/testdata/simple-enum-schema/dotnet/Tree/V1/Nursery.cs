@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Plant.Tree.V1
 {
     [PlantResourceType("plant:tree/v1:Nursery")]
-    public partial class Nursery : Pulumi.CustomResource
+    public partial class Nursery : global::Pulumi.CustomResource
     {
         /// <summary>
         /// Create a Nursery resource with the given unique name, arguments, and options.
@@ -54,7 +54,7 @@ namespace Pulumi.Plant.Tree.V1
         }
     }
 
-    public sealed class NurseryArgs : Pulumi.ResourceArgs
+    public sealed class NurseryArgs : global::Pulumi.ResourceArgs
     {
         [Input("sizes")]
         private InputMap<Pulumi.Plant.Tree.V1.TreeSize>? _sizes;

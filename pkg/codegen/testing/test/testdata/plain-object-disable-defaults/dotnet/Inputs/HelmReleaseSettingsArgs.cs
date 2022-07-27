@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     /// <summary>
     /// BETA FEATURE - Options to configure the Helm Release resource.
     /// </summary>
-    public sealed class HelmReleaseSettingsArgs : Pulumi.ResourceArgs
+    public sealed class HelmReleaseSettingsArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.

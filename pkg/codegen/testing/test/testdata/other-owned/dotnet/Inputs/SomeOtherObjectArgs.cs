@@ -11,7 +11,7 @@ using Pulumi;
 namespace Other.Example.Inputs
 {
 
-    public sealed class SomeOtherObjectArgs : Pulumi.ResourceArgs
+    public sealed class SomeOtherObjectArgs : global::Pulumi.ResourceArgs
     {
         [Input("baz")]
         public Input<string>? Baz { get; set; }

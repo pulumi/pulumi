@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
     /// </summary>
-    public sealed class CustomerSubscriptionDetails : Pulumi.InvokeArgs
+    public sealed class CustomerSubscriptionDetails : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Location placement Id of a subscription
