@@ -670,6 +670,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
+		KeepSecrets:   true,
 		KeepResources: req.GetAcceptResources(),
 	})
 	if err != nil {

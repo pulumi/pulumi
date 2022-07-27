@@ -16,7 +16,7 @@ namespace Pulumi.Example
     }
 
 
-    public sealed class DoFooArgs : Pulumi.InvokeArgs
+    public sealed class DoFooArgs : global::Pulumi.InvokeArgs
     {
         [Input("foo", required: true)]
         public Inputs.Foo Foo { get; set; } = null!;
@@ -24,5 +24,6 @@ namespace Pulumi.Example
         public DoFooArgs()
         {
         }
+        public static new DoFooArgs Empty => new DoFooArgs();
     }
 }

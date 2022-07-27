@@ -660,7 +660,7 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 
 	var suffix string
 	if pt.baseClass != "" {
-		suffix = fmt.Sprintf(" : Pulumi.%s", pt.baseClass)
+		suffix = fmt.Sprintf(" : global::Pulumi.%s", pt.baseClass)
 	}
 
 	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, suffix)
@@ -686,6 +686,10 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInput
 		}
 	}
 	fmt.Fprintf(w, "%s    }\n", indent)
+
+	// override Empty static property from inherited ResourceArgs
+	// and make it return a concrete args type instead of inherited ResourceArgs
+	fmt.Fprintf(w, "%s    public static new %s Empty => new %s();\n", indent, pt.name, pt.name)
 
 	// Close the class.
 	fmt.Fprintf(w, "%s}\n", indent)
@@ -857,7 +861,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 }
 
 func genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "new Pulumi.Alias { ")
+	fmt.Fprintf(w, "new global::Pulumi.Alias { ")
 
 	parts := []string{}
 	if alias.Name != nil {
@@ -898,14 +902,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	optionsType := "CustomResourceOptions"
 	switch {
 	case r.IsProvider:
-		baseType = "Pulumi.ProviderResource"
+		baseType = "global::Pulumi.ProviderResource"
 	case mod.isK8sCompatMode():
 		baseType = "KubernetesResource"
 	case r.IsComponent:
-		baseType = "Pulumi.ComponentResource"
+		baseType = "global::Pulumi.ComponentResource"
 		optionsType = "ComponentResourceOptions"
 	default:
-		baseType = "Pulumi.CustomResource"
+		baseType = "global::Pulumi.CustomResource"
 	}
 
 	if r.DeprecationMessage != "" {

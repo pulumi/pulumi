@@ -1,16 +1,14 @@
+using System.Collections.Generic;
 using Pulumi;
 using Random = Pulumi.Random;
 
-class MyStack : Stack
+return await Deployment.RunAsync(() => 
 {
-    public MyStack()
-    {
-        var resourceLexicalName = new Random.RandomPet("aA-Alpha_alpha.🤯⁉️", new Random.RandomPetArgs
-        {
-        });
-        this.OutputLexicalName = resourceLexicalName.Id;
-    }
+    var resourceLexicalName = new Random.RandomPet("aA-Alpha_alpha.🤯⁉️");
 
-    [Output("bB-Beta_beta.💜⁉")]
-    public Output<string> OutputLexicalName { get; set; }
-}
+    return new Dictionary<string, object?>
+    {
+        ["bB-Beta_beta.💜⁉"] = resourceLexicalName.Id,
+    };
+});
+

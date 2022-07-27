@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Registrygeoreplication
 {
     [RegistrygeoreplicationResourceType("registrygeoreplication:index:RegistryGeoReplication")]
-    public partial class RegistryGeoReplication : Pulumi.ComponentResource
+    public partial class RegistryGeoReplication : global::Pulumi.ComponentResource
     {
         /// <summary>
         /// The login server url
@@ -56,7 +56,7 @@ namespace Pulumi.Registrygeoreplication
         }
     }
 
-    public sealed class RegistryGeoReplicationArgs : Pulumi.ResourceArgs
+    public sealed class RegistryGeoReplicationArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// The resource group that hosts the component resource
@@ -67,5 +67,6 @@ namespace Pulumi.Registrygeoreplication
         public RegistryGeoReplicationArgs()
         {
         }
+        public static new RegistryGeoReplicationArgs Empty => new RegistryGeoReplicationArgs();
     }
 }

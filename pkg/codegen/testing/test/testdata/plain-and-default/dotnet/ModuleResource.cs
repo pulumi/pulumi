@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.FooBar
 {
     [FooBarResourceType("foobar::ModuleResource")]
-    public partial class ModuleResource : Pulumi.CustomResource
+    public partial class ModuleResource : global::Pulumi.CustomResource
     {
         /// <summary>
         /// Create a ModuleResource resource with the given unique name, arguments, and options.
@@ -63,7 +63,7 @@ namespace Pulumi.FooBar
         }
     }
 
-    public sealed class ModuleResourceArgs : Pulumi.ResourceArgs
+    public sealed class ModuleResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("optional_bool")]
         public Input<bool>? Optional_bool { get; set; }
@@ -136,5 +136,6 @@ namespace Pulumi.FooBar
             Required_number = 42;
             Required_string = "buzzer";
         }
+        public static new ModuleResourceArgs Empty => new ModuleResourceArgs();
     }
 }

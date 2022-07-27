@@ -38,7 +38,7 @@ import (
 const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
+func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
 	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 
@@ -51,8 +51,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, config, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan)
+	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -148,12 +148,12 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host, target,
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 	if err != nil {
 		return nil, err
 	}
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,

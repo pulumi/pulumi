@@ -27,6 +27,14 @@ namespace Pulumi.Tests.Serialization
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
             Assert.True(data.IsKnown);
         }
+        
+        [Fact]
+        public async Task ListInitializedByDefault()
+        {
+            var data = Converter.ConvertValue<ImmutableArray<string>>(NoWarn, "", await SerializeToValueAsync(default(ImmutableArray<string>)));
+            AssertEx.SequenceEqual(ImmutableArray<string>.Empty, data.Value);
+            Assert.True(data.IsKnown);
+        }
 
         [Fact]
         public async Task SecretListWithElement()

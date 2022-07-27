@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 
@@ -286,7 +286,7 @@ func TestPluginDownload(t *testing.T) {
 	token := "RaNd0m70K3n_"
 
 	t.Run("Test Downloading From Pulumi GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITHUB_TOKEN", "")
 		version := semver.MustParse("4.30.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
@@ -378,9 +378,9 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, expectedBytes, readBytes)
 	})
 	t.Run("Test Downloading From GitHub Private Releases", func(t *testing.T) {
-		os.Setenv("PULUMI_EXPERIMENTAL", "true")
-		os.Setenv("GITHUB_REPOSITORY_OWNER", "private")
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("PULUMI_EXPERIMENTAL", "true")
+		t.Setenv("GITHUB_REPOSITORY_OWNER", "private")
+		t.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("1.22.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
@@ -428,7 +428,7 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, expectedBytes, readBytes)
 	})
 	t.Run("Test Downloading From Private Pulumi GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("4.32.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
@@ -471,7 +471,7 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, expectedBytes, readBytes)
 	})
 	t.Run("Test Downloading From Internal GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("4.32.0")
 		info := PluginInfo{
 			PluginDownloadURL: "github://api.git.org/ourorg/mock",
@@ -525,7 +525,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 	token := "RaNd0m70K3n_"
 
 	t.Run("Test GetLatestVersion From Pulumi GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITHUB_TOKEN", "")
 		info := PluginInfo{
 			PluginDownloadURL: "",
 			Name:              "mock-latest",
@@ -560,9 +560,9 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.Equal(t, "GetLatestVersion is not supported for plugins using PluginDownloadURL", err.Error())
 	})
 	t.Run("Test GetLatestVersion From GitHub Private Releases", func(t *testing.T) {
-		os.Setenv("PULUMI_EXPERIMENTAL", "true")
-		os.Setenv("GITHUB_REPOSITORY_OWNER", "private")
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("PULUMI_EXPERIMENTAL", "true")
+		t.Setenv("GITHUB_REPOSITORY_OWNER", "private")
+		t.Setenv("GITHUB_TOKEN", token)
 		info := PluginInfo{
 			PluginDownloadURL: "",
 			Name:              "private",
@@ -593,7 +593,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Private Pulumi GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("GITHUB_TOKEN", token)
 		info := PluginInfo{
 			PluginDownloadURL: "",
 			Name:              "mock-private",
@@ -619,7 +619,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Internal GitHub Releases", func(t *testing.T) {
-		os.Setenv("GITHUB_TOKEN", token)
+		t.Setenv("GITHUB_TOKEN", token)
 		info := PluginInfo{
 			PluginDownloadURL: "github://api.git.org/ourorg/mock",
 			Name:              "mock-private",
@@ -894,4 +894,30 @@ func TestMissingErrorText(t *testing.T) {
 			assert.Equal(t, tt.ExpectedError, err.Error())
 		})
 	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestUnmarshalProjectWithProviderList(t *testing.T) {
+	t.Parallel()
+	tempdir, _ := ioutil.TempDir("", "test-env")
+	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
+
+	//write to pyaml
+	err := ioutil.WriteFile(pyaml, []byte(`name: test-yaml
+runtime: yaml
+description: "Test Pulumi YAML"
+plugins:
+  providers:
+  - name: aws
+    version: 1.0.0
+    path: ../bin/aws`), 0600)
+	assert.NoError(t, err)
+
+	proj, err := LoadProject(pyaml)
+	assert.NoError(t, err)
+	assert.NotNil(t, proj.Plugins)
+	assert.Equal(t, 1, len(proj.Plugins.Providers))
+	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
+	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
+	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
 }

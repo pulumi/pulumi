@@ -17,8 +17,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"sort"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -175,11 +177,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet, projectPlugins []*workspace.PluginInfo) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
-		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version)
+		path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
@@ -229,17 +231,25 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
-	stream, size, err := plugin.Download()
+
+	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+	}
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		logging.V(preparePluginVerboseLog).Infof(
+			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
+	}
+
+	tarball, err := workspace.DownloadToFile(plugin, withProgress, retry)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
 
 	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
-	stream = workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(stream), false); err != nil {
+	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(tarball), false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 

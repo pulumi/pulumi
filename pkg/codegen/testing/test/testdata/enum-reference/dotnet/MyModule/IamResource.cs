@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example.MyModule
 {
     [ExampleResourceType("example:myModule:IamResource")]
-    public partial class IamResource : Pulumi.ComponentResource
+    public partial class IamResource : global::Pulumi.ComponentResource
     {
         /// <summary>
         /// Create a IamResource resource with the given unique name, arguments, and options.
@@ -37,7 +37,7 @@ namespace Pulumi.Example.MyModule
         }
     }
 
-    public sealed class IamResourceArgs : Pulumi.ResourceArgs
+    public sealed class IamResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("config")]
         public Input<Pulumi.GoogleNative.IAM.V1.Inputs.AuditConfigArgs>? Config { get; set; }
@@ -45,5 +45,6 @@ namespace Pulumi.Example.MyModule
         public IamResourceArgs()
         {
         }
+        public static new IamResourceArgs Empty => new IamResourceArgs();
     }
 }

@@ -511,7 +511,7 @@ func (source *fallbackSource) Download(
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
 	Name              string          // the simple name of the plugin.
-	Path              string          // the path that a plugin was loaded from.
+	Path              string          // the path that a plugin was loaded from (this will always be a directory)
 	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version // the plugin's semantic version, if present.
 	Size              int64           // the size of the plugin, in bytes.
@@ -809,6 +809,81 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
+// DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
+// This has some retry logic to re-attempt the download if it errors for any reason.
+func DownloadToFile(
+	pkgPlugin PluginInfo,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
+
+	tryDownload := func(dst io.WriteCloser) error {
+		defer dst.Close()
+		tarball, expectedByteCount, err := pkgPlugin.Download()
+		if err != nil {
+			return err
+		}
+		if wrapper != nil {
+			tarball = wrapper(tarball, expectedByteCount)
+		}
+		defer tarball.Close()
+		copiedByteCount, err := io.Copy(dst, tarball)
+		if err != nil {
+			return err
+		}
+		if copiedByteCount != expectedByteCount {
+			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
+				expectedByteCount, copiedByteCount, pkgPlugin)
+		}
+		return nil
+	}
+
+	tryDownloadToFile := func() (string, error) {
+		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		if err != nil {
+			return "", err
+		}
+		err = tryDownload(file)
+		if err != nil {
+			err2 := os.Remove(file.Name())
+			if err2 != nil {
+				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
+			}
+			return "", err
+		}
+		return file.Name(), nil
+	}
+
+	downloadToFileWithRetry := func() (string, error) {
+		delay := 80 * time.Millisecond
+		for attempt := 0; ; attempt++ {
+			tempFile, err := tryDownloadToFile()
+			if err == nil {
+				return tempFile, nil
+			}
+
+			if err != nil && attempt >= 5 {
+				return "", err
+			}
+			if retry != nil {
+				retry(err, attempt+1, 5, delay)
+			}
+			time.Sleep(delay)
+			delay = delay * 2
+		}
+	}
+
+	tarball, err := downloadToFileWithRetry()
+	if err != nil {
+		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+	}
+	reader, err := os.Open(tarball)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
+	}
+	return reader, nil
+
+}
+
 type PluginContent interface {
 	io.Closer
 
@@ -816,7 +891,7 @@ type PluginContent interface {
 }
 
 func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
-	return singleFilePlugin{F: f}
+	return singleFilePlugin{F: f, Kind: info.Kind, Name: info.Name}
 }
 
 type singleFilePlugin struct {
@@ -1219,36 +1294,29 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
-	info, path, err := getPluginInfoOrPath(kind, name, version, true /* skipMetadata */)
+func GetPluginPath(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (string, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	if info != nil {
-		matchDir, err := info.DirPath()
-		if err != nil {
-			return "", "", err
-		}
-
-		matchPath, err := info.FilePath()
-		if err != nil {
-			return "", "", err
-		}
-
-		return matchDir, matchPath, nil
+		contract.Assert(info.Path == filepath.Dir(path))
 	}
 
-	return "", path, err
+	return path, err
 }
 
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*PluginInfo, error) {
-	info, path, err := getPluginInfoOrPath(kind, name, version, false)
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (*PluginInfo, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
 
 	if info != nil {
+		contract.Assert(info.Path == filepath.Dir(path))
 		return info, nil
 	}
 
@@ -1261,13 +1329,48 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*Plug
 	return info, nil
 }
 
-// getPluginInfoOrPath searches for a compatible plugin kind, name, and version and returns either:
+// getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:
 //  * if found as an ambient plugin, nil and the path to the executable
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
-func getPluginInfoOrPath(
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool) (*PluginInfo, string, error) {
+func getPluginInfoAndPath(
+	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
+	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
+
+	for i, p1 := range projectPlugins {
+		for j, p2 := range projectPlugins {
+			if j < i {
+				if p2.Kind == p1.Kind && p2.Name == p1.Name {
+					if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
+						return nil, "", fmt.Errorf(
+							"multiple project plugins with kind %s, name %s, version %s",
+							p1.Kind, p1.Name, p1.Version)
+					}
+				}
+			}
+		}
+	}
+
+	for _, plugin := range projectPlugins {
+		if plugin.Kind != kind {
+			continue
+		}
+		if plugin.Name != name {
+			continue
+		}
+		if plugin.Version != nil && version != nil {
+			if !plugin.Version.Equals(*version) {
+				logging.Warningf(
+					"Project plugin %s with version %s is incompatible with requested version %s.\n",
+					name, plugin.Version, version)
+				continue
+			}
+		}
+
+		path := filepath.Join(plugin.Path, plugin.File())
+		return plugin, path, nil
+	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
 	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.
