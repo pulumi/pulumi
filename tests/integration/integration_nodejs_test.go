@@ -1115,6 +1115,12 @@ func TestGetResourceNode(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
+
+			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
 		},
 	})
 }
