@@ -40,7 +40,6 @@ type RunOption func(*RunInfo)
 func Run(body RunFunc, opts ...RunOption) {
 	if err := RunErr(body, opts...); err != nil {
 		if err != ErrPlugins {
-			fmt.Fprintf(os.Stderr, "error: program failed: %v\n", err)
 			os.Exit(1)
 		}
 
@@ -81,7 +80,11 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return RunWithContext(ctx, body)
+	err = RunWithContext(ctx, body)
+	if err != nil {
+		ctx.Log.Error(fmt.Sprintf("program failed: %v\n", err), nil)
+	}
+	return err
 }
 
 // RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
