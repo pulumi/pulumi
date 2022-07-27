@@ -810,7 +810,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 }
 
 // DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
-// This has some
+// This has some retry logic to re-attempt the download if it errors for any reason.
 func DownloadToFile(
 	pkgPlugin PluginInfo,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
