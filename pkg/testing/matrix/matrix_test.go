@@ -26,7 +26,7 @@ import (
 func TestAll(t *testing.T) {
 	t.Parallel()
 	opts := []MatrixTestOptions{
-		{
+		/*{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/empty",
 			},
@@ -55,7 +55,7 @@ func TestAll(t *testing.T) {
 				},
 			},
 			Languages: allLanguages(),
-		},
+		},*/
 		{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/provider",
@@ -67,7 +67,11 @@ func TestAll(t *testing.T) {
 					Kind:  workspace.ResourcePlugin,
 					Build: []exec.Cmd{},
 					Bin:   "./bin",
-					SDK:   "./sdk",
+					Version: &semver.Version{
+						Major: 0,
+						Minor: 4,
+						Patch: 1,
+					},
 				},
 			},
 		},

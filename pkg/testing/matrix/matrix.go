@@ -16,9 +16,12 @@ package matrix
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,8 +29,11 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	i "github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -47,8 +53,9 @@ type LangTestOption struct {
 }
 
 type PluginOptions struct {
-	Name string
-	Kind workspace.PluginKind
+	Name    string
+	Kind    workspace.PluginKind
+	Version *semver.Version
 
 	// Build is the set of commands to run to build the plugin and SDK
 	// In the future we want to just generate the SDK using the plugin.
@@ -56,9 +63,6 @@ type PluginOptions struct {
 
 	// Bin is the path to the plugin to use.
 	Bin string
-
-	// SDK is the path to the SDK to use.
-	SDK string
 }
 
 type MatrixTestOptions struct {
@@ -168,6 +172,68 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	}
 
 	assert.NoError(t, err)
+
+	//Generate SDKs
+	pluginctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
+		projinfo.Proj.Runtime.Options(), false, nil, proj.Plugins)
+	assert.NoError(t, err)
+	assert.NotNil(t, pluginctx)
+	for _, plugin := range opts.Plugins {
+		assert.NotNil(t, plugin.Version)
+
+		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, plugin.Version)
+		assert.NoError(t, err)
+		assert.NotNil(t, info)
+
+		provider, err := pluginctx.Host.Provider(tokens.Package(info.Name), plugin.Version)
+		assert.NoError(t, err)
+		assert.NotNil(t, provider)
+
+		schemaBytes, err := provider.GetSchema(int(plugin.Version.Major))
+		assert.NoError(t, err)
+		assert.NotNil(t, schemaBytes)
+
+		var spec schema.PackageSpec
+		err = json.Unmarshal(schemaBytes, &spec)
+		assert.NoError(t, err)
+
+		pkg, diags, err := schema.BindSpec(spec, nil)
+		assert.NoError(t, err)
+		assert.Empty(t, diags)
+		assert.NotNil(t, pkg)
+
+		pkgName := pkg.Name
+
+		for _, langOpt := range opts.Languages {
+			lang := langOpt.Language
+
+			var files map[string][]byte
+			var err error
+			switch lang {
+			case "go":
+				files, err = gogen.GeneratePackage(pkgName, pkg)
+			case "python":
+				files, err = pygen.GeneratePackage(pkgName, pkg, files)
+			case "nodejs":
+				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
+			case "dotnet":
+				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
+			default:
+				fmt.Printf("Unknown language: '%s'", lang)
+				continue
+			}
+			assert.NoError(t, err)
+
+			sdkDir := filepath.Join(dir, "sdk", lang)
+			for p, file := range files {
+				// TODO: full conversion from path to filepath
+				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
+				assert.NoError(t, err)
+				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
+				assert.NoError(t, err)
+			}
+		}
+	}
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
 	for _, langOpt := range opts.Languages {

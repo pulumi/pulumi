@@ -4,3 +4,4 @@ tests/*/java
 tests/*/nodejs
 tests/*/python
 tests/*/yaml
+tests/*/sdk

@@ -2230,9 +2230,6 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 type ProjectTransform func(*workspace.Project) *workspace.Project
 
 func TransformProject(transform ProjectTransform, projdir string) error {
-
-	//Modify the pulumi project file in the temp dir
-	//if it has any local references to plugins
 	dir, err := workspace.DetectProjectPathFrom(projdir)
 	if err != nil {
 		return err
