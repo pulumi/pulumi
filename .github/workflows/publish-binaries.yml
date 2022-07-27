@@ -92,6 +92,9 @@ jobs:
         with:
           name: pulumi-Windows-X64
           path: goreleaser-windows
+      - name: Download pulumi-language-*
+        run: |
+          ./scripts/get-language-providers.sh
 
       # Section 3: release with goreleaser
       - name: Run GoReleaser to actually release
