@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     /// <summary>
     /// BETA FEATURE - Options to configure the Helm Release resource.
     /// </summary>
-    public sealed class HelmReleaseSettings : Pulumi.InvokeArgs
+    public sealed class HelmReleaseSettings : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
@@ -38,5 +38,6 @@ namespace Pulumi.Example.Inputs
             Driver = Utilities.GetEnv("PULUMI_K8S_HELM_DRIVER") ?? "secret";
             PluginsPath = Utilities.GetEnv("PULUMI_K8S_HELM_PLUGINS_PATH");
         }
+        public static new HelmReleaseSettings Empty => new HelmReleaseSettings();
     }
 }
