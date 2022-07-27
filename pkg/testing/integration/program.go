@@ -144,6 +144,11 @@ type ConfigValue struct {
 	Path bool
 }
 
+type AuxiliaryStack struct {
+	Dir         string
+	Initialized bool
+}
+
 // ProgramTestOptions provides options for ProgramTest
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
@@ -308,6 +313,9 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+
+	//List of Auxiliary Stacks to be used in the test.
+	Aux []AuxiliaryStack
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1060,9 +1068,33 @@ func (pt *ProgramTester) TestCleanUp() {
 	}
 }
 
+//TODO: Allow matrix tester to pre-initialize stacks to avoid redundant pulumi ups.
+func (pt *ProgramTester) InitializeAuxiliaryStacks() error {
+	for _, stack := range pt.opts.Aux {
+		if !stack.Initialized {
+			// Run a pulumi up command to initialize the stack.
+			update := []string{"up", "--non-interactive", "--yes", "--skip-preview"}
+			if err := pt.runPulumiCommand("pulumi-up", update, stack.Dir, false); err != nil {
+				return err
+			}
+			// Add a pulumi destroy command to cleanup
+			pt.t.Cleanup(func() {
+				destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
+				pt.runPulumiCommand("pulumi-destroy", destroy, stack.Dir, false)
+			})
+		}
+	}
+	return nil
+}
+
 // TestLifeCycleInitAndDestroy executes the test and cleans up
 func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
-	err := pt.TestLifeCyclePrepare()
+	err := pt.InitializeAuxiliaryStacks()
+	if err != nil {
+		return fmt.Errorf("failed to initialize auxiliary stacks: %v", err)
+	}
+
+	err = pt.TestLifeCyclePrepare()
 	if err != nil {
 		return fmt.Errorf("copying test to temp dir %s: %w", pt.tmpdir, err)
 	}
