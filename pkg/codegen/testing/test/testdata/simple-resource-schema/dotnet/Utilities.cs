@@ -75,7 +75,7 @@ namespace Pulumi.Example
         }
     }
 
-    internal sealed class ExampleResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class ExampleResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public ExampleResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

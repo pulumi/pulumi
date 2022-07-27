@@ -25,7 +25,7 @@ namespace Pulumi.Mypkg
     }
 
 
-    public sealed class FuncWithDictParamArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDictParamArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private Dictionary<string, string>? _a;
@@ -41,9 +41,10 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamArgs()
         {
         }
+        public static new FuncWithDictParamArgs Empty => new FuncWithDictParamArgs();
     }
 
-    public sealed class FuncWithDictParamInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDictParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private InputMap<string>? _a;
@@ -59,6 +60,7 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamInvokeArgs()
         {
         }
+        public static new FuncWithDictParamInvokeArgs Empty => new FuncWithDictParamInvokeArgs();
     }
 
 

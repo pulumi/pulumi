@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Different types of filters supported and its values.
     /// </summary>
-    public sealed class FilterableProperty : Pulumi.InvokeArgs
+    public sealed class FilterableProperty : global::Pulumi.InvokeArgs
     {
         [Input("supportedValues", required: true)]
         private List<string>? _supportedValues;
@@ -36,5 +36,6 @@ namespace Pulumi.Myedgeorder.Inputs
         public FilterableProperty()
         {
         }
+        public static new FilterableProperty Empty => new FilterableProperty();
     }
 }
