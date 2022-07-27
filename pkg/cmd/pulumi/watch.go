@@ -52,8 +52,8 @@ func newWatchCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "[PREVIEW] Continuously update the resources in a stack",
-		Long: "Continuously update the resources in a stack.\n" +
+		Short:      "Continuously update the resources in a stack",
+		Long: "[EXPERIMENTAL] Continuously update the resources in a stack.\n" +
 			"\n" +
 			"This command watches the working directory or specified paths for the current project and updates\n" +
 			"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +

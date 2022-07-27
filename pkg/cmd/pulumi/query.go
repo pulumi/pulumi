@@ -34,7 +34,7 @@ func newQueryCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "query",
 		Short: "Run query program against cloud resources",
-		Long: "Run query program against cloud resources.\n" +
+		Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +
 			"\n" +
 			"This command loads a Pulumi query program and executes it. In \"query mode\", Pulumi provides various\n" +
 			"useful data sources for querying, such as the resource outputs for a stack. Query mode also disallows\n" +
