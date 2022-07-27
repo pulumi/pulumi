@@ -15,16 +15,18 @@
 package matrix
 
 import (
+	"os/exec"
 	"testing"
 
 	"github.com/blang/semver"
 	i "github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestAll(t *testing.T) {
 	t.Parallel()
 	opts := []MatrixTestOptions{
-		{
+		/*{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/empty",
 			},
@@ -41,6 +43,27 @@ func TestAll(t *testing.T) {
 				Dir: "tests/structured",
 			},
 			Languages: allLanguages(),
+		},
+		{
+			Program: &i.ProgramTestOptions{
+				Dir: "tests/reference",
+			},
+			Languages: allLanguages(),
+		},*/
+		{
+			Program: &i.ProgramTestOptions{
+				Dir: "tests/provider",
+			},
+			Languages: allLanguages(),
+			Plugins: []PluginOptions{
+				{
+					Name:  "command",
+					Kind:  workspace.ResourcePlugin,
+					Build: []exec.Cmd{},
+					Bin:   "./bin",
+					SDK:   "./sdk",
+				},
+			},
 		},
 	}
 

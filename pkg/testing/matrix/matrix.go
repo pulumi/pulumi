@@ -91,8 +91,7 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	assert.NoError(t, err)
 
-	proj, pclProgram, err := yamlgen.Eject(pwd, nil)
-	assert.NoError(t, err)
+	var pclProgram *pcl.Program
 
 	//check if *.pp file exists in dir
 	files, err := ioutil.ReadDir(dir)
@@ -113,6 +112,12 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 
 		}
 	}
+	if pclProgram == nil {
+		_, pclProgram, err = yamlgen.Eject(pwd, nil)
+		assert.NoError(t, err)
+	}
+	assert.NotNil(t, proj)
+	assert.NotNil(t, pclProgram)
 
 	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {
@@ -127,6 +132,10 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 
 		//TODO: Generate SDKs for plugins
 
+		if proj.Plugins == nil {
+			proj.Plugins = &workspace.Plugins{}
+		}
+
 		switch plugin.Kind {
 		case workspace.AnalyzerPlugin:
 			proj.Plugins.Analyzers = append(proj.Plugins.Analyzers, p)
@@ -140,20 +149,20 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	//Replace relative paths with absolute paths
 
 	if proj.Plugins != nil {
-		for _, provider := range proj.Plugins.Providers {
+		for i, provider := range proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
-				provider.Path = filepath.Join(dir, provider.Path)
+				proj.Plugins.Providers[i].Path = filepath.Join(dir, provider.Path)
 			}
 		}
-		for _, language := range proj.Plugins.Languages {
+		for i, language := range proj.Plugins.Languages {
 			if !filepath.IsAbs(language.Path) {
-				language.Path = filepath.Join(dir, language.Path)
+				proj.Plugins.Languages[i].Path = filepath.Join(dir, language.Path)
 			}
 		}
 
-		for _, analyzer := range proj.Plugins.Analyzers {
+		for i, analyzer := range proj.Plugins.Analyzers {
 			if !filepath.IsAbs(analyzer.Path) {
-				analyzer.Path = filepath.Join(dir, analyzer.Path)
+				proj.Plugins.Analyzers[i].Path = filepath.Join(dir, analyzer.Path)
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-name: empty
+name: structured
 runtime: yaml
 description: A YAML program which outputs a scalar.
 

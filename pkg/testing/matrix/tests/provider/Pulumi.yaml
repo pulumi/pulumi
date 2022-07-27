@@ -1,0 +1,10 @@
+name: provider
+runtime: yaml
+description: A YAML program which uses a provider
+
+resources:
+  ls:
+    type: command:local:Command
+    properties:
+      create: ls
+      dir: ./
