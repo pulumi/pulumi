@@ -371,14 +371,53 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return await SerializeDictionaryAsync(ctx, dictionary, keepResources, keepOutputValues).ConfigureAwait(false);
         }
 
+
+        /// <summary>
+        /// Returns whether the input list was initialized as default.
+        ///
+        /// Here, we check whether the generic list is default(ImmutableArray[T])
+        /// and return the IsDefaultOrEmpty property value from it using reflection.
+        ///
+        /// The use of reflection is unavoidable because we cannot _statically_ resolve the
+        /// generic type T in ImmutableArray[T].
+        /// </summary>
+        private bool InitializedByDefault(IList list)
+        {
+            var concreteType = list.GetType();
+            var genericType = concreteType.GetGenericTypeDefinition();
+            if (genericType == typeof(ImmutableArray<>))
+            {
+                // create a dummy empty instance, int is irrelevant
+                var instance = ImmutableArray.Create<int>();
+                // so that we can get the name of the property using the nameof operator, statically
+                var propertyName = nameof(instance.IsDefaultOrEmpty);
+                var isDefaultOrEmpty = concreteType.GetProperty(propertyName);
+                if (isDefaultOrEmpty != null)
+                {
+                    var value = isDefaultOrEmpty.GetValue(list);
+                    return value != null && (bool)value;
+                }
+            }
+
+            return false;
+        }
+        
         private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
                 Log.Debug($"Serialize property[{ctx}]: Hit list");
             }
-
-            var result = ImmutableArray.CreateBuilder<object?>(list.Count);
+            
+            if (InitializedByDefault(list))
+            {
+                // early return an empty array here because
+                // we cannot get Count in list.Count (throws exception)
+                // when the list is default(ImmutableArray<T>)
+                return ImmutableArray.Create<object?>();
+            }
+            
+            var result = ImmutableArray.CreateBuilder<object?>(list.Count); 
             for (int i = 0, n = list.Count; i < n; i++)
             {
                 if (_excessiveDebugOutput)
