@@ -155,8 +155,16 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
+	if localProjects == nil {
+		localProjects = map[string]string{}
+	}
+
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
+	pulumi := `@pulumi/pulumi": "^3.0.0`
+	if localPulumi, ok := localProjects["@pulumi/pulumi"]; ok {
+		pulumi = fmt.Sprintf("file:%s", localPulumi)
+	}
 	packageJSON.WriteString(fmt.Sprintf(`{
 		"name": "%s",
 		"devDependencies": {
@@ -164,7 +172,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		},
 		"dependencies": {
 			"typescript": "^4.0.0",
-			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
+			"%s"`, project.Name.String(), pulumi))
 	// For each package add a dependency line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
@@ -183,7 +191,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		if p.Version != nil {
+		if localPackage, ok := localProjects[p.Name]; ok {
+			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, fmt.Sprintf("file:%s", localPackage+"/nodejs")))
+		} else if p.Version != nil {
 			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
 		} else {
 			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, "*"))
