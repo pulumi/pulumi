@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -190,6 +191,10 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
 	projectTemplate := "		<ProjectReference Include=\"%s\" />\n"
 
+	if localProjects == nil {
+		localProjects = map[string]string{}
+	}
+
 	if localPulumi, ok := localProjects["pulumi"]; ok {
 		csproj.WriteString(fmt.Sprintf(projectTemplate, localPulumi))
 	} else {
@@ -203,6 +208,12 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	for _, p := range packages {
 		if localProject, ok := localProjects[p.Name]; ok {
+			_, info, err := generateModuleContextMap("test", p)
+			if err != nil {
+				return err
+			}
+			assemblyName := info.GetRootNamespace() + "." + namespaceName(info.Namespaces, p.Name)
+			localProject = filepath.Join(localProject, "dotnet", fmt.Sprintf("%s.csproj", assemblyName))
 			csproj.WriteString(fmt.Sprintf(projectTemplate, localProject))
 		} else {
 			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {

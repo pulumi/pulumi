@@ -5,3 +5,4 @@ tests/*/nodejs
 tests/*/python
 tests/*/yaml
 tests/*/sdk
+tests/*/*-sdk

@@ -71,7 +71,7 @@ type MatrixTestOptions struct {
 	Plugins   []PluginOptions
 }
 
-type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
+type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error
 
 func Test(t *testing.T, opts MatrixTestOptions) {
 
@@ -124,22 +124,16 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	assert.NotNil(t, proj)
 	assert.NotNil(t, pclProgram)
 
+	localProjects := map[string]string{}
+
 	//Execute build commands and add plugin links
-	//NOTE: We currently have duplicate plugin links - this is because it is necessary
-	//to add a plugin link in the base YAML to allow the YAML to be parsed into PCL.
-	//This is undesirable and should be fixed.
 	for _, plugin := range opts.Plugins {
 		for _, cmd := range plugin.Build {
 			err := cmd.Run()
 			assert.NoError(t, err)
 		}
 
-		sdkPath := make(map[string]string)
-
-		for _, lang := range opts.Languages {
-			sdkDir := filepath.Join(dir, "sdk", lang.Language)
-			sdkPath[lang.Language] = sdkDir
-		}
+		localProjects[plugin.Name] = fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
 
 		assert.NotNil(t, plugin.Version)
 
@@ -147,7 +141,6 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			Name:    plugin.Name,
 			Path:    plugin.Bin,
 			Version: plugin.Version.String(),
-			SDKPath: sdkPath,
 		}
 
 		//Here we are overriding the plugin links to use our own plugin links.
@@ -233,25 +226,13 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			case "go":
 				files, err = gogen.GeneratePackage(pkgName, pkg)
 			case "python":
-				if pkg.Language["python"] == nil {
-					pkg.Language["python"] = pygen.PackageInfo{
-						RespectSchemaVersion: true,
-					}
-				} else {
-					raw, ok := pkg.Language["python"].(json.RawMessage)
-					assert.True(t, ok)
-					var pyInfo pygen.PackageInfo
-					err = json.Unmarshal(raw, &pyInfo)
-					assert.NoError(t, err)
-
-					pyInfo.RespectSchemaVersion = true
-
-					pkg.Language["python"] = pyInfo
-				}
+				PythonConfigurePkg(pkg)
 				files, err = pygen.GeneratePackage(pkgName, pkg, files)
 			case "nodejs":
+				NodeConfigurePkg(pkg)
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
 			case "dotnet":
+				DotnetConfigurePkg(pkg)
 				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
 			default:
 				fmt.Printf("Unknown language: '%s'", lang)
@@ -259,7 +240,7 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			}
 			assert.NoError(t, err)
 
-			sdkDir := filepath.Join(dir, "sdk", lang)
+			sdkDir := filepath.Join(dir, fmt.Sprintf("%s-sdk", pkgName), lang)
 			for p, file := range files {
 				// TODO: full conversion from path to filepath
 				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
@@ -300,9 +281,13 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		case "python":
 			projectGenerator = pygen.GenerateProject
 		case "java":
-			projectGenerator = javagen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error {
+				return javagen.GenerateProject(directory, project, p)
+			}
 		case "yaml": // nolint: goconst
-			projectGenerator = yamlgen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error {
+				return yamlgen.GenerateProject(directory, project, p)
+			}
 		default:
 			assert.FailNow(t, "Unsupported language: "+langOpt.Language)
 		}
@@ -317,13 +302,8 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		err = os.MkdirAll(subdir, 0755)
 		assert.NoError(t, err)
 
-		//This feels a little sketchy to me but the alternative is to go in and modify it after it's been written to file.
-		//Either that or just don't mutate the name.
-		//projinfo.Proj.Name = tokens.PackageName(fmt.Sprintf("%s-%s", name, langOpt.Language))
-
 		//generate project
-
-		err = projectGenerator(subdir, *proj, pclProgram)
+		err = projectGenerator(subdir, *proj, pclProgram, localProjects)
 		assert.NoError(t, err)
 
 		//Configure opts
@@ -347,4 +327,73 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			os.RemoveAll(subdir)
 		})*/
 	}
+}
+
+func PythonConfigurePkg(pkg *schema.Package) error {
+	raw, notnil := pkg.Language["python"]
+	message, ismessage := raw.(json.RawMessage)
+	var pyPkg pygen.PackageInfo
+	if notnil && ismessage {
+		err := json.Unmarshal(message, &pyPkg)
+		if err != nil {
+			return err
+		}
+	} else if notnil && !ismessage {
+		info, ok := raw.(pygen.PackageInfo)
+		if !ok {
+			return fmt.Errorf("invalid python package info")
+		}
+		pyPkg = info
+	} else if !notnil {
+		pyPkg = pygen.PackageInfo{}
+	}
+	pyPkg.RespectSchemaVersion = true
+	pkg.Language["python"] = pyPkg
+	return nil
+}
+
+func NodeConfigurePkg(pkg *schema.Package) error {
+	raw, notnil := pkg.Language["nodejs"]
+	message, ismessage := raw.(json.RawMessage)
+	var nodePkg jsgen.NodePackageInfo
+	if notnil && ismessage {
+		err := json.Unmarshal(message, &nodePkg)
+		if err != nil {
+			return err
+		}
+	} else if notnil && !ismessage {
+		info, ok := raw.(jsgen.NodePackageInfo)
+		if !ok {
+			return fmt.Errorf("invalid nodejs package info")
+		}
+		nodePkg = info
+	} else if !notnil {
+		nodePkg = jsgen.NodePackageInfo{}
+	}
+	nodePkg.RespectSchemaVersion = true
+	pkg.Language["nodejs"] = nodePkg
+	return nil
+}
+
+func DotnetConfigurePkg(pkg *schema.Package) error {
+	raw, notnil := pkg.Language["csharp"]
+	message, ismessage := raw.(json.RawMessage)
+	var dotnetPkg dotnetgen.CSharpPackageInfo
+	if notnil && ismessage {
+		err := json.Unmarshal(message, &dotnetPkg)
+		if err != nil {
+			return err
+		}
+	} else if notnil && !ismessage {
+		info, ok := raw.(dotnetgen.CSharpPackageInfo)
+		if !ok {
+			return fmt.Errorf("invalid dotnet package info")
+		}
+		dotnetPkg = info
+	} else if !notnil {
+		dotnetPkg = dotnetgen.CSharpPackageInfo{}
+	}
+	dotnetPkg.RespectSchemaVersion = true
+	pkg.Language["csharp"] = dotnetPkg
+	return nil
 }

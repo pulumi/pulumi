@@ -99,21 +99,21 @@ func allLanguages() []LangTestOption {
 			Language: "python",
 			Version:  &semver.Version{Major: 3, Minor: 7, Patch: 0},
 			Opts:     nil,
-		}, /*
-			{
-				Language: "nodejs",
-				Version:  &semver.Version{Major: 8, Minor: 0, Patch: 0},
-				Opts:     nil,
-			},
-			{
-				Language: "dotnet",
-				Version:  &semver.Version{Major: 2, Minor: 0, Patch: 0},
-				Opts:     nil,
-			},
-			{
-				Language: "yaml",
-				Version:  nil,
-				Opts:     nil,
-			},*/
+		},
+		{
+			Language: "nodejs",
+			Version:  &semver.Version{Major: 8, Minor: 0, Patch: 0},
+			Opts:     nil,
+		},
+		{
+			Language: "dotnet",
+			Version:  &semver.Version{Major: 2, Minor: 0, Patch: 0},
+			Opts:     nil,
+		},
+		{
+			Language: "yaml",
+			Version:  nil,
+			Opts:     nil,
+		},
 	}
 }

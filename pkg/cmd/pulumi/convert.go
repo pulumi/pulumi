@@ -57,11 +57,17 @@ func newConvertCmd() *cobra.Command {
 					return dotnet.GenerateProject(directory, project, p, nil)
 				}
 			case langGo:
-				projectGenerator = gogen.GenerateProject
+				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
+					return gogen.GenerateProject(directory, project, p, nil)
+				}
 			case "typescript":
-				projectGenerator = nodejs.GenerateProject
+				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
+					return nodejs.GenerateProject(directory, project, p, nil)
+				}
 			case langPython:
-				projectGenerator = python.GenerateProject
+				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
+					return python.GenerateProject(directory, project, p, nil)
+				}
 			case "java":
 				projectGenerator = javagen.GenerateProject
 			case "yaml": // nolint: goconst

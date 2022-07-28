@@ -70,7 +70,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program, localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -87,9 +87,18 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
+	if localProjects == nil {
+		localProjects = map[string]string{}
+	}
+
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
-	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+	localPulumi, ok := localProjects["pulumi"]
+	if ok {
+		requirementsTxt.WriteString(fmt.Sprintf("%s\n", localPulumi))
+	} else {
+		requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+	}
 
 	// For each package add a PackageReference line
 	packages, err := program.PackageSnapshots()
@@ -97,7 +106,6 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 
-outer:
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
@@ -111,11 +119,10 @@ outer:
 			}
 		}
 
-		for _, pkg := range project.Plugins.Providers {
-			if pkg.Name == p.Name {
-				requirementsTxt.WriteString(fmt.Sprintf("%s\n", pkg.SDKPath["python"]))
-				continue outer
-			}
+		project, ok := localProjects[p.Name]
+		if ok {
+			requirementsTxt.WriteString(fmt.Sprintf("%s/python\n", project))
+			continue
 		}
 
 		if p.Version != nil {
