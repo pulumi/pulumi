@@ -76,6 +76,9 @@ func newPluginInstallCmd() *cobra.Command {
 						return fmt.Errorf("invalid plugin semver: %w", err)
 					}
 				}
+				if len(args) < 3 && file != "" {
+					return errors.New("missing plugin version argument, this is required if installing from a file")
+				}
 
 				pluginInfo := workspace.PluginInfo{
 					Kind:              workspace.PluginKind(args[0]),

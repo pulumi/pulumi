@@ -235,7 +235,7 @@ export function run(
         const defaultMessage = err.stack || err.message || ("" + err);
 
         // First, log the error.
-        if (RunError.isInstance(err)) {
+        if (RunError.isInstance(err) || typeof err ==  typeof tsnode.TSError) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
         }
