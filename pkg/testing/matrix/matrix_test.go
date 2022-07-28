@@ -26,7 +26,7 @@ import (
 func TestAll(t *testing.T) {
 	t.Parallel()
 	opts := []MatrixTestOptions{
-		/*{
+		{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/empty",
 			},
@@ -55,7 +55,7 @@ func TestAll(t *testing.T) {
 				},
 			},
 			Languages: allLanguages(),
-		},*/
+		},
 		{
 			Program: &i.ProgramTestOptions{
 				Dir:              "tests/provider",
