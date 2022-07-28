@@ -74,7 +74,7 @@ namespace Pulumi.My8110
         }
     }
 
-    internal sealed class My8110ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class My8110ResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public My8110ResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

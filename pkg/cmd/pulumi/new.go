@@ -315,7 +315,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Install dependencies.
 	if !args.generateOnly {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 		if err != nil {
 			return err
 		}

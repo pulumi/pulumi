@@ -20,7 +20,7 @@ on:
         type: string
       dotnet-version:
         description: 'Version of the .NET toolchain for the build'
-        default: '3.1.x'
+        default: '6.0.x'
         required: false
         type: string
       goreleaser-flags:
@@ -36,6 +36,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   build_pulumi_go_binaries:
@@ -173,9 +174,8 @@ jobs:
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v2
         with:
-          name: pulumi.whl
-          path: sdk/python/lib/dist/*.whl
-          retention-days: 2
+            name: pulumi.whl
+            path: sdk/python/lib/dist/*.whl
 
   build_node_sdk:
     name: Build Pulumi Node SDK tarball
@@ -226,9 +226,8 @@ jobs:
       - name: Upload pulumi-node-sdk.tgz
         uses: actions/upload-artifact@v2
         with:
-          name: pulumi-node-sdk.tgz
-          path: sdk/nodejs/bin/*.tgz
-          retention-days: 2
+            name: pulumi-node-sdk.tgz
+            path: sdk/nodejs/bin/*.tgz
 
   build_dotnet_sdk:
     name: Build Pulumi .NET SDK NuGet packages
@@ -271,6 +270,5 @@ jobs:
       - name: Upload the NuGet packages
         uses: actions/upload-artifact@v2
         with:
-          name: pulumi-nuget-packages
-          path: sdk/dotnet/nupkgs/*.nupkg
-          retention-days: 2
+            name: pulumi-nuget-packages
+            path: sdk/dotnet/nupkgs/*.nupkg

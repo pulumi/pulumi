@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as ts from "typescript";
+import * as typescript from "typescript";
 import * as utils from "./utils";
 
 /** @internal */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
+    const ts: typeof typescript = require("typescript");
     const sourceFile = ts.createSourceFile(
         "", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
@@ -29,11 +30,11 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
 
     return output;
 
-    function rewriteSuperCallsWorker(transformationContext: ts.TransformationContext) {
-        const newNodes = new Set<ts.Node>();
+    function rewriteSuperCallsWorker(transformationContext: typescript.TransformationContext) {
+        const newNodes = new Set<typescript.Node>();
         let firstFunctionDeclaration = true;
 
-        function visitor(node: ts.Node): ts.Node {
+        function visitor(node: typescript.Node): typescript.Node {
             // Convert the top level function so it doesn't have a name. We want to convert the user
             // function to an anonymous function so that interior references to the same function
             // bind properly.  i.e. if we start with "function f() { f(); }" then this gets converted to
@@ -116,6 +117,6 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
             return rewritten;
         }
 
-        return (node: ts.Node) => ts.visitNode(node, visitor);
+        return (node: typescript.Node) => ts.visitNode(node, visitor);
     }
 }

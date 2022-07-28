@@ -252,7 +252,7 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 // - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //   (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	contract.Require(IsProviderType(urn.Type()), "urn")
 

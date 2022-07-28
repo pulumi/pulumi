@@ -924,7 +924,7 @@ func TestRotatePassphrase(t *testing.T) {
 
 	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
 
-	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
 	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
 	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
 
@@ -1145,7 +1145,7 @@ func TestPassphrasePrompting(t *testing.T) {
 	e.NoPassphrase = true
 	// Setting PULUMI_TEST_PASSPHRASE allows prompting (reading from stdin)
 	// even though the test won't be interactive.
-	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 

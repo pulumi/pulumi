@@ -74,7 +74,7 @@ namespace Pulumi.Myedgeorder
         }
     }
 
-    internal sealed class MyedgeorderResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class MyedgeorderResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public MyedgeorderResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

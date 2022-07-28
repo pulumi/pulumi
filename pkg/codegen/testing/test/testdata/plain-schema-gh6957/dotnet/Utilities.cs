@@ -74,7 +74,7 @@ namespace Pulumi.Xyz
         }
     }
 
-    internal sealed class XyzResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class XyzResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public XyzResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

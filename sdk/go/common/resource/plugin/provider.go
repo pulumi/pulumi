@@ -57,7 +57,7 @@ type Provider interface {
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
 	Check(urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error)
+		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)

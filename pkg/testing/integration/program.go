@@ -35,6 +35,7 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"gopkg.in/yaml.v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1689,6 +1690,44 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", copyErr
 	}
 	projinfo.Root = projdir
+
+	//Modify the pulumi project file in the temp dir
+	//if it has any local references to plugins
+	dir, err := workspace.DetectProjectPathFrom(projdir)
+	if err != nil {
+		return "", "", err
+	}
+	proj, err := workspace.LoadProject(dir)
+	if err != nil {
+		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
+	}
+
+	if proj.Plugins != nil {
+		for _, provider := range proj.Plugins.Providers {
+			if !filepath.IsAbs(provider.Path) {
+				provider.Path = filepath.Join(projdir, provider.Path)
+			}
+		}
+		for _, language := range proj.Plugins.Languages {
+			if !filepath.IsAbs(language.Path) {
+				language.Path = filepath.Join(projdir, language.Path)
+			}
+		}
+
+		for _, analyzer := range proj.Plugins.Analyzers {
+			if !filepath.IsAbs(analyzer.Path) {
+				analyzer.Path = filepath.Join(projdir, analyzer.Path)
+			}
+		}
+	}
+	bytes, err := yaml.Marshal(proj)
+	if err != nil {
+		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
+	}
+
+	if err := ioutil.WriteFile(dir, bytes, 0600); err != nil {
+		return "", "", fmt.Errorf("error writing project: %w", err)
+	}
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {

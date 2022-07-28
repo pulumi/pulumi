@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.FooBar.Inputs
 {
 
-    public sealed class TopLevelArgs : Pulumi.ResourceArgs
+    public sealed class TopLevelArgs : global::Pulumi.ResourceArgs
     {
         [Input("buzz")]
         public Input<string>? Buzz { get; set; }
@@ -18,5 +18,6 @@ namespace Pulumi.FooBar.Inputs
         public TopLevelArgs()
         {
         }
+        public static new TopLevelArgs Empty => new TopLevelArgs();
     }
 }

@@ -46,6 +46,8 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -722,4 +724,13 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 
 	return nil
+}
+
+func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (host *nodeLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
