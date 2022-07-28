@@ -109,6 +109,9 @@ if __name__ == "__main__":
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:
+        # this line is responsible for indicating to the user in the CLI display
+        # - that an error occurred
+        # - details about that error
         pulumi.log.error(
             "Program failed with an unhandled exception:\n" + traceback.format_exc()
         )

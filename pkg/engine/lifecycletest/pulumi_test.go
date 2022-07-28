@@ -311,6 +311,19 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 				evts []Event, res result.Result) result.Result {
 
 				assertIsErrorOrBailResult(t, res)
+				sawExitCode := false
+				for _, evt := range evts {
+					if evt.Type == DiagEvent {
+						e := evt.Payload().(DiagEventPayload)
+						msg := colors.Never.Colorize(e.Message)
+						sawExitCode = strings.Contains(msg, errorText) && e.Severity == diag.Error
+						if sawExitCode {
+							break
+						}
+					}
+				}
+
+				assert.True(t, sawExitCode)
 				return res
 			},
 		}},

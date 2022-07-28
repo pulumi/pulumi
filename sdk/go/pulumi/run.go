@@ -82,6 +82,9 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 
 	err = RunWithContext(ctx, body)
 	if err != nil {
+		// this line is responsible for indicating to the user in the CLI display
+		// - that an error occurred
+		// - details about that error
 		err := ctx.Log.Error(fmt.Sprintf("program failed: %v\n", err), nil)
 		contract.AssertNoError(err)
 	}
