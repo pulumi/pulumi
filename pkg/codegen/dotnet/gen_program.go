@@ -157,7 +157,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program, localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -185,33 +185,44 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Pulumi" Version="3.*" />
 `)
 
-	// For each package add a PackageReference line
+	packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
+	projectTemplate := "		<ProjectReference Include=\"%s\" />\n"
+
+	if localPulumi, ok := localProjects["pulumi"]; ok {
+		csproj.WriteString(fmt.Sprintf(projectTemplate, localPulumi))
+	} else {
+		csproj.WriteString(fmt.Sprintf(packageTemplate, "Pulumi", "3.*"))
+	}
+
+	// For each package add a PackageReference or ProjectReference line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
 		return err
 	}
 	for _, p := range packages {
-		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
-
-		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-			return err
-		}
-
-		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
-		if langInfo, found := p.Language["csharp"]; found {
-			csharpInfo, ok := langInfo.(CSharpPackageInfo)
-			if ok {
-				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
-				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
-			}
-		}
-		if p.Version != nil {
-			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+		if localProject, ok := localProjects[p.Name]; ok {
+			csproj.WriteString(fmt.Sprintf(projectTemplate, localProject))
 		} else {
-			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, "*"))
+			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+				return err
+			}
+
+			packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
+			if langInfo, found := p.Language["csharp"]; found {
+				csharpInfo, ok := langInfo.(CSharpPackageInfo)
+				if ok {
+					namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+					packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+				}
+			}
+
+			if p.Version != nil {
+				csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+			} else {
+				csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, "*"))
+			}
 		}
 	}
 

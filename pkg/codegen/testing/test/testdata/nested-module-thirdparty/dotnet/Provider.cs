@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.FooBar
 {
     [FooBarResourceType("pulumi:providers:foo-bar")]
-    public partial class Provider : Pulumi.ProviderResource
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -37,10 +37,11 @@ namespace Pulumi.FooBar
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

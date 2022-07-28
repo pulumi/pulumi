@@ -19,7 +19,7 @@ namespace Pulumi.Example
     }
 
 
-    public sealed class ArgFunctionArgs : Pulumi.InvokeArgs
+    public sealed class ArgFunctionArgs : global::Pulumi.InvokeArgs
     {
         [Input("arg1")]
         public Pulumi.Example.Resource? Arg1 { get; set; }
@@ -27,9 +27,10 @@ namespace Pulumi.Example
         public ArgFunctionArgs()
         {
         }
+        public static new ArgFunctionArgs Empty => new ArgFunctionArgs();
     }
 
-    public sealed class ArgFunctionInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ArgFunctionInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("arg1")]
         public Input<Pulumi.Example.Resource>? Arg1 { get; set; }
@@ -37,6 +38,7 @@ namespace Pulumi.Example
         public ArgFunctionInvokeArgs()
         {
         }
+        public static new ArgFunctionInvokeArgs Empty => new ArgFunctionInvokeArgs();
     }
 
 

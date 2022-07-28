@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::NoRecursive")]
-    public partial class NoRecursive : Pulumi.CustomResource
+    public partial class NoRecursive : global::Pulumi.CustomResource
     {
         [Output("rec")]
         public Output<Outputs.Rec?> Rec { get; private set; } = null!;
@@ -65,10 +65,11 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class NoRecursiveArgs : Pulumi.ResourceArgs
+    public sealed class NoRecursiveArgs : global::Pulumi.ResourceArgs
     {
         public NoRecursiveArgs()
         {
         }
+        public static new NoRecursiveArgs Empty => new NoRecursiveArgs();
     }
 }

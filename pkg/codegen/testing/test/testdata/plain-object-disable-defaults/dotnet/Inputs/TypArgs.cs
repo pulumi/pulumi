@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     /// <summary>
     /// A test for namespaces (mod main)
     /// </summary>
-    public sealed class TypArgs : Pulumi.ResourceArgs
+    public sealed class TypArgs : global::Pulumi.ResourceArgs
     {
         [Input("mod1")]
         public Input<Pulumi.Example.Mod1.Inputs.TypArgs>? Mod1 { get; set; }
@@ -28,5 +28,6 @@ namespace Pulumi.Example.Inputs
         {
             Val = "mod main";
         }
+        public static new TypArgs Empty => new TypArgs();
     }
 }
