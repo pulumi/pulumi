@@ -201,6 +201,8 @@ type ResourcePlan struct {
 	Goal    *GoalPlan
 	Ops     []display.StepOp
 	Outputs resource.PropertyMap
+	// The random byte seed used for resource goal.
+	Seed []byte
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
