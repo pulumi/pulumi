@@ -67,15 +67,18 @@ func TestAll(t *testing.T) {
 			Languages: allLanguages(),
 			Plugins: []PluginOptions{
 				{
-					Name:  "command",
-					Kind:  workspace.ResourcePlugin,
-					Build: []exec.Cmd{},
-					Bin:   "./bin",
-					Version: semver.Version{
-						Major: 0,
-						Minor: 0,
-						Patch: 0,
-					},
+					Name:    "command",
+					Kind:    workspace.ResourcePlugin,
+					Build:   []exec.Cmd{},
+					Bin:     "./bin",
+					Version: semver.MustParse("0.4.2"),
+				},
+				{
+					Name:    "yaml",
+					Kind:    workspace.LanguagePlugin,
+					Build:   []exec.Cmd{},
+					Bin:     "./bin",
+					Version: semver.MustParse("0.5.4"),
 				},
 			},
 		},

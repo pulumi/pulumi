@@ -1342,11 +1342,9 @@ func getPluginInfoAndPath(
 		for j, p2 := range projectPlugins {
 			if j < i {
 				if p2.Kind == p1.Kind && p2.Name == p1.Name {
-					if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
-						return nil, "", fmt.Errorf(
-							"multiple project plugins with kind %s, name %s, version %s",
-							p1.Kind, p1.Name, p1.Version)
-					}
+					return nil, "", fmt.Errorf(
+						"multiple linked plugins with kind %s, name %s",
+						p1.Kind, p1.Name)
 				}
 			}
 		}
@@ -1359,14 +1357,11 @@ func getPluginInfoAndPath(
 		if plugin.Name != name {
 			continue
 		}
-		if plugin.Version != nil && version != nil {
+		/*if plugin.Version != nil && version != nil {
 			if !plugin.Version.Equals(*version) {
-				logging.Warningf(
-					"Project plugin %s with version %s is incompatible with requested version %s.\n",
-					name, plugin.Version, version)
-				continue
+				return nil, "", fmt.Errorf("plugin %s version %s was requested but found version %s in plugin link", name, version, plugin.Version)
 			}
-		}
+		}*/
 
 		path := filepath.Join(plugin.Path, plugin.File())
 		return plugin, path, nil

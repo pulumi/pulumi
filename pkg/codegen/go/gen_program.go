@@ -145,6 +145,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
+	packages, err := programPackageDefs(program)
+	if err != nil {
+		return err
+	}
+
 	// Build a go.mod based on the packages used by program
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
@@ -153,7 +158,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		if name == "pulumi" {
 			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi => %s\n", sdk))
 		} else {
-			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi-%s/sdk/go => %s/go\n", name, sdk))
+			for _, p := range packages {
+				if p.Name == name {
+					gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi-%s/sdk/go => %s/go\n", name, sdk))
+				}
+			}
 		}
 	}
 
@@ -164,10 +173,6 @@ require (
 `)
 
 	// For each package add a PackageReference line
-	packages, err := programPackageDefs(program)
-	if err != nil {
-		return err
-	}
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err

@@ -12,7 +12,7 @@ resources:
 plugins:
   languages:
     - name: yaml
-      path: /Users/hliuson/go/src/github.com/pulumi/pulumi-yaml/bin
+      path: bin
   providers:
     - name: command
       path: bin

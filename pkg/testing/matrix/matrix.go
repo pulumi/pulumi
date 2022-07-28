@@ -126,6 +126,9 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 
 	localProjects := map[string]string{}
 
+	//Here we are overriding the plugin links to use our own plugin links.
+	proj.Plugins = &workspace.Plugins{}
+
 	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {
 		for _, cmd := range plugin.Build {
@@ -142,9 +145,6 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			Path:    plugin.Bin,
 			Version: plugin.Version.String(),
 		}
-
-		//Here we are overriding the plugin links to use our own plugin links.
-		proj.Plugins = &workspace.Plugins{}
 
 		switch plugin.Kind {
 		case workspace.AnalyzerPlugin:
@@ -185,6 +185,10 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 	for _, plugin := range opts.Plugins {
 		assert.NotNil(t, plugin.Version)
 
+		if plugin.Kind != workspace.ResourcePlugin {
+			continue
+		}
+
 		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, &plugin.Version)
 		assert.NoError(t, err)
 		assert.NotNil(t, info)
@@ -207,11 +211,11 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		assert.NotNil(t, pkg)
 
 		//Kludge
-		for _, p := range opts.Plugins {
-			if p.Name == plugin.Name {
+		/*for _, p := range opts.Plugins {
+			if p.Name == pkg.Name {
 				pkg.Version = &p.Version
 			}
-		}
+		}*/
 
 		pkg.Test = true
 
@@ -330,6 +334,12 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 }
 
 func PythonConfigurePkg(pkg *schema.Package) error {
+	pkg.Version = &semver.Version{
+		Major: pkg.Version.Major,
+		Minor: pkg.Version.Minor,
+		Patch: pkg.Version.Patch,
+	} // Prune patch and build versions, since semver and python don't seem to agree on formatting.
+
 	raw, notnil := pkg.Language["python"]
 	message, ismessage := raw.(json.RawMessage)
 	var pyPkg pygen.PackageInfo
@@ -353,7 +363,7 @@ func PythonConfigurePkg(pkg *schema.Package) error {
 }
 
 func NodeConfigurePkg(pkg *schema.Package) error {
-	raw, notnil := pkg.Language["nodejs"]
+	/*raw, notnil := pkg.Language["nodejs"]
 	message, ismessage := raw.(json.RawMessage)
 	var nodePkg jsgen.NodePackageInfo
 	if notnil && ismessage {
@@ -371,7 +381,7 @@ func NodeConfigurePkg(pkg *schema.Package) error {
 		nodePkg = jsgen.NodePackageInfo{}
 	}
 	nodePkg.RespectSchemaVersion = true
-	pkg.Language["nodejs"] = nodePkg
+	pkg.Language["nodejs"] = nodePkg*/
 	return nil
 }
 
