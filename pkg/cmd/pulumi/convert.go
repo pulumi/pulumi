@@ -53,7 +53,9 @@ func newConvertCmd() *cobra.Command {
 			var projectGenerator projectGeneratorFunc
 			switch language {
 			case "csharp", "c#":
-				projectGenerator = dotnet.GenerateProject
+				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
+					return dotnet.GenerateProject(directory, project, p, nil)
+				}
 			case langGo:
 				projectGenerator = gogen.GenerateProject
 			case "typescript":
