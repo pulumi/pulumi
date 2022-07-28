@@ -457,11 +457,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
 			}, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges)}, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
