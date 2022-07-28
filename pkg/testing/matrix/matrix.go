@@ -213,6 +213,13 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		assert.Empty(t, diags)
 		assert.NotNil(t, pkg)
 
+		//Kludge
+		for _, p := range opts.Plugins {
+			if p.Name == plugin.Name {
+				pkg.Version = &p.Version
+			}
+		}
+
 		pkg.Test = true
 
 		pkgName := pkg.Name

@@ -58,8 +58,11 @@ func TestAll(t *testing.T) {
 		},*/
 		{
 			Program: &i.ProgramTestOptions{
-				Dir:       "tests/provider",
-				PulumiBin: "/Users/hliuson/.pulumi-dev/bin/pulumi",
+				Dir:              "tests/provider",
+				PulumiBin:        "/Users/hliuson/.pulumi-dev/bin/pulumi",
+				SkipRefresh:      true,
+				SkipPreview:      true,
+				SkipExportImport: true,
 			},
 			Languages: allLanguages(),
 			Plugins: []PluginOptions{
