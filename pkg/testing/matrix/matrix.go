@@ -150,11 +150,8 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			SDKPath: sdkPath,
 		}
 
-		//TODO: Generate SDKs for plugins
-
-		if proj.Plugins == nil {
-			proj.Plugins = &workspace.Plugins{}
-		}
+		//Here we are overriding the plugin links to use our own plugin links.
+		proj.Plugins = &workspace.Plugins{}
 
 		switch plugin.Kind {
 		case workspace.AnalyzerPlugin:
@@ -216,6 +213,8 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 		assert.Empty(t, diags)
 		assert.NotNil(t, pkg)
 
+		pkg.Test = true
+
 		pkgName := pkg.Name
 
 		for _, langOpt := range opts.Languages {
@@ -227,6 +226,21 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			case "go":
 				files, err = gogen.GeneratePackage(pkgName, pkg)
 			case "python":
+				if pkg.Language["python"] == nil {
+					pkg.Language["python"] = pygen.PackageInfo{
+						RespectSchemaVersion: true,
+					}
+				} else {
+					raw, ok := pkg.Language["python"].(json.RawMessage)
+					assert.True(t, ok)
+					var pyInfo pygen.PackageInfo
+					err = json.Unmarshal(raw, &pyInfo)
+					assert.NoError(t, err)
+
+					pyInfo.RespectSchemaVersion = true
+
+					pkg.Language["python"] = pyInfo
+				}
 				files, err = pygen.GeneratePackage(pkgName, pkg, files)
 			case "nodejs":
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)

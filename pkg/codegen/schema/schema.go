@@ -622,6 +622,8 @@ type Package struct {
 	Functions []*Function
 	// Language specifies additional language-specific data about the package.
 	Language map[string]interface{}
+	// Test specifies whether the package is a test package.
+	Test bool
 
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType

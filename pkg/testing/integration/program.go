@@ -287,6 +287,8 @@ type ProgramTestOptions struct {
 	PipenvBin string
 	// DotNetBin is a location of a `dotnet` executable to be run.  Taken from the $PATH if missing.
 	DotNetBin string
+	// PulumiBin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
+	PulumiBin string
 
 	// Additional environment variables to pass for each command we run.
 	Env []string
@@ -745,6 +747,9 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
+	if pt.opts.PulumiBin != "" {
+		return pt.opts.PulumiBin, nil
+	}
 	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }
 

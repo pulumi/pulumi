@@ -96,6 +96,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	if err != nil {
 		return err
 	}
+
+outer:
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
@@ -108,6 +110,14 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = pyInfo.PackageName
 			}
 		}
+
+		for _, pkg := range project.Plugins.Providers {
+			if pkg.Name == p.Name {
+				requirementsTxt.WriteString(fmt.Sprintf("%s\n", pkg.SDKPath["python"]))
+				continue outer
+			}
+		}
+
 		if p.Version != nil {
 			requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
 		} else {

@@ -58,8 +58,8 @@ func TestAll(t *testing.T) {
 		},*/
 		{
 			Program: &i.ProgramTestOptions{
-				Dir:                      "tests/provider",
-				AllowEmptyPreviewChanges: true,
+				Dir:       "tests/provider",
+				PulumiBin: "/Users/hliuson/.pulumi-dev/bin/pulumi",
 			},
 			Languages: allLanguages(),
 			Plugins: []PluginOptions{
@@ -92,25 +92,25 @@ func allLanguages() []LangTestOption {
 			Version:  &semver.Version{Major: 1, Minor: 17, Patch: 0},
 			Opts:     nil,
 		},
-		/*{
+		{
 			Language: "python",
 			Version:  &semver.Version{Major: 3, Minor: 7, Patch: 0},
 			Opts:     nil,
-		},
-		{
-			Language: "nodejs",
-			Version:  &semver.Version{Major: 8, Minor: 0, Patch: 0},
-			Opts:     nil,
-		},
-		{
-			Language: "dotnet",
-			Version:  &semver.Version{Major: 2, Minor: 0, Patch: 0},
-			Opts:     nil,
-		},
-		{
-			Language: "yaml",
-			Version:  nil,
-			Opts:     nil,
-		},*/
+		}, /*
+			{
+				Language: "nodejs",
+				Version:  &semver.Version{Major: 8, Minor: 0, Patch: 0},
+				Opts:     nil,
+			},
+			{
+				Language: "dotnet",
+				Version:  &semver.Version{Major: 2, Minor: 0, Patch: 0},
+				Opts:     nil,
+			},
+			{
+				Language: "yaml",
+				Version:  nil,
+				Opts:     nil,
+			},*/
 	}
 }
