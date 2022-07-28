@@ -85,7 +85,8 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 		// this line is responsible for indicating to the user in the CLI display
 		// - that an error occurred
 		// - details about that error
-		err := ctx.Log.Error(fmt.Sprintf("program failed: %v\n", err), nil)
+		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+
 		contract.AssertNoError(err)
 	}
 	return err
