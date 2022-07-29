@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -27,12 +27,20 @@ namespace Pulumi.Tests.Serialization
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
             Assert.True(data.IsKnown);
         }
-        
+
         [Fact]
         public async Task ListInitializedByDefault()
         {
             var data = Converter.ConvertValue<ImmutableArray<string>>(NoWarn, "", await SerializeToValueAsync(default(ImmutableArray<string>)));
             AssertEx.SequenceEqual(ImmutableArray<string>.Empty, data.Value);
+            Assert.True(data.IsKnown);
+        }
+
+        [Fact]
+        public async Task NonGenericList()
+        {
+            var data = Converter.ConvertValue<ImmutableArray<string>>(NoWarn, "", await SerializeToValueAsync(new string[] { "hello", "world"} ));
+            AssertEx.SequenceEqual(ImmutableArray<string>.Empty.Add("hello").Add("world"), data.Value);
             Assert.True(data.IsKnown);
         }
 
