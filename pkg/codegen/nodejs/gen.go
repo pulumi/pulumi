@@ -214,7 +214,11 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 	modName, name := namingCtx.tokenToModName(tok), tokenToName(tok)
 
 	if enum {
-		return "enums." + modName + title(name)
+		prefix := "enums."
+		if external {
+			prefix = pkgName
+		}
+		return prefix + modName + title(name)
 	}
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
@@ -289,7 +293,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(t.Package, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
@@ -1303,6 +1307,12 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.EnumType:
+		// If the enum is from another package, add an import for the external package.
+		if t.Package != nil && t.Package != mod.pkg {
+			pkg := t.Package.Name
+			writeImports(pkg)
+			return false
+		}
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
@@ -1517,7 +1527,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		enumsImport := ""
+		var enumsImport string
 		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
 		if containsEnums {
 			enumsImport = ", enums"
@@ -1620,6 +1630,12 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 
 func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) error {
 	indent := strings.Repeat("    ", level)
+
+	// We generate the input and output namespaces when there are enums, regardless of if
+	// they are empty.
+	if ns == nil {
+		return nil
+	}
 
 	sort.Slice(ns.types, func(i, j int) bool {
 		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
@@ -1824,7 +1840,8 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Nested types
-	if len(mod.types) > 0 {
+	// Importing enums always imports inputs and outputs, so if we have enums we generate inputs and outputs
+	if len(mod.types) > 0 || (mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums && mod.mod == "types") {
 		input, output, err := mod.genTypes()
 		if err != nil {
 			return err
@@ -1891,6 +1908,10 @@ func (mod *modContext) genIndex(exports []string) string {
 	if info.ContainsEnums {
 		if mod.mod == "types" {
 			children.Add("enums")
+			// input & output might be empty, but they will be imported with enums, so we
+			// need to have them.
+			children.Add("input")
+			children.Add("output")
 		} else if len(mod.enums) > 0 {
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "// Export enums:\n")
@@ -2027,11 +2048,9 @@ func (mod *modContext) hasEnums() bool {
 	if len(mod.enums) > 0 {
 		return true
 	}
-	if len(mod.children) > 0 {
-		for _, mod := range mod.children {
-			if mod.hasEnums() {
-				return true
-			}
+	for _, mod := range mod.children {
+		if mod.hasEnums() {
+			return true
 		}
 	}
 	return false
@@ -2383,7 +2402,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 			continue
 		}
 	}
-	if len(types.types) > 0 {
+	if len(types.types) > 0 || info.ContainsEnums {
 		typeDetails, typeList := types.typeDetails, types.types
 		types = getMod("types")
 		types.typeDetails, types.types = typeDetails, typeList

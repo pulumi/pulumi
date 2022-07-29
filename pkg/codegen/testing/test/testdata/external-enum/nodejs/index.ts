@@ -5,41 +5,40 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./moduleResource";
+export * from "./component";
 export * from "./provider";
 
-// Export enums:
-export * from "./types/enums";
-
 // Export sub-modules:
+import * as local from "./local";
 import * as types from "./types";
 
 export {
+    local,
     types,
 };
 
 // Import resources to register:
-import { ModuleResource } from "./moduleResource";
+import { Component } from "./component";
 
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "foobar::ModuleResource":
-                return new ModuleResource(name, <any>undefined, { urn })
+            case "example:index:Component":
+                return new Component(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("foobar", "", _module)
+pulumi.runtime.registerResourceModule("example", "index", _module)
 
 import { Provider } from "./provider";
 
-pulumi.runtime.registerResourcePackage("foobar", {
+pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
-        if (type !== "pulumi:providers:foobar") {
+        if (type !== "pulumi:providers:example") {
             throw new Error(`unknown provider type ${type}`);
         }
         return new Provider(name, <any>undefined, { urn });

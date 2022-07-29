@@ -162,16 +162,17 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
+	if !gotSdk {
+		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+	}
+
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
 	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
 	pyCmd.Dir = hereDir
-	err = pyCmd.Run()
+	output, err := pyCmd.CombinedOutput()
 	if err != nil {
-		contract.Failf("failed to link venv against in-source pulumi: %v", err)
-	}
-
-	if !gotSdk {
-		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+		contract.Failf("failed to link venv against in-source pulumi: %v\nstdout/stderr:\n%s",
+			err, output)
 	}
 
 	return nil

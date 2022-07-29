@@ -13,10 +13,12 @@
         "strict": true
     },
     "files": [
+        "component.ts",
         "index.ts",
-        "moduleResource.ts",
+        "local/index.ts",
         "provider.ts",
         "types/enums/index.ts",
+        "types/enums/local/index.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",
