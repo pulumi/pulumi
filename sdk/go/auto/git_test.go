@@ -16,7 +16,7 @@ import (
 // git code in isolation; testing the user of the unexported func (NewLocalWorkspace) drags in lots
 // of other factors.
 
-func TestGitBranch(t *testing.T) {
+func TestGitClone(t *testing.T) {
 	t.Parallel()
 
 	// This makes a git repo to clone from, so to avoid relying on something at GitHub that could
@@ -60,19 +60,35 @@ func TestGitBranch(t *testing.T) {
 
 	type testcase struct {
 		branchName   string
+		commitHash   string
+		testName     string // use when supplying a hash, for a stable name
 		expectedHead plumbing.Hash
 	}
 
 	for _, tc := range []testcase{
-		{"default", defaultHead},
-		{"nondefault", nondefaultHead},
+		{branchName: "default", expectedHead: defaultHead},
+		{branchName: "nondefault", expectedHead: nondefaultHead},
+		// https://github.com/pulumi/pulumi-kubernetes-operator/issues/103#issuecomment-1107891475
+		// advises using `refs/heads/<default>` for the default, and `refs/remotes/origin/<branch>`
+		// for a non-default branch -- so we can expect all these varieties to be in use.
+		{branchName: "refs/heads/default", expectedHead: defaultHead},
+		{branchName: "refs/heads/nondefault", expectedHead: nondefaultHead},
+		{branchName: "refs/remotes/origin/default", expectedHead: defaultHead},
+		{branchName: "refs/remotes/origin/nondefault", expectedHead: nondefaultHead},
+		// ask specifically for the commit hash
+		{testName: "head of default as hash", commitHash: defaultHead.String(), expectedHead: defaultHead},
+		{testName: "head of nondefault as hash", commitHash: nondefaultHead.String(), expectedHead: nondefaultHead},
 	} {
 		tc := tc
-		t.Run(tc.branchName, func(t *testing.T) {
+		if tc.testName == "" {
+			tc.testName = tc.branchName
+		}
+		t.Run(tc.testName, func(t *testing.T) {
 			t.Parallel()
 			repo := &GitRepo{
-				URL:    originDir,
-				Branch: tc.branchName,
+				URL:        originDir,
+				Branch:     tc.branchName,
+				CommitHash: tc.commitHash,
 			}
 
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
