@@ -45,9 +45,9 @@ func newReplayEventsCmd() *cobra.Command {
 	var delay time.Duration
 
 	var cmd = &cobra.Command{
-		Use:    placeholder.Use,
-		Short:  placeholder.Short,
-		Long:   placeholder.Long,
+		Use:    replayEventsText.Use,
+		Short:  replayEventsText.Short,
+		Long:   replayEventsText.Long,
 		Args:   cmdutil.ExactArgs(2),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

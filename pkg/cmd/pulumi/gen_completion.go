@@ -28,10 +28,10 @@ import (
 // newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
-		Use:     placeholder.Use,
+		Use:     genCompletionText.Use,
 		Aliases: []string{"completion"},
 		Args:    cmdutil.ExactArgs(1),
-		Short:   placeholder.Short,
+		Short:   genCompletionText.Short,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			switch {
 			case args[0] == "bash":

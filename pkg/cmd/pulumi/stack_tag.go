@@ -30,9 +30,9 @@ func newStackTagCmd() *cobra.Command {
 	var stack string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stackTagText.Use,
+		Short: stackTagText.Short,
+		Long:  stackTagText.Long,
 		Args:  cmdutil.NoArgs,
 	}
 
@@ -49,8 +49,8 @@ func newStackTagCmd() *cobra.Command {
 
 func newStackTagGetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   stackTagText.Use,
+		Short: stackTagText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -82,8 +82,8 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 func newStackTagLsCmd(stack *string) *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   stackTagText.Use,
+		Short: stackTagText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -137,8 +137,8 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 
 func newStackTagRmCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   stackTagText.Use,
+		Short: stackTagText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -166,8 +166,8 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 
 func newStackTagSetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   stackTagText.Use,
+		Short: stackTagText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]

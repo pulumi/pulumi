@@ -44,10 +44,10 @@ func newStackGraphCmd() *cobra.Command {
 	var stackName string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackGraphText.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackGraphText.Short,
+		Long:  stackGraphText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

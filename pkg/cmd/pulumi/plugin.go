@@ -26,9 +26,9 @@ import (
 
 func newPluginCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   pluginText.Use,
+		Short: pluginText.Short,
+		Long:  pluginText.Long,
 		Args:  cmdutil.NoArgs,
 	}
 

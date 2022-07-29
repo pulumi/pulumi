@@ -32,10 +32,10 @@ func newStackOutputCmd() *cobra.Command {
 	var stackName string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackOutputText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackOutputText.Short,
+		Long:  stackOutputText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

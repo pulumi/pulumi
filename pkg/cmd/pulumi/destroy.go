@@ -57,11 +57,11 @@ func newDestroyCmd() *cobra.Command {
 	var excludeProtected bool
 
 	var cmd = &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        destroyText.Use,
 		Aliases:    []string{"down"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      destroyText.Short,
+		Long:       destroyText.Long,
 		Args:       cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipPreview || skipConfirmations()

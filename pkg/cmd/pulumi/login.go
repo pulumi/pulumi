@@ -37,9 +37,9 @@ func newLoginCmd() *cobra.Command {
 	var localMode bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   loginText.Use,
+		Short: loginText.Short,
+		Long:  loginText.Long,
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOptions := display.Options{

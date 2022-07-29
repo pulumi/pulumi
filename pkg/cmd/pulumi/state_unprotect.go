@@ -34,9 +34,9 @@ func newStateUnprotectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stateUnprotectText.Use,
+		Short: stateUnprotectText.Short,
+		Long:  stateUnprotectText.Long,
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()

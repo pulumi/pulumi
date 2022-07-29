@@ -35,9 +35,9 @@ var replaceH2Pattern = regexp.MustCompile(`(?m)^## .*$`)
 // It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
-		Use:    placeholder.Use,
+		Use:    genMarkdownText.Use,
 		Args:   cmdutil.ExactArgs(1),
-		Short:  placeholder.Short,
+		Short:  genMarkdownText.Short,
 		Hidden: true,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			var files []string

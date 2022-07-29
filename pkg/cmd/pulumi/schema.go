@@ -21,9 +21,9 @@ import (
 
 func newSchemaCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   schemaText.Use,
+		Short: schemaText.Short,
+		Long:  schemaText.Long,
 		Args:  cmdutil.NoArgs,
 	}
 

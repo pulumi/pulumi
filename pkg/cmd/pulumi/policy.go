@@ -21,8 +21,8 @@ import (
 
 func newPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   policyText.Use,
+		Short: policyText.Short,
 		Args:  cmdutil.NoArgs,
 	}
 

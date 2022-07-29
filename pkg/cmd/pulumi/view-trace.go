@@ -42,9 +42,9 @@ func readTrace(path string, store io.ReaderFrom) error {
 func newViewTraceCmd() *cobra.Command {
 	var port int
 	var cmd = &cobra.Command{
-		Use:    placeholder.Use,
-		Short:  placeholder.Short,
-		Long:   placeholder.Long,
+		Use:    viewTraceText.Use,
+		Short:  viewTraceText.Short,
+		Long:   viewTraceText.Long,
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

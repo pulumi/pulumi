@@ -147,9 +147,9 @@ func NewPulumiCmd() *cobra.Command {
 	updateCheckResult := make(chan *diag.Diag)
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   pulumiText.Use,
+		Short: pulumiText.Short,
+		Long:  pulumiText.Long,
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.

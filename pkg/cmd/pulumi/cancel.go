@@ -30,10 +30,10 @@ func newCancelCmd() *cobra.Command {
 	var yes bool
 	var stack string
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   cancelText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: cancelText.Short,
+		Long:  cancelText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {

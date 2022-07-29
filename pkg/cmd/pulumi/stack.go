@@ -39,9 +39,9 @@ func newStackCmd() *cobra.Command {
 	var showStackName bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stackText.Use,
+		Short: stackText.Short,
+		Long:  stackText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

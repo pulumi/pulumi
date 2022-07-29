@@ -34,10 +34,10 @@ func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   pluginRmText.Use,
 		Args:  cmdutil.MaximumNArgs(3),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: pluginRmText.Short,
+		Long:  pluginRmText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			yes = yes || skipConfirmations()
 			opts := display.Options{

@@ -30,8 +30,8 @@ import (
 func newConsoleCmd() *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   consoleText.Use,
+		Short: consoleText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

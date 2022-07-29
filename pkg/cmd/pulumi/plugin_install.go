@@ -42,10 +42,10 @@ func newPluginInstallCmd() *cobra.Command {
 	var reinstall bool
 
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   pluginInstallText.Use,
 		Args:  cmdutil.MaximumNArgs(3),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: pluginInstallText.Short,
+		Long:  pluginInstallText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

@@ -31,10 +31,10 @@ func newPolicyLsCmd() *cobra.Command {
 	var jsonOut bool
 
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   policyLsText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: policyLsText.Short,
+		Long:  policyLsText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})

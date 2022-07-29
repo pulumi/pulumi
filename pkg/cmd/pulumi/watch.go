@@ -50,10 +50,10 @@ func newWatchCmd() *cobra.Command {
 	var secretsProvider string
 
 	var cmd = &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        watchText.Use,
 		SuggestFor: []string{"developer", "dev"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      watchText.Short,
+		Long:       watchText.Long,
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 

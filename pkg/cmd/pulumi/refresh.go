@@ -52,9 +52,9 @@ func newRefreshCmd() *cobra.Command {
 	var targets *[]string
 
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   refreshText.Use,
+		Short: refreshText.Short,
+		Long:  refreshText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipPreview || skipConfirmations()

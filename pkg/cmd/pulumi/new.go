@@ -386,10 +386,10 @@ func newNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        newText.Use,
 		SuggestFor: []string{"init", "create"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      newText.Short,
+		Long:       newText.Long,
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()

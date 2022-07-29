@@ -31,10 +31,10 @@ import (
 
 func newPolicyPublishCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   policyPublishText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: policyPublishText.Short,
+		Long:  policyPublishText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
 			var orgName string

@@ -34,10 +34,10 @@ import (
 
 func newSchemaCheckCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   schemaCheckText.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: schemaCheckText.Short,
+		Long:  schemaCheckText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			file := args[0]
 

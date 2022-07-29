@@ -50,10 +50,10 @@ func newPolicyNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        policyNewText.Use,
 		SuggestFor: []string{"init", "create"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      policyNewText.Short,
+		Long:       policyNewText.Long,
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			if len(cliArgs) > 0 {

@@ -33,9 +33,9 @@ func newLogoutCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   logoutText.Use,
+		Short: logoutText.Short,
+		Long:  logoutText.Long,
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.

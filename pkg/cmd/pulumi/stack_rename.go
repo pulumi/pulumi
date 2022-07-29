@@ -31,10 +31,10 @@ import (
 func newStackRenameCmd() *cobra.Command {
 	var stack string
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackRenameText.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackRenameText.Short,
+		Long:  stackRenameText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

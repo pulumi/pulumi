@@ -43,9 +43,9 @@ func newLogsCmd() *cobra.Command {
 	var jsonOut bool
 
 	logsCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   logsText.Use,
+		Short: logsText.Short,
+		Long:  logsText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

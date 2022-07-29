@@ -29,10 +29,10 @@ const allKeyword = "all"
 func newPolicyRmCmd() *cobra.Command {
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   policyRmText.Use,
 		Args:  cmdutil.ExactArgs(2),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: policyRmText.Short,
+		Long:  policyRmText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.

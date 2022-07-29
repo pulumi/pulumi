@@ -24,8 +24,8 @@ import (
 
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   versionText.Use,
+		Short: versionText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("%v\n", version.Version)

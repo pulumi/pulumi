@@ -29,8 +29,8 @@ import (
 
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   policyGroupLsText.Use,
+		Short: policyGroupLsText.Short,
 		Args:  cmdutil.NoArgs,
 	}
 
@@ -41,10 +41,10 @@ func newPolicyGroupCmd() *cobra.Command {
 func newPolicyGroupLsCmd() *cobra.Command {
 	var jsonOut bool
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   policyGroupLsText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: policyGroupLsText.Short,
+		Long:  policyGroupLsText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})

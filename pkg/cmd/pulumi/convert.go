@@ -41,10 +41,10 @@ func newConvertCmd() *cobra.Command {
 	var generateOnly bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   convertText.Use,
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: convertText.Short,
+		Long:  convertText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			var projectGenerator projectGeneratorFunc

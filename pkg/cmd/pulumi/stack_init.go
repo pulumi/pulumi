@@ -35,10 +35,10 @@ func newStackInitCmd() *cobra.Command {
 	var stackToCopy string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackInitText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackInitText.Short,
+		Long:  stackInitText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

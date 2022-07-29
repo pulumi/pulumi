@@ -27,9 +27,9 @@ var verbose bool
 
 func newWhoAmICmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   whoamiText.Use,
+		Short: whoamiText.Short,
+		Long:  whoamiText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

@@ -36,10 +36,10 @@ func newStackImportCmd() *cobra.Command {
 	var file string
 	var stackName string
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackImportText.Use,
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackImportText.Short,
+		Long:  stackImportText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{

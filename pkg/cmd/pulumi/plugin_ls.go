@@ -30,8 +30,8 @@ func newPluginLsCmd() *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   pluginLsText.Use,
+		Short: pluginLsText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.

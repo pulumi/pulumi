@@ -41,9 +41,9 @@ func newStackLsCmd() *cobra.Command {
 	var tagFilter string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stackLsText.Use,
+		Short: stackLsText.Short,
+		Long:  stackLsText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(_ *cobra.Command, _ []string) error {
 			cmdArgs := stackLSArgs{

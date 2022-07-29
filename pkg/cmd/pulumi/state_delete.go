@@ -33,9 +33,9 @@ func newStateDeleteCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stateDeleteText.Use,
+		Short: stateDeleteText.Short,
+		Long:  stateDeleteText.Long,
 		Args:  cmdutil.ExactArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()

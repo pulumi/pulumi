@@ -46,9 +46,9 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stateRenameText.Use,
+		Short: stateRenameText.Short,
+		Long:  stateRenameText.Long,
 		Args:  cmdutil.ExactArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()

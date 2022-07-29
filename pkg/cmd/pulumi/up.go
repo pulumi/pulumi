@@ -377,11 +377,11 @@ func newUpCmd() *cobra.Command {
 	}
 
 	var cmd = &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        upText.Use,
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      upText.Short,
+		Long:       upText.Long,
 		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()

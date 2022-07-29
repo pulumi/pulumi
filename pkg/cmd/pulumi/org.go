@@ -26,9 +26,9 @@ import (
 
 func newOrgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   orgText.Use,
+		Short: orgText.Short,
+		Long:  orgText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cloudURL, err := workspace.GetCurrentCloudURL()
@@ -62,10 +62,10 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   orgText.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: orgText.Short,
+		Long:  orgText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -99,9 +99,9 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 func newOrgGetDefaultCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   orgText.Use,
+		Short: orgText.Short,
+		Long:  orgText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

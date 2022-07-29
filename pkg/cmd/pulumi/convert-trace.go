@@ -182,9 +182,9 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 func newConvertTraceCmd() *cobra.Command {
 	var quantum time.Duration
 	var cmd = &cobra.Command{
-		Use:    placeholder.Use,
-		Short:  placeholder.Short,
-		Long:   placeholder.Long,
+		Use:    convertTraceText.Use,
+		Short:  convertTraceText.Short,
+		Long:   convertTraceText.Long,
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

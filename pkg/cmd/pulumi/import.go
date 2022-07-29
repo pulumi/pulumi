@@ -305,10 +305,10 @@ func newImportCmd() *cobra.Command {
 	var properties []string
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   importText.Use,
 		Args:  cmdutil.MaximumNArgs(3),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: importText.Short,
+		Long:  importText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 

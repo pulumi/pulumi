@@ -32,9 +32,9 @@ func newStackSelectCmd() *cobra.Command {
 	var secretsProvider string
 	var create bool
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stackSelectText.Use,
+		Short: stackSelectText.Short,
+		Long:  stackSelectText.Long,
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

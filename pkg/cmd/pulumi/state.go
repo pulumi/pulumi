@@ -36,9 +36,9 @@ import (
 
 func newStateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stateText.Use,
+		Short: stateText.Short,
+		Long:  stateText.Long,
 		Args:  cmdutil.NoArgs,
 	}
 

@@ -63,9 +63,9 @@ func newAboutCmd() *cobra.Command {
 	var stack string
 	cmd :=
 		&cobra.Command{
-			Use:   placeholder.Use,
-			Short: placeholder.Short,
-			Long:  placeholder.Long,
+			Use:   aboutText.Use,
+			Short: aboutText.Short,
+			Long:  aboutText.Long,
 			Args:  cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 				ctx := context.Background()

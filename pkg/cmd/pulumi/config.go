@@ -44,9 +44,9 @@ func newConfigCmd() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -91,9 +91,9 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 	var destinationStackName string
 
 	cpCommand := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -239,9 +239,9 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 	var path bool
 
 	getCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -275,9 +275,9 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -318,9 +318,9 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 	var path bool
 
 	rmAllCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -362,8 +362,8 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 func newConfigRefreshCmd(stack *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
+		Use:   configText.Use,
+		Short: configText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -436,9 +436,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	var path bool
 
 	setCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
@@ -537,9 +537,9 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 	var path bool
 
 	setCmd := &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   configText.Use,
+		Short: configText.Short,
+		Long:  configText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()

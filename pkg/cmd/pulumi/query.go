@@ -32,9 +32,9 @@ func newQueryCmd() *cobra.Command {
 	var stack string
 
 	var cmd = &cobra.Command{
-		Use:    placeholder.Use,
-		Short:  placeholder.Short,
-		Long:   placeholder.Long,
+		Use:    queryText.Use,
+		Short:  queryText.Short,
+		Long:   queryText.Long,
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {

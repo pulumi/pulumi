@@ -26,9 +26,9 @@ import (
 // next time the users get prompted with a stack to select
 func newStackUnselectCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   placeholder.Use,
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Use:   stackUnselectText.Use,
+		Short: stackUnselectText.Short,
+		Long:  stackUnselectText.Long,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			currentWorkspace, err := workspace.New()

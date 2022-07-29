@@ -36,10 +36,10 @@ func newStackRmCmd() *cobra.Command {
 	var force bool
 	var preserveConfig bool
 	var cmd = &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackRmText.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackRmText.Short,
+		Long:  stackRmText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.

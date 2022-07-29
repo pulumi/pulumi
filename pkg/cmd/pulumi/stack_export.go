@@ -35,10 +35,10 @@ func newStackExportCmd() *cobra.Command {
 	var showSecrets bool
 
 	cmd := &cobra.Command{
-		Use:   placeholder.Use,
+		Use:   stackExportText.Use,
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: placeholder.Short,
-		Long:  placeholder.Long,
+		Short: stackExportText.Short,
+		Long:  stackExportText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{

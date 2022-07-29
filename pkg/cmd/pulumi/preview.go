@@ -64,11 +64,11 @@ func newPreviewCmd() *cobra.Command {
 	var targetDependents bool
 
 	var cmd = &cobra.Command{
-		Use:        placeholder.Use,
+		Use:        previewText.Use,
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
-		Short:      placeholder.Short,
-		Long:       placeholder.Long,
+		Short:      previewText.Short,
+		Long:       previewText.Long,
 		Args:       cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			var displayType = display.DisplayProgress
