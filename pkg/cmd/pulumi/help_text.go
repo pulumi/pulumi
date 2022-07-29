@@ -8,7 +8,7 @@ type HelpText struct {
 
 var aboutText = HelpText{
 	Use:   "about",
-	Short: "Print information about the Pulumi environment.\n",
+	Short: "Print information about the Pulumi environment.",
 	Long: "Print information about the Pulumi environment.\n" +
 		"\n" +
 		"Prints out information helpful for debugging the Pulumi CLI." +
@@ -416,7 +416,18 @@ var policyEnableText = HelpText{
 	Long: "Enable a Policy Pack for a Pulumi organization. " +
 		"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 }
+var policyGroupText = HelpText{
+	Use:   "group",
+	Short: "Manage policy groups",
+}
+
 var policyGroupLsText = HelpText{
+	Use:   "ls [org-name]",
+	Short: "List all Policy Groups for a Pulumi organization",
+	Long:  "List all Policy Groups for a Pulumi organization",
+}
+
+var policyPackLsText = HelpText{
 	Use:   "ls [org-name]",
 	Short: "List all Policy Packs for a Pulumi organization",
 	Long:  "List all Policy Packs for a Pulumi organization",
@@ -537,8 +548,8 @@ var schemaText = HelpText{
 	Short: "Analyze package schemas",
 	Long: `Analyze package schemas
 
-	Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
-	package schemas for errors.`,
+Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
+package schemas for errors.`,
 }
 var stackChangeSecretsProviderText = HelpText{
 	Use:   "change-secrets-provider <new-secrets-provider>",
@@ -595,7 +606,7 @@ var stackHistoryText = HelpText{
 	Short: "Display history for a stack",
 	Long: `Display history for a stack
 
-	This command displays data about previous updates for a stack.`,
+This command displays data about previous updates for a stack.`,
 }
 var stackImportText = HelpText{
 	Use:   "import",
@@ -734,46 +745,46 @@ var stateDeleteText = HelpText{
 	Short: "Deletes a resource from a stack's state",
 	Long: `Deletes a resource from a stack's state
 
-	This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified 
-	by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
+This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified 
+by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
 
-	Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources 
-	will not be deleted unless it is specifically requested using the --force flag.
+Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources 
+will not be deleted unless it is specifically requested using the --force flag.
 
-	Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
 
-	Example:
-	pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'
-	`,
+Example:
+pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'
+`,
 }
 var stateText = HelpText{
 	Use:   "state",
 	Short: "Edit the current stack's state",
 	Long: `Edit the current stack's state
 
-	Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
-	troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
+Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
+troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
 }
 var stateRenameText = HelpText{
 	Use:   "rename <resource URN> <new name>",
 	Short: "Renames a resource from a stack's state",
 	Long: `Renames a resource from a stack's state
 
-	This command renames a resource from a stack's state. The resource is specified 
-	by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
+This command renames a resource from a stack's state. The resource is specified 
+by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
 
-	Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
 
-	Example:
-	pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here
-	`,
+Example:
+pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here
+`,
 }
 var stateUnprotectText = HelpText{
 	Use:   "unprotect <resource URN>",
 	Short: "Unprotect resources in a stack's state",
 	Long: `Unprotect resource in a stack's state
 
-	This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
+This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 }
 var upText = HelpText{
 	Use:   "up [template|url]",

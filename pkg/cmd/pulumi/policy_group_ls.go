@@ -29,8 +29,8 @@ import (
 
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   policyGroupLsText.Use,
-		Short: policyGroupLsText.Short,
+		Use:   policyGroupText.Use,
+		Short: policyGroupText.Short,
 		Args:  cmdutil.NoArgs,
 	}
 

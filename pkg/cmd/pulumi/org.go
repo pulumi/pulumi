@@ -62,10 +62,10 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	var cmd = &cobra.Command{
-		Use:   orgText.Use,
+		Use:   orgSetDefaultText.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: orgText.Short,
-		Long:  orgText.Long,
+		Short: orgSetDefaultText.Short,
+		Long:  orgSetDefaultText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -99,9 +99,9 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 func newOrgGetDefaultCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   orgText.Use,
-		Short: orgText.Short,
-		Long:  orgText.Long,
+		Use:   orgGetDefault.Use,
+		Short: orgGetDefault.Short,
+		Long:  orgGetDefault.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
