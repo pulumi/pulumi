@@ -30,6 +30,7 @@ from .sync_await import _sync_await
 if TYPE_CHECKING:
     from .. import Resource, Inputs, Output
 
+
 class InvokeResult:
     """
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
