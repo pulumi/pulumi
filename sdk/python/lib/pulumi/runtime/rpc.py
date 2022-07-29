@@ -96,39 +96,6 @@ See sdk/go/common/resource/properties.go.
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
-# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
-# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
-# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
-# up causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s
-# provider.
-#
-# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
-# [2] https://github.com/pulumi/pulumi-kubernetes/issues/984
-#
-# This setting requires a platform-specific and python version-specific .so file called
-# `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is
-# released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
-# python programs using a new version.
-try:
-    from google.protobuf.pyext._message import (  # pylint: disable-msg=C0412
-        SetAllowOversizeProtos,
-    )  # pylint: disable-msg=E0611
-
-    SetAllowOversizeProtos(True)
-except ImportError:
-    pass
-
-# New versions of protobuf have moved the above import to api_implementation
-try:
-    from google.protobuf.pyext import (
-        cpp_message,
-    )  # pylint: disable-msg=E0611
-
-    if cpp_message._message is not None:
-        cpp_message._message.SetAllowOversizeProtos(True)
-except ImportError:
-    pass
-
 
 def isLegalProtobufValue(value: Any) -> bool:
     """
