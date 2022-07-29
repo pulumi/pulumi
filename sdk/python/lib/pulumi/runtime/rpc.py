@@ -120,7 +120,9 @@ except ImportError:
 
 # New versions of protobuf have moved the above import to api_implementation
 try:
-    from google.protobuf.pyext import cpp_message  # pylint: disable-msg=E0611
+    from google.protobuf.pyext import (
+        cpp_message,
+    )  # pylint: disable-msg=E0611
 
     if cpp_message._message is not None:
         cpp_message._message.SetAllowOversizeProtos(True)
