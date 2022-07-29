@@ -27,10 +27,10 @@ func newPolicyValidateCmd() *cobra.Command {
 	var argConfig string
 
 	var cmd = &cobra.Command{
-		Use:   policyValidateText.Use,
+		Use:   policyValidateConfigText.Use,
 		Args:  cmdutil.ExactArgs(2),
-		Short: policyValidateText.Short,
-		Long:  policyValidateText.Long,
+		Short: policyValidateConfigText.Short,
+		Long:  policyValidateConfigText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
 			policyPack, err := requirePolicyPack(cliArgs[0])

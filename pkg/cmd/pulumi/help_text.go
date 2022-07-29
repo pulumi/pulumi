@@ -112,7 +112,7 @@ var consoleText = HelpText{
 	Use:   "console",
 	Short: "Opens the current stack in the Pulumi Console",
 }
-var convert = HelpText{
+var convertText = HelpText{
 	Use:   "convert",
 	Short: "Convert resource declarations into a pulumi program",
 	Long: "Convert resource declarations into a pulumi program.\n" +
@@ -130,7 +130,7 @@ var convertTraceText = HelpText{
 		"pprof format. The converted trace is written to stdout, and can be\n" +
 		"inspected using `go tool pprof`.",
 }
-var destroy = HelpText{
+var destroyText = HelpText{
 	Use:   "destroy",
 	Short: "Destroy all existing resources in the stack",
 	Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
@@ -273,7 +273,7 @@ var logoutText = HelpText{
 		"If you would like to log out of all backends simultaneously, you can pass `--all`,\n" +
 		"    $ pulumi logout --all",
 }
-var logs = HelpText{
+var logsText = HelpText{
 	Use:   "logs",
 	Short: "Show aggregated resource logs for a stack",
 	Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
@@ -316,7 +316,7 @@ var newText = HelpText{
 		"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
 		"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 }
-var org = HelpText{
+var orgText = HelpText{
 	Use:   "org",
 	Short: "Manage Organization configuration",
 	Long: "Manage Organization configuration.\n" +
@@ -393,6 +393,18 @@ var pluginRmText = HelpText{
 		"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 		"using the plugin install command.",
 }
+
+var policyText = HelpText{
+	Use:   "policy",
+	Short: "Manage resource policies",
+}
+
+var policyLsText = HelpText{
+	Use:   "ls [org-name]",
+	Short: "List all Policy Packs for a Pulumi organization",
+	Long:  "List all Policy Packs for a Pulumi organization",
+}
+
 var policyDisableText = HelpText{
 	Use:   "disable <org-name>/<policy-pack-name>",
 	Short: "Disable a Policy Pack for a Pulumi organization",
@@ -404,7 +416,7 @@ var policyEnableText = HelpText{
 	Long: "Enable a Policy Pack for a Pulumi organization. " +
 		"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 }
-var policyLsText = HelpText{
+var policyGroupLsText = HelpText{
 	Use:   "ls [org-name]",
 	Short: "List all Policy Packs for a Pulumi organization",
 	Long:  "List all Policy Packs for a Pulumi organization",
@@ -511,7 +523,7 @@ var replayEventsText = HelpText{
 		"This command loads events from the indicated file and renders them\n" +
 		"using either the progress view or the diff view.\n",
 }
-var checkText = HelpText{
+var schemaCheckText = HelpText{
 	Use:   "check",
 	Short: "Check a Pulumi package schema for errors",
 	Long: "Check a Pulumi package schema for errors.\n" +
@@ -528,7 +540,7 @@ var schemaText = HelpText{
 	Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
 	package schemas for errors.`,
 }
-var changeSecretsProviderText = HelpText{
+var stackChangeSecretsProviderText = HelpText{
 	Use:   "change-secrets-provider <new-secrets-provider>",
 	Short: "Change the secrets provider for a stack",
 	Long: "Change the secrets provider for a stack. " +
@@ -550,7 +562,7 @@ var changeSecretsProviderText = HelpText{
 		"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 		"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 }
-var exportText = HelpText{
+var stackExportText = HelpText{
 	Use:   "export",
 	Short: "Export a stack's deployment to standard out",
 	Long: "Export a stack's deployment to standard out.\n" +
@@ -569,7 +581,7 @@ var stackText = HelpText{
 		"Each stack has a configuration and update history associated with it, stored in\n" +
 		"the workspace, in addition to a full checkpoint of the last known good update.\n",
 }
-var graphText = HelpText{
+var stackGraphText = HelpText{
 	Use:   "graph [filename]",
 	Short: "Export a stack's dependency graph to a file",
 	Long: "Export a stack's dependency graph to a file.\n" +
@@ -578,7 +590,7 @@ var graphText = HelpText{
 		"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 		"on your stack's most recent deployment.",
 }
-var historyText = HelpText{
+var stackHistoryText = HelpText{
 	Use:   "history",
 	Short: "Display history for a stack",
 	Long: `Display history for a stack
