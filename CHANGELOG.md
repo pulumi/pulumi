@@ -14,6 +14,10 @@ CHANGELOG
 - [sdk/python] Support deeply nested protobuf objects.
   [#10284](https://github.com/pulumi/pulumi/pull/10284)
 
+- Revert [Remove api/renewLease from startup crit path](pulumi/pulumi#10168) to fix #10293.
+  [#10294](https://github.com/pulumi/pulumi/pull/10294)
+
+
 ## 3.37.1 (2022-07-27)
 
 ### Improvements
