@@ -110,7 +110,7 @@ _INT_OR_FLOAT = six.integer_types + (float,)
 # released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
 # python programs using a new version.
 try:
-    from google.protobuf.pyext._message import (
+    from google.protobuf.pyext._message import (  # pylint: disable-msg=C0412
         SetAllowOversizeProtos,
     )  # pylint: disable-msg=E0611
 
