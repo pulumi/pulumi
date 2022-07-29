@@ -7,11 +7,6 @@ import typing
 # Export this package's modules as members:
 from .component import *
 from .provider import *
-
-# Make subpackages available:
-if typing.TYPE_CHECKING:
-else:
-
 _utilities.register(
     resource_modules="""
 [
