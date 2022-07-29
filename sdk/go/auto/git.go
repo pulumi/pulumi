@@ -29,7 +29,8 @@ import (
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	cloneOptions := &git.CloneOptions{
-		URL: repoArgs.URL,
+		RemoteName: "origin", // be explicit so we can require it in remote refs
+		URL:        repoArgs.URL,
 	}
 
 	if repoArgs.Auth != nil {
@@ -95,11 +96,10 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		case refName.IsRemote(): // e.g., refs/remotes/origin/branch
 			shorter := refName.Short() // this gives "origin/branch"
 			parts := strings.SplitN(shorter, "/", 2)
-			if len(parts) == 2 {
+			if len(parts) == 2 && parts[0] == "origin" {
 				refName = plumbing.NewBranchReferenceName(parts[1])
 			} else {
-				return "", fmt.Errorf("branch name must be a simple name .e.g., 'main'"+
-					" or a ref e.g., 'refs/heads/main', but got %q", repoArgs.Branch)
+				return "", fmt.Errorf("a remote ref must begin with 'refs/remote/origin/', but got %q", repoArgs.Branch)
 			}
 		case refName.IsTag(): // looks like `refs/tags/v1.0.0` -- respect this even though the field is `.Branch`
 			// nothing to do

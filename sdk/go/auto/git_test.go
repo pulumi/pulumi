@@ -39,8 +39,9 @@ func TestGitClone(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// this sets up two branches: `nondefault` and `default`, with `default` becoming the "default"
-	// branch when cloning, since it's left as the HEAD of the repo.
+	// The following sets up some tags and branches: with `default` becoming the "default" branch
+	// when cloning, since it's left as the HEAD of the repo.
+
 	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("nondefault"),
 		Create: true,
@@ -49,6 +50,12 @@ func TestGitClone(t *testing.T) {
 	// tag the nondefault head so we can test getting a tag too
 	_, err = origin.CreateTag("v0.0.1", nondefaultHead, nil)
 	assert.NoError(t, err)
+
+	// make a branch with slashes in it, so that can be tested too
+	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName("branch/with/slashes"),
+		Create: true,
+	}))
 
 	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("default"),
@@ -72,13 +79,17 @@ func TestGitClone(t *testing.T) {
 	for _, tc := range []testcase{
 		{branchName: "default", expectedHead: defaultHead},
 		{branchName: "nondefault", expectedHead: nondefaultHead},
+		{branchName: "branch/with/slashes", expectedHead: nondefaultHead},
 		// https://github.com/pulumi/pulumi-kubernetes-operator/issues/103#issuecomment-1107891475
 		// advises using `refs/heads/<default>` for the default, and `refs/remotes/origin/<branch>`
 		// for a non-default branch -- so we can expect all these varieties to be in use.
 		{branchName: "refs/heads/default", expectedHead: defaultHead},
 		{branchName: "refs/heads/nondefault", expectedHead: nondefaultHead},
+		{branchName: "refs/heads/branch/with/slashes", expectedHead: nondefaultHead},
+
 		{branchName: "refs/remotes/origin/default", expectedHead: defaultHead},
 		{branchName: "refs/remotes/origin/nondefault", expectedHead: nondefaultHead},
+		{branchName: "refs/remotes/origin/branch/with/slashes", expectedHead: nondefaultHead},
 		// try the special tag case
 		{branchName: "refs/tags/v0.0.1", expectedHead: nondefaultHead},
 		// ask specifically for the commit hash
@@ -108,6 +119,34 @@ func TestGitClone(t *testing.T) {
 			head, err := r.Head()
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedHead, head.Hash())
+		})
+	}
+
+	// test that these result in errors
+	for _, tc := range []testcase{
+		{testName: "simple branch doesn't exist", branchName: "doesnotexist"},
+		{testName: "full branch doesn't exist", branchName: "refs/heads/doesnotexist"},
+		{testName: "malformed branch name", branchName: "refs/notathing/default"},
+		{testName: "simple tag name won't work", branchName: "v1.0.0"},
+		{testName: "wrong remote", branchName: "refs/remotes/upstream/default"},
+	} {
+		tc := tc
+		if tc.testName == "" {
+			tc.testName = tc.branchName
+		}
+		t.Run(tc.testName, func(t *testing.T) {
+			t.Parallel()
+			repo := &GitRepo{
+				URL:        originDir,
+				Branch:     tc.branchName,
+				CommitHash: tc.commitHash,
+			}
+
+			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
+			assert.NoError(t, err)
+
+			_, err = setupGitRepo(context.TODO(), tmp, repo)
+			assert.Error(t, err)
 		})
 	}
 }
