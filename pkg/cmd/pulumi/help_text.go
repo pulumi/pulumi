@@ -7,9 +7,9 @@ type HelpText struct {
 }
 
 var aboutText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "about",
+	Short: "Print information about the Pulumi environment.\n",
+	Long: "Print information about the Pulumi environment.\n" +
 		"\n" +
 		"Prints out information helpful for debugging the Pulumi CLI." +
 		"\n" +
@@ -21,9 +21,9 @@ var aboutText = HelpText{
 		" - the current backend\n",
 }
 var cancelText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "cancel [<stack-name>]",
+	Short: "Cancel a stack's currently running update, if any",
+	Long: "Cancel a stack's currently running update, if any.\n" +
 		"\n" +
 		"This command cancels the update currently being applied to a stack if any exists.\n" +
 		"Note that this operation is _very dangerous_, and may leave the stack in an\n" +
@@ -33,56 +33,56 @@ var cancelText = HelpText{
 		"updates.",
 }
 var configText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "config",
+	Short: "Manage configuration",
+	Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
 		"`pulumi config set`. To remove and existing value run `pulumi config rm`. To get the value of\n" +
 		"for a specific configuration key, use `pulumi config get <key-name>`.",
 }
-var cpText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configCpText = HelpText{
+	Use:   "cp [key]",
+	Short: "Copy config to another stack",
+	Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
 		"then all of the config from the current stack will be copied to the destination stack.",
 }
-var getText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configGetText = HelpText{
+	Use:   "get <key>",
+	Short: "Get a single configuration value",
+	Long: "Get a single configuration value.\n\n" +
 		"The `--path` flag can be used to get a value inside a map or list:\n\n" +
 		"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
 		"if the value of `outer` is a map `inner: value`.\n" +
 		"  - `pulumi config get --path names[0]` will get the value of the first item, " +
 		"if the value of `names` is a list.",
 }
-var rmText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configRmText = HelpText{
+	Use:   "rm <key>",
+	Short: "Remove configuration value",
+	Long: "Remove configuration value.\n\n" +
 		"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
 		"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
 		"if the value of `outer` is a map `inner: value`.\n" +
 		"  - `pulumi config rm --path names[0]` will remove the first item, " +
 		"if the value of `names` is a list.",
 }
-var rm_allText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configRmAllText = HelpText{
+	Use:   "rm-all <key1> <key2> <key3> ...",
+	Short: "Remove multiple configuration values",
+	Long: "Remove multiple configuration values.\n\n" +
 		"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
 		"  - `pulumi config rm-all --path  outer.inner foo[0] key1` will remove the \n" +
 		"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
 		"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the literal" +
 		"    `outer.inner`, `foo[0]` and `key1` keys",
 }
-var refreshText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var configRefreshText = HelpText{
+	Use:   "refresh",
+	Short: "Update the local configuration based on the most recent deployment of the stack",
 }
-var setText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configSetText = HelpText{
+	Use:   "set <key> [value]",
+	Short: "Set configuration value",
+	Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
 		"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 		"may be set by piping a file to standard in.\n\n" +
 		"The `--path` flag can be used to set a value inside a map or list:\n\n" +
@@ -93,10 +93,10 @@ var setText = HelpText{
 		"  - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
 		"    `parent.name` to a map `nested.name: value`.",
 }
-var set_allText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var configSetAllText = HelpText{
+	Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
+	Short: "Set multiple configuration values",
+	Long: "pulumi set-all allows you to set multiple configuration values in one command.\n\n" +
 		"Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether \n" +
 		"it should be encrypted:\n\n" +
 		"  - `pulumi config set-all --secret key1=value1 --plaintext key2=value --secret key3=value3`\n\n" +
@@ -109,21 +109,21 @@ var set_allText = HelpText{
 		"    value of `parent.name` to a map `nested.name: value`.",
 }
 var consoleText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+	Use:   "console",
+	Short: "Opens the current stack in the Pulumi Console",
 }
 var convert = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "convert",
+	Short: "Convert resource declarations into a pulumi program",
+	Long: "Convert resource declarations into a pulumi program.\n" +
 		"\n" +
 		"The YAML program to convert will default to the manifest in the current working directory.\n" +
 		"You may also specify '-f' for the file path or '-d' for the directory path containing the manifests.\n",
 }
-var convert_traceText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var convertTraceText = HelpText{
+	Use:   "convert-trace [trace-file]",
+	Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
+	Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
 		"\n" +
 		"This command is used to convert execution traces collected by a prior\n" +
 		"invocation of the Pulumi CLI from their native format to Google's\n" +
@@ -131,11 +131,9 @@ var convert_traceText = HelpText{
 		"inspected using `go tool pprof`.",
 }
 var destroy = HelpText{
-	Use: placeholder.Use,
-	Aliases:    []string{"down"},
-	SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "destroy",
+	Short: "Destroy all existing resources in the stack",
+	Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
 		"\n" +
 		"Deletes all the resources in the selected stack.  The current state is\n" +
 		"loaded from the associated state file in the workspace.  After running to completion,\n" +
@@ -145,19 +143,18 @@ var destroy = HelpText{
 		"\n" +
 		"Warning: this command is generally irreversible and should be used with great care.",
 }
-var gen_completionText = HelpText{
-	Use: placeholder.Use,
-	Aliases: []string{"completion"},
-	Short: placeholder.Short,
+var genCompletionText = HelpText{
+	Use:   "gen-completion <SHELL>",
+	Short: "Generate completion scripts for the Pulumi CLI",
 }
-var gen_markdownText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var genMarkdownText = HelpText{
+	Use:   "gen-markdown <DIR>",
+	Short: "Generate Pulumi CLI documentation as Markdown (one file per command)",
 }
 var importText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "import [type] [name] [id]",
+	Short: "Import resources into an existing stack",
+	Long: "Import resources into an existing stack.\n" +
 		"\n" +
 		"Resources that are not managed by Pulumi can be imported into a Pulumi stack\n" +
 		"using this command. A definition for each resource will be printed to stdout\n" +
@@ -213,9 +210,9 @@ var importText = HelpText{
 		"import using all required properties.\n",
 }
 var loginText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "login [<url>]",
+	Short: "Log in to the Pulumi service",
+	Long: "Log in to the Pulumi service.\n" +
 		"\n" +
 		"The service manages your stack's state reliably. Simply run\n" +
 		"\n" +
@@ -263,9 +260,9 @@ var loginText = HelpText{
 		"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 }
 var logoutText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "logout <url>",
+	Short: "Log out of the Pulumi service",
+	Long: "Log out of the Pulumi service.\n" +
 		"\n" +
 		"This command deletes stored credentials on the local machine for a single login.\n" +
 		"\n" +
@@ -277,19 +274,18 @@ var logoutText = HelpText{
 		"    $ pulumi logout --all",
 }
 var logs = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "logs",
+	Short: "Show aggregated resource logs for a stack",
+	Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
 		"\n" +
 		"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 		"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 		"CloudWatch Logs for log data relevant to resources in a stack.\n",
 }
 var newText = HelpText{
-	Use: placeholder.Use,
-	SuggestFor: []string{"init", "create"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "new [template|url]",
+	Short: "Create a new Pulumi project",
+	Long: "Create a new Pulumi project and stack from a template.\n" +
 		"\n" +
 		"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
 		"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
@@ -300,7 +296,7 @@ var newText = HelpText{
 		"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
 		"`--secrets-provider` flag.\n" +
 		"\n" +
-		"To use the `passphrase` secrets provider with the pulumi.com backend, Use: placeholder.Use,
+		"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
 		"* `pulumi new --secrets-provider=passphrase`\n" +
 		"\n" +
 		"To use a cloud secrets provider with any backend, use one of the following:\n" +
@@ -321,17 +317,17 @@ var newText = HelpText{
 		"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 }
 var org = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "org",
+	Short: "Manage Organization configuration",
+	Long: "Manage Organization configuration.\n" +
 		"\n" +
 		"Use this command to manage organization configuration, " +
 		"e.g. setting the default organization for a backend",
 }
-var set_defaultText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var orgSetDefaultText = HelpText{
+	Use:   "set-default [NAME]",
+	Short: "Set the default organization for the current backend",
+	Long: "Set the default organization for the current backend.\n" +
 		"\n" +
 		"This command is used to set the default organization in which to create \n" +
 		"projects and stacks for the current backend.\n" +
@@ -340,10 +336,10 @@ var set_defaultText = HelpText{
 		"If you try and set a default organization for a backend that does not \n" +
 		"support create organizations, then an error will be returned by the CLI",
 }
-var get_default = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var orgGetDefault = HelpText{
+	Use:   "get-default",
+	Short: "Get the default org for the current backend",
+	Long: "Get the default org for the current backend.\n" +
 		"\n" +
 		"This command is used to get the default organization for which and stacks are created in " +
 		"the current backend.\n" +
@@ -351,9 +347,9 @@ var get_default = HelpText{
 		"Currently, only the managed and self-hosted backends support organizations.",
 }
 var pluginText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "plugin",
+	Short: "Manage language and resource provider plugins",
+	Long: "Manage language and resource provider plugins.\n" +
 		"\n" +
 		"Pulumi uses dynamically loaded plugins as an extensibility mechanism for\n" +
 		"supporting any number of languages and resource providers.  These plugins are\n" +
@@ -366,10 +362,10 @@ var pluginText = HelpText{
 		"\n" +
 		"The plugin family of commands provides a way of explicitly managing plugins.",
 }
-var installText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var pluginInstallText = HelpText{
+	Use:   "install [KIND NAME [VERSION]]",
+	Short: "Install one or more plugins",
+	Long: "Install one or more plugins.\n" +
 		"\n" +
 		"This command is used manually install plugins required by your program.  It may\n" +
 		"be run either with a specific KIND, NAME, and VERSION, or by omitting these and\n" +
@@ -379,14 +375,14 @@ var installText = HelpText{
 		"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 		"downloading more plugins than is strictly necessary.",
 }
-var lsText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var pluginLsText = HelpText{
+	Use:   "ls",
+	Short: "List plugins",
 }
-var rmText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var pluginRmText = HelpText{
+	Use:   "rm [KIND [NAME [VERSION]]]",
+	Short: "Remove one or more plugins from the download cache",
+	Long: "Remove one or more plugins from the download cache.\n" +
 		"\n" +
 		"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
 		"If none are specified, the entire cache will be cleared.  If only KIND and\n" +
@@ -397,27 +393,26 @@ var rmText = HelpText{
 		"in order to execute a Pulumi program, it must be re-downloaded and installed\n" +
 		"using the plugin install command.",
 }
-var disableText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyDisableText = HelpText{
+	Use:   "disable <org-name>/<policy-pack-name>",
+	Short: "Disable a Policy Pack for a Pulumi organization",
+	Long:  "Disable a Policy Pack for a Pulumi organization",
 }
-var enableText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyEnableText = HelpText{
+	Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
+	Short: "Enable a Policy Pack for a Pulumi organization",
+	Long: "Enable a Policy Pack for a Pulumi organization. " +
 		"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 }
-var lsText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyLsText = HelpText{
+	Use:   "ls [org-name]",
+	Short: "List all Policy Packs for a Pulumi organization",
+	Long:  "List all Policy Packs for a Pulumi organization",
 }
-var newText = HelpText{
-	Use: placeholder.Use,
-	SuggestFor: []string{"init", "create"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyNewText = HelpText{
+	Use:   "new [template|url]",
+	Short: "Create a new Pulumi Policy Pack",
+	Long: "Create a new Pulumi Policy Pack from a template.\n" +
 		"\n" +
 		"To create a Policy Pack from a specific template, pass the template name (such as `aws-typescript`\n" +
 		"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
@@ -426,30 +421,28 @@ var newText = HelpText{
 		"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
 		"Only organization administrators can publish a Policy Pack.",
 }
-var publishText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyPublishText = HelpText{
+	Use:   "publish [org-name]",
+	Short: "Publish a Policy Pack to the Pulumi service",
+	Long: "Publish a Policy Pack to the Pulumi service\n" +
 		"\n" +
 		"If an organization name is not specified, the current user account is used.",
 }
-var rmText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyRmText = HelpText{
+	Use:   "rm <org-name>/<policy-pack-name> <all|version>",
+	Short: "Removes a Policy Pack from a Pulumi organization",
+	Long: "Removes a Policy Pack from a Pulumi organization. " +
 		"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 }
-var validate_configText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var policyValidateConfigText = HelpText{
+	Use:   "validate-config <org-name>/<policy-pack-name> <version>",
+	Short: "Validate a Policy Pack configuration",
+	Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
 }
 var previewText = HelpText{
-	Use: placeholder.Use,
-	Aliases:    []string{"pre"},
-	SuggestFor: []string{"build", "plan"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "preview",
+	Short: "Show a preview of updates to a stack's resources",
+	Long: "Show a preview of updates a stack's resources.\n" +
 		"\n" +
 		"This command displays a preview of the updates to an existing stack whose state is\n" +
 		"represented by an existing state file. The new desired state is computed by running\n" +
@@ -462,9 +455,9 @@ var previewText = HelpText{
 		"`--cwd` flag to use a different directory.",
 }
 var pulumiText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "pulumi",
+	Short: "Pulumi command line",
+	Long: "Pulumi - Modern Infrastructure as Code\n" +
 		"\n" +
 		"To begin working with Pulumi, run the `pulumi new` command:\n" +
 		"\n" +
@@ -482,9 +475,9 @@ var pulumiText = HelpText{
 		"For more information, please visit the project page: https://www.pulumi.com/docs/",
 }
 var queryText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "query",
+	Short: "Run query program against cloud resources",
+	Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +
 		"\n" +
 		"This command loads a Pulumi query program and executes it. In \"query mode\", Pulumi provides various\n" +
 		"useful data sources for querying, such as the resource outputs for a stack. Query mode also disallows\n" +
@@ -495,9 +488,9 @@ var queryText = HelpText{
 		"`--cwd` flag to use a different directory.",
 }
 var refreshText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "refresh",
+	Short: "Refresh the resources in a stack",
+	Long: "Refresh the resources in a stack.\n" +
 		"\n" +
 		"This command compares the current stack's resource state with the state known to exist in\n" +
 		"the actual cloud provider. Any such changes are adopted into the current stack. Note that if\n" +
@@ -507,10 +500,10 @@ var refreshText = HelpText{
 		"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 		"`--cwd` flag to use a different directory.",
 }
-var replay_eventsText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var replayEventsText = HelpText{
+	Use:   "replay-events [kind] [events-file]",
+	Short: "Replay events from a prior update, refresh, or destroy",
+	Long: "Replay events from a prior update, refresh, or destroy.\n" +
 		"\n" +
 		"This command is used to replay events emitted by a prior\n" +
 		"invocation of the Pulumi CLI (e.g. `pulumi up --event-log [file]`).\n" +
@@ -519,26 +512,26 @@ var replay_eventsText = HelpText{
 		"using either the progress view or the diff view.\n",
 }
 var checkText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "check",
+	Short: "Check a Pulumi package schema for errors",
+	Long: "Check a Pulumi package schema for errors.\n" +
 		"\n" +
 		"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +
 		"schema spec as well as additional requirements imposed by the supported\n" +
 		"target languages.",
 }
 var schemaText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "schema",
+	Short: "Analyze package schemas",
+	Long: `Analyze package schemas
 
 	Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
 	package schemas for errors.`,
 }
-var change_secrets_providerText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var changeSecretsProviderText = HelpText{
+	Use:   "change-secrets-provider <new-secrets-provider>",
+	Short: "Change the secrets provider for a stack",
+	Long: "Change the secrets provider for a stack. " +
 		"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
 		"To change to using the Pulumi Default Secrets Provider, use the following:\n" +
 		"\n" +
@@ -558,9 +551,9 @@ var change_secrets_providerText = HelpText{
 		"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 }
 var exportText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "export",
+	Short: "Export a stack's deployment to standard out",
+	Long: "Export a stack's deployment to standard out.\n" +
 		"\n" +
 		"The deployment can then be hand-edited and used to update the stack via\n" +
 		"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
@@ -568,46 +561,44 @@ var exportText = HelpText{
 		"resources, etc.",
 }
 var stackText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "stack",
+	Short: "Manage stacks",
+	Long: "Manage stacks\n" +
 		"\n" +
 		"A stack is a named update target, and a single project may have many of them.\n" +
 		"Each stack has a configuration and update history associated with it, stored in\n" +
 		"the workspace, in addition to a full checkpoint of the last known good update.\n",
 }
 var graphText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "graph [filename]",
+	Short: "Export a stack's dependency graph to a file",
+	Long: "Export a stack's dependency graph to a file.\n" +
 		"\n" +
 		"This command can be used to view the dependency graph that a Pulumi program\n" +
 		"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 		"on your stack's most recent deployment.",
 }
 var historyText = HelpText{
-	Use: placeholder.Use,
-	Aliases:    []string{"hist"},
-	SuggestFor: []string{"updates"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "history",
+	Short: "Display history for a stack",
+	Long: `Display history for a stack
 
 	This command displays data about previous updates for a stack.`,
 }
-var importText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackImportText = HelpText{
+	Use:   "import",
+	Short: "Import a deployment from standard in into an existing stack",
+	Long: "Import a deployment from standard in into an existing stack.\n" +
 		"\n" +
 		"A deployment that was exported from a stack using `pulumi stack export` and\n" +
 		"hand-edited to correct inconsistencies due to failed updates, manual changes\n" +
 		"to cloud resources, etc. can be reimported to the stack using this command.\n" +
 		"The updated deployment will be read from standard in.",
 }
-var initText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackInitText = HelpText{
+	Use:   "init [<org-name>/]<stack-name>",
+	Short: "Create an empty stack with the given name, ready for updates",
+	Long: "Create an empty stack with the given name, ready for updates\n" +
 		"\n" +
 		"This command creates an empty stack with the given name.  It has no resources,\n" +
 		"but afterwards it can become the target of a deployment using the `update` command.\n" +
@@ -620,7 +611,7 @@ var initText = HelpText{
 		"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
 		"`--secrets-provider` flag.\n" +
 		"\n" +
-		"To use the `passphrase` secrets provider with the pulumi.com backend, Use: placeholder.Use,
+		"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
 		"\n" +
 		"* `pulumi stack init --secrets-provider=passphrase`\n" +
 		"\n" +
@@ -636,10 +627,10 @@ var initText = HelpText{
 		"`--copy-config-from` flag.\n" +
 		"* `pulumi stack init --copy-config-from dev`",
 }
-var lsText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackLsText = HelpText{
+	Use:   "ls",
+	Short: "List stacks",
+	Long: "List stacks\n" +
 		"\n" +
 		"This command lists stacks. By default only stacks with the same project name as the\n" +
 		"current workspace will be returned. By passing --all, all stacks you have access to\n" +
@@ -649,18 +640,18 @@ var lsText = HelpText{
 		"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 		"'environment=production' or just 'gcp:project'.",
 }
-var outputText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackOutputText = HelpText{
+	Use:   "output [property-name]",
+	Short: "Show a stack's output properties",
+	Long: "Show a stack's output properties.\n" +
 		"\n" +
 		"By default, this command lists all output properties exported from a stack.\n" +
 		"If a specific property-name is supplied, just that property's value is shown.",
 }
-var renameText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackRenameText = HelpText{
+	Use:   "rename <new-stack-name>",
+	Short: "Rename an existing stack",
+	Long: "Rename an existing stack.\n" +
 		"\n" +
 		"Note: Because renaming a stack will change the value of `getStack()` inside a Pulumi program, if this\n" +
 		"name is used as part of a resource's name, the next `pulumi up` will want to delete the old resource and\n" +
@@ -671,20 +662,20 @@ var renameText = HelpText{
 		"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 		"to update the name field of Pulumi.yaml, so the project names match.",
 }
-var rmText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackRmText = HelpText{
+	Use:   "rm [<stack-name>]",
+	Short: "Remove a stack and its configuration",
+	Long: "Remove a stack and its configuration\n" +
 		"\n" +
 		"This command removes a stack and its configuration state.  Please refer to the\n" +
 		"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 		"\n" +
 		"After this command completes, the stack will no longer be available for updates.",
 }
-var selectText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackSelectText = HelpText{
+	Use:   "select [<stack>]",
+	Short: "Switch the current workspace to the given stack",
+	Long: "Switch the current workspace to the given stack.\n" +
 		"\n" +
 		"Selecting a stack allows you to use commands like `config`, `preview`, and `update`\n" +
 		"without needing to type the stack name each time.\n" +
@@ -692,44 +683,44 @@ var selectText = HelpText{
 		"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
 		"If provided stack name is not found you may pass the --create flag to create and select it",
 }
-var tagText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackTagText = HelpText{
+	Use:   "tag",
+	Short: "Manage stack tags",
+	Long: "Manage stack tags\n" +
 		"\n" +
 		"Stacks have associated metadata in the form of tags. Each tag consists of a name\n" +
 		"and value. The `get`, `ls`, `rm`, and `set` commands can be used to manage tags.\n" +
 		"Some tags are automatically assigned based on the environment each time a stack\n" +
 		"is updated.\n",
 }
-var getText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var stackTagGetText = HelpText{
+	Use:   "get <name>",
+	Short: "Get a single stack tag value",
 }
-var lsText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var stackTagLsText = HelpText{
+	Use:   "ls",
+	Short: "List all stack tags",
 }
-var rmText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var stackTagRmText = HelpText{
+	Use:   "rm <name>",
+	Short: "Remove a stack tag",
 }
-var setText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+var stackTagSetText = HelpText{
+	Use:   "set <name> <value>",
+	Short: "Set a stack tag",
 }
-var unselectText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stackUnselectText = HelpText{
+	Use:   "unselect",
+	Short: "Resets stack selection from the current workspace",
+	Long: "Resets stack selection from the current workspace.\n" +
 		"\n" +
 		"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 		"from.\n",
 }
-var deleteText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stateDeleteText = HelpText{
+	Use:   "delete <resource URN>",
+	Short: "Deletes a resource from a stack's state",
+	Long: `Deletes a resource from a stack's state
 
 	This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified 
 	by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
@@ -744,17 +735,17 @@ var deleteText = HelpText{
 	`,
 }
 var stateText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "state",
+	Short: "Edit the current stack's state",
+	Long: `Edit the current stack's state
 
 	Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
 	troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
 }
-var renameText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stateRenameText = HelpText{
+	Use:   "rename <resource URN> <new name>",
+	Short: "Renames a resource from a stack's state",
+	Long: `Renames a resource from a stack's state
 
 	This command renames a resource from a stack's state. The resource is specified 
 	by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
@@ -765,19 +756,17 @@ var renameText = HelpText{
 	pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here
 	`,
 }
-var unprotectText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var stateUnprotectText = HelpText{
+	Use:   "unprotect <resource URN>",
+	Short: "Unprotect resources in a stack's state",
+	Long: `Unprotect resource in a stack's state
 
 	This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 }
 var upText = HelpText{
-	Use: placeholder.Use,
-	Aliases:    []string{"update"},
-	SuggestFor: []string{"apply", "deploy", "push"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "up [template|url]",
+	Short: "Create or update the resources in a stack",
+	Long: "Create or update the resources in a stack.\n" +
 		"\n" +
 		"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
 		"is computed by running the current Pulumi program and observing all resource allocations to produce a\n" +
@@ -790,13 +779,13 @@ var upText = HelpText{
 		"`--cwd` flag to use a different directory.",
 }
 var versionText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
+	Use:   "version",
+	Short: "Print Pulumi's version number",
 }
-var view_traceText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+var viewTraceText = HelpText{
+	Use:   "view-trace [trace-file]",
+	Short: "Display a trace from the Pulumi CLI",
+	Long: "Display a trace from the Pulumi CLI.\n" +
 		"\n" +
 		"This command is used to display execution traces collected by a prior\n" +
 		"invocation of the Pulumi CLI.\n" +
@@ -806,10 +795,9 @@ var view_traceText = HelpText{
 		"port 8008; the --port flag can be used to change this if necessary.",
 }
 var watchText = HelpText{
-	Use: placeholder.Use,
-	SuggestFor: []string{"developer", "dev"},
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "watch",
+	Short: "Continuously update the resources in a stack",
+	Long: "[EXPERIMENTAL] Continuously update the resources in a stack.\n" +
 		"\n" +
 		"This command watches the working directory or specified paths for the current project and updates\n" +
 		"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +
@@ -819,9 +807,9 @@ var watchText = HelpText{
 		"`--cwd` flag to use a different directory.",
 }
 var whoamiText = HelpText{
-	Use: placeholder.Use,
-	Short: placeholder.Short,
-	Long: placeholder.Long,
+	Use:   "whoami",
+	Short: "Display the current logged-in user",
+	Long: "Display the current logged-in user\n" +
 		"\n" +
 		"Displays the username of the currently logged in user.",
 }

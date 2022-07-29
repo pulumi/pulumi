@@ -45,15 +45,9 @@ func newReplayEventsCmd() *cobra.Command {
 	var delay time.Duration
 
 	var cmd = &cobra.Command{
-		Use:   "replay-events [kind] [events-file]",
-		Short: "Replay events from a prior update, refresh, or destroy",
-		Long: "Replay events from a prior update, refresh, or destroy.\n" +
-			"\n" +
-			"This command is used to replay events emitted by a prior\n" +
-			"invocation of the Pulumi CLI (e.g. `pulumi up --event-log [file]`).\n" +
-			"\n" +
-			"This command loads events from the indicated file and renders them\n" +
-			"using either the progress view or the diff view.\n",
+		Use:    placeholder.Use,
+		Short:  placeholder.Short,
+		Long:   placeholder.Long,
 		Args:   cmdutil.ExactArgs(2),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

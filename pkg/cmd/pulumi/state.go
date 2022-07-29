@@ -36,13 +36,10 @@ import (
 
 func newStateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "state",
-		Short: "Edit the current stack's state",
-		Long: `Edit the current stack's state
-
-Subcommands of this command can be used to surgically edit parts of a stack's state. These can be useful when
-troubleshooting a stack or when performing specific edits that otherwise would require editing the state file by hand.`,
-		Args: cmdutil.NoArgs,
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newStateDeleteCommand())

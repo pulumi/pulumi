@@ -31,12 +31,10 @@ import (
 
 func newPolicyPublishCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "publish [org-name]",
+		Use:   placeholder.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Publish a Policy Pack to the Pulumi service",
-		Long: "Publish a Policy Pack to the Pulumi service\n" +
-			"\n" +
-			"If an organization name is not specified, the current user account is used.",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
 			var orgName string

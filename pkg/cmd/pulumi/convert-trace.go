@@ -182,14 +182,9 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 func newConvertTraceCmd() *cobra.Command {
 	var quantum time.Duration
 	var cmd = &cobra.Command{
-		Use:   "convert-trace [trace-file]",
-		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
-		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
-			"\n" +
-			"This command is used to convert execution traces collected by a prior\n" +
-			"invocation of the Pulumi CLI from their native format to Google's\n" +
-			"pprof format. The converted trace is written to stdout, and can be\n" +
-			"inspected using `go tool pprof`.",
+		Use:    placeholder.Use,
+		Short:  placeholder.Short,
+		Long:   placeholder.Long,
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

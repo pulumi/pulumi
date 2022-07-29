@@ -43,14 +43,10 @@ func newLogsCmd() *cobra.Command {
 	var jsonOut bool
 
 	logsCmd := &cobra.Command{
-		Use:   "logs",
-		Short: "Show aggregated resource logs for a stack",
-		Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
-			"\n" +
-			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
-			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
-			"CloudWatch Logs for log data relevant to resources in a stack.\n",
-		Args: cmdutil.NoArgs,
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

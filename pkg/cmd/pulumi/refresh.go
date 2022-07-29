@@ -52,18 +52,10 @@ func newRefreshCmd() *cobra.Command {
 	var targets *[]string
 
 	var cmd = &cobra.Command{
-		Use:   "refresh",
-		Short: "Refresh the resources in a stack",
-		Long: "Refresh the resources in a stack.\n" +
-			"\n" +
-			"This command compares the current stack's resource state with the state known to exist in\n" +
-			"the actual cloud provider. Any such changes are adopted into the current stack. Note that if\n" +
-			"the program text isn't updated accordingly, subsequent updates may still appear to be out of\n" +
-			"synch with respect to the cloud provider's source of truth.\n" +
-			"\n" +
-			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.NoArgs,
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()

@@ -50,18 +50,11 @@ func newWatchCmd() *cobra.Command {
 	var secretsProvider string
 
 	var cmd = &cobra.Command{
-		Use:        "watch",
+		Use:        placeholder.Use,
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "Continuously update the resources in a stack",
-		Long: "[EXPERIMENTAL] Continuously update the resources in a stack.\n" +
-			"\n" +
-			"This command watches the working directory or specified paths for the current project and updates\n" +
-			"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +
-			"in the stack and displayed along with update progress.\n" +
-			"\n" +
-			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.MaximumNArgs(1),
+		Short:      placeholder.Short,
+		Long:       placeholder.Long,
+		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skippreview*/, true /* autoapprove*/)

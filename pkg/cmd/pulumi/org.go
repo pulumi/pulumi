@@ -26,13 +26,10 @@ import (
 
 func newOrgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "org",
-		Short: "Manage Organization configuration",
-		Long: "Manage Organization configuration.\n" +
-			"\n" +
-			"Use this command to manage organization configuration, " +
-			"e.g. setting the default organization for a backend",
-		Args: cmdutil.NoArgs,
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cloudURL, err := workspace.GetCurrentCloudURL()
 			if err != nil {
@@ -65,17 +62,10 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	var cmd = &cobra.Command{
-		Use:   "set-default [NAME]",
+		Use:   placeholder.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Set the default organization for the current backend",
-		Long: "Set the default organization for the current backend.\n" +
-			"\n" +
-			"This command is used to set the default organization in which to create \n" +
-			"projects and stacks for the current backend.\n" +
-			"\n" +
-			"Currently, only the managed and self-hosted backends support organizations. " +
-			"If you try and set a default organization for a backend that does not \n" +
-			"support create organizations, then an error will be returned by the CLI",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -109,14 +99,9 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 func newOrgGetDefaultCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "get-default",
-		Short: "Get the default org for the current backend",
-		Long: "Get the default org for the current backend.\n" +
-			"\n" +
-			"This command is used to get the default organization for which and stacks are created in " +
-			"the current backend.\n" +
-			"\n" +
-			"Currently, only the managed and self-hosted backends support organizations.",
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

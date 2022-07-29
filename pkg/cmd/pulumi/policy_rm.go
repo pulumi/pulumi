@@ -29,11 +29,10 @@ const allKeyword = "all"
 func newPolicyRmCmd() *cobra.Command {
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
+		Use:   placeholder.Use,
 		Args:  cmdutil.ExactArgs(2),
-		Short: "Removes a Policy Pack from a Pulumi organization",
-		Long: "Removes a Policy Pack from a Pulumi organization. " +
-			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.

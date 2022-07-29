@@ -35,15 +35,10 @@ func newStackExportCmd() *cobra.Command {
 	var showSecrets bool
 
 	cmd := &cobra.Command{
-		Use:   "export",
+		Use:   placeholder.Use,
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Export a stack's deployment to standard out",
-		Long: "Export a stack's deployment to standard out.\n" +
-			"\n" +
-			"The deployment can then be hand-edited and used to update the stack via\n" +
-			"`pulumi stack import`. This process may be used to correct inconsistencies\n" +
-			"in a stack's state due to failed deployments, manual changes to cloud\n" +
-			"resources, etc.",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{

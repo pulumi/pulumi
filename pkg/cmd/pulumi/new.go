@@ -386,40 +386,11 @@ func newNewCmd() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:        "new [template|url]",
+		Use:        placeholder.Use,
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi project",
-		Long: "Create a new Pulumi project and stack from a template.\n" +
-			"\n" +
-			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
-			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
-			"which can be selected interactively.\n" +
-			"\n" +
-			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
-			"provider and a stack created using the local or cloud object storage backend will use the\n" +
-			"`passphrase` secrets provider.  A different secrets provider can be selected by passing the\n" +
-			"`--secrets-provider` flag.\n" +
-			"\n" +
-			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
-			"* `pulumi new --secrets-provider=passphrase`\n" +
-			"\n" +
-			"To use a cloud secrets provider with any backend, use one of the following:\n" +
-			"* `pulumi new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
-			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
-			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
-			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
-			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`" +
-			"\n\n" +
-			"To create a project from a specific source control location, pass the url as follows e.g.\n" +
-			"* `pulumi new https://gitlab.com/<user>/<repo>`\n" +
-			"* `pulumi new https://bitbucket.org/<user>/<repo>`\n" +
-			"* `pulumi new https://github.com/<user>/<repo>`\n" +
-			"\n" +
-			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
-			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
-			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
-			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
-		Args: cmdutil.MaximumNArgs(1),
+		Short:      placeholder.Short,
+		Long:       placeholder.Long,
+		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
 			if len(cliArgs) > 0 {

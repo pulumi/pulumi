@@ -46,19 +46,10 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rename <resource URN> <new name>",
-		Short: "Renames a resource from a stack's state",
-		Long: `Renames a resource from a stack's state
-
-This command renames a resource from a stack's state. The resource is specified 
-by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
-
-Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
-
-Example:
-pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here
-`,
-		Args: cmdutil.ExactArgs(2),
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.ExactArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			urn := resource.URN(args[0])

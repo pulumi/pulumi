@@ -34,14 +34,10 @@ import (
 
 func newSchemaCheckCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "check",
+		Use:   placeholder.Use,
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Check a Pulumi package schema for errors",
-		Long: "Check a Pulumi package schema for errors.\n" +
-			"\n" +
-			"Ensure that a Pulumi package schema meets the requirements imposed by the\n" +
-			"schema spec as well as additional requirements imposed by the supported\n" +
-			"target languages.",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			file := args[0]
 

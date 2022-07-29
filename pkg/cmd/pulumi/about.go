@@ -61,22 +61,12 @@ func newAboutCmd() *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
 	var stack string
-	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
-			Use:   "about",
-			Short: short,
-			Long: short + "\n" +
-				"\n" +
-				"Prints out information helpful for debugging the Pulumi CLI." +
-				"\n" +
-				"This includes information about:\n" +
-				" - the CLI and how it was built\n" +
-				" - which OS Pulumi was run from\n" +
-				" - the current project\n" +
-				" - the current stack\n" +
-				" - the current backend\n",
-			Args: cmdutil.MaximumNArgs(0),
+			Use:   placeholder.Use,
+			Short: placeholder.Short,
+			Long:  placeholder.Long,
+			Args:  cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 				ctx := context.Background()
 				summary := getSummaryAbout(ctx, transitiveDependencies, stack)

@@ -29,13 +29,11 @@ func newStackHistoryCmd() *cobra.Command {
 	var showFullDates bool
 
 	cmd := &cobra.Command{
-		Use:        "history",
+		Use:        placeholder.Use,
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
-		Short:      "Display history for a stack",
-		Long: `Display history for a stack
-
-This command displays data about previous updates for a stack.`,
+		Short:      placeholder.Short,
+		Long:       placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

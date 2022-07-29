@@ -36,15 +36,10 @@ func newStackRmCmd() *cobra.Command {
 	var force bool
 	var preserveConfig bool
 	var cmd = &cobra.Command{
-		Use:   "rm [<stack-name>]",
+		Use:   placeholder.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Remove a stack and its configuration",
-		Long: "Remove a stack and its configuration\n" +
-			"\n" +
-			"This command removes a stack and its configuration state.  Please refer to the\n" +
-			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
-			"\n" +
-			"After this command completes, the stack will no longer be available for updates.",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.

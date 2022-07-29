@@ -31,10 +31,10 @@ func newPolicyLsCmd() *cobra.Command {
 	var jsonOut bool
 
 	var cmd = &cobra.Command{
-		Use:   "ls [org-name]",
+		Use:   placeholder.Use,
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Packs for a Pulumi organization",
-		Long:  "List all Policy Packs for a Pulumi organization",
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})

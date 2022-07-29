@@ -32,16 +32,10 @@ func newStackSelectCmd() *cobra.Command {
 	var secretsProvider string
 	var create bool
 	cmd := &cobra.Command{
-		Use:   "select [<stack>]",
-		Short: "Switch the current workspace to the given stack",
-		Long: "Switch the current workspace to the given stack.\n" +
-			"\n" +
-			"Selecting a stack allows you to use commands like `config`, `preview`, and `update`\n" +
-			"without needing to type the stack name each time.\n" +
-			"\n" +
-			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
-			"If provided stack name is not found you may pass the --create flag to create and select it",
-		Args: cmdutil.MaximumNArgs(1),
+		Use:   placeholder.Use,
+		Short: placeholder.Short,
+		Long:  placeholder.Long,
+		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
