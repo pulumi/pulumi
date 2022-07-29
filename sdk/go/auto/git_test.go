@@ -46,6 +46,10 @@ func TestGitClone(t *testing.T) {
 		Create: true,
 	}))
 
+	// tag the nondefault head so we can test getting a tag too
+	_, err = origin.CreateTag("v0.0.1", nondefaultHead, nil)
+	assert.NoError(t, err)
+
 	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("default"),
 		Create: true,
@@ -75,6 +79,8 @@ func TestGitClone(t *testing.T) {
 		{branchName: "refs/heads/nondefault", expectedHead: nondefaultHead},
 		{branchName: "refs/remotes/origin/default", expectedHead: defaultHead},
 		{branchName: "refs/remotes/origin/nondefault", expectedHead: nondefaultHead},
+		// try the special tag case
+		{branchName: "refs/tags/v0.0.1", expectedHead: nondefaultHead},
 		// ask specifically for the commit hash
 		{testName: "head of default as hash", commitHash: defaultHead.String(), expectedHead: defaultHead},
 		{testName: "head of nondefault as hash", commitHash: nondefaultHead.String(), expectedHead: nondefaultHead},

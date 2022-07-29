@@ -101,6 +101,8 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 				return "", fmt.Errorf("branch name must be a simple name .e.g., 'main'"+
 					" or a ref e.g., 'refs/heads/main', but got %q", repoArgs.Branch)
 			}
+		case refName.IsTag(): // looks like `refs/tags/v1.0.0` -- respect this even though the field is `.Branch`
+			// nothing to do
 		case !refName.IsBranch(): // not a remote, not refs/heads/branch; treat as a simple branch name
 			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
 		default:
