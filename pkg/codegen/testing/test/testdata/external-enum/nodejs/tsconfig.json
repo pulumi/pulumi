@@ -19,6 +19,9 @@
         "provider.ts",
         "types/enums/index.ts",
         "types/enums/local/index.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
         "utilities.ts"
     ]
 }

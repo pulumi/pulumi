@@ -10,9 +10,11 @@ export * from "./provider";
 
 // Export sub-modules:
 import * as local from "./local";
+import * as types from "./types";
 
 export {
     local,
+    types,
 };
 
 // Import resources to register:
