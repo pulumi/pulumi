@@ -27,12 +27,9 @@ import (
 func newStackUnselectCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unselect",
-		Short: "Resets stack selection from the current workspace",
-		Long: "Resets stack selection from the current workspace.\n" +
-			"\n" +
-			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
-			"from.\n",
-		Args: cmdutil.NoArgs,
+		Short: stackUnselectText.Short,
+		Long:  stackUnselectText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			currentWorkspace, err := workspace.New()
 			if err != nil {

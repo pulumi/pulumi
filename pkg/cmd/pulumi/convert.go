@@ -43,11 +43,8 @@ func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "convert",
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Convert resource declarations into a pulumi program",
-		Long: "Convert resource declarations into a pulumi program.\n" +
-			"\n" +
-			"The YAML program to convert will default to the manifest in the current working directory.\n" +
-			"You may also specify '-f' for the file path or '-d' for the directory path containing the manifests.\n",
+		Short: convertText.Short,
+		Long:  convertText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			var projectGenerator projectGeneratorFunc

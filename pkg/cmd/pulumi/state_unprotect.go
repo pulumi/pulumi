@@ -35,11 +35,9 @@ func newStateUnprotectCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "unprotect <resource URN>",
-		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resource in a stack's state
-
-This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
-		Args: cmdutil.MaximumNArgs(1),
+		Short: stateUnprotectText.Short,
+		Long:  stateUnprotectText.Long,
+		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.

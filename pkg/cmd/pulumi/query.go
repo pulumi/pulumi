@@ -32,17 +32,9 @@ func newQueryCmd() *cobra.Command {
 	var stack string
 
 	var cmd = &cobra.Command{
-		Use:   "query",
-		Short: "Run query program against cloud resources",
-		Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +
-			"\n" +
-			"This command loads a Pulumi query program and executes it. In \"query mode\", Pulumi provides various\n" +
-			"useful data sources for querying, such as the resource outputs for a stack. Query mode also disallows\n" +
-			"all resource operations, so users cannot declare resource definitions as they would in normal Pulumi\n" +
-			"programs.\n" +
-			"\n" +
-			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
+		Use:    "query",
+		Short:  queryText.Short,
+		Long:   queryText.Long,
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {

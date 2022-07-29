@@ -148,23 +148,8 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "pulumi",
-		Short: "Pulumi command line",
-		Long: "Pulumi - Modern Infrastructure as Code\n" +
-			"\n" +
-			"To begin working with Pulumi, run the `pulumi new` command:\n" +
-			"\n" +
-			"    $ pulumi new\n" +
-			"\n" +
-			"This will prompt you to create a new project for your cloud and language of choice.\n" +
-			"\n" +
-			"The most common commands from there are:\n" +
-			"\n" +
-			"    - pulumi up       : Deploy code and/or resource changes\n" +
-			"    - pulumi stack    : Manage instances of your project\n" +
-			"    - pulumi config   : Alter your stack's configuration or secrets\n" +
-			"    - pulumi destroy  : Tear down your stack's resources entirely\n" +
-			"\n" +
-			"For more information, please visit the project page: https://www.pulumi.com/docs/",
+		Short: pulumiText.Short,
+		Long:  pulumiText.Long,
 		PersistentPreRun: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// We run this method for its side-effects. On windows, this will enable the windows terminal
 			// to understand ANSI escape codes.

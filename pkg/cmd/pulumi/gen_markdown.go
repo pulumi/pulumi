@@ -37,7 +37,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:    "gen-markdown <DIR>",
 		Args:   cmdutil.ExactArgs(1),
-		Short:  "Generate Pulumi CLI documentation as Markdown (one file per command)",
+		Short:  genMarkdownText.Short,
 		Hidden: true,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			var files []string

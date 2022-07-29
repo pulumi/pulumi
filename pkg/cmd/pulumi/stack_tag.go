@@ -31,14 +31,9 @@ func newStackTagCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "tag",
-		Short: "Manage stack tags",
-		Long: "Manage stack tags\n" +
-			"\n" +
-			"Stacks have associated metadata in the form of tags. Each tag consists of a name\n" +
-			"and value. The `get`, `ls`, `rm`, and `set` commands can be used to manage tags.\n" +
-			"Some tags are automatically assigned based on the environment each time a stack\n" +
-			"is updated.\n",
-		Args: cmdutil.NoArgs,
+		Short: stackTagText.Short,
+		Long:  stackTagText.Long,
+		Args:  cmdutil.NoArgs,
 	}
 
 	cmd.PersistentFlags().StringVarP(
@@ -55,7 +50,7 @@ func newStackTagCmd() *cobra.Command {
 func newStackTagGetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <name>",
-		Short: "Get a single stack tag value",
+		Short: stackTagGetText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -88,7 +83,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 	var jsonOut bool
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List all stack tags",
+		Short: stackTagLsText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -143,7 +138,7 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 func newStackTagRmCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "rm <name>",
-		Short: "Remove a stack tag",
+		Short: stackTagRmText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]
@@ -172,7 +167,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 func newStackTagSetCmd(stack *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "set <name> <value>",
-		Short: "Set a stack tag",
+		Short: stackTagSetText.Short,
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			name := args[0]

@@ -46,12 +46,8 @@ func newStackGraphCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "graph [filename]",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Export a stack's dependency graph to a file",
-		Long: "Export a stack's dependency graph to a file.\n" +
-			"\n" +
-			"This command can be used to view the dependency graph that a Pulumi program\n" +
-			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
-			"on your stack's most recent deployment.",
+		Short: stackGraphText.Short,
+		Long:  stackGraphText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

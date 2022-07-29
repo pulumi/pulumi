@@ -34,18 +34,9 @@ func newLogoutCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout <url>",
-		Short: "Log out of the Pulumi service",
-		Long: "Log out of the Pulumi service.\n" +
-			"\n" +
-			"This command deletes stored credentials on the local machine for a single login.\n" +
-			"\n" +
-			"Because you may be logged into multiple backends simultaneously, you can optionally pass\n" +
-			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
-			"If no URL is provided, you will be logged out of the current backend." +
-			"\n\n" +
-			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n" +
-			"    $ pulumi logout --all",
-		Args: cmdutil.MaximumNArgs(1),
+		Short: logoutText.Short,
+		Long:  logoutText.Long,
+		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {

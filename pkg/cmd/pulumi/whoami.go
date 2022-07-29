@@ -28,11 +28,9 @@ var verbose bool
 func newWhoAmICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "whoami",
-		Short: "Display the current logged-in user",
-		Long: "Display the current logged-in user\n" +
-			"\n" +
-			"Displays the username of the currently logged in user.",
-		Args: cmdutil.NoArgs,
+		Short: whoamiText.Short,
+		Long:  whoamiText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

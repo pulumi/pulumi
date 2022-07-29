@@ -22,12 +22,9 @@ import (
 func newSchemaCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schema",
-		Short: "Analyze package schemas",
-		Long: `Analyze package schemas
-
-Subcommands of this command can be used to analyze Pulumi package schemas. This can be useful to check hand-authored
-package schemas for errors.`,
-		Args: cmdutil.NoArgs,
+		Short: schemaText.Short,
+		Long:  schemaText.Long,
+		Args:  cmdutil.NoArgs,
 	}
 
 	cmd.AddCommand(newSchemaCheckCommand())

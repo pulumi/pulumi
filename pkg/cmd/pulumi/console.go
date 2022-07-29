@@ -31,7 +31,7 @@ func newConsoleCmd() *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "console",
-		Short: "Opens the current stack in the Pulumi Console",
+		Short: consoleText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{

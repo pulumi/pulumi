@@ -38,54 +38,9 @@ func newLoginCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
-		Short: "Log in to the Pulumi service",
-		Long: "Log in to the Pulumi service.\n" +
-			"\n" +
-			"The service manages your stack's state reliably. Simply run\n" +
-			"\n" +
-			"    $ pulumi login\n" +
-			"\n" +
-			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
-			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
-			"\n" +
-			"By default, this will log in to the managed Pulumi service backend.\n" +
-			"If you prefer to log in to a self-hosted Pulumi service backend, specify a URL. For example, run\n" +
-			"\n" +
-			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
-			"\n" +
-			"to log in to a self-hosted Pulumi service running at the api.pulumi.acmecorp.com domain.\n" +
-			"\n" +
-			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
-			"You can specify a default org to use when logging into the Pulumi service backend or a " +
-			"self-hosted Pulumi service.\n" +
-			"\n" +
-			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
-			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
-			"\n" +
-			"    $ pulumi login file://~\n" +
-			"\n" +
-			"will store your state information on your computer underneath `~/.pulumi`. It is then up to you to\n" +
-			"manage this state, including backing it up, using it in a team environment, and so on.\n" +
-			"\n" +
-			"As a shortcut, you may pass --local to use your home directory (this is an alias for `file://~`):\n" +
-			"\n" +
-			"    $ pulumi login --local\n" +
-			"\n" +
-			"[PREVIEW] Additionally, you may leverage supported object storage backends from one of the cloud providers " +
-			"to manage the state independent of the service. For instance,\n" +
-			"\n" +
-			"AWS S3:\n" +
-			"\n" +
-			"    $ pulumi login s3://my-pulumi-state-bucket\n" +
-			"\n" +
-			"GCP GCS:\n" +
-			"\n" +
-			"    $ pulumi login gs://my-pulumi-state-bucket\n" +
-			"\n" +
-			"Azure Blob:\n" +
-			"\n" +
-			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
-		Args: cmdutil.MaximumNArgs(1),
+		Short: loginText.Short,
+		Long:  loginText.Long,
+		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

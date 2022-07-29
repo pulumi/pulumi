@@ -42,16 +42,9 @@ func readTrace(path string, store io.ReaderFrom) error {
 func newViewTraceCmd() *cobra.Command {
 	var port int
 	var cmd = &cobra.Command{
-		Use:   "view-trace [trace-file]",
-		Short: "Display a trace from the Pulumi CLI",
-		Long: "Display a trace from the Pulumi CLI.\n" +
-			"\n" +
-			"This command is used to display execution traces collected by a prior\n" +
-			"invocation of the Pulumi CLI.\n" +
-			"\n" +
-			"This command loads trace data from the indicated file and starts a\n" +
-			"webserver to display the trace. By default, this server will listen\n" +
-			"port 8008; the --port flag can be used to change this if necessary.",
+		Use:    "view-trace [trace-file]",
+		Short:  viewTraceText.Short,
+		Long:   viewTraceText.Long,
 		Args:   cmdutil.ExactArgs(1),
 		Hidden: !hasDebugCommands(),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {

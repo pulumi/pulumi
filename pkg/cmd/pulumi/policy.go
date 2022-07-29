@@ -22,7 +22,7 @@ import (
 func newPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
-		Short: "Manage resource policies",
+		Short: policyText.Short,
 		Args:  cmdutil.NoArgs,
 	}
 

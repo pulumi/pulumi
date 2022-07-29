@@ -32,10 +32,8 @@ func newStackHistoryCmd() *cobra.Command {
 		Use:        "history",
 		Aliases:    []string{"hist"},
 		SuggestFor: []string{"updates"},
-		Short:      "Display history for a stack",
-		Long: `Display history for a stack
-
-This command displays data about previous updates for a stack.`,
+		Short:      stackHistoryText.Short,
+		Long:       stackHistoryText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

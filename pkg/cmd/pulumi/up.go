@@ -380,19 +380,9 @@ func newUpCmd() *cobra.Command {
 		Use:        "up [template|url]",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
-		Short:      "Create or update the resources in a stack",
-		Long: "Create or update the resources in a stack.\n" +
-			"\n" +
-			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
-			"is computed by running the current Pulumi program and observing all resource allocations to produce a\n" +
-			"resource graph. This goal state is then compared against the existing state to determine what create,\n" +
-			"read, update, and/or delete operations must take place to achieve the desired goal state, in the most\n" +
-			"minimally disruptive way. This command records a full transactional snapshot of the stack's new state\n" +
-			"afterwards so that the stack may be updated incrementally again later on.\n" +
-			"\n" +
-			"The program to run is loaded from the project in the current directory by default. Use the `-C` or\n" +
-			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.MaximumNArgs(1),
+		Short:      upText.Short,
+		Long:       upText.Long,
+		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 			yes = yes || skipPreview || skipConfirmations()

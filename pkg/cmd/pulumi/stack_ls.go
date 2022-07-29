@@ -42,17 +42,9 @@ func newStackLsCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "ls",
-		Short: "List stacks",
-		Long: "List stacks\n" +
-			"\n" +
-			"This command lists stacks. By default only stacks with the same project name as the\n" +
-			"current workspace will be returned. By passing --all, all stacks you have access to\n" +
-			"will be listed.\n" +
-			"\n" +
-			"Results may be further filtered by passing additional flags. Tag filters may include\n" +
-			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
-			"'environment=production' or just 'gcp:project'.",
-		Args: cmdutil.NoArgs,
+		Short: stackLsText.Short,
+		Long:  stackLsText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(_ *cobra.Command, _ []string) error {
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,

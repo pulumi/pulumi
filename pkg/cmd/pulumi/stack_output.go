@@ -34,11 +34,8 @@ func newStackOutputCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "output [property-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Show a stack's output properties",
-		Long: "Show a stack's output properties.\n" +
-			"\n" +
-			"By default, this command lists all output properties exported from a stack.\n" +
-			"If a specific property-name is supplied, just that property's value is shown.",
+		Short: stackOutputText.Short,
+		Long:  stackOutputText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

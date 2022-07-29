@@ -40,13 +40,9 @@ func newStackCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stack",
-		Short: "Manage stacks",
-		Long: "Manage stacks\n" +
-			"\n" +
-			"A stack is a named update target, and a single project may have many of them.\n" +
-			"Each stack has a configuration and update history associated with it, stored in\n" +
-			"the workspace, in addition to a full checkpoint of the last known good update.\n",
-		Args: cmdutil.NoArgs,
+		Short: stackText.Short,
+		Long:  stackText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

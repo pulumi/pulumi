@@ -30,7 +30,7 @@ import (
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "group",
-		Short: "Manage policy groups",
+		Short: policyGroupText.Short,
 		Args:  cmdutil.NoArgs,
 	}
 
@@ -43,8 +43,8 @@ func newPolicyGroupLsCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Groups for a Pulumi organization",
-		Long:  "List all Policy Groups for a Pulumi organization",
+		Short: policyGroupLsText.Short,
+		Long:  policyGroupLsText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})

@@ -33,8 +33,8 @@ func newPolicyLsCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "List all Policy Packs for a Pulumi organization",
-		Long:  "List all Policy Packs for a Pulumi organization",
+		Short: policyLsText.Short,
+		Long:  policyLsText.Long,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})

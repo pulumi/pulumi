@@ -52,16 +52,9 @@ func newPolicyNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi Policy Pack",
-		Long: "Create a new Pulumi Policy Pack from a template.\n" +
-			"\n" +
-			"To create a Policy Pack from a specific template, pass the template name (such as `aws-typescript`\n" +
-			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
-			"which can be selected interactively.\n" +
-			"\n" +
-			"Once you're done authoring the Policy Pack, you will need to publish the pack to your organization.\n" +
-			"Only organization administrators can publish a Policy Pack.",
-		Args: cmdutil.MaximumNArgs(1),
+		Short:      policyNewText.Short,
+		Long:       policyNewText.Long,
+		Args:       cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]

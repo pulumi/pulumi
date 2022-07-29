@@ -307,61 +307,8 @@ func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
 		Args:  cmdutil.MaximumNArgs(3),
-		Short: "Import resources into an existing stack",
-		Long: "Import resources into an existing stack.\n" +
-			"\n" +
-			"Resources that are not managed by Pulumi can be imported into a Pulumi stack\n" +
-			"using this command. A definition for each resource will be printed to stdout\n" +
-			"in the language used by the project associated with the stack; these definitions\n" +
-			"should be added to the Pulumi program. The resources are protected from deletion\n" +
-			"by default.\n" +
-			"\n" +
-			"Should you want to import your resource(s) without protection, you can pass\n" +
-			"`--protect=false` as an argument to the command. This will leave all resources unprotected." +
-			"\n" +
-			"\n" +
-			"A single resource may be specified in the command line arguments or a set of\n" +
-			"resources may be specified by a JSON file. This file must contain an object\n" +
-			"of the following form:\n" +
-			"\n" +
-			"    {\n" +
-			"        \"nameTable\": {\n" +
-			"            \"provider-or-parent-name-0\": \"provider-or-parent-urn-0\",\n" +
-			"            ...\n" +
-			"            \"provider-or-parent-name-n\": \"provider-or-parent-urn-n\",\n" +
-			"        },\n" +
-			"        \"resources\": [\n" +
-			"            {\n" +
-			"                \"type\": \"type-token\",\n" +
-			"                \"name\": \"name\",\n" +
-			"                \"id\": \"resource-id\",\n" +
-			"                \"parent\": \"optional-parent-name\",\n" +
-			"                \"provider\": \"optional-provider-name\",\n" +
-			"                \"version\": \"optional-provider-version\",\n" +
-			"                \"properties\": [\"optional-property-names\"],\n" +
-			"            },\n" +
-			"            ...\n" +
-			"            {\n" +
-			"                ...\n" +
-			"            }\n" +
-			"        ]\n" +
-			"    }\n" +
-			"\n" +
-			"The name table maps language names to parent and provider URNs. These names are\n" +
-			"used in the generated definitions, and should match the corresponding declarations\n" +
-			"in the source program. This table is required if any parents or providers are\n" +
-			"specified by the resources to import.\n" +
-			"\n" +
-			"The resources list contains the set of resources to import. Each resource is\n" +
-			"specified as a triple of its type, name, and ID. The format of the ID is specific\n" +
-			"to the resource type. Each resource may specify the name of a parent or provider;\n" +
-			"these names must correspond to entries in the name table. If a resource does not\n" +
-			"specify a provider, it will be imported using the default provider for its type. A\n" +
-			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n" +
-			"Each resource may specify which input properties to import with;\n" +
-			"If a resource does not specify any properties the default behaviour is to\n" +
-			"import using all required properties.\n",
+		Short: importText.Short,
+		Long:  importText.Long,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 

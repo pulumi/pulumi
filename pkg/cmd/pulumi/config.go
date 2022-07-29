@@ -45,11 +45,9 @@ func newConfigCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Manage configuration",
-		Long: "Lists all configuration values for a specific stack. To add a new configuration value, run\n" +
-			"`pulumi config set`. To remove and existing value run `pulumi config rm`. To get the value of\n" +
-			"for a specific configuration key, use `pulumi config get <key-name>`.",
-		Args: cmdutil.NoArgs,
+		Short: configText.Short,
+		Long:  configText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -94,10 +92,9 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 
 	cpCommand := &cobra.Command{
 		Use:   "cp [key]",
-		Short: "Copy config to another stack",
-		Long: "Copies the config from the current stack to the destination stack. If `key` is omitted,\n" +
-			"then all of the config from the current stack will be copied to the destination stack.",
-		Args: cmdutil.MaximumNArgs(1),
+		Short: configCpText.Short,
+		Long:  configCpText.Long,
+		Args:  cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -243,14 +240,9 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 
 	getCmd := &cobra.Command{
 		Use:   "get <key>",
-		Short: "Get a single configuration value",
-		Long: "Get a single configuration value.\n\n" +
-			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
-			"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
-			"if the value of `outer` is a map `inner: value`.\n" +
-			"  - `pulumi config get --path names[0]` will get the value of the first item, " +
-			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
+		Short: configGetText.Short,
+		Long:  configGetText.Long,
+		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -284,14 +276,9 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 
 	rmCmd := &cobra.Command{
 		Use:   "rm <key>",
-		Short: "Remove configuration value",
-		Long: "Remove configuration value.\n\n" +
-			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
-			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
-			"if the value of `outer` is a map `inner: value`.\n" +
-			"  - `pulumi config rm --path names[0]` will remove the first item, " +
-			"if the value of `names` is a list.",
-		Args: cmdutil.SpecificArgs([]string{"key"}),
+		Short: configRmText.Short,
+		Long:  configRmText.Long,
+		Args:  cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -332,14 +319,9 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 
 	rmAllCmd := &cobra.Command{
 		Use:   "rm-all <key1> <key2> <key3> ...",
-		Short: "Remove multiple configuration values",
-		Long: "Remove multiple configuration values.\n\n" +
-			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
-			"  - `pulumi config rm-all --path  outer.inner foo[0] key1` will remove the \n" +
-			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
-			"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the literal" +
-			"    `outer.inner`, `foo[0]` and `key1` keys",
-		Args: cmdutil.MinimumNArgs(1),
+		Short: configRmAllText.Short,
+		Long:  configRmAllText.Long,
+		Args:  cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -381,7 +363,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
 		Use:   "refresh",
-		Short: "Update the local configuration based on the most recent deployment of the stack",
+		Short: configRefreshText.Short,
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -455,18 +437,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 	setCmd := &cobra.Command{
 		Use:   "set <key> [value]",
-		Short: "Set configuration value",
-		Long: "Configuration values can be accessed when a stack is being deployed and used to configure behavior. \n" +
-			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
-			"may be set by piping a file to standard in.\n\n" +
-			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
-			"  - `pulumi config set --path names[0] a` " +
-			"will set the value to a list with the first item `a`.\n" +
-			"  - `pulumi config set --path parent.nested value` " +
-			"will set the value of `parent` to a map `nested: value`.\n" +
-			"  - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
-			"    `parent.name` to a map `nested.name: value`.",
-		Args: cmdutil.RangeArgs(1, 2),
+		Short: configSetText.Short,
+		Long:  configSetText.Long,
+		Args:  cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{
@@ -565,19 +538,9 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 
 	setCmd := &cobra.Command{
 		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
-		Short: "Set multiple configuration values",
-		Long: "pulumi set-all allows you to set multiple configuration values in one command.\n\n" +
-			"Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether \n" +
-			"it should be encrypted:\n\n" +
-			"  - `pulumi config set-all --secret key1=value1 --plaintext key2=value --secret key3=value3`\n\n" +
-			"The `--path` flag can be used to set values inside a map or list:\n\n" +
-			"  - `pulumi config set-all --path --plaintext \"names[0]\"=a --plaintext \"names[1]\"=b` \n" +
-			"    will set the value to a list with the first item `a` and second item `b`.\n" +
-			"  - `pulumi config set-all --path --plaintext parent.nested=value --plaintext parent.other=value2` \n" +
-			"    will set the value of `parent` to a map `{nested: value, other: value2}`.\n" +
-			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
-			"    value of `parent.name` to a map `nested.name: value`.",
-		Args: cmdutil.NoArgs,
+		Short: configSetAllText.Short,
+		Long:  configSetAllText.Long,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{
