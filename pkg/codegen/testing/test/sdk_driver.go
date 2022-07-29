@@ -198,9 +198,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
 	},
 	{
-		Directory:        "plain-and-default",
-		Description:      "Ensure that a resource with a plain default property works correctly",
-		SkipCompileCheck: codegen.NewStringSet(nodejs),
+		Directory:   "plain-and-default",
+		Description: "Ensure that a resource with a plain default property works correctly",
 	},
 	{
 		Directory:   "plain-object-defaults",
