@@ -300,7 +300,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_nodejs" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">accesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

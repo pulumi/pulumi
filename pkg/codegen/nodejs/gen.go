@@ -214,7 +214,11 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 	modName, name := namingCtx.tokenToModName(tok), tokenToName(tok)
 
 	if enum {
-		return "enums." + modName + title(name)
+		prefix := "enums."
+		if external {
+			prefix = pkgName
+		}
+		return prefix + modName + title(name)
 	}
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
@@ -289,7 +293,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(t.Package, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
@@ -1303,6 +1307,12 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.EnumType:
+		// If the enum is from another package, add an import for the external package.
+		if t.Package != nil && t.Package != mod.pkg {
+			pkg := t.Package.Name
+			writeImports(pkg)
+			return false
+		}
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.

@@ -5,6 +5,8 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs, enums } from "./types";
 import * as utilities from "./utilities";
 
+import * as pulumiGoogleNative from "@pulumi/google-native";
+
 export class Component extends pulumi.CustomResource {
     /**
      * Get an existing Component resource's state with the given name, ID, and optional extra
@@ -33,7 +35,7 @@ export class Component extends pulumi.CustomResource {
     }
 
     public readonly localEnum!: pulumi.Output<enums.local.MyEnum | undefined>;
-    public readonly remoteEnum!: pulumi.Output<enums.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem | undefined>;
+    public readonly remoteEnum!: pulumi.Output<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -62,5 +64,5 @@ export class Component extends pulumi.CustomResource {
  */
 export interface ComponentArgs {
     localEnum?: pulumi.Input<enums.local.MyEnum>;
-    remoteEnum?: pulumi.Input<enums.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem>;
+    remoteEnum?: pulumi.Input<pulumiGoogleNative.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem>;
 }
