@@ -34,6 +34,10 @@ import (
 )
 
 type YamlResource struct {
+	Name       string
+	Definition YamlResourceDef
+}
+type YamlResourceDef struct {
 	Type       string                 `json:"type" yaml:"type"`
 	Properties map[string]interface{} `json:"properties,omitempty" yaml:"properties,omitempty"`
 }
@@ -42,8 +46,8 @@ type YamlProject struct {
 	// Name is a required fully qualified name.
 	Name tokens.PackageName `json:"name" yaml:"name"`
 	// Runtime is a required runtime that executes code.
-	Runtime   string                  `json:"runtime" yaml:"runtime"`
-	Resources map[string]YamlResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Runtime   string                     `json:"runtime" yaml:"runtime"`
+	Resources map[string]YamlResourceDef `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 type singletonDeployment struct {
@@ -64,20 +68,31 @@ func (d *singletonDeployment) ProjectDir() string {
 	return strings.Join([]string{"global-stack", d.resourceName, d.resourceType}, "_")
 }
 
+func parseResource(args []string) (YamlResource, error) {
+	resourceName, resourceType, props := args[1], args[0], args[2:]
+
+	fmt.Println("args", props)
+	return YamlResource{
+		Name: resourceName,
+		Definition: YamlResourceDef{
+			Type: resourceType,
+		},
+	}, nil
+}
+
 // intentionally disabling here for cleaner err declaration/assignment.
 // nolint: vetshadow
 func newDeployCmd() *cobra.Command {
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 
-	ensureProject := func() error {
+	ensureProject := func(res YamlResource) error {
 		/*
 		 */
 		home, err := workspace.GetPulumiHomeDir()
-		resourceName, resourceType := "my-bucket", "gcp:storage:Bucket"
 
 		d := singletonDeployment{
-			resourceName: resourceName,
-			resourceType: resourceType,
+			resourceName: res.Name,
+			resourceType: res.Definition.Type,
 		}
 		p := path.Join(home, "global-stacks", d.ProjectDir())
 		if err := os.Chdir(p); err != nil {
@@ -88,11 +103,9 @@ func newDeployCmd() *cobra.Command {
 				return err
 			}
 		}
-		resources := make(map[string]YamlResource)
-		resources[resourceName] = YamlResource{
-			Type:       resourceType,
-			Properties: nil,
-		}
+		resources := make(map[string]YamlResourceDef)
+		resources[res.Name] = res.Definition
+
 		proj := YamlProject{
 			Name:      tokens.PackageName(d.ProjectName()),
 			Runtime:   "yaml",
@@ -131,8 +144,13 @@ func newDeployCmd() *cobra.Command {
 		Short: "WIP",
 		Args:  cmdutil.MinimumNArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			err := ensureProject()
+
+			res, err := parseResource(args)
 			if err != nil {
+				return result.FromError(err)
+			}
+
+			if err := ensureProject(res); err != nil {
 				result.FromError(err)
 			}
 			up := newUpCmd()
