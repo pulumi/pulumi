@@ -52,7 +52,7 @@ type YamlProject struct {
 }
 
 func b64encode(s string) string {
-	return base64.StdEncoding.EncodeToString([]byte(s))
+	return base64.RawStdEncoding.EncodeToString([]byte(s))
 }
 
 func (r *YamlResource) ProjectName() string {
