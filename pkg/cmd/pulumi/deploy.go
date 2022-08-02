@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	yaml "gopkg.in/yaml.v3"
@@ -108,9 +109,17 @@ func parseObj(args []string) interface{} {
 			continue
 		}
 
-		obj[key] = value
+		obj[key] = parseScalar(value)
 	}
 	return obj
+}
+
+func parseScalar(v string) interface{} {
+	num, err := strconv.ParseInt(v, 0, 64)
+	if err != nil {
+		return v
+	}
+	return num
 }
 
 func parseList(args []string) interface{} {
@@ -156,7 +165,7 @@ func parseList(args []string) interface{} {
 		if openObj > 0 || openList > 0 {
 			continue
 		}
-		lst = append(lst, k)
+		lst = append(lst, parseScalar(k))
 	}
 	return lst
 }
@@ -167,9 +176,8 @@ func parseArgs(a []string) interface{} {
 	s := strings.SplitN(a[0], "=", 2)
 	prefix := s[0]
 
-	for i, arg := range a {
+	for _, arg := range a {
 		args = append(args, strings.TrimPrefix(arg, prefix+"="))
-		fmt.Println(args[i])
 	}
 
 	if args[0] == "[[" {
@@ -184,7 +192,6 @@ func parseResource(args []string) (YamlResource, error) {
 	/*
 	 */
 	resourceName, resourceType, props := args[1], args[0], args[2:]
-	fmt.Println("args", props)
 
 	newProps := make([]string, 0, len(props)+2)
 
