@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -59,12 +60,19 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 		return "", "", fmt.Errorf("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], spec[equals+1:]
+	name, urn := spec[:equals], resource.URN(spec[equals+1:])
 	if name == "" || urn == "" {
 		return "", "", fmt.Errorf("spec must be of the form name=URN")
 	}
 
-	return name, resource.URN(urn), nil
+	if !urn.IsValid() {
+		if ref, err := providers.ParseReference(string(urn)); err == nil {
+			return "", "", fmt.Errorf("expected a URN but got a Provider Reference, use '%s' instead", ref.URN())
+		}
+		return "", "", fmt.Errorf("expected a URN but got '%s'", urn)
+	}
+
+	return name, urn, nil
 }
 
 func makeImportFile(
@@ -73,7 +81,7 @@ func makeImportFile(
 	parentSpec, providerSpec, version string) (importFile, error) {
 
 	nameTable := map[string]resource.URN{}
-	resource := importSpec{
+	res := importSpec{
 		Type:       tokens.Type(typ),
 		Name:       tokens.QName(name),
 		ID:         resource.ID(id),
@@ -84,24 +92,32 @@ func makeImportFile(
 	if parentSpec != "" {
 		parentName, parentURN, err := parseResourceSpec(parentSpec)
 		if err != nil {
-			return importFile{}, fmt.Errorf("could not parse parent spec '%v': %w", parentSpec, err)
+			parentName = "parent"
+			parentURN = resource.URN(parentSpec)
+			if !parentURN.IsValid() {
+				return importFile{}, fmt.Errorf("invalid parent URN: '%s'", parentURN)
+			}
 		}
 		nameTable[parentName] = parentURN
-		resource.Parent = parentName
+		res.Parent = parentName
 	}
 
 	if providerSpec != "" {
 		providerName, providerURN, err := parseResourceSpec(providerSpec)
 		if err != nil {
-			return importFile{}, fmt.Errorf("could not parse provider spec '%v': %w", providerSpec, err)
+			providerName = "provider"
+			providerURN = resource.URN(providerSpec)
+		}
+		if _, exists := nameTable[providerName]; exists {
+			return importFile{}, fmt.Errorf("provider and parent must have distinct names, both were '%s'", providerName)
 		}
 		nameTable[providerName] = providerURN
-		resource.Provider = providerName
+		res.Provider = providerName
 	}
 
 	return importFile{
 		NameTable: nameTable,
-		Resources: []importSpec{resource},
+		Resources: []importSpec{res},
 	}, nil
 }
 
@@ -318,12 +334,25 @@ func newImportCmd() *cobra.Command {
 			"by default.\n" +
 			"\n" +
 			"Should you want to import your resource(s) without protection, you can pass\n" +
-			"`--protect=false` as an argument to the command. This will leave all resources unprotected." +
-			"\n" +
+			"`--protect=false` as an argument to the command. This will leave all resources unprotected.\n" +
 			"\n" +
 			"A single resource may be specified in the command line arguments or a set of\n" +
-			"resources may be specified by a JSON file. This file must contain an object\n" +
-			"of the following form:\n" +
+			"resources may be specified by a JSON file.\n" +
+			"\n" +
+			"If using the command line args directly, the type, name, id and optional flags\n" +
+			"must be provided.  For example:\n" +
+			"\n" +
+			"    pulumi import 'aws:iam/user:User' name id\n" +
+			"\n" +
+			"Or to fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"\n" +
+			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
+			"\n" +
+			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
+			"\n" +
+			"     pulumi import -f import.json\n" +
+			"\n" +
+			"Where import.json is a file that matches the following JSON format:\n" +
 			"\n" +
 			"    {\n" +
 			"        \"nameTable\": {\n" +
@@ -360,7 +389,9 @@ func newImportCmd() *cobra.Command {
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
+			"\n" +
 			"Each resource may specify which input properties to import with;\n" +
+			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
