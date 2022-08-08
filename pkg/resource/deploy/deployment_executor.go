@@ -262,7 +262,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 				if event.Result != nil {
 					if !event.Result.IsBail() {
-						logging.V(3).Infof("deploymentExecutor.Execute(...): error running Program: %v", event.Result.Error())
+						ex.reportError("", event.Result.Error())
 					}
 					cancel()
 

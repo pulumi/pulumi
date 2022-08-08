@@ -39,11 +39,15 @@ type RunOption func(*RunInfo)
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
 	if err := RunErr(body, opts...); err != nil {
-		if err != ErrPlugins {
+		if err == ErrPlugins {
+			printRequiredPlugins()
+		}
+
+ 	 	// `go run` only returns 0 or 1 as error codes and prints `exit status <number>`
+		if err != nil {
 			os.Exit(1)
 		}
 
-		printRequiredPlugins()
 		os.Exit(0)
 	}
 }
@@ -82,11 +86,7 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 
 	err = RunWithContext(ctx, body)
 	if err != nil {
-		// this line is responsible for indicating to the user in the CLI display
-		// - that an error occurred
-		// - details about that error
 		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
-
 		contract.AssertNoError(err)
 	}
 	return err

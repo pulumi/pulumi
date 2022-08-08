@@ -352,7 +352,24 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
+				switch status.ExitStatus() {
+				case 0:
+					break
+				case 1:
+					// runtime error(panic or error return value)
+					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
+				case 2:
+					// compilation error
+
+					// `go run` outputs details to stderr
+					err = errors.Errorf("problem executing program (Go compilation error)")
+				default:
+					// `go run` currently has only 3 exit codes.
+					// - 0: success
+					// - 1: program exits with non-zero exit code(panic or pulumi.RunErr returned non-nil error)
+					// - 2: compilation error
+					err = errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
+				}
 			} else {
 				err = errors.Wrapf(exiterr, "program exited unexpectedly")
 			}

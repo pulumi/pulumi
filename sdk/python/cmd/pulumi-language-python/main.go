@@ -65,6 +65,11 @@ const (
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint: gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+
+	// A exit-code we recognize when the python process exits.  If we see this error, there's no
+	// need for us to print any additional error messages since the user already got a a good
+	// one they can handle.
+	pythonProcessExitedAfterShowingUserActionableMessage = 32
 )
 
 var (
@@ -704,7 +709,12 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+				switch status.ExitStatus() {
+				case pythonProcessExitedAfterShowingUserActionableMessage:
+					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
+				default:
+					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+				}
 			} else {
 				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
 			}
