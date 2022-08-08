@@ -101,9 +101,9 @@ func (pkg dep) install(t *testing.T, ex, dir string) {
 // Converts from the hcl2 dependency format to the dotnet format.
 //
 // Example:
-// 	"aws" => {"Pulumi.Aws", 4.21.1}
-// 	"azure" => {"Pulumi.Azure", 4.21.1}
 //
+//	"aws" => {"Pulumi.Aws", 4.21.1}
+//	"azure" => {"Pulumi.Azure", 4.21.1}
 func dotnetDependencies(deps codegen.StringSet) []dep {
 	result := make([]dep, len(deps))
 	for i, d := range deps.SortedValues() {

@@ -57,7 +57,7 @@ func main() {
 		tmpJSON0, err := json.Marshal(map[string]interface{}{
 			"Version": "2008-10-17",
 			"Statement": []map[string]interface{}{
-				map[string]interface{}{
+				{
 					"Sid":    "",
 					"Effect": "Allow",
 					"Principal": map[string]interface{}{
@@ -116,11 +116,11 @@ func main() {
 			return err
 		}
 		tmpJSON1, err := json.Marshal([]map[string]interface{}{
-			map[string]interface{}{
+			{
 				"name":  "my-app",
 				"image": "nginx",
 				"portMappings": []map[string]interface{}{
-					map[string]interface{}{
+					{
 						"containerPort": 80,
 						"hostPort":      80,
 						"protocol":      "tcp",

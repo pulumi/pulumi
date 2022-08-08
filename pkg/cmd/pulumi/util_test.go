@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,6 +38,7 @@ func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
+//
 //nolint:paralleltest // mutates environment variables
 func TestReadingGitRepo(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
@@ -180,6 +181,7 @@ func TestReadingGitRepo(t *testing.T) {
 
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
+//
 //nolint:paralleltest // mutates environment variables
 func TestReadingGitLabMetadata(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI

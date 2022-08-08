@@ -139,7 +139,7 @@ func (o ExampleEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) 
 // ExampleEnumInput is an input type that accepts ExampleEnumArgs and ExampleEnumOutput values.
 // You can construct a concrete instance of `ExampleEnumInput` via:
 //
-//          ExampleEnumArgs{...}
+//	ExampleEnumArgs{...}
 type ExampleEnumInput interface {
 	pulumi.Input
 
@@ -303,7 +303,7 @@ func (o ExampleEnumInputEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.
 // ExampleEnumInputEnumInput is an input type that accepts ExampleEnumInputEnumArgs and ExampleEnumInputEnumOutput values.
 // You can construct a concrete instance of `ExampleEnumInputEnumInput` via:
 //
-//          ExampleEnumInputEnumArgs{...}
+//	ExampleEnumInputEnumArgs{...}
 type ExampleEnumInputEnumInput interface {
 	pulumi.Input
 
@@ -467,7 +467,7 @@ func (o ResourceTypeEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Cont
 // ResourceTypeEnumInput is an input type that accepts ResourceTypeEnumArgs and ResourceTypeEnumOutput values.
 // You can construct a concrete instance of `ResourceTypeEnumInput` via:
 //
-//          ResourceTypeEnumArgs{...}
+//	ResourceTypeEnumArgs{...}
 type ResourceTypeEnumInput interface {
 	pulumi.Input
 

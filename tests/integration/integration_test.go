@@ -1116,6 +1116,7 @@ func TestProviderDownloadURL(t *testing.T) {
 
 // printfTestValidation is used by the TestPrintfXYZ test cases in the language-specific test
 // files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
+//
 //nolint:deadcode // The linter doesn't see the uses since the consumers are conditionally compiled tests.
 func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	var foundStdout int

@@ -32,7 +32,7 @@ import (
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
 // We use this in testing so that tests which log in and out do not impact the local developer's
 // credentials or tests interacting with one another
-//nolint: gosec
+// nolint: gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
 // PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
