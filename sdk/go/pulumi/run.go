@@ -43,7 +43,7 @@ func Run(body RunFunc, opts ...RunOption) {
 			printRequiredPlugins()
 		}
 
- 	 	// `go run` only returns 0 or 1 as error codes and prints `exit status <number>`
+		// `go run` only returns 0 or 1 as error codes and prints `exit status <number>`
 		if err != nil {
 			os.Exit(1)
 		}
