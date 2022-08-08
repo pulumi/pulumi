@@ -363,7 +363,7 @@ func PythonConfigurePkg(pkg *schema.Package) error {
 }
 
 func NodeConfigurePkg(pkg *schema.Package) error {
-	/*raw, notnil := pkg.Language["nodejs"]
+	raw, notnil := pkg.Language["nodejs"]
 	message, ismessage := raw.(json.RawMessage)
 	var nodePkg jsgen.NodePackageInfo
 	if notnil && ismessage {
@@ -381,7 +381,7 @@ func NodeConfigurePkg(pkg *schema.Package) error {
 		nodePkg = jsgen.NodePackageInfo{}
 	}
 	nodePkg.RespectSchemaVersion = true
-	pkg.Language["nodejs"] = nodePkg*/
+	pkg.Language["nodejs"] = nodePkg
 	return nil
 }
 

@@ -2171,8 +2171,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		Repository:  pkg.Repository,
 		License:     pkg.License,
 		Scripts: map[string]string{
-			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
+			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
 		Pulumi: plugin.PulumiPluginJSON{
@@ -2181,6 +2180,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			Name:     pluginName,
 			Version:  pluginVersion,
 		},
+	}
+
+	if !pkg.Test {
+		npminfo.Scripts["install"] = fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion)
 	}
 
 	// Copy the overlay dependencies, if any.
