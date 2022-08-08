@@ -11,6 +11,13 @@ export * from "./provider";
 // Export enums:
 export * from "./types/enums";
 
+// Export sub-modules:
+import * as types from "./types";
+
+export {
+    types,
+};
+
 // Import resources to register:
 import { ModuleResource } from "./moduleResource";
 

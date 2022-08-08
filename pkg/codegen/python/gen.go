@@ -565,7 +565,12 @@ func (mod *modContext) isEmpty() bool {
 }
 
 func (mod *modContext) submodulesExist() bool {
-	return len(mod.children) > 0
+	for _, submod := range mod.children {
+		if !submod.isEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *modContext) unqualifiedImportName() string {
@@ -641,6 +646,7 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
+
 		fmt.Fprintf(w, "if typing.TYPE_CHECKING:\n")
 
 		for _, submod := range children {

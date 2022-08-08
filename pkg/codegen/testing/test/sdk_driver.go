@@ -198,9 +198,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
 	},
 	{
-		Directory:        "plain-and-default",
-		Description:      "Ensure that a resource with a plain default property works correctly",
-		SkipCompileCheck: codegen.NewStringSet(nodejs),
+		Directory:   "plain-and-default",
+		Description: "Ensure that a resource with a plain default property works correctly",
 	},
 	{
 		Directory:   "plain-object-defaults",
@@ -267,6 +266,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "enum-reference",
 		Description: "Ensure referencing external types/resources with referenced enums import correctly",
+	},
+	{
+		Directory:   "external-enum",
+		Description: "Ensure we generate valid tokens for external enums",
+		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
 		Directory:   "internal-dependencies-go",
