@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import sys
+import importlib
 import traceback
 import runpy
 
@@ -103,14 +104,40 @@ if __name__ == "__main__":
     # error messages, but if they stick to the Pulumi programming model, they wouldn't be seeing any anyway.
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
     try:
+        # NOTE: nice exception printing is coupled to `runpy`, make sure to edit the stacktrace code below
         coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
         loop.run_until_complete(coro)
         successful = True
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:
-        pulumi.log.error("Program failed with an unhandled exception:")
-        pulumi.log.error(traceback.format_exc())
+        # provide the user with traceback information for troubleshooting
+
+        def clean_stacktrace() -> str:
+            # removes internal pulumi-language-python stack frames from the traceback.
+            # inspired by:
+            # https://stackoverflow.com/questions/45771299/remove-several-lines-from-the-top-of-a-traceback
+
+            spec = importlib.util.find_spec(runpy.__name__)
+            extracts = traceback.extract_tb(sys.exc_info()[2])
+            count = len(extracts)
+
+            last_module = None
+            # find the first occurrence of the module file name
+            runpy_filename = spec.loader.get_filename()
+            for extract in extracts:
+                cur_module = extract[0]
+                if cur_module.endswith('/__main__.py') and last_module == runpy_filename:
+                    # if the last module to run was runpy and the current one is a __main__.py
+                    break
+                count -= 1
+                last_module = cur_module
+            # keep only the count of last lines
+            return traceback.format_exc(limit=-count)
+
+        error_msg = "Program failed with an unhandled exception:\n" + clean_stacktrace()
+        pulumi.log.error(error_msg)
+        exit_code = 32
     finally:
         loop.close()
         sys.stdout.flush()
