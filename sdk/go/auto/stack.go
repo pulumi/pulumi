@@ -256,6 +256,21 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
 	}
+	if preOpts.LogFlow {
+		sharedArgs = append(sharedArgs, "--logflow")
+	}
+	if preOpts.LogVerbosity > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--verbose=%v", preOpts.LogVerbosity))
+	}
+	if preOpts.LogToStdErr {
+		sharedArgs = append(sharedArgs, "--logtostderr")
+	}
+	if preOpts.Tracing != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--tracing=%v", preOpts.Tracing))
+	}
+	if preOpts.Debug {
+		sharedArgs = append(sharedArgs, "--debug")
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -374,6 +389,21 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.Plan != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
 	}
+	if upOpts.LogFlow {
+		sharedArgs = append(sharedArgs, "--logflow")
+	}
+	if upOpts.LogVerbosity > 0 {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--verbose=%v", upOpts.LogVerbosity))
+	}
+	if upOpts.LogToStdErr {
+		sharedArgs = append(sharedArgs, "--logtostderr")
+	}
+	if upOpts.Tracing != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--tracing=%v", upOpts.Tracing))
+	}
+	if upOpts.Debug {
+		sharedArgs = append(sharedArgs, "--debug")
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -462,6 +492,22 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if refreshOpts.Color != "" {
 		args = append(args, fmt.Sprintf("--color=%s", refreshOpts.Color))
 	}
+	if refreshOpts.LogFlow {
+		args = append(args, "--logflow")
+	}
+	if refreshOpts.LogVerbosity > 0 {
+		args = append(args, fmt.Sprintf("--verbose=%v", refreshOpts.LogVerbosity))
+	}
+	if refreshOpts.LogToStdErr {
+		args = append(args, "--logtostderr")
+	}
+	if refreshOpts.Tracing != "" {
+		args = append(args, fmt.Sprintf("--tracing=%v", refreshOpts.Tracing))
+	}
+	if refreshOpts.Debug {
+		args = append(args, "--debug")
+	}
+
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
@@ -542,6 +588,22 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if destroyOpts.Color != "" {
 		args = append(args, fmt.Sprintf("--color=%s", destroyOpts.Color))
 	}
+	if destroyOpts.LogFlow {
+		args = append(args, "--logflow")
+	}
+	if destroyOpts.LogVerbosity > 0 {
+		args = append(args, fmt.Sprintf("--verbose=%v", destroyOpts.LogVerbosity))
+	}
+	if destroyOpts.LogToStdErr {
+		args = append(args, "--logtostderr")
+	}
+	if destroyOpts.Tracing != "" {
+		args = append(args, fmt.Sprintf("--tracing=%v", destroyOpts.Tracing))
+	}
+	if destroyOpts.Debug {
+		args = append(args, "--debug")
+	}
+
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
