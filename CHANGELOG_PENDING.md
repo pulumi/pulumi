@@ -10,6 +10,11 @@
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
 
+- [automation] Add options for Automation API in each SDK to control logging and tracing, allowing
+  automation API to run with the equivalent of CLI arguments `--logflow`, `--verbose`,
+  `--logtostderr`, `--tracing` and `--debug`
+  [#10338](https://github.com/pulumi/pulumi/pull/10338)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
