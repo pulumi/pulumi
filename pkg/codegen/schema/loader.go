@@ -144,7 +144,7 @@ func schemaIsEmpty(schemaBytes []byte) bool {
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	if pkg == "pulumi" {
-		return DefaultPulumiPackageReference, nil
+		return DefaultPulumiPackage.Reference(), nil
 	}
 
 	l.m.Lock()

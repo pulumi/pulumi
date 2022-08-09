@@ -384,31 +384,34 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
         private bool InitializedByDefault(IList list)
         {
             var concreteType = list.GetType();
-            var genericType = concreteType.GetGenericTypeDefinition();
-            if (genericType == typeof(ImmutableArray<>))
+            if (concreteType.IsGenericType)
             {
-                // create a dummy empty instance, int is irrelevant
-                var instance = ImmutableArray.Create<int>();
-                // so that we can get the name of the property using the nameof operator, statically
-                var propertyName = nameof(instance.IsDefaultOrEmpty);
-                var isDefaultOrEmpty = concreteType.GetProperty(propertyName);
-                if (isDefaultOrEmpty != null)
+                var genericType = concreteType.GetGenericTypeDefinition();
+                if (genericType == typeof(ImmutableArray<>))
                 {
-                    var value = isDefaultOrEmpty.GetValue(list);
-                    return value != null && (bool)value;
+                    // create a dummy empty instance, int is irrelevant
+                    var instance = ImmutableArray.Create<int>();
+                    // so that we can get the name of the property using the nameof operator, statically
+                    var propertyName = nameof(instance.IsDefaultOrEmpty);
+                    var isDefaultOrEmpty = concreteType.GetProperty(propertyName);
+                    if (isDefaultOrEmpty != null)
+                    {
+                        var value = isDefaultOrEmpty.GetValue(list);
+                        return value != null && (bool)value;
+                    }
                 }
             }
 
             return false;
         }
-        
+
         private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
                 Log.Debug($"Serialize property[{ctx}]: Hit list");
             }
-            
+
             if (InitializedByDefault(list))
             {
                 // early return an empty array here because
@@ -416,8 +419,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 // when the list is default(ImmutableArray<T>)
                 return ImmutableArray.Create<object?>();
             }
-            
-            var result = ImmutableArray.CreateBuilder<object?>(list.Count); 
+
+            var result = ImmutableArray.CreateBuilder<object?>(list.Count);
             for (int i = 0, n = list.Count; i < n; i++)
             {
                 if (_excessiveDebugOutput)
