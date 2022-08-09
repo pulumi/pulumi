@@ -116,6 +116,9 @@ type Project struct {
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+
+	// Additional keys that may be set by other programs sharing the same document.
+	AdditionalData map[string]interface{} `yaml:",inline"`
 }
 
 func (proj *Project) Validate() error {
