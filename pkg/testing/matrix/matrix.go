@@ -275,6 +275,32 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 				err = cmd.Run()
 				//assert.NoError(t, err)
 			}
+			if lang == "nodejs" {
+				//yarn install
+				cmd := exec.Command("yarn", "install")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+
+				//yarn run tsc
+				cmd = exec.Command("yarn", "run", "tsc")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+
+				//cp ../../README.md ../../LICENSE package.json yarn.lock ./bin/
+				cmd = exec.Command("cp", "../../README.md", "../../LICENSE", "package.json", "yarn.lock", "./bin/")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+
+				//sed -i.bak -e "s/\$${VERSION}/$(VERSION)/g" ./bin/package.json
+				cmd = exec.Command("sed", "-i.bak", "-e", fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version), "./bin/package.json")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+
+			}
 		}
 	}
 
