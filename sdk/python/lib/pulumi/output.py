@@ -224,9 +224,12 @@ class Output(Generic[T_co]):
                     # Try and set the result. This might fail if we're shutting down,
                     # so swallow that error if that occurs.
                     try:
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(False)
+                        if not result_resources.done():
+                            result_resources.set_result(resources)
+                        if not result_is_known.done():
+                            result_is_known.set_result(False)
+                        if not result_is_secret.done():
+                            result_is_secret.set_result(False)
                     except RuntimeError:
                         pass
 
