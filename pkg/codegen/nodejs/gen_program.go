@@ -162,8 +162,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
 	pulumi := `@pulumi/pulumi": "^3.0.0`
-	if localPulumi, ok := localProjects["@pulumi/pulumi"]; ok {
-		pulumi = fmt.Sprintf("file:%s", localPulumi)
+	if localPulumi, ok := localProjects["nodejs"]; ok {
+		pulumi = fmt.Sprintf("@pulumi/pulumi\": \"file:%s", localPulumi)
 	}
 	packageJSON.WriteString(fmt.Sprintf(`{
 		"name": "%s",
