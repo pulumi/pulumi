@@ -45,6 +45,10 @@ func Run(body RunFunc, opts ...RunOption) {
 
 		// `go run` only returns 0 or 1 as error codes and prints `exit status <number>`
 		if err != nil {
+			// Log the error message
+			if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
+				ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+			}
 			os.Exit(1)
 		}
 
@@ -84,12 +88,7 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	err = RunWithContext(ctx, body)
-	if err != nil {
-		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
-		contract.AssertNoError(err)
-	}
-	return err
+	return RunWithContext(ctx, body)
 }
 
 // RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
