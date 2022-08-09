@@ -420,7 +420,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
 			randomSeed = resourcePlan.Seed
 		}
-	} else {
+	}
+	// If the above didn't set the seed, generate a new random one. If we're running with plans but this
+	// resource was missing a seed then if the seed is used later checks will fail.
+	if randomSeed == nil {
 		randomSeed = make([]byte, 32)
 		n, err := cryptorand.Read(randomSeed)
 		contract.AssertNoError(err)
