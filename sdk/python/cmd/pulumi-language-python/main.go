@@ -710,6 +710,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
 				switch status.ExitStatus() {
+				case 0:
+					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
 				case pythonProcessExitedAfterShowingUserActionableMessage:
 					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
 				default:
