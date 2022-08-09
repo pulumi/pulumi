@@ -602,9 +602,10 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+		Urn:        string(urn),
+		Olds:       molds,
+		News:       mnews,
+		RandomSeed: randomSeed,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
 	"sort"
 
@@ -339,10 +340,23 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		provider, ok := urnToReference[providerURN]
 		contract.Assert(ok)
 
+		// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+		var randomSeed []byte
+		if i.deployment.plan != nil {
+			if resourcePlan, ok := i.deployment.plan.ResourcePlans[urn]; ok {
+				randomSeed = resourcePlan.Seed
+			}
+		} else {
+			randomSeed = make([]byte, 32)
+			n, err := cryptorand.Read(randomSeed)
+			contract.AssertNoError(err)
+			contract.Assert(n == len(randomSeed))
+		}
+
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "", false)
-		steps = append(steps, newImportDeploymentStep(i.deployment, new))
+		steps = append(steps, newImportDeploymentStep(i.deployment, new, randomSeed))
 	}
 
 	if !i.executeParallel(ctx, steps...) {
