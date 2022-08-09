@@ -121,7 +121,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 		project, ok := localProjects[p.Name]
 		if ok {
-			requirementsTxt.WriteString(fmt.Sprintf("%s/python\n", project))
+			requirementsTxt.WriteString(fmt.Sprintf("%s\n", project))
 			continue
 		}
 

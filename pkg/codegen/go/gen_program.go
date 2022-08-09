@@ -155,8 +155,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	gomod.WriteString("module " + project.Name.String() + "\n")
 	gomod.WriteString("go 1.17\n")
 	for name, sdk := range localProjects {
-		if name == "pulumi" {
-			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi => %s\n", sdk))
+		if name == "go" {
+			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi/sdk/v3/go => %s\n", sdk))
 		} else {
 			for _, p := range packages {
 				if p.Name == name {

@@ -66,9 +66,10 @@ type PluginOptions struct {
 }
 
 type MatrixTestOptions struct {
-	Languages []LangTestOption
-	Program   *i.ProgramTestOptions
-	Plugins   []PluginOptions
+	Languages  []LangTestOption
+	Program    *i.ProgramTestOptions
+	PulumiSDKs map[string]string
+	Plugins    []PluginOptions
 }
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error
@@ -128,6 +129,11 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 
 	//Here we are overriding the plugin links to use our own plugin links.
 	proj.Plugins = &workspace.Plugins{}
+
+	//This needs further testing
+	for lang, path := range opts.PulumiSDKs {
+		localProjects[lang] = path
+	}
 
 	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {

@@ -195,8 +195,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		localProjects = map[string]string{}
 	}
 
-	if localPulumi, ok := localProjects["pulumi"]; ok {
-		csproj.WriteString(fmt.Sprintf(projectTemplate, localPulumi))
+	if localPulumi, ok := localProjects["dotnet"]; ok {
+		csproj.WriteString(fmt.Sprintf(projectTemplate, filepath.Join(localPulumi, "Pulumi.csproj")))
 	} else {
 		csproj.WriteString(fmt.Sprintf(packageTemplate, "Pulumi", "3.*"))
 	}
