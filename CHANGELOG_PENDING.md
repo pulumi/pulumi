@@ -1,5 +1,8 @@
 ### Improvements
 
+- [cli] Updated to the latest version of go-git.
+  [#10330](https://github.com/pulumi/pulumi/pull/10330)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
