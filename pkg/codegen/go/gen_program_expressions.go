@@ -738,7 +738,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
-		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
+		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}, externalPackages: g.externalPackageCache}
 		return pkg.argsType(schemaType)
 	}
 

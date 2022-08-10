@@ -120,6 +120,22 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 	return strings.ToLower(mod)
 }
 
+type externalPackageHash struct {
+	name              string
+	version           string
+	pluginDownloadURL string
+}
+
+func newExternalPackageHash(pkg *schema.Package) externalPackageHash {
+	return externalPackageHash{
+		name:              pkg.Name,
+		version:           pkg.Version.String(),
+		pluginDownloadURL: pkg.PluginDownloadURL,
+	}
+}
+
+type ExternalPackages map[externalPackageHash]map[string]*pkgContext
+
 type pkgContext struct {
 	pkg             *schema.Package
 	mod             string
@@ -137,7 +153,7 @@ type pkgContext struct {
 	renamed     map[string]string
 
 	// A mapping between external packages and their bound contents.
-	externalPackages map[*schema.Package]map[string]*pkgContext
+	externalPackages ExternalPackages
 
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
@@ -660,7 +676,9 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
-	if !pkg.isExternalReference(t) {
+	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
+
+	if !isExternal {
 		name := pkg.tokenToType(t.Token)
 		if t.IsInputShape() {
 			return name + "Args"
@@ -704,13 +722,14 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 
 	var maps map[string]*pkgContext
 	if pkg.externalPackages == nil {
-		pkg.externalPackages = map[*schema.Package]map[string]*pkgContext{}
+		pkg.externalPackages = map[externalPackageHash]map[string]*pkgContext{}
 	}
-	if extMap, ok := pkg.externalPackages[extPkg]; ok {
+	hash := newExternalPackageHash(extPkg)
+	if extMap, ok := pkg.externalPackages[hash]; ok {
 		maps = extMap
 	} else {
-		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo)
-		pkg.externalPackages[extPkg] = maps
+		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
+		pkg.externalPackages[hash] = maps
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
@@ -3005,8 +3024,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs ExternalPackages) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
+
+	// Share the cache
+	if externalPkgs == nil {
+		externalPkgs = ExternalPackages{}
+	}
+
 	getPkg := func(mod string) *pkgContext {
 		pack, ok := packages[mod]
 		if !ok {
@@ -3028,6 +3053,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
 				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 				disableObjectDefaults:         goInfo.DisableObjectDefaults,
+				externalPackages:              externalPkgs,
 			}
 			packages[mod] = pack
 		}
@@ -3440,7 +3466,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, ExternalPackages{})
 
 	// emit each package
 	var pkgMods []string
@@ -3514,7 +3540,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
+
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, ExternalPackages{})
 
 	// emit each package
 	var pkgMods []string
