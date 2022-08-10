@@ -27,3 +27,6 @@
 
 - [codegen/go] Remove superfluous double forward slash from doc.go
   [#10317](https://github.com/pulumi/pulumi/pull/10317)
+
+- [cli/plugins] Don't retry plugin downloads that failed due to local file errors.
+  [#10341](https://github.com/pulumi/pulumi/pull/10341)
