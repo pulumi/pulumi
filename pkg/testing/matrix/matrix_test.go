@@ -25,7 +25,7 @@ import (
 
 func TestAll(t *testing.T) {
 	t.Parallel()
-	opts := []MatrixTestOptions{
+	opts := []TestOptions{
 		/*{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/empty",
@@ -70,7 +70,7 @@ func TestAll(t *testing.T) {
 					Name:    "command",
 					Kind:    workspace.ResourcePlugin,
 					Build:   []exec.Cmd{},
-					Bin:     "./bin",
+					Bin:     "./bin", //I've put a local version of the binary here, but it's not checked into git
 					Version: semver.MustParse("0.4.2"),
 				},
 				{
@@ -84,6 +84,7 @@ func TestAll(t *testing.T) {
 		},
 	}
 
+	t.Parallel()
 	for _, opt := range opts {
 		t.Run(opt.Program.Dir, func(t *testing.T) {
 			Test(t, opt)
@@ -95,27 +96,27 @@ func allLanguages() []LangTestOption {
 	return []LangTestOption{
 		{
 			Language: "go",
-			Version:  &semver.Version{Major: 1, Minor: 17, Patch: 0},
 			Opts:     nil,
 		},
 		{
 			Language: "python",
-			Version:  &semver.Version{Major: 3, Minor: 7, Patch: 0},
 			Opts:     nil,
 		},
 		{
 			Language: "nodejs",
-			Version:  &semver.Version{Major: 8, Minor: 0, Patch: 0},
 			Opts:     nil,
 		},
 		{
 			Language: "dotnet",
-			Version:  &semver.Version{Major: 2, Minor: 0, Patch: 0},
 			Opts:     nil,
 		},
+		/*{
+			Language: "java",
+			Version:  nil,
+			Opts:     nil,
+		},*/
 		{
 			Language: "yaml",
-			Version:  nil,
 			Opts:     nil,
 		},
 	}

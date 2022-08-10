@@ -48,7 +48,6 @@ import (
 
 type LangTestOption struct {
 	Language string
-	Version  *semver.Version //Array of versions?
 	Opts     *i.ProgramTestOptions
 }
 
@@ -65,16 +64,17 @@ type PluginOptions struct {
 	Bin string
 }
 
-type MatrixTestOptions struct {
+type TestOptions struct {
 	Languages  []LangTestOption
 	Program    *i.ProgramTestOptions
 	PulumiSDKs map[string]string
 	Plugins    []PluginOptions
 }
 
-type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error
+type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program,
+	localProjects map[string]string) error
 
-func Test(t *testing.T, opts MatrixTestOptions) {
+func Test(t *testing.T, opts TestOptions) {
 
 	dir := opts.Program.Dir
 	if !filepath.IsAbs(dir) {
@@ -235,20 +235,24 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 			switch lang {
 			case "go":
 				files, err = gogen.GeneratePackage(pkgName, pkg)
+				assert.NoError(t, err)
 			case "python":
 				PythonConfigurePkg(pkg)
 				files, err = pygen.GeneratePackage(pkgName, pkg, files)
+				assert.NoError(t, err)
 			case "nodejs":
 				NodeConfigurePkg(pkg)
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
+				assert.NoError(t, err)
 			case "dotnet":
 				DotnetConfigurePkg(pkg)
 				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
+				assert.NoError(t, err)
+			//In the future we should support java but I hava no idea where to even start with that.
 			default:
 				fmt.Printf("Unknown language: '%s'", lang)
 				continue
 			}
-			assert.NoError(t, err)
 
 			sdkDir := filepath.Join(dir, fmt.Sprintf("%s-sdk", pkgName), lang)
 			for p, file := range files {
@@ -267,13 +271,13 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 				cmd := exec.Command("go", "mod", "init")
 				cmd.Dir = sdkDir
 				err = cmd.Run()
-				//assert.NoError(t, err)
+				assert.NoError(t, err)
 
 				//run go mod tidy in the root of the sdk dir
 				cmd = exec.Command("go", "mod", "tidy", "-compat=1.18")
 				cmd.Dir = sdkDir
 				err = cmd.Run()
-				//assert.NoError(t, err)
+				assert.NoError(t, err)
 			}
 			if lang == "nodejs" {
 				//yarn install
@@ -295,7 +299,8 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 				assert.NoError(t, err)
 
 				//sed -i.bak -e "s/\$${VERSION}/$(VERSION)/g" ./bin/package.json
-				cmd = exec.Command("sed", "-i.bak", "-e", fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version), "./bin/package.json")
+				replace := fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version)
+				cmd = exec.Command("sed", "-i.bak", "-e", replace, "./bin/package.json")
 				cmd.Dir = sdkDir
 				err = cmd.Run()
 				assert.NoError(t, err)

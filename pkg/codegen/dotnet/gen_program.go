@@ -158,7 +158,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program, localProjects map[string]string) error {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
+	localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
