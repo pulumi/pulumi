@@ -20,6 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -192,7 +193,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
 		if localPackage, ok := localProjects[p.Name]; ok {
-			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, fmt.Sprintf("file:%s", localPackage+"/nodejs")))
+			localPackage = filepath.Join(localPackage, "nodejs", "bin")
+			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, fmt.Sprintf("file:%s", localPackage)))
 		} else if p.Version != nil {
 			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
 		} else {

@@ -299,7 +299,6 @@ func Test(t *testing.T, opts MatrixTestOptions) {
 				cmd.Dir = sdkDir
 				err = cmd.Run()
 				assert.NoError(t, err)
-
 			}
 		}
 	}
