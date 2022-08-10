@@ -84,10 +84,8 @@ func TestAll(t *testing.T) {
 		},
 	}
 
-	t.Parallel()
 	for _, opt := range opts {
 		t.Run(opt.Program.Dir, func(t *testing.T) {
-			t.Parallel()
 			Test(t, opt)
 		})
 	}
