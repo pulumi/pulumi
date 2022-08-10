@@ -816,56 +816,106 @@ func DownloadToFile(
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
 
-	tryDownload := func(dst io.WriteCloser) error {
+	// This is an internal helper that's pretty much just a copy of io.Copy except it returns read and
+	// write errors separately. We only want to retry if the read (i.e. download) fails, if the write
+	// fails thats probably due to file permissions or space limitations and there's no point retrying.
+	copyBuffer := func(dst io.Writer, src io.Reader) (written int64, readErr error, writeErr error) {
+		size := 32 * 1024
+		if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
+			if l.N < 1 {
+				size = 1
+			} else {
+				size = int(l.N)
+			}
+		}
+		buf := make([]byte, size)
+
+		for {
+			nr, er := src.Read(buf)
+			if nr > 0 {
+				nw, ew := dst.Write(buf[0:nr])
+				if nw < 0 || nr < nw {
+					nw = 0
+					if ew == nil {
+						ew = errors.New("invalid write result")
+					}
+				}
+				written += int64(nw)
+				if ew != nil {
+					return written, nil, ew
+				}
+				if nr != nw {
+					return written, nil, io.ErrShortWrite
+				}
+			}
+			if er != nil {
+				if er == io.EOF {
+					er = nil
+				}
+				return written, er, nil
+			}
+		}
+	}
+
+	tryDownload := func(dst io.WriteCloser) (error, error) {
 		defer dst.Close()
 		tarball, expectedByteCount, err := pkgPlugin.Download()
 		if err != nil {
-			return err
+			return err, nil
 		}
 		if wrapper != nil {
 			tarball = wrapper(tarball, expectedByteCount)
 		}
 		defer tarball.Close()
-		copiedByteCount, err := io.Copy(dst, tarball)
-		if err != nil {
-			return err
+		copiedByteCount, readErr, writerErr := copyBuffer(dst, tarball)
+		if readErr != nil || writerErr != nil {
+			return readErr, writerErr
 		}
 		if copiedByteCount != expectedByteCount {
-			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
+			return nil, fmt.Errorf("expected %d bytes but copied %d when downloading plugin %s",
 				expectedByteCount, copiedByteCount, pkgPlugin)
 		}
-		return nil
+		return nil, nil
 	}
 
-	tryDownloadToFile := func() (string, error) {
+	tryDownloadToFile := func() (string, error, error) {
 		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
-		err = tryDownload(file)
-		if err != nil {
+		readErr, writeErr := tryDownload(file)
+		if readErr != nil || writeErr != nil {
 			err2 := os.Remove(file.Name())
 			if err2 != nil {
-				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
+				// only one of readErr or writeErr will be set
+				err := readErr
+				if err == nil {
+					err = writeErr
+				}
+
+				return "", nil, fmt.Errorf("error while removing tempfile: %v. Context: %w", err2, err)
 			}
-			return "", err
+			return "", readErr, writeErr
 		}
-		return file.Name(), nil
+		return file.Name(), nil, nil
 	}
 
 	downloadToFileWithRetry := func() (string, error) {
 		delay := 80 * time.Millisecond
 		for attempt := 0; ; attempt++ {
-			tempFile, err := tryDownloadToFile()
-			if err == nil {
+			tempFile, readErr, writeErr := tryDownloadToFile()
+			if readErr == nil && writeErr == nil {
 				return tempFile, nil
 			}
+			if writeErr != nil {
+				return "", writeErr
+			}
 
-			if err != nil && attempt >= 5 {
-				return "", err
+			if readErr != nil && attempt >= 5 {
+				return "", readErr
 			}
 			if retry != nil {
-				retry(err, attempt+1, 5, delay)
+				retry(readErr, attempt+1, 5, delay)
 			}
 			time.Sleep(delay)
 			delay = delay * 2
