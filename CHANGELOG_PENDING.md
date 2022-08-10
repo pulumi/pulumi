@@ -6,6 +6,9 @@
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
 
+- [codegen/python] Use optional default arguments when generating `pulumi.Config.get` methods
+  [#10346](https://github.com/pulumi/pulumi/pull/10346)
+
 ### Bug Fixes
 
 - [cli] Paginate template options

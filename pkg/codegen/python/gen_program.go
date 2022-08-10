@@ -539,12 +539,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.genTemps(w, temps)
 
 	name := PyName(v.Name())
-	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
 	if defaultValue != nil {
-		g.Fgenf(w, "%sif %s is None:\n", g.Indent, name)
-		g.Indented(func() {
-			g.Fgenf(w, "%s%s = %.v\n", g.Indent, name, defaultValue)
-		})
+		g.Fgenf(w, "%s%s = config.%s%s(\"%s\", %.v)\n", g.Indent, name, getOrRequire, getType, v.Name(), defaultValue)
+	} else {
+		g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.Name())
 	}
 }
 
