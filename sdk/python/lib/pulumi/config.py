@@ -73,7 +73,11 @@ class Config:
         or None if it doesn't exist.
 
         :param str key: The requested configuration key.
+<<<<<<< HEAD
         :param Optional[str] default: An optional fallback value to use if the given configuration key is not set.
+=======
+        :param Optional[Any] default: An optional fallback value to use if the given configuration key is not set.
+>>>>>>> 46f650ff1 (feat: Supports optional arguments for pulumi.Config getters)
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
