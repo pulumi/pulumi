@@ -194,8 +194,7 @@ class LanghostTest(unittest.TestCase):
                  config=None,
                  expected_resource_count=None,
                  expected_error=None,
-                 expected_stderr_contains=None,
-                 expected_bail=None):
+                 expected_stderr_contains=None):
         """
         Runs a language host test. The basic flow of a language host test is that
         a test is launched using the real language host while mocking out the resource
@@ -242,10 +241,7 @@ class LanghostTest(unittest.TestCase):
             # If we expected an error, assert that we saw it. Otherwise assert
             # that there wasn't an error.
             expected = expected_error or ""
-            self.assertEqual(result.error, expected)
-
-            expected_bail = expected_bail or False
-            self.assertEqual(result.bail, expected_bail)
+            self.assertEqual(result, expected)
 
             if expected_stderr_contains:
                 if expected_stderr_contains not in str(stderr):
@@ -362,4 +358,4 @@ class LanghostTest(unittest.TestCase):
         request = proto.RunRequest(**args)
         self.assertTrue(request.IsInitialized())
         resp = stub.Run(request)
-        return resp
+        return resp.error
