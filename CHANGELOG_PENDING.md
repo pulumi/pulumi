@@ -5,7 +5,7 @@
 
 - [sdk]
    - merge python error message and traceback into single error message.
-   [#10258](https://github.com/pulumi/pulumi/pull/10258)
+   [#10348](https://github.com/pulumi/pulumi/pull/10348)
 
 ### Bug Fixes
 
