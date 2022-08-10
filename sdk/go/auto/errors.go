@@ -109,10 +109,6 @@ func IsRuntimeError(e error) bool {
 		return false
 	}
 
-	if IsUnexpectedEngineError(e) {
-		return false
-	}
-
 	if IsCompilationError(e) {
 		return false
 	}
@@ -131,9 +127,6 @@ func IsRuntimeError(e error) bool {
 	}
 
 	if strings.Contains(as.Error(), "go inline source runtime error") {
-		return true
-	}
-	if as.code != 0 {
 		return true
 	}
 
