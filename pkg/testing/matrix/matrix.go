@@ -46,6 +46,13 @@ import (
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
+const NODEJS = "nodejs"
+const PYTHON = "python"
+const JAVA = "java"
+const DOTNET = "dotnet"
+const YAML = "yaml"
+const GO = "go"
+
 type LangTestOption struct {
 	Language string
 	Opts     *i.ProgramTestOptions
@@ -233,19 +240,22 @@ func Test(t *testing.T, opts TestOptions) {
 			var files map[string][]byte
 			var err error
 			switch lang {
-			case "go":
+			case GO:
 				files, err = gogen.GeneratePackage(pkgName, pkg)
 				assert.NoError(t, err)
-			case "python":
-				PythonConfigurePkg(pkg)
+			case PYTHON:
+				err = PythonConfigurePkg(pkg)
+				assert.NoError(t, err)
 				files, err = pygen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
-			case "nodejs":
-				NodeConfigurePkg(pkg)
+			case NODEJS:
+				err = NodeConfigurePkg(pkg)
+				assert.NoError(t, err)
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
-			case "dotnet":
-				DotnetConfigurePkg(pkg)
+			case DOTNET:
+				err = DotnetConfigurePkg(pkg)
+				assert.NoError(t, err)
 				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
 			//In the future we should support java but I hava no idea where to even start with that.
@@ -279,7 +289,7 @@ func Test(t *testing.T, opts TestOptions) {
 				err = cmd.Run()
 				assert.NoError(t, err)
 			}
-			if lang == "nodejs" {
+			if lang == NODEJS {
 				//yarn install
 				cmd := exec.Command("yarn", "install")
 				cmd.Dir = sdkDir
@@ -312,20 +322,22 @@ func Test(t *testing.T, opts TestOptions) {
 	for _, langOpt := range opts.Languages {
 		var projectGenerator projectGeneratorFunc
 		switch langOpt.Language {
-		case "dotnet":
+		case DOTNET:
 			projectGenerator = dotnetgen.GenerateProject
-		case "go":
+		case GO:
 			projectGenerator = gogen.GenerateProject
-		case "nodejs":
+		case NODEJS:
 			projectGenerator = jsgen.GenerateProject
-		case "python":
+		case PYTHON:
 			projectGenerator = pygen.GenerateProject
-		case "java":
-			projectGenerator = func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error {
+		case JAVA:
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]string) error {
 				return javagen.GenerateProject(directory, project, p)
 			}
-		case "yaml": // nolint: goconst
-			projectGenerator = func(directory string, project workspace.Project, p *pcl.Program, localProjects map[string]string) error {
+		case YAML: // nolint: goconst
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]string) error {
 				return yamlgen.GenerateProject(directory, project, p)
 			}
 		default:

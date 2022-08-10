@@ -1085,7 +1085,10 @@ func (pt *ProgramTester) InitializeAuxiliaryStacks() error {
 			// Add a pulumi destroy command to cleanup
 			pt.t.Cleanup(func() {
 				destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
-				pt.runPulumiCommand("pulumi-destroy", destroy, stack.Dir, false)
+				err := pt.runPulumiCommand("pulumi-destroy", destroy, stack.Dir, false)
+				if err != nil {
+					pt.t.Errorf("Failed to destroy auxiliary stack at %s: %v", stack.Dir, err)
+				}
 			})
 		}
 	}
