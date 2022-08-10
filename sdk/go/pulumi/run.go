@@ -47,7 +47,8 @@ func Run(body RunFunc, opts ...RunOption) {
 		if err != nil {
 			// Log the error message
 			if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
-				ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+				err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+				contract.IgnoreError(err)
 			}
 			os.Exit(1)
 		}
