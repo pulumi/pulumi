@@ -9,7 +9,7 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		policyDocument, err := iam.GetPolicyDocument(ctx, &iam.GetPolicyDocumentArgs{
 			Statements: []iam.GetPolicyDocumentStatement{
-				{
+				iam.GetPolicyDocumentStatement{
 					Sid: pulumi.StringRef("1"),
 					Actions: []string{
 						"s3:ListAllMyBuckets",

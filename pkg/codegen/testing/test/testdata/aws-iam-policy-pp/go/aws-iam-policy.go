@@ -12,7 +12,7 @@ func main() {
 		tmpJSON0, err := json.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
-				{
+				map[string]interface{}{
 					"Effect":   "Allow",
 					"Action":   "lambda:*",
 					"Resource": "arn:aws:lambda:*:*:function:*",
