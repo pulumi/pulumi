@@ -248,11 +248,12 @@ func Test(t *testing.T, opts TestOptions) {
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
 			case DOTNET:
-				err = DotnetConfigurePkg(pkg)
 				assert.NoError(t, err)
 				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
 			//In the future we should support java but I hava no idea where to even start with that.
+			case YAML:
+				continue
 			default:
 				fmt.Printf("Unknown language: '%s'", lang)
 				continue
@@ -263,23 +264,6 @@ func Test(t *testing.T, opts TestOptions) {
 				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
 				assert.NoError(t, err)
 				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
-				assert.NoError(t, err)
-			}
-			if lang == "go" {
-				//remove go.mod and go.sum files if they exist
-				os.Remove(filepath.Join(sdkDir, "go.mod"))
-				os.Remove(filepath.Join(sdkDir, "go.sum"))
-
-				//run go mod init in the root of the sdk dir
-				cmd := exec.Command("go", "mod", "init")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-
-				//run go mod tidy in the root of the sdk dir
-				cmd = exec.Command("go", "mod", "tidy", "-compat=1.18")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
 				assert.NoError(t, err)
 			}
 			if lang == NODEJS {
@@ -296,7 +280,7 @@ func Test(t *testing.T, opts TestOptions) {
 				assert.NoError(t, err)
 
 				//cp ../../README.md ../../LICENSE package.json yarn.lock ./bin/
-				cmd = exec.Command("cp", "../../README.md", "../../LICENSE", "package.json", "yarn.lock", "./bin/")
+				cmd = exec.Command("cp", "package.json", "yarn.lock", "./bin/")
 				cmd.Dir = sdkDir
 				err = cmd.Run()
 				assert.NoError(t, err)
@@ -368,9 +352,9 @@ func Test(t *testing.T, opts TestOptions) {
 		//clean up subdir
 
 		//Including this seems to cause all tests to fail.
-		/*t.Cleanup(func() {
+		t.Cleanup(func() {
 			os.RemoveAll(subdir)
-		})*/
+		})
 	}
 }
 
@@ -423,28 +407,5 @@ func NodeConfigurePkg(pkg *schema.Package) error {
 	}
 	nodePkg.RespectSchemaVersion = true
 	pkg.Language["nodejs"] = nodePkg
-	return nil
-}
-
-func DotnetConfigurePkg(pkg *schema.Package) error {
-	raw, notnil := pkg.Language["csharp"]
-	message, ismessage := raw.(json.RawMessage)
-	var dotnetPkg dotnetgen.CSharpPackageInfo
-	if notnil && ismessage {
-		err := json.Unmarshal(message, &dotnetPkg)
-		if err != nil {
-			return err
-		}
-	} else if notnil && !ismessage {
-		info, ok := raw.(dotnetgen.CSharpPackageInfo)
-		if !ok {
-			return fmt.Errorf("invalid dotnet package info")
-		}
-		dotnetPkg = info
-	} else if !notnil {
-		dotnetPkg = dotnetgen.CSharpPackageInfo{}
-	}
-	dotnetPkg.RespectSchemaVersion = true
-	pkg.Language["csharp"] = dotnetPkg
 	return nil
 }

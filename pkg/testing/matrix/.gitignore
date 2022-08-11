@@ -6,3 +6,4 @@ tests/*/python
 tests/*/yaml
 tests/*/sdk
 tests/*/*-sdk
+tests/*/Pulumi.dev.yaml
