@@ -82,11 +82,11 @@ func (i ContainerArgs) ToContainerPtrOutputWithContext(ctx context.Context) Cont
 // ContainerPtrInput is an input type that accepts ContainerArgs, ContainerPtr and ContainerPtrOutput values.
 // You can construct a concrete instance of `ContainerPtrInput` via:
 //
-//	        ContainerArgs{...}
+//	   ContainerArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ContainerPtrInput interface {
 	pulumi.Input
 

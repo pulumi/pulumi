@@ -54,11 +54,11 @@ func (i ChewArgs) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput 
 // ChewPtrInput is an input type that accepts ChewArgs, ChewPtr and ChewPtrOutput values.
 // You can construct a concrete instance of `ChewPtrInput` via:
 //
-//	        ChewArgs{...}
+//	   ChewArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ChewPtrInput interface {
 	pulumi.Input
 
@@ -194,11 +194,11 @@ func (i LaserArgs) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutp
 // LaserPtrInput is an input type that accepts LaserArgs, LaserPtr and LaserPtrOutput values.
 // You can construct a concrete instance of `LaserPtrInput` via:
 //
-//	        LaserArgs{...}
+//	   LaserArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type LaserPtrInput interface {
 	pulumi.Input
 
@@ -354,11 +354,11 @@ func (i RecArgs) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
 // RecPtrInput is an input type that accepts RecArgs, RecPtr and RecPtrOutput values.
 // You can construct a concrete instance of `RecPtrInput` via:
 //
-//	        RecArgs{...}
+//	   RecArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type RecPtrInput interface {
 	pulumi.Input
 
@@ -493,11 +493,11 @@ func (i ToyArgs) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput {
 // ToyPtrInput is an input type that accepts ToyArgs, ToyPtr and ToyPtrOutput values.
 // You can construct a concrete instance of `ToyPtrInput` via:
 //
-//	        ToyArgs{...}
+//	   ToyArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ToyPtrInput interface {
 	pulumi.Input
 

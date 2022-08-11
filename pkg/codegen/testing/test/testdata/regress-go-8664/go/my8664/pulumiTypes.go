@@ -52,11 +52,11 @@ func (i ConditionalAccessPolicyConditionsArgs) ToConditionalAccessPolicyConditio
 // ConditionalAccessPolicyConditionsPtrInput is an input type that accepts ConditionalAccessPolicyConditionsArgs, ConditionalAccessPolicyConditionsPtr and ConditionalAccessPolicyConditionsPtrOutput values.
 // You can construct a concrete instance of `ConditionalAccessPolicyConditionsPtrInput` via:
 //
-//	        ConditionalAccessPolicyConditionsArgs{...}
+//	   ConditionalAccessPolicyConditionsArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ConditionalAccessPolicyConditionsPtrInput interface {
 	pulumi.Input
 

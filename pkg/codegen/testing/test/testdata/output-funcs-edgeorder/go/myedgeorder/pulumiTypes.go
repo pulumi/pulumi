@@ -609,11 +609,11 @@ func (i CustomerSubscriptionDetailsArgs) ToCustomerSubscriptionDetailsPtrOutputW
 // CustomerSubscriptionDetailsPtrInput is an input type that accepts CustomerSubscriptionDetailsArgs, CustomerSubscriptionDetailsPtr and CustomerSubscriptionDetailsPtrOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionDetailsPtrInput` via:
 //
-//	        CustomerSubscriptionDetailsArgs{...}
+//	   CustomerSubscriptionDetailsArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type CustomerSubscriptionDetailsPtrInput interface {
 	pulumi.Input
 

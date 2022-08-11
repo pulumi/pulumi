@@ -50,11 +50,11 @@ func (i GetCustomDbRolesResultArgs) ToGetCustomDbRolesResultPtrOutputWithContext
 // GetCustomDbRolesResultPtrInput is an input type that accepts GetCustomDbRolesResultArgs, GetCustomDbRolesResultPtr and GetCustomDbRolesResultPtrOutput values.
 // You can construct a concrete instance of `GetCustomDbRolesResultPtrInput` via:
 //
-//	        GetCustomDbRolesResultArgs{...}
+//	   GetCustomDbRolesResultArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type GetCustomDbRolesResultPtrInput interface {
 	pulumi.Input
 

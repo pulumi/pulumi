@@ -65,11 +65,11 @@ func (i PetArgs) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
 // PetPtrInput is an input type that accepts PetArgs, PetPtr and PetPtrOutput values.
 // You can construct a concrete instance of `PetPtrInput` via:
 //
-//	        PetArgs{...}
+//	   PetArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type PetPtrInput interface {
 	pulumi.Input
 

@@ -928,13 +928,17 @@ func (pkg *pkgContext) getUsageForNestedType(name, baseTypeName string) string {
 }
 
 func (pkg *pkgContext) getInputUsage(name string) string {
+	// Note: since the introduction of additional formatting for doc comments in Go 1.19, the
+	// whitespace before the code sample is significant. Gofmt enforces it that way, so changing it
+	// will fail our roundtrip tests.
+
 	if strings.HasSuffix(name, "Array") {
 		baseTypeName := name[:strings.LastIndex(name, "Array")]
 		return strings.Join([]string{
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
+			"\t" + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
@@ -945,7 +949,7 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
+			"\t" + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
@@ -956,11 +960,11 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
+			fmt.Sprintf("\t%sArgs{...}", baseTypeName),
 			"",
 			" or:",
 			"",
-			"\t\t nil",
+			"\tnil",
 			" ",
 		}, "\n")
 	}
@@ -969,7 +973,7 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 		fmt.Sprintf("%sInput is an input type that accepts %sArgs and %sOutput values.", name, name, name),
 		fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 		"",
-		fmt.Sprintf("\t\t %sArgs{...}", name),
+		fmt.Sprintf("\t%sArgs{...}", name),
 		" ",
 	}, "\n")
 }

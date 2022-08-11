@@ -54,11 +54,11 @@ func (i TaskDefinitionContainerDefinitionArgs) ToTaskDefinitionContainerDefiniti
 // TaskDefinitionContainerDefinitionPtrInput is an input type that accepts TaskDefinitionContainerDefinitionArgs, TaskDefinitionContainerDefinitionPtr and TaskDefinitionContainerDefinitionPtrOutput values.
 // You can construct a concrete instance of `TaskDefinitionContainerDefinitionPtrInput` via:
 //
-//	        TaskDefinitionContainerDefinitionArgs{...}
+//	   TaskDefinitionContainerDefinitionArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type TaskDefinitionContainerDefinitionPtrInput interface {
 	pulumi.Input
 

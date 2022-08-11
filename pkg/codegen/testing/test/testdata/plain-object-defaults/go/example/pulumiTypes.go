@@ -97,11 +97,11 @@ func (i HelmReleaseSettingsArgs) ToHelmReleaseSettingsPtrOutputWithContext(ctx c
 // HelmReleaseSettingsPtrInput is an input type that accepts HelmReleaseSettingsArgs, HelmReleaseSettingsPtr and HelmReleaseSettingsPtrOutput values.
 // You can construct a concrete instance of `HelmReleaseSettingsPtrInput` via:
 //
-//	        HelmReleaseSettingsArgs{...}
+//	   HelmReleaseSettingsArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type HelmReleaseSettingsPtrInput interface {
 	pulumi.Input
 
@@ -307,11 +307,11 @@ func (i KubeClientSettingsArgs) ToKubeClientSettingsPtrOutputWithContext(ctx con
 // KubeClientSettingsPtrInput is an input type that accepts KubeClientSettingsArgs, KubeClientSettingsPtr and KubeClientSettingsPtrOutput values.
 // You can construct a concrete instance of `KubeClientSettingsPtrInput` via:
 //
-//	        KubeClientSettingsArgs{...}
+//	   KubeClientSettingsArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type KubeClientSettingsPtrInput interface {
 	pulumi.Input
 
@@ -538,11 +538,11 @@ func (i LayeredTypeArgs) ToLayeredTypePtrOutputWithContext(ctx context.Context) 
 // LayeredTypePtrInput is an input type that accepts LayeredTypeArgs, LayeredTypePtr and LayeredTypePtrOutput values.
 // You can construct a concrete instance of `LayeredTypePtrInput` via:
 //
-//	        LayeredTypeArgs{...}
+//	   LayeredTypeArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type LayeredTypePtrInput interface {
 	pulumi.Input
 
@@ -780,11 +780,11 @@ func (i TypArgs) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 // TypPtrInput is an input type that accepts TypArgs, TypPtr and TypPtrOutput values.
 // You can construct a concrete instance of `TypPtrInput` via:
 //
-//	        TypArgs{...}
+//	   TypArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type TypPtrInput interface {
 	pulumi.Input
 

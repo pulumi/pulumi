@@ -54,11 +54,11 @@ func (i BazArgs) ToBazPtrOutputWithContext(ctx context.Context) BazPtrOutput {
 // BazPtrInput is an input type that accepts BazArgs, BazPtr and BazPtrOutput values.
 // You can construct a concrete instance of `BazPtrInput` via:
 //
-//	        BazArgs{...}
+//	   BazArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type BazPtrInput interface {
 	pulumi.Input
 

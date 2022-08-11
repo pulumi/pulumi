@@ -62,11 +62,11 @@ func (i FooArgs) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 // FooPtrInput is an input type that accepts FooArgs, FooPtr and FooPtrOutput values.
 // You can construct a concrete instance of `FooPtrInput` via:
 //
-//	        FooArgs{...}
+//	   FooArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type FooPtrInput interface {
 	pulumi.Input
 

@@ -158,11 +158,11 @@ func (i ObjectArgs) ToObjectPtrOutputWithContext(ctx context.Context) ObjectPtrO
 // ObjectPtrInput is an input type that accepts ObjectArgs, ObjectPtr and ObjectPtrOutput values.
 // You can construct a concrete instance of `ObjectPtrInput` via:
 //
-//	        ObjectArgs{...}
+//	   ObjectArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ObjectPtrInput interface {
 	pulumi.Input
 
@@ -349,11 +349,11 @@ func (i ObjectWithNodeOptionalInputsArgs) ToObjectWithNodeOptionalInputsPtrOutpu
 // ObjectWithNodeOptionalInputsPtrInput is an input type that accepts ObjectWithNodeOptionalInputsArgs, ObjectWithNodeOptionalInputsPtr and ObjectWithNodeOptionalInputsPtrOutput values.
 // You can construct a concrete instance of `ObjectWithNodeOptionalInputsPtrInput` via:
 //
-//	        ObjectWithNodeOptionalInputsArgs{...}
+//	   ObjectWithNodeOptionalInputsArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type ObjectWithNodeOptionalInputsPtrInput interface {
 	pulumi.Input
 
@@ -544,11 +544,11 @@ func (i SomeOtherObjectArgs) ToSomeOtherObjectPtrOutputWithContext(ctx context.C
 // SomeOtherObjectPtrInput is an input type that accepts SomeOtherObjectArgs, SomeOtherObjectPtr and SomeOtherObjectPtrOutput values.
 // You can construct a concrete instance of `SomeOtherObjectPtrInput` via:
 //
-//	        SomeOtherObjectArgs{...}
+//	   SomeOtherObjectArgs{...}
 //
 //	or:
 //
-//	        nil
+//	   nil
 type SomeOtherObjectPtrInput interface {
 	pulumi.Input
 
