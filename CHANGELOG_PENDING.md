@@ -35,4 +35,6 @@
 
 - [dotnet] Set environment exit code during `Deployment.RunAsync` in case users don't bubble it the program entry point themselves
   [#10217](https://github.com/pulumi/pulumi/pull/10217)
-  
+
+- [cli/display] Fix a panic in the color logic.
+  [#10354](https://github.com/pulumi/pulumi/pull/10354)
