@@ -622,13 +622,21 @@ func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
 	return isExternal
 }
 
+func (pkg *pkgContext) IsPackage(other *schema.Package) bool {
+	if pkg.pkg == nil {
+		return false
+	}
+
+	return pkg.pkg.Name == other.Name && pkg.pkg.Version == other.Version
+}
+
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
 func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 	isExternal bool, extPkg *schema.Package, token string) {
 	var err error
 	switch typ := t.(type) {
 	case *schema.ObjectType:
-		isExternal = typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
+		isExternal = typ.Package != nil && pkg.pkg != nil && !pkg.IsPackage(typ.Package)
 		if isExternal {
 			extPkg, err = typ.PackageReference.Definition()
 			contract.AssertNoError(err)
@@ -636,7 +644,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 		}
 		return
 	case *schema.ResourceType:
-		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
+		isExternal = typ.Resource != nil && pkg.pkg != nil && !pkg.IsPackage(typ.Resource.Package)
 		if isExternal {
 			extPkg, err = typ.Resource.PackageReference.Definition()
 			contract.AssertNoError(err)
@@ -644,7 +652,7 @@ func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
 		}
 		return
 	case *schema.EnumType:
-		isExternal = pkg.pkg != nil && typ.Package != pkg.pkg
+		isExternal = pkg.pkg != nil && !pkg.IsPackage(typ.Package)
 		if isExternal {
 			extPkg, err = typ.PackageReference.Definition()
 			contract.AssertNoError(err)
