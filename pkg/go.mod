@@ -52,7 +52,7 @@ require (
 	github.com/zclconf/go-cty v1.10.0
 	gocloud.dev v0.24.0
 	gocloud.dev/secrets/hashivault v0.24.0
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
