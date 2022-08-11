@@ -10,6 +10,9 @@
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
 
+- [sdk/python] hide internal pulumi stacks in python stacktrace output
+  [#10336](https://github.com/pulumi/pulumi/pull/10336)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
