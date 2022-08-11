@@ -3,6 +3,9 @@
 - [cli] Updated to the latest version of go-git.
   [#10330](https://github.com/pulumi/pulumi/pull/10330)
 
+- [sdk/python] Support optional default parameters in pulumi.Config
+  [#10344](https://github.com/pulumi/pulumi/pull/10344)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
