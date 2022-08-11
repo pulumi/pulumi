@@ -747,9 +747,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	}
 
 	var maps map[string]*pkgContext
-	if pkg.externalPackages == nil {
-		pkg.externalPackages = globalCache
-	}
+
 	hash := newExternalPackageHash(extPkg)
 	if extMap, ok := pkg.externalPackages.lookupContextMap(hash); ok {
 		maps = extMap
@@ -759,6 +757,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
+	extPkgCtx.externalPackages = pkg.externalPackages
 	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
 
 	return extPkgCtx, *maps[mod].detailsForType(t)

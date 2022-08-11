@@ -65,12 +65,13 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, pkg := range packageDefs {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
-	}
 
 	if opts.ExternalCache == nil {
 		opts.ExternalCache = globalCache
+	}
+
+	for _, pkg := range packageDefs {
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
 	}
 
 	g := &generator{
@@ -244,7 +245,7 @@ require (
 
 var packageContexts sync.Map
 
-func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
+func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkgContext {
 	if v, ok := packageContexts.Load(pkg); ok {
 		return v.(map[string]*pkgContext)
 	}
@@ -257,7 +258,7 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	v := generatePackageContextMap(tool, pkg, goPkgInfo, nil)
+	v := generatePackageContextMap(tool, pkg, goPkgInfo, cache)
 	packageContexts.Store(pkg, v)
 	return v
 }
