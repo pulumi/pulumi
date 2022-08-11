@@ -30,6 +30,9 @@
 - [codegen/go] Remove superfluous double forward slash from doc.go
   [#10317](https://github.com/pulumi/pulumi/pull/10317)
 
+- [codegen/go] Add an external package cache option to `GenerateProgramOptions`.
+  [#10340](https://github.com/pulumi/pulumi/pull/10340)
+
 - [cli/plugins] Don't retry plugin downloads that failed due to local file errors.
   [#10341](https://github.com/pulumi/pulumi/pull/10341)
 
@@ -37,4 +40,4 @@
   [#10217](https://github.com/pulumi/pulumi/pull/10217)
 
 - [cli/display] Fix a panic in the color logic.
-  [#10354](https://github.com/pulumi/pulumi/pull/10354)
+  [#10354](https://github.com/pulumi/pulumi/pull/10354
