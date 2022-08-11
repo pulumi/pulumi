@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -134,7 +135,32 @@ func newExternalPackageHash(pkg *schema.Package) externalPackageHash {
 	}
 }
 
-type ExternalPackages map[externalPackageHash]map[string]*pkgContext
+// A threadsafe cache for sharing between invocations of GenerateProgram.
+type Cache struct {
+	externalPackages map[externalPackageHash]map[string]*pkgContext
+	m                sync.Mutex
+}
+
+var globalCache = NewCache()
+
+func NewCache() *Cache {
+	return &Cache{
+		externalPackages: map[externalPackageHash]map[string]*pkgContext{},
+	}
+}
+
+func (c *Cache) lookupContextMap(pkg externalPackageHash) (map[string]*pkgContext, bool) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	m, ok := c.externalPackages[pkg]
+	return m, ok
+}
+
+func (c *Cache) setContextMap(pkg externalPackageHash, m map[string]*pkgContext) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.externalPackages[pkg] = m
+}
 
 type pkgContext struct {
 	pkg             *schema.Package
@@ -153,7 +179,7 @@ type pkgContext struct {
 	renamed     map[string]string
 
 	// A mapping between external packages and their bound contents.
-	externalPackages ExternalPackages
+	externalPackages *Cache
 
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
@@ -722,14 +748,14 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 
 	var maps map[string]*pkgContext
 	if pkg.externalPackages == nil {
-		pkg.externalPackages = map[externalPackageHash]map[string]*pkgContext{}
+		pkg.externalPackages = globalCache
 	}
 	hash := newExternalPackageHash(extPkg)
-	if extMap, ok := pkg.externalPackages[hash]; ok {
+	if extMap, ok := pkg.externalPackages.lookupContextMap(hash); ok {
 		maps = extMap
 	} else {
 		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
-		pkg.externalPackages[hash] = maps
+		pkg.externalPackages.setContextMap(hash, maps)
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
@@ -3024,12 +3050,12 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs ExternalPackages) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs *Cache) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
 
 	// Share the cache
 	if externalPkgs == nil {
-		externalPkgs = ExternalPackages{}
+		externalPkgs = globalCache
 	}
 
 	getPkg := func(mod string) *pkgContext {
@@ -3466,7 +3492,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, ExternalPackages{})
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, globalCache)
 
 	// emit each package
 	var pkgMods []string
@@ -3540,8 +3566,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, ExternalPackages{})
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, NewCache())
 
 	// emit each package
 	var pkgMods []string

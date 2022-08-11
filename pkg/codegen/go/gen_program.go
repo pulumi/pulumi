@@ -27,21 +27,21 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program              *pcl.Program
-	packages             map[string]*schema.Package
-	contexts             map[string]map[string]*pkgContext
-	diagnostics          hcl.Diagnostics
-	spills               *spills
-	jsonTempSpiller      *jsonSpiller
-	ternaryTempSpiller   *tempSpiller
-	readDirTempSpiller   *readDirSpiller
-	splatSpiller         *splatSpiller
-	optionalSpiller      *optionalSpiller
-	scopeTraversalRoots  codegen.StringSet
-	arrayHelpers         map[string]*promptToInputArrayHelper
-	isErrAssigned        bool
-	configCreated        bool
-	externalPackageCache ExternalPackages
+	program             *pcl.Program
+	packages            map[string]*schema.Package
+	contexts            map[string]map[string]*pkgContext
+	diagnostics         hcl.Diagnostics
+	spills              *spills
+	jsonTempSpiller     *jsonSpiller
+	ternaryTempSpiller  *tempSpiller
+	readDirTempSpiller  *readDirSpiller
+	splatSpiller        *splatSpiller
+	optionalSpiller     *optionalSpiller
+	scopeTraversalRoots codegen.StringSet
+	arrayHelpers        map[string]*promptToInputArrayHelper
+	isErrAssigned       bool
+	configCreated       bool
+	externalCache       *Cache
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -50,7 +50,7 @@ type generator struct {
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
-	ExternalPackageCache       ExternalPackages
+	ExternalCache              *Cache
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -69,23 +69,23 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
-	if opts.ExternalPackageCache == nil {
-		opts.ExternalPackageCache = ExternalPackages{}
+	if opts.ExternalCache == nil {
+		opts.ExternalCache = globalCache
 	}
 
 	g := &generator{
-		program:              program,
-		packages:             packages,
-		contexts:             contexts,
-		spills:               &spills{counts: map[string]int{}},
-		jsonTempSpiller:      &jsonSpiller{},
-		ternaryTempSpiller:   &tempSpiller{},
-		readDirTempSpiller:   &readDirSpiller{},
-		splatSpiller:         &splatSpiller{},
-		optionalSpiller:      &optionalSpiller{},
-		scopeTraversalRoots:  codegen.NewStringSet(),
-		arrayHelpers:         make(map[string]*promptToInputArrayHelper),
-		externalPackageCache: opts.ExternalPackageCache,
+		program:             program,
+		packages:            packages,
+		contexts:            contexts,
+		spills:              &spills{counts: map[string]int{}},
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		externalCache:       opts.ExternalCache,
 	}
 
 	// Apply any generate options.
