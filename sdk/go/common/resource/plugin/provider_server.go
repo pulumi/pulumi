@@ -266,7 +266,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, int(req.SequenceNumber))
+	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}

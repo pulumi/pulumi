@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"sync"
@@ -105,67 +104,13 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		Version: version,
 	}
 
-	tryDownload := func(dst io.WriteCloser) error {
-		defer dst.Close()
-		tarball, expectedByteCount, err := pkgPlugin.Download()
-		if err != nil {
-			return err
-		}
-		defer tarball.Close()
-		copiedByteCount, err := io.Copy(dst, tarball)
-		if err != nil {
-			return err
-		}
-		if copiedByteCount != expectedByteCount {
-			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
-				expectedByteCount, copiedByteCount, pkgPlugin)
-		}
-		return nil
-	}
-
-	tryDownloadToFile := func() (string, error) {
-		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
-		if err != nil {
-			return "", err
-		}
-		err = tryDownload(file)
-		if err != nil {
-			err2 := os.Remove(file.Name())
-			if err2 != nil {
-				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
-			}
-			return "", err
-		}
-		return file.Name(), nil
-	}
-
-	downloadToFileWithRetry := func() (string, error) {
-		delay := 80 * time.Millisecond
-		for attempt := 0; ; attempt++ {
-			tempFile, err := tryDownloadToFile()
-			if err == nil {
-				return tempFile, nil
-			}
-
-			if err != nil && attempt >= 5 {
-				return tempFile, err
-			}
-			time.Sleep(delay)
-			delay = delay * 2
-		}
-	}
-
 	if !workspace.HasPlugin(pkgPlugin) {
-		tarball, err := downloadToFileWithRetry()
+		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
 		if err != nil {
 			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
 		}
-		defer os.Remove(tarball)
-		reader, err := os.Open(tarball)
-		if err != nil {
-			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
-		}
-		if err := pkgPlugin.InstallWithContext(context.Background(), workspace.TarPlugin(reader), false); err != nil {
+		defer os.Remove(tarball.Name())
+		if err := pkgPlugin.InstallWithContext(context.Background(), workspace.TarPlugin(tarball), false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
@@ -199,7 +144,7 @@ func schemaIsEmpty(schemaBytes []byte) bool {
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
 	if pkg == "pulumi" {
-		return DefaultPulumiPackageReference, nil
+		return DefaultPulumiPackage.Reference(), nil
 	}
 
 	l.m.Lock()

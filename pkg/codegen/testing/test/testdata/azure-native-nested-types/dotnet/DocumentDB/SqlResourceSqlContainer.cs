@@ -107,7 +107,7 @@ namespace Pulumi.AzureNative.DocumentDB
     /// ```
     /// </summary>
     [AzureNativeResourceType("azure-native:documentdb:SqlResourceSqlContainer")]
-    public partial class SqlResourceSqlContainer : Pulumi.CustomResource
+    public partial class SqlResourceSqlContainer : global::Pulumi.CustomResource
     {
         [Output("resource")]
         public Output<Outputs.SqlContainerGetPropertiesResponseResource?> Resource { get; private set; } = null!;
@@ -155,10 +155,11 @@ namespace Pulumi.AzureNative.DocumentDB
         }
     }
 
-    public sealed class SqlResourceSqlContainerArgs : Pulumi.ResourceArgs
+    public sealed class SqlResourceSqlContainerArgs : global::Pulumi.ResourceArgs
     {
         public SqlResourceSqlContainerArgs()
         {
         }
+        public static new SqlResourceSqlContainerArgs Empty => new SqlResourceSqlContainerArgs();
     }
 }

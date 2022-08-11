@@ -65,6 +65,8 @@ type ResourcePlanV1 struct {
 	Steps []OpType `json:"steps,omitempty"`
 	// The proposed outputs for the resource, if any. Purely advisory.
 	Outputs map[string]interface{} `json:"state"`
+	// The random byte seed used for resource goal.
+	Seed []byte `json:"seed,omitempty"`
 }
 
 // VersionedDeploymentPlan is a version number plus a JSON document. The version number describes what

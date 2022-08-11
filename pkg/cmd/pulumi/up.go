@@ -311,7 +311,7 @@ func newUpCmd() *cobra.Command {
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("building project context: %w", err))
 		}
@@ -543,7 +543,7 @@ func newUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not perform a preview before performing the update")
+		"Do not calculate a preview before performing the update")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

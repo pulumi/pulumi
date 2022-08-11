@@ -1,58 +1,27 @@
 ### Improvements
 
-- [auto/go] Adds the ability to capture incremental `stderr`
-  via the new option `ErrorProgressStreams`.
-  [#10179](https://github.com/pulumi/pulumi/pull/10179)
-
-- [cli/plugins] Warn that using GITHUB_REPOSITORY_OWNER is deprecated.
-  [#10142](https://github.com/pulumi/pulumi/pull/10142)
-
-- [dotnet/codegen] code generation for csharp Pulumi programs now targets .NET 6
-  [#10143](https://github.com/pulumi/pulumi/pull/10143)
-
-- [cli] Allow `pulumi plugin install <type> <pkg> -f <path>` to target a binary
-  file or a folder.
-  [#10094](https://github.com/pulumi/pulumi/pull/10094)
-
-- [cli/config] Allow `pulumi config cp --path` between objects.
-  [#10147](https://github.com/pulumi/pulumi/pull/10147)
-
-- [codegen/schema] Support stack reference as a resource
-  [#10174](https://github.com/pulumi/pulumi/pull/10174)
-
-- [backends] When logging in to a file backend, validate that the bucket is accessible.
-  [#10012](https://github.com/pulumi/pulumi/pull/10012)
-
-- [cli] Add flag to specify whether to install dependencies on `pulumi convert`.
-  [#10198](https://github.com/pulumi/pulumi/pull/10198)
-
-- [sdk/go] Expose context.Context from pulumi.Context
-  [#10190](https://github.com/pulumi/pulumi/pull/10190)
+- [cli] Updated to the latest version of go-git.
+  [#10330](https://github.com/pulumi/pulumi/pull/10330)
 
 ### Bug Fixes
 
-- [cli] Only log github request headers at log level 11.
-  [#10140](https://github.com/pulumi/pulumi/pull/10140)
+- [cli] Paginate template options
+  [#10130](https://github.com/pulumi/pulumi/issues/10130)
 
-- [sdk/go] `config.Encrypter` and `config.Decrypter` interfaces now
-  require explicit `Context`. This is a minor breaking change to the
-  SDK. The change fixes parenting of opentracing spans that decorate
-  calls to the Pulumi Service crypter.
+- [sdk/dotnet] Fix serialization of non-generic list types.
+  [#10277](https://github.com/pulumi/pulumi/pull/10277)
 
-  [#10037](https://github.com/pulumi/pulumi/pull/10037)
+- [codegen/nodejs] Correctly reference external enums.
+  [#10286](https://github.com/pulumi/pulumi/pull/10286)
 
-- [codegen/go] Support program generation, `pulumi convert` for programs that create explicit
-  provider resources.
-  [#10132](https://github.com/pulumi/pulumi/issues/10132)
+- [sdk/python] Support deeply nested protobuf objects.
+  [#10284](https://github.com/pulumi/pulumi/pull/10284)
 
-- [sdk/go] Remove the `AsName` and `AsQName` asserting functions.
-  [#10156](https://github.com/pulumi/pulumi/pull/10156)
-  
-- [python] PULUMI_PYTHON_CMD is checked for deciding what python binary to use in a virtual environment.
-  [#10155](https://github.com/pulumi/pulumi/pull/10155)
+- Revert [Remove api/renewLease from startup crit path](pulumi/pulumi#10168) to fix #10293.
+  [#10294](https://github.com/pulumi/pulumi/pull/10294)
 
-- [cli] Reduced the noisiness of `pulumi new --help` by replacing the list of available templates to just the number.
-  [#10164](https://github.com/pulumi/pulumi/pull/10164)
+- [codegen/go] Remove superfluous double forward slash from doc.go
+  [#10317](https://github.com/pulumi/pulumi/pull/10317)
 
-- [dotnet] Set environment exit code during `Deployment.RunAsync` in case users don't bubble it the program entry point themselves
-  [#10217](https://github.com/pulumi/pulumi/pull/10217)
+- [cli/plugins] Don't retry plugin downloads that failed due to local file errors.
+  [#10341](https://github.com/pulumi/pulumi/pull/10341)

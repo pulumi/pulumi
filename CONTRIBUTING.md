@@ -21,6 +21,7 @@ Feel free to pick up any existing issue that looks interesting to you or fix a b
 
 For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before investing a lot of time so we can discuss the feature together.
 Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
+Finally, please limit your pull requests to contain only one feature at a time. Separating feature work into individual pull requests helps speed up code review and reduces the barrier to merge.
 
 ## Developing
 
@@ -28,20 +29,21 @@ Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/
 
 You'll want to install the following on your machine:
 
-- Go 1.17
+- Go 1.18 or later
 - NodeJS 14.X.X or later
 - Python 3.6 or later
 - [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
+- [jq](https://stedolan.github.io/jq/)
 
 ### Installing Pulumi dependencies on macOS
 
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
+brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils jq
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb

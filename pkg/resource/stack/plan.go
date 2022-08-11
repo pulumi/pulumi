@@ -117,6 +117,7 @@ func SerializeResourcePlan(
 
 	return apitype.ResourcePlanV1{
 		Goal:    goal,
+		Seed:    plan.Seed,
 		Steps:   steps,
 		Outputs: outputs,
 	}, nil
@@ -198,6 +199,7 @@ func DeserializeResourcePlan(
 
 	return &deploy.ResourcePlan{
 		Goal:    goal,
+		Seed:    plan.Seed,
 		Ops:     ops,
 		Outputs: outputs,
 	}, nil

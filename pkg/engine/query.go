@@ -71,7 +71,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	contract.Assert(proj != nil)
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
-		opts.Host, nil, diag, statusDiag, false, tracingSpan)
+		opts.Host, diag, statusDiag, false, tracingSpan)
 	if err != nil {
 		return result.FromError(err)
 	}

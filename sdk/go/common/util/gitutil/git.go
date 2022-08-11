@@ -22,12 +22,12 @@ import (
 	"sort"
 	"strings"
 
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.

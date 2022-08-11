@@ -7,6 +7,9 @@ using Pulumi.Random;
 
 class GetResource : CustomResource
 {
+    [Output("secret")]
+    public Output<int> Secret { get; private set; } = null!;
+
     [Output("length")]
     public Output<int> Length { get; private set; } = null!;
 
@@ -22,13 +25,21 @@ class Program
     {
         return Deployment.RunAsync(() =>
         {
-            var pet = new RandomPet("cat");
+            var pet = new RandomPet("cat", new RandomPetArgs {
+                Length = 2,
+            });
 
             var getPetLength = pet.Urn.Apply(urn => new GetResource(urn).Length);
+            var secretPet = new RandomPet("secretPet", new RandomPetArgs {
+                Length = Output.CreateSecret(1),
+            });
+
+            var getPetSecretLength = secretPet.Urn.Apply(urn => new GetResource(urn).Length);
             
             return new Dictionary<string, object>
             {
-                {"getPetLength", getPetLength}
+                {"getPetLength", getPetLength},
+                {"secret", getPetSecretLength},
             };
         });
     }

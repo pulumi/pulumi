@@ -15,7 +15,9 @@
 package plugin
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/blang/semver"
@@ -75,6 +77,8 @@ type Host interface {
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
+	GetProjectPlugins() []*workspace.PluginInfo
+
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
 	// will either a creation error or an initialization error. SignalCancellation is advisory and
@@ -87,12 +91,36 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
-	disableProviderPreview bool) (Host, error) {
+func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
+	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
+	// Create plugin info from providers
+	projectPlugins := make([]*workspace.PluginInfo, 0)
+	if plugins != nil {
+		for _, providerOpts := range plugins.Providers {
+			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, languageOpts := range plugins.Languages {
+			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, analyzerOpts := range plugins.Analyzers {
+			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+	}
 
 	host := &defaultHost{
 		ctx:                     ctx,
-		config:                  config,
 		runtimeOptions:          runtimeOptions,
 		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins:         make(map[string]*languagePlugin),
@@ -102,6 +130,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 		closer:                  new(sync.Once),
+		projectPlugins:          projectPlugins,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -130,6 +159,30 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	return host, nil
 }
 
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (*workspace.PluginInfo, error) {
+	var v *semver.Version
+	if providerOpts.Version != "" {
+		ver, err := semver.Parse(providerOpts.Version)
+		if err != nil {
+			return nil, err
+		}
+		v = &ver
+	}
+
+	_, err := os.Stat(providerOpts.Path)
+	if err != nil {
+		return nil, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+	}
+
+	pluginInfo := &workspace.PluginInfo{
+		Name:    providerOpts.Name,
+		Path:    filepath.Clean(providerOpts.Path),
+		Kind:    k,
+		Version: v,
+	}
+	return pluginInfo, nil
+}
+
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
 	Project string
@@ -145,7 +198,6 @@ type pluginLoadRequest struct {
 
 type defaultHost struct {
 	ctx                     *Context                         // the shared context for this host.
-	config                  ConfigSource                     // the source for provider configuration parameters.
 	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
@@ -156,7 +208,8 @@ type defaultHost struct {
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 
-	closer *sync.Once
+	closer         *sync.Once
+	projectPlugins []*workspace.PluginInfo
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -381,7 +434,11 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 
 func (host *defaultHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(kind, name, version)
+	return workspace.GetPluginInfo(kind, name, version, host.GetProjectPlugins())
+}
+
+func (host *defaultHost) GetProjectPlugins() []*workspace.PluginInfo {
+	return host.projectPlugins
 }
 
 func (host *defaultHost) SignalCancellation() error {

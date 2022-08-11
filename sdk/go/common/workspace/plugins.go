@@ -809,6 +809,131 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
+// DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
+// This has some retry logic to re-attempt the download if it errors for any reason.
+func DownloadToFile(
+	pkgPlugin PluginInfo,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
+
+	// This is an internal helper that's pretty much just a copy of io.Copy except it returns read and
+	// write errors separately. We only want to retry if the read (i.e. download) fails, if the write
+	// fails thats probably due to file permissions or space limitations and there's no point retrying.
+	copyBuffer := func(dst io.Writer, src io.Reader) (written int64, readErr error, writeErr error) {
+		size := 32 * 1024
+		if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
+			if l.N < 1 {
+				size = 1
+			} else {
+				size = int(l.N)
+			}
+		}
+		buf := make([]byte, size)
+
+		for {
+			nr, er := src.Read(buf)
+			if nr > 0 {
+				nw, ew := dst.Write(buf[0:nr])
+				if nw < 0 || nr < nw {
+					nw = 0
+					if ew == nil {
+						ew = errors.New("invalid write result")
+					}
+				}
+				written += int64(nw)
+				if ew != nil {
+					return written, nil, ew
+				}
+				if nr != nw {
+					return written, nil, io.ErrShortWrite
+				}
+			}
+			if er != nil {
+				if er == io.EOF {
+					er = nil
+				}
+				return written, er, nil
+			}
+		}
+	}
+
+	tryDownload := func(dst io.WriteCloser) (error, error) {
+		defer dst.Close()
+		tarball, expectedByteCount, err := pkgPlugin.Download()
+		if err != nil {
+			return err, nil
+		}
+		if wrapper != nil {
+			tarball = wrapper(tarball, expectedByteCount)
+		}
+		defer tarball.Close()
+		copiedByteCount, readErr, writerErr := copyBuffer(dst, tarball)
+		if readErr != nil || writerErr != nil {
+			return readErr, writerErr
+		}
+		if copiedByteCount != expectedByteCount {
+			return nil, fmt.Errorf("expected %d bytes but copied %d when downloading plugin %s",
+				expectedByteCount, copiedByteCount, pkgPlugin)
+		}
+		return nil, nil
+	}
+
+	tryDownloadToFile := func() (string, error, error) {
+		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		if err != nil {
+			return "", nil, err
+		}
+		readErr, writeErr := tryDownload(file)
+		if readErr != nil || writeErr != nil {
+			err2 := os.Remove(file.Name())
+			if err2 != nil {
+				// only one of readErr or writeErr will be set
+				err := readErr
+				if err == nil {
+					err = writeErr
+				}
+
+				return "", nil, fmt.Errorf("error while removing tempfile: %v. Context: %w", err2, err)
+			}
+			return "", readErr, writeErr
+		}
+		return file.Name(), nil, nil
+	}
+
+	downloadToFileWithRetry := func() (string, error) {
+		delay := 80 * time.Millisecond
+		for attempt := 0; ; attempt++ {
+			tempFile, readErr, writeErr := tryDownloadToFile()
+			if readErr == nil && writeErr == nil {
+				return tempFile, nil
+			}
+			if writeErr != nil {
+				return "", writeErr
+			}
+
+			if readErr != nil && attempt >= 5 {
+				return "", readErr
+			}
+			if retry != nil {
+				retry(readErr, attempt+1, 5, delay)
+			}
+			time.Sleep(delay)
+			delay = delay * 2
+		}
+	}
+
+	tarball, err := downloadToFileWithRetry()
+	if err != nil {
+		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+	}
+	reader, err := os.Open(tarball)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
+	}
+	return reader, nil
+
+}
+
 type PluginContent interface {
 	io.Closer
 
@@ -816,7 +941,7 @@ type PluginContent interface {
 }
 
 func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
-	return singleFilePlugin{F: f}
+	return singleFilePlugin{F: f, Kind: info.Kind, Name: info.Name}
 }
 
 type singleFilePlugin struct {
@@ -1219,8 +1344,9 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
-func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, error) {
-	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */)
+func GetPluginPath(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (string, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -1232,8 +1358,9 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	return path, err
 }
 
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(kind, name, version, false)
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []*PluginInfo) (*PluginInfo, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -1257,8 +1384,43 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version) (*Plug
 //  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //  * an error in all other cases.
 func getPluginInfoAndPath(
-	kind PluginKind, name string, version *semver.Version, skipMetadata bool) (*PluginInfo, string, error) {
+	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
+	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
 	var filename string
+
+	for i, p1 := range projectPlugins {
+		for j, p2 := range projectPlugins {
+			if j < i {
+				if p2.Kind == p1.Kind && p2.Name == p1.Name {
+					if p1.Version != nil && p2.Version != nil && p2.Version.Equals(*p1.Version) {
+						return nil, "", fmt.Errorf(
+							"multiple project plugins with kind %s, name %s, version %s",
+							p1.Kind, p1.Name, p1.Version)
+					}
+				}
+			}
+		}
+	}
+
+	for _, plugin := range projectPlugins {
+		if plugin.Kind != kind {
+			continue
+		}
+		if plugin.Name != name {
+			continue
+		}
+		if plugin.Version != nil && version != nil {
+			if !plugin.Version.Equals(*version) {
+				logging.Warningf(
+					"Project plugin %s with version %s is incompatible with requested version %s.\n",
+					name, plugin.Version, version)
+				continue
+			}
+		}
+
+		path := filepath.Join(plugin.Path, plugin.File())
+		return plugin, path, nil
+	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
 	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.

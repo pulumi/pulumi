@@ -58,7 +58,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,8 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 		return nil, err
 	}
 	for _, plugin := range plugins {
-		if path, _ := workspace.GetPluginPath(plugin.Kind, plugin.Name, plugin.Version); path != "" {
+		if path, _ := workspace.GetPluginPath(plugin.Kind, plugin.Name,
+			plugin.Version, ctx.Host.GetProjectPlugins()); path != "" {
 			err = plugin.SetFileMetadata(path)
 			if err != nil {
 				return nil, err

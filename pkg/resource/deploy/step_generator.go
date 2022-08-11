@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
 	"strings"
 
@@ -195,17 +196,9 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* aliases */
 		nil,   /* customTimeouts */
 		"",    /* importID */
-		1,     /* sequenceNumber */
 		false, /* retainOnDelete */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
-
-	if hasOld {
-		// If we have an old state maintain the sequence number from it.
-		// This means even if we relinqish and then reimport we'll maintain the sequence number that
-		// defined the current name.
-		newState.SequenceNumber = old.SequenceNumber
-	}
 
 	if newState.ID == "" {
 		return nil, result.Errorf("Expected an ID for %v", urn)
@@ -397,10 +390,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, alias, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
-	if hasOld {
-		new.SequenceNumber = old.SequenceNumber
-	}
+		goal.AdditionalSecretOutputs, alias, &goal.CustomTimeouts, "", goal.RetainOnDelete)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -424,6 +414,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
 
+	// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+	var randomSeed []byte
+	if sg.deployment.plan != nil {
+		if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+			randomSeed = resourcePlan.Seed
+		}
+	}
+	// If the above didn't set the seed, generate a new random one. If we're running with plans but this
+	// resource was missing a seed then if the seed is used later checks will fail.
+	if randomSeed == nil {
+		randomSeed = make([]byte, 32)
+		n, err := cryptorand.Read(randomSeed)
+		contract.AssertNoError(err)
+		contract.Assert(n == len(randomSeed))
+	}
+
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
 	var oldImportID resource.ID
@@ -446,17 +452,19 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
 		if sg.opts.ExperimentalPlans {
-			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, nil, goal)}
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(nil, nil, goal)}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
 			}, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges)}, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -469,30 +477,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			if hasOld {
-				// Only increment/change sequence number if this is a replace. If hasOld is false this is a
-				// new resource and sequence number will already be correctly set to 1.
-				if new.SequenceNumber == -1 {
-					// This is known to have been created with a non-deterministic sequnce number in the last
-					// update, it should now be safe to create with sequence number == 1 as that shouldn't
-					// clash with the current random name.
-					new.SequenceNumber = 1
-				} else if new.SequenceNumber == 0 {
-					// We don't have any info on the current resources sequnce number, but we know we're
-					// going to do a replace with sequnce number == 0 to create a random name so the next
-					// time we do a replace it should be safe to go back to sequnce number == 1 (see above)
-					new.SequenceNumber = -1
-				} else {
-					new.SequenceNumber++
-				}
-			}
-
-			checkNumber := new.SequenceNumber
-			// We don't want to call check with -1, that's just an internal state file marker
-			if checkNumber == -1 {
-				checkNumber = 0
-			}
-
 			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
 			var oldChecked resource.PropertyMap
 			if sg.deployment.plan != nil {
@@ -501,14 +485,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 			}
 
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			checkNumber := new.SequenceNumber
-			// We don't want to call check with -1, that's just an internal state file marker
-			if checkNumber == -1 {
-				checkNumber = 0
-			}
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
@@ -529,7 +508,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// Generate the output goal plan
 		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 		// application. However, it is necessary in the face of computed inputs.
-		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputs, inputDiff, goal)}
+		newResourcePlan := &ResourcePlan{
+			Seed: randomSeed,
+			Goal: NewGoalPlan(inputs, inputDiff, goal)}
 		sg.deployment.newPlans.set(urn, newResourcePlan)
 	}
 
@@ -677,7 +658,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
 
 			if res != nil {
 				return nil, res
@@ -736,7 +717,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
+	prov plugin.Provider, goal *resource.Goal, randomSeed []byte) ([]Step, result.Result) {
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
@@ -800,21 +781,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
-				// Increment the sequence number (if it's known) before calling check so we get a new autoname
-				var checkNumber int
-				if new.SequenceNumber == -1 {
-					new.SequenceNumber = 1
-					checkNumber = 1
-				} else if new.SequenceNumber == 0 {
-					new.SequenceNumber = -1
-					checkNumber = 0
-				} else {
-					new.SequenceNumber++
-					checkNumber = new.SequenceNumber
-				}
-
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {

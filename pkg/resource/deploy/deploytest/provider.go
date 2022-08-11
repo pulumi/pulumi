@@ -45,7 +45,7 @@ type Provider struct {
 	ConfigureF func(news resource.PropertyMap) error
 
 	CheckF func(urn resource.URN,
-		olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error)
+		olds, news resource.PropertyMap, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error)
 	DiffF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
 	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
@@ -123,12 +123,12 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 }
 
 func (prov *Provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	contract.Assert(sequenceNumber >= 0)
+	olds, news resource.PropertyMap, _ bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	contract.Assert(randomSeed != nil)
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}
-	return prov.CheckF(urn, olds, news, sequenceNumber)
+	return prov.CheckF(urn, olds, news, randomSeed)
 }
 func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
 	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {

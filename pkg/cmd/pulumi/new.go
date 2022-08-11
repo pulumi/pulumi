@@ -28,6 +28,7 @@ import (
 	"unicode"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
@@ -314,7 +315,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Install dependencies.
 	if !args.generateOnly {
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 		if err != nil {
 			return err
 		}
@@ -774,22 +775,25 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-	message := "\rPlease choose a template:"
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	showAll := false
 	var selectedOption workspace.Template
 
 	for {
 
-		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, showAll)
-
-		// If showAll was false and we got only a single result, force showAll to be true and try
-		// again.
-		if !showAll && len(options) <= 1 {
-			showAll = true
-			continue
+		const buffer = 5
+		_, height, err := terminal.GetSize(0)
+		if err != nil {
+			height = 15
 		}
+
+		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+		if height > len(options) {
+			height = len(options)
+		}
+
+		height = height - buffer
+		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", height, len(options))
+		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 		cmdutil.EndKeypadTransmitMode()
 
@@ -797,7 +801,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
-			PageSize: len(options),
+			PageSize: height,
 		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
@@ -806,8 +810,6 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		selectedOption, has = optionToTemplateMap[option]
 		if has {
 			break
-		} else {
-			showAll = true
 		}
 	}
 

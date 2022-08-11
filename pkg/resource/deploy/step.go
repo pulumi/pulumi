@@ -784,7 +784,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.SequenceNumber, s.old.RetainOnDelete)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete)
 	} else {
 		s.new = nil
 	}
@@ -803,10 +803,11 @@ type ImportStep struct {
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	randomSeed    []byte                         // the random seed to use for Check.
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string) Step {
+	ignoreChanges []string, randomSeed []byte) Step {
 
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -814,17 +815,19 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 	contract.Assert(new.Custom)
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
+	contract.Assert(randomSeed != nil)
 
 	return &ImportStep{
 		deployment:    deployment,
 		reg:           reg,
 		new:           new,
 		ignoreChanges: ignoreChanges,
+		randomSeed:    randomSeed,
 	}
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string) Step {
+	ignoreChanges []string, randomSeed []byte) Step {
 
 	contract.Assert(original != nil)
 	contract.Assert(new != nil)
@@ -833,6 +836,7 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 	contract.Assert(new.Custom)
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
+	contract.Assert(randomSeed != nil)
 
 	return &ImportStep{
 		deployment:    deployment,
@@ -841,22 +845,25 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 		new:           new,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
+		randomSeed:    randomSeed,
 	}
 }
 
-func newImportDeploymentStep(deployment *Deployment, new *resource.State) Step {
+func newImportDeploymentStep(deployment *Deployment, new *resource.State, randomSeed []byte) Step {
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID != "")
 	contract.Assert(new.Custom)
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
+	contract.Assert(randomSeed != nil)
 
 	return &ImportStep{
 		deployment: deployment,
 		reg:        noopEvent(0),
 		new:        new,
 		planned:    true,
+		randomSeed: randomSeed,
 	}
 }
 
@@ -926,8 +933,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID,
-		s.new.SequenceNumber, s.new.RetainOnDelete)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
@@ -958,7 +964,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -998,7 +1004,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 	if err != nil {
 		return rst, nil, err
 	}

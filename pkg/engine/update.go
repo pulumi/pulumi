@@ -242,7 +242,8 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), allPlugins.Deduplicate()); err != nil {
+	if err := ensurePluginsAreInstalled(plugctx.Request(), allPlugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins()); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
 		}
