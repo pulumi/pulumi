@@ -2182,6 +2182,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 	}
 
+	// We don't want to generate this when test is set because there is no corresponding plugin to be downloaded.
+	// This causes errors when the below script is run.
 	if !pkg.Test {
 		npminfo.Scripts["install"] = fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion)
 	}

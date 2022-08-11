@@ -158,8 +158,17 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
+func localDotnet(localProjects map[string]map[string]string, pkg string) (string, bool) {
+	local, ok := localProjects[pkg]
+	if !ok {
+		return "", false
+	}
+	dotnet, ok := local["dotnet"]
+	return dotnet, ok
+}
+
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
-	localProjects map[string]string) error {
+	localProjects map[string]map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -193,10 +202,10 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	projectTemplate := "		<ProjectReference Include=\"%s\" />\n"
 
 	if localProjects == nil {
-		localProjects = map[string]string{}
+		localProjects = map[string]map[string]string{}
 	}
 
-	if localPulumi, ok := localProjects["dotnet"]; ok {
+	if localPulumi, ok := localDotnet(localProjects, "pulumi"); ok {
 		csproj.WriteString(fmt.Sprintf(projectTemplate, filepath.Join(localPulumi, "Pulumi.csproj")))
 	} else {
 		csproj.WriteString(fmt.Sprintf(packageTemplate, "Pulumi", "3.*"))
@@ -208,13 +217,13 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
-		if localProject, ok := localProjects[p.Name]; ok {
+		if localProject, ok := localDotnet(localProjects, p.Name); ok {
 			_, info, err := generateModuleContextMap("test", p)
 			if err != nil {
 				return err
 			}
 			assemblyName := info.GetRootNamespace() + "." + namespaceName(info.Namespaces, p.Name)
-			localProject = filepath.Join(localProject, "dotnet", fmt.Sprintf("%s.csproj", assemblyName))
+			localProject = filepath.Join(localProject, fmt.Sprintf("%s.csproj", assemblyName))
 			csproj.WriteString(fmt.Sprintf(projectTemplate, localProject))
 		} else {
 			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {

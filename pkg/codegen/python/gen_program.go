@@ -70,8 +70,17 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+func localPython(localProjects map[string]map[string]string, pkg string) (string, bool) {
+	local, ok := localProjects[pkg]
+	if !ok {
+		return "", false
+	}
+	py, ok := local["python"]
+	return py, ok
+}
+
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
-	localProjects map[string]string) error {
+	localProjects map[string]map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -89,12 +98,12 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	files["Pulumi.yaml"] = projectBytes
 
 	if localProjects == nil {
-		localProjects = map[string]string{}
+		localProjects = map[string]map[string]string{}
 	}
 
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
-	localPulumi, ok := localProjects["pulumi"]
+	localPulumi, ok := localPython(localProjects, "pulumi")
 	if ok {
 		requirementsTxt.WriteString(fmt.Sprintf("%s\n", localPulumi))
 	} else {
@@ -120,9 +129,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 
-		project, ok := localProjects[p.Name]
+		project, ok := localPython(localProjects, p.Name)
 		if ok {
-			requirementsTxt.WriteString(fmt.Sprintf("%s/python\n", project))
+			requirementsTxt.WriteString(fmt.Sprintf("%s\n", project))
 			continue
 		}
 

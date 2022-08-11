@@ -79,7 +79,7 @@ type TestOptions struct {
 }
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program,
-	localProjects map[string]string) error
+	localProjects map[string]map[string]string) error
 
 func Test(t *testing.T, opts TestOptions) {
 
@@ -132,24 +132,25 @@ func Test(t *testing.T, opts TestOptions) {
 	assert.NotNil(t, proj)
 	assert.NotNil(t, pclProgram)
 
-	localProjects := map[string]string{}
+	localProjects := map[string]map[string]string{}
 
 	//Here we are overriding the plugin links to use our own plugin links.
 	proj.Plugins = &workspace.Plugins{}
 
-	//This needs further testing
-	for lang, path := range opts.PulumiSDKs {
-		localProjects[lang] = path
-	}
-
+	localProjects["pulumi"] = opts.PulumiSDKs
 	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {
 		for _, cmd := range plugin.Build {
 			err := cmd.Run()
 			assert.NoError(t, err)
 		}
-
-		localProjects[plugin.Name] = fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
+		root := fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
+		localProjects[plugin.Name] = map[string]string{
+			NODEJS: filepath.Join(root, "nodejs", "bin"),
+			PYTHON: filepath.Join(root, "python"),
+			JAVA:   filepath.Join(root, "java"),
+			DOTNET: filepath.Join(root, "dotnet"),
+		}
 
 		assert.NotNil(t, plugin.Version)
 
@@ -223,13 +224,6 @@ func Test(t *testing.T, opts TestOptions) {
 		assert.Empty(t, diags)
 		assert.NotNil(t, pkg)
 
-		//Kludge
-		/*for _, p := range opts.Plugins {
-			if p.Name == pkg.Name {
-				pkg.Version = &p.Version
-			}
-		}*/
-
 		pkg.Test = true
 
 		pkgName := pkg.Name
@@ -266,7 +260,6 @@ func Test(t *testing.T, opts TestOptions) {
 
 			sdkDir := filepath.Join(dir, fmt.Sprintf("%s-sdk", pkgName), lang)
 			for p, file := range files {
-				// TODO: full conversion from path to filepath
 				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
 				assert.NoError(t, err)
 				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
@@ -332,12 +325,12 @@ func Test(t *testing.T, opts TestOptions) {
 			projectGenerator = pygen.GenerateProject
 		case JAVA:
 			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]string) error {
+				p *pcl.Program, localProjects map[string]map[string]string) error {
 				return javagen.GenerateProject(directory, project, p)
 			}
 		case YAML: // nolint: goconst
 			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]string) error {
+				p *pcl.Program, localProjects map[string]map[string]string) error {
 				return yamlgen.GenerateProject(directory, project, p)
 			}
 		default:
