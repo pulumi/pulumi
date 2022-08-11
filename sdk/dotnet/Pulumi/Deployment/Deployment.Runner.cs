@@ -19,6 +19,7 @@ namespace Pulumi
         {
             private readonly IDeploymentInternal _deployment;
             private readonly ILogger _deploymentLogger;
+            private readonly RunnerOptions _options;
 
             /// <summary>
             /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
@@ -50,10 +51,11 @@ namespace Pulumi
                 }
             }
 
-            public Runner(IDeploymentInternal deployment, ILogger deploymentLogger)
+            public Runner(IDeploymentInternal deployment, ILogger deploymentLogger, RunnerOptions? options = null)
             {
                 _deployment = deployment;
                 _deploymentLogger = deploymentLogger;
+                _options = options ?? new RunnerOptions { IsInlineAutomationProgram = false };
             }
 
             Task<int> IRunner.RunAsync<TStack>(IServiceProvider serviceProvider)
@@ -169,12 +171,15 @@ namespace Pulumi
                     ? _processExitedAfterLoggingUserActionableMessage
                     : 1;
 
-                // We set the exit code explicitly here in case users
-                // do not bubble up the exit code themselves to
-                // top-level entry point of the program. For example
-                // when they `await Deployment.RunAsync()` instead of 
-                // `return await Deployment.RunAsync()`
-                Environment.ExitCode = exitCode;
+                if (!_options.IsInlineAutomationProgram)
+                {
+                    // We set the exit code explicitly here in case users
+                    // do not bubble up the exit code themselves to
+                    // top-level entry point of the program (for non-inline deployments). 
+                    // For example when users `await Deployment.RunAsync()` 
+                    // instead of `return await Deployment.RunAsync()`
+                    Environment.ExitCode = exitCode;
+                }
 
                 return exitCode;
             }

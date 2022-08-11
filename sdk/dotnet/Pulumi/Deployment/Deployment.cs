@@ -101,7 +101,7 @@ namespace Pulumi
             set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
         }
 
-        private Deployment()
+        private Deployment(RunnerOptions? runnerOptions = null)
         {
             // ReSharper disable UnusedVariable
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
@@ -140,7 +140,7 @@ namespace Pulumi
             this.Monitor = new GrpcMonitor(monitor);
             deploymentLogger.LogDebug("Created deployment monitor");
 
-            _runner = new Runner(this, deploymentLogger);
+            _runner = new Runner(this, deploymentLogger, runnerOptions);
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
