@@ -25,3 +25,6 @@
 
 - [cli/plugins] Don't retry plugin downloads that failed due to local file errors.
   [#10341](https://github.com/pulumi/pulumi/pull/10341)
+
+- [dotnet] Set environment exit code during `Deployment.RunAsync` in case users don't bubble it the program entry point themselves
+  [#10217](https://github.com/pulumi/pulumi/pull/10217)
