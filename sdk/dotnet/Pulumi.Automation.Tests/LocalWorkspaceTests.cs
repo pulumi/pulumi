@@ -1804,7 +1804,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
 
@@ -1813,7 +1813,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Single(state.Deployment.Resources);
             }
             finally
@@ -1867,7 +1867,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
 
@@ -1879,7 +1879,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Single(state.Deployment.Resources);
             }
             finally
@@ -1933,7 +1933,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
                 Assert.True(resource.Protect);
@@ -1943,7 +1943,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
                 Assert.False(resource.Protect);
@@ -2008,7 +2008,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(3, state.Deployment.Resources.Count);
                 var resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
                 Assert.Equal(2, resources.Count);
@@ -2019,7 +2019,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(3, state.Deployment.Resources.Count);
                 resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
                 Assert.Equal(2, resources.Count);
@@ -2092,7 +2092,7 @@ namespace Pulumi.Automation.Tests
             public bool IsEnabled(LogLevel logLevel)
                 => true;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception, string> formatter)
                 => _action();
         }
 
