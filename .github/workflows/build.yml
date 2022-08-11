@@ -5,7 +5,7 @@ on:
     inputs:
       go-version:
         description: 'Version of the Go toolchain for the build'
-        default: '1.17.x'
+        default: '1.19.x'
         required: false
         type: string
       python-version:
