@@ -1191,7 +1191,7 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
-		0 /* level */)
+		0      /* level */)
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -1643,29 +1643,34 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	sort.Slice(ns.enums, func(i, j int) bool {
 		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
 	})
-	for i, t := range ns.types {
+	var prevType *schema.ObjectType
+	for _, t := range ns.types {
 		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+			if prevType != nil {
+				fmt.Fprintf(w, "\n")
+			}
 			if err := mod.genType(w, t, input, level); err != nil {
 				return err
 			}
-			if i != len(ns.types)-1 {
-				fmt.Fprintf(w, "\n")
-			}
+			prevType = t
 		}
 	}
 
 	sort.Slice(ns.children, func(i, j int) bool {
 		return ns.children[i].name < ns.children[j].name
 	})
-	for i, child := range ns.children {
+
+	var prevChild *namespace
+	for _, child := range ns.children {
+		if prevChild != nil {
+			fmt.Fprintf(w, "\n")
+		}
 		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, child.name)
 		if err := mod.genNamespace(w, child, input, level+1); err != nil {
 			return err
 		}
 		fmt.Fprintf(w, "%s}\n", indent)
-		if i != len(ns.children)-1 {
-			fmt.Fprintf(w, "\n")
-		}
+		prevChild = child
 	}
 	return nil
 }
