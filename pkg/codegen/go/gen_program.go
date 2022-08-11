@@ -41,7 +41,6 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
-	externalCache       *Cache
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -50,7 +49,6 @@ type generator struct {
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
-	ExternalCache              *Cache
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -65,13 +63,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if opts.ExternalCache == nil {
-		opts.ExternalCache = globalCache
-	}
-
 	for _, pkg := range packageDefs {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
 	g := &generator{
@@ -86,7 +79,6 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-		externalCache:       opts.ExternalCache,
 	}
 
 	// Apply any generate options.
@@ -245,7 +237,7 @@ require (
 
 var packageContexts sync.Map
 
-func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkgContext {
+func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	if v, ok := packageContexts.Load(pkg); ok {
 		return v.(map[string]*pkgContext)
 	}
@@ -258,7 +250,7 @@ func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkg
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	v := generatePackageContextMap(tool, pkg, goPkgInfo, cache)
+	v := generatePackageContextMap(tool, pkg, goPkgInfo)
 	packageContexts.Store(pkg, v)
 	return v
 }

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,11 +31,8 @@ func TestGenerateProgram(t *testing.T) {
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
-			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-				// Prevent tests from interfering with each other
-				return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-			},
-			TestCases: test.PulumiPulumiProgramTests,
+			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 
