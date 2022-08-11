@@ -135,7 +135,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 			goPkgInfo = goInfo
 		}
-		packages := generatePackageContextMap("test", pkg, goPkgInfo, nil)
+		packages := generatePackageContextMap("test", pkg, goPkgInfo)
 
 		root, ok := packages[""]
 		require.True(t, ok)

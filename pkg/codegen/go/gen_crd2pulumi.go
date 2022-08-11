@@ -18,7 +18,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, nil)
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
 
 	var pkgMods []string
 	for mod := range packages {

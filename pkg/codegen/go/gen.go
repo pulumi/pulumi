@@ -29,7 +29,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -121,47 +120,6 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 	return strings.ToLower(mod)
 }
 
-type externalPackageHash struct {
-	name              string
-	version           string
-	pluginDownloadURL string
-}
-
-func newExternalPackageHash(pkg *schema.Package) externalPackageHash {
-	return externalPackageHash{
-		name:              pkg.Name,
-		version:           pkg.Version.String(),
-		pluginDownloadURL: pkg.PluginDownloadURL,
-	}
-}
-
-// A threadsafe cache for sharing between invocations of GenerateProgram.
-type Cache struct {
-	externalPackages map[externalPackageHash]map[string]*pkgContext
-	m                sync.Mutex
-}
-
-var globalCache = NewCache()
-
-func NewCache() *Cache {
-	return &Cache{
-		externalPackages: map[externalPackageHash]map[string]*pkgContext{},
-	}
-}
-
-func (c *Cache) lookupContextMap(pkg externalPackageHash) (map[string]*pkgContext, bool) {
-	c.m.Lock()
-	defer c.m.Unlock()
-	m, ok := c.externalPackages[pkg]
-	return m, ok
-}
-
-func (c *Cache) setContextMap(pkg externalPackageHash, m map[string]*pkgContext) {
-	c.m.Lock()
-	defer c.m.Unlock()
-	c.externalPackages[pkg] = m
-}
-
 type pkgContext struct {
 	pkg             *schema.Package
 	mod             string
@@ -179,7 +137,7 @@ type pkgContext struct {
 	renamed     map[string]string
 
 	// A mapping between external packages and their bound contents.
-	externalPackages *Cache
+	externalPackages map[*schema.Package]map[string]*pkgContext
 
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
@@ -702,9 +660,7 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
-	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
-
-	if !isExternal {
+	if !pkg.isExternalReference(t) {
 		name := pkg.tokenToType(t.Token)
 		if t.IsInputShape() {
 			return name + "Args"
@@ -747,17 +703,17 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	}
 
 	var maps map[string]*pkgContext
-
-	hash := newExternalPackageHash(extPkg)
-	if extMap, ok := pkg.externalPackages.lookupContextMap(hash); ok {
+	if pkg.externalPackages == nil {
+		pkg.externalPackages = map[*schema.Package]map[string]*pkgContext{}
+	}
+	if extMap, ok := pkg.externalPackages[extPkg]; ok {
 		maps = extMap
 	} else {
-		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
-		pkg.externalPackages.setContextMap(hash, maps)
+		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo)
+		pkg.externalPackages[extPkg] = maps
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
-	extPkgCtx.externalPackages = pkg.externalPackages
 	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
 
 	return extPkgCtx, *maps[mod].detailsForType(t)
@@ -3049,14 +3005,8 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs *Cache) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
-
-	// Share the cache
-	if externalPkgs == nil {
-		externalPkgs = globalCache
-	}
-
 	getPkg := func(mod string) *pkgContext {
 		pack, ok := packages[mod]
 		if !ok {
@@ -3078,7 +3028,6 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
 				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 				disableObjectDefaults:         goInfo.DisableObjectDefaults,
-				externalPackages:              externalPkgs,
 			}
 			packages[mod] = pack
 		}
@@ -3491,7 +3440,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, globalCache)
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
 
 	// emit each package
 	var pkgMods []string
@@ -3565,7 +3514,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, NewCache())
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
 
 	// emit each package
 	var pkgMods []string
