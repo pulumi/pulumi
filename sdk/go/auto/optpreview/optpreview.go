@@ -115,34 +115,6 @@ func Plan(path string) Option {
 	})
 }
 
-// Flow log settings to child processes (like plugins)
-func LogFlow(value bool) Option {
-	return optionFunc(func(opts *Options) {
-		opts.LogFlow = value
-	})
-}
-
-// Enable verbose logging (e.g., v=3); anything >3 is very verbose
-func LogVerbosity(value int) Option {
-	return optionFunc(func(opts *Options) {
-		opts.LogVerbosity = value
-	})
-}
-
-// Log to stderr instead of to files
-func LogToStdErr(value bool) Option {
-	return optionFunc(func(opts *Options) {
-		opts.LogToStdErr = value
-	})
-}
-
-// Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
-func Tracing(value string) Option {
-	return optionFunc(func(opts *Options) {
-		opts.Tracing = value
-	})
-}
-
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -185,16 +157,6 @@ type Options struct {
 	PolicyPacks []string
 	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
 	PolicyPackConfigs []string
-	// Flow log settings to child processes (like plugins)
-	LogFlow bool
-	// Enable verbose logging (e.g., v=3); anything >3 is very verbose
-	LogVerbosity int
-	// Log to stderr instead of to files
-	LogToStdErr bool
-	// Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
-	Tracing string
-	// Print detailed debugging output during resource operations
-	Debug bool
 }
 
 type optionFunc func(*Options)
