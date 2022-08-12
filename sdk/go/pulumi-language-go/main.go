@@ -82,17 +82,17 @@ func findProgram(binary string) (*exec.Cmd, error) {
 		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
 	}
 
-	binPath := path.Join(cwd, PULUMI_BINARY_NAME)
-	buildCmd := exec.Command(program, "build", "-o", binPath, cwd)
+	binaryToRun := path.Join(cwd, PULUMI_BINARY_NAME)
+	buildCmd := exec.Command(program, "build", "-o", binaryToRun, cwd)
 	if err := buildCmd.Run(); err != nil {
 		logging.V(5).Infof("Unable to `go build` falling back to `go run`")
-		// fallback to old behavior if failure
-		// - directory is not writable.
-		// - etc.
+		// fallback to old behavior if failure. i.e.
+		// - compilation failure
+		// - directory is not writable
 		return exec.Command(program, "run", cwd), nil
 	}
 
-	return exec.Command(binPath), nil
+	return exec.Command(binaryToRun), nil
 }
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
