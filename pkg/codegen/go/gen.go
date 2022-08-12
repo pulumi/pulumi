@@ -137,26 +137,27 @@ func newExternalPackageHash(pkg *schema.Package) externalPackageHash {
 
 // A threadsafe cache for sharing between invocations of GenerateProgram.
 type Cache struct {
-	externalPackages map[externalPackageHash]map[string]*pkgContext
-	m                sync.Mutex
+	externalPackages map[*schema.Package]map[string]*pkgContext
+	m                *sync.Mutex
 }
 
 var globalCache = NewCache()
 
 func NewCache() *Cache {
 	return &Cache{
-		externalPackages: map[externalPackageHash]map[string]*pkgContext{},
+		externalPackages: map[*schema.Package]map[string]*pkgContext{},
+		m:                new(sync.Mutex),
 	}
 }
 
-func (c *Cache) lookupContextMap(pkg externalPackageHash) (map[string]*pkgContext, bool) {
+func (c *Cache) lookupContextMap(pkg *schema.Package) (map[string]*pkgContext, bool) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	m, ok := c.externalPackages[pkg]
 	return m, ok
 }
 
-func (c *Cache) setContextMap(pkg externalPackageHash, m map[string]*pkgContext) {
+func (c *Cache) setContextMap(pkg *schema.Package, m map[string]*pkgContext) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	c.externalPackages[pkg] = m
@@ -748,12 +749,11 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 
 	var maps map[string]*pkgContext
 
-	hash := newExternalPackageHash(extPkg)
-	if extMap, ok := pkg.externalPackages.lookupContextMap(hash); ok {
+	if extMap, ok := pkg.externalPackages.lookupContextMap(extPkg); ok {
 		maps = extMap
 	} else {
 		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
-		pkg.externalPackages.setContextMap(hash, maps)
+		pkg.externalPackages.setContextMap(extPkg, maps)
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
