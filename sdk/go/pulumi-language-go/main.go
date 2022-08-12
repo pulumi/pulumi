@@ -21,9 +21,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -49,50 +49,39 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-const (
-	pulumiBinaryName = ".pulumi.out"
-)
-
 func findProgram(binary string) (*exec.Cmd, error) {
-	// we default to execution via `go run`
+
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
-	if binary != "" {
-		program, err := executable.FindExecutable(binary)
-		if err != nil {
-			return nil, errors.Wrap(err, "expected to find prebuilt executable")
-		}
-		return exec.Command(program), nil
+	program, err := executable.FindExecutable(binary)
+	if err != nil {
+		return nil, errors.Wrap(err, "expected to find prebuilt executable")
 	}
+	return exec.Command(program), nil
+}
 
-	// Fall back to 'go run' style executions
-	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
+func compileProgram(outfile string) (string, error) {
 	program, err := executable.FindExecutable("go")
 	if err != nil {
-		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
+		return "", errors.Wrap(err, "problem executing program (could not run language executor)")
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to get current working directory")
+		return "", errors.Wrap(err, "unable to get current working directory")
 	}
 
 	goFileSearchPattern := filepath.Join(cwd, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
-		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
+		return "", errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
 	}
 
-	binaryToRun := path.Join(cwd, pulumiBinaryName)
-	buildCmd := exec.Command(program, "build", "-o", binaryToRun, cwd)
+	buildCmd := exec.Command(program, "build", "-o", outfile, cwd)
 	if err := buildCmd.Run(); err != nil {
-		logging.V(5).Infof("Unable to `go build` falling back to `go run`")
-		// fallback to old behavior if failure. i.e.
-		// - compilation failure
-		// - directory is not writable
-		return exec.Command(program, "run", cwd), nil
+		return "", err
 	}
 
-	return exec.Command(binaryToRun), nil
+	return outfile, nil
 }
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
@@ -354,10 +343,24 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
-	cmd, err := findProgram(host.binary)
+	program := host.binary
+	if program == "" {
+		logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
+		file, err := ioutil.TempFile(".", ".pulumi.out")
+		if err != nil {
+			return nil, errors.Wrap(err, "error in compiling Go")
+		}
+		defer os.Remove(file.Name())
+
+		program = file.Name()
+		compileProgram(program)
+	}
+
+	cmd, err := findProgram(program)
 	if err != nil {
 		return nil, err
 	}
+
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
