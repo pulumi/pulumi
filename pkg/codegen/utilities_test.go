@@ -67,3 +67,53 @@ func TestSimplifyInputUnion(t *testing.T) {
 		},
 	}, u2)
 }
+
+func TestCamel(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	assert.Equal("", Camel(""))
+	assert.Equal("plugh", Camel("plugh"))
+	assert.Equal("waldoThudFred", Camel("WaldoThudFred"))
+	assert.Equal("graultBaz", Camel("Grault-Baz"))
+	assert.Equal("graultBaz", Camel("grault-baz"))
+	assert.Equal("graultBaz", Camel("graultBaz"))
+	assert.Equal("grault_Baz", Camel("Grault_Baz"))
+	assert.Equal("graultBaz", Camel("Grault-baz"))
+}
+
+func TestConvertHyphens(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	assert.Equal("", ConvertHyphens("", ""))
+	assert.Equal("plugh", ConvertHyphens("plugh", ""))
+	assert.Equal("waldoThudFred", ConvertHyphens("waldo-thud-Fred", ""))
+	assert.Equal("GarlpyCorgeFred", ConvertHyphens("Garlpy-Corge-Fred", ""))
+	assert.Equal("thud", ConvertHyphens("thud-", ""))
+	assert.Equal("Thud", ConvertHyphens("-thud", ""))
+	assert.Equal("waldo_Thud_Fred", ConvertHyphens("waldo-thud-Fred", "_"))
+	assert.Equal("Garlpy_Corge_Fred", ConvertHyphens("Garlpy-Corge-Fred", "_"))
+}
+
+func TestSeparate(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	assert.Equal([]string{"a", "b", "c"}, Separate("abc", ""))
+
+	assert.Equal([]string{"Garply", "_", "Plugh", "_", "Waldo"}, Separate("Garply_Plugh_Waldo", "_"))
+	assert.Equal([]string{"garply", "_", "plugh", "_", "waldo"}, Separate("garply_plugh_waldo", "_"))
+
+	assert.Equal([]string{"a", "_", "b"}, Separate("a_b", "_"))
+	assert.Equal([]string{"a", "_", "b"}, Separate("a_b", "_"))
+	assert.Equal([]string{"_", "a"}, Separate("_a", "_"))
+	assert.Equal([]string{"a", "_"}, Separate("a_", "_"))
+	assert.Equal([]string{"_", "a", "_"}, Separate("_a_", "_"))
+	assert.Equal([]string{"a", "_", "b", "_", "c"}, Separate("a_b_c", "_"))
+	assert.Equal([]string{"a", "_", "b", "_", "c", "_"}, Separate("a_b_c_", "_"))
+	assert.Equal([]string{"_", "a", "_", "b", "_", "c", "_"}, Separate("_a_b_c_", "_"))
+
+	assert.Equal([]string{"a", "_", "_", "b"}, Separate("a__b", "_"))
+	assert.Equal([]string{"a", "_", "_", "b", "_", "_"}, Separate("a__b__", "_"))
+	assert.Equal([]string{"_", "_", "a", "_", "b", "_", "_"}, Separate("__a_b__", "_"))
+}

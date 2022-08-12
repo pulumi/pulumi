@@ -78,3 +78,6 @@ __pycache__
 # Temporary files
 *.tmp
 test-results/
+
+*.code-workspace
+.vscode/

@@ -2423,6 +2423,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		suffix = "(dict)"
 	}
 
+	name = codegen.PythonCase(name)
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {

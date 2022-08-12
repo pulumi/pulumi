@@ -83,36 +83,6 @@ func (d *typeDetails) markMap(input, output bool) {
 	d.mapOutput = d.mapOutput || input || output
 }
 
-// Title converts the input string to a title case
-// where only the initial letter is upper-cased.
-// It also removes $-prefix if any.
-func Title(s string) string {
-	if s == "" {
-		return ""
-	}
-	if s[0] == '$' {
-		return Title(s[1:])
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
-}
-
-func camel(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
-	for i, r := range runes {
-		if unicode.IsLower(r) {
-			res = append(res, runes[i:]...)
-			break
-		}
-		res = append(res, unicode.ToLower(r))
-	}
-	return string(res)
-}
-
 func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string) string {
 	mod := pkg.TokenToModule(tok)
 	if override, ok := overrides[mod]; ok {
@@ -1216,7 +1186,7 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, el
 func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *schema.EnumType, elementGoType string) {
 	pkg.genInputInterface(w, name)
 
-	fmt.Fprintf(w, "var %sPtrType = reflect.TypeOf((**%s)(nil)).Elem()\n", camel(name), name)
+	fmt.Fprintf(w, "var %sPtrType = reflect.TypeOf((**%s)(nil)).Elem()\n", codegen.Camel(name), name)
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
@@ -1226,25 +1196,25 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "type %sPtr %s\n", camel(name), elementGoType)
+	fmt.Fprintf(w, "type %sPtr %s\n", codegen.Camel(name), elementGoType)
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func %[1]sPtr(v %[2]s) %[1]sPtrInput {\n", name, elementGoType)
-	fmt.Fprintf(w, "return (*%sPtr)(&v)\n", camel(name))
+	fmt.Fprintf(w, "return (*%sPtr)(&v)\n", codegen.Camel(name))
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (*%sPtr) ElementType() reflect.Type {\n", camel(name))
-	fmt.Fprintf(w, "return %sPtrType\n", camel(name))
+	fmt.Fprintf(w, "func (*%sPtr) ElementType() reflect.Type {\n", codegen.Camel(name))
+	fmt.Fprintf(w, "return %sPtrType\n", codegen.Camel(name))
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (in *%[1]sPtr) To%[2]sPtrOutput() %[2]sPtrOutput {\n", camel(name), name)
+	fmt.Fprintf(w, "func (in *%[1]sPtr) To%[2]sPtrOutput() %[2]sPtrOutput {\n", codegen.Camel(name), name)
 	fmt.Fprintf(w, "return pulumi.ToOutput(in).(%sPtrOutput)\n", name)
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (in *%[1]sPtr) To%[2]sPtrOutputWithContext(ctx context.Context) %[2]sPtrOutput {\n", camel(name), name)
+	fmt.Fprintf(w, "func (in *%[1]sPtr) To%[2]sPtrOutputWithContext(ctx context.Context) %[2]sPtrOutput {\n", codegen.Camel(name), name)
 	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, in).(%sPtrOutput)\n", name)
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
@@ -1311,7 +1281,7 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 		}
 		fmt.Fprintf(w, "\t%s.%s = %s\n", object, Title(p.Name), value)
 	} else if indirectAssign {
-		tmpName := camel(p.Name) + "_"
+		tmpName := codegen.Camel(p.Name) + "_"
 		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
 		fmt.Fprintf(w, "%s.%s = &%s\n", object, Title(p.Name), tmpName)
 	} else {
@@ -1417,7 +1387,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	if details.ptrInput {
 		pkg.genInputInterface(w, name+"Ptr")
 
-		ptrTypeName := camel(name) + "PtrType"
+		ptrTypeName := codegen.Camel(name) + "PtrType"
 
 		fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
 
@@ -1827,7 +1797,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 		// Emit the state types for get methods.
 		fmt.Fprintf(w, "// Input properties used for looking up and filtering %s resources.\n", name)
-		fmt.Fprintf(w, "type %sState struct {\n", camel(name))
+		fmt.Fprintf(w, "type %sState struct {\n", codegen.Camel(name))
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
@@ -1846,12 +1816,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "}\n\n")
 
 		fmt.Fprintf(w, "func (%sState) ElementType() reflect.Type {\n", name)
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sState)(nil)).Elem()\n", camel(name))
+		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sState)(nil)).Elem()\n", codegen.Camel(name))
 		fmt.Fprintf(w, "}\n\n")
 	}
 
 	// Emit the args types.
-	fmt.Fprintf(w, "type %sArgs struct {\n", camel(name))
+	fmt.Fprintf(w, "type %sArgs struct {\n", codegen.Camel(name))
 	for _, p := range r.InputProperties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
@@ -1877,7 +1847,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (%sArgs) ElementType() reflect.Type {\n", name)
-	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sArgs)(nil)).Elem()\n", camel(name))
+	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sArgs)(nil)).Elem()\n", codegen.Camel(name))
 	fmt.Fprintf(w, "}\n")
 
 	// Emit resource methods.
@@ -1929,7 +1899,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		outputsType := "pulumi.AnyOutput"
 		if f.Outputs != nil {
 			if shouldLiftReturn {
-				outputsType = fmt.Sprintf("%s%sResultOutput", camel(name), methodName)
+				outputsType = fmt.Sprintf("%s%sResultOutput", codegen.Camel(name), methodName)
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
@@ -1944,7 +1914,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\t}\n")
 
 			// Get the name of the method to return the output
-			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, camel(outputsType), Title(f.Outputs.Properties[0].Name))
+			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, codegen.Camel(outputsType), Title(f.Outputs.Properties[0].Name))
 		} else {
 			// Check the error before proceeding.
 			fmt.Fprintf(w, "\tif err != nil {\n")
@@ -1959,7 +1929,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		// If there are argument and/or return types, emit them.
 		if len(args) > 0 {
 			fmt.Fprintf(w, "\n")
-			fmt.Fprintf(w, "type %s%sArgs struct {\n", camel(name), methodName)
+			fmt.Fprintf(w, "type %s%sArgs struct {\n", codegen.Camel(name), methodName)
 			for _, p := range args {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(p.Type)),
@@ -1976,7 +1946,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "}\n\n")
 
 			fmt.Fprintf(w, "func (%s%sArgs) ElementType() reflect.Type {\n", name, methodName)
-			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", camel(name), methodName)
+			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", codegen.Camel(name), methodName)
 			fmt.Fprintf(w, "}\n\n")
 		}
 		if f.Outputs != nil {
@@ -1984,7 +1954,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 			// Don't export the result struct if we're lifting the value
 			if shouldLiftReturn {
-				outputStructName = camel(name)
+				outputStructName = codegen.Camel(name)
 			}
 
 			fmt.Fprintf(w, "\n")
@@ -2650,7 +2620,7 @@ func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource,
 	for _, method := range r.Methods {
 		if method.Function.Outputs != nil {
 			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
-				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", codegen.Camel(name), Title(method.Name))
 			} else {
 				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
 			}
@@ -2871,7 +2841,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
-		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name, camel(p.Name))
+		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name, codegen.Camel(p.Name))
 
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", Title(p.Name), getType)
 		if p.DefaultValue != nil {
@@ -3228,11 +3198,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			names = append(names, rawResourceName(r)+suffix+"Input")
 			names = append(names, rawResourceName(r)+suffix+"Output")
 			names = append(names, rawResourceName(r)+suffix+"Args")
-			names = append(names, camel(rawResourceName(r))+suffix+"Args")
+			names = append(names, codegen.Camel(rawResourceName(r))+suffix+"Args")
 			names = append(names, "New"+rawResourceName(r)+suffix)
 			if !r.IsProvider && !r.IsComponent {
 				names = append(names, rawResourceName(r)+suffix+"State")
-				names = append(names, camel(rawResourceName(r))+suffix+"State")
+				names = append(names, codegen.Camel(rawResourceName(r))+suffix+"State")
 				names = append(names, "Get"+rawResourceName(r)+suffix)
 			}
 			return names
@@ -3642,7 +3612,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, camel(rawResourceName(r))+".go"), buffer.String())
+			setFile(path.Join(mod, codegen.Camel(rawResourceName(r))+".go"), buffer.String())
 		}
 
 		// Functions
@@ -3652,7 +3622,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				continue
 			}
 
-			fileName := path.Join(mod, camel(tokenToName(f.Token))+".go")
+			fileName := path.Join(mod, codegen.Camel(tokenToName(f.Token))+".go")
 			code, err := pkg.genFunctionCodeFile(f)
 			if err != nil {
 				return nil, err
@@ -3921,4 +3891,18 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) {
 	}
 	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
 	contract.AssertNoError(err)
+}
+
+// Title converts the input string to a title case
+// where only the initial letter is upper-cased.
+// It also removes $-prefix if any.
+func Title(s string) string {
+	if s == "" {
+		return ""
+	}
+	if s[0] == '$' {
+		return Title(s[1:])
+	}
+	runes := []rune(s)
+	return codegen.ConvertHyphens(string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...)), "_")
 }
