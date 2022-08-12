@@ -248,16 +248,29 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
 	case pcl.Invoke:
+
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
 		if module == "" {
 			module = pkg
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
 		if isOut {
-			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType)
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
 			if err != nil {
-				panic(fmt.Errorf("Error when generating an output-versioned Invoke: %w", err))
+				// We create a diag instead of panicking since panics are caught in go
+				// format expressions.
+				g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+					Severity:    hcl.DiagError,
+					Summary:     "Error when generating an output-versioned Invoke",
+					Detail:      fmt.Sprintf("underlying error: %v", err),
+					Subject:     &hcl.Range{},
+					Context:     &hcl.Range{},
+					Expression:  nil,
+					EvalContext: &hcl.EvalContext{},
+				})
+				g.Fgenf(w, "%q", "failed") // Write a value to avoid syntax errors
+				return
 			}
 			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
 			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
@@ -329,7 +342,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 // Currently args type for output-versioned invokes are named
 // `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
 // this function to compensate.
-func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
+func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error) {
 	schemaType, ok := pcl.GetSchemaForType(t)
 	if !ok {
 		return "", fmt.Errorf("No schema.Type type found for the given model.Type")
@@ -340,7 +353,7 @@ func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
 		return "", fmt.Errorf("Expected a schema.ObjectType, got %s", schemaType.String())
 	}
 
-	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
+	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}, externalPackages: cache}
 
 	var ty string
 	if pkg.isExternalReference(objType) {

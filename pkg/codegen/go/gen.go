@@ -121,20 +121,6 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 	return strings.ToLower(mod)
 }
 
-type externalPackageHash struct {
-	name              string
-	version           string
-	pluginDownloadURL string
-}
-
-func newExternalPackageHash(pkg *schema.Package) externalPackageHash {
-	return externalPackageHash{
-		name:              pkg.Name,
-		version:           pkg.Version.String(),
-		pluginDownloadURL: pkg.PluginDownloadURL,
-	}
-}
-
 // A threadsafe cache for sharing between invocations of GenerateProgram.
 type Cache struct {
 	externalPackages map[*schema.Package]map[string]*pkgContext
