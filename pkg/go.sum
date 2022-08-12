@@ -687,8 +687,8 @@ github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsT
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
 github.com/pulumi/pulumi-java/pkg v0.5.3 h1:wqiP6TnKZm+ocTRLVwjzmd3fApCKQkvwba0qoh7zMV4=
 github.com/pulumi/pulumi-java/pkg v0.5.3/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
-github.com/pulumi/pulumi-yaml v0.5.3 h1:v3O7ayxBeyZmMKjpYZYxLyOfUYpHNtabgYaeQQxZPFA=
-github.com/pulumi/pulumi-yaml v0.5.3/go.mod h1:DVllQAk4eYy9rtDqykGyV/6WiFjzpg/j/k87GZRwV7g=
+github.com/pulumi/pulumi-yaml v0.5.4 h1:O4H0PD0hiJjpci0GJFSkihS+yC8rWACKxuLyjYVt5wo=
+github.com/pulumi/pulumi-yaml v0.5.4/go.mod h1:e8BcP30yunk/u3mLXDykhtEQf8tTItYgQzPHDmRvJcg=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=
