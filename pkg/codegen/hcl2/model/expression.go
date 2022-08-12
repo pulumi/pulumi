@@ -2555,3 +2555,42 @@ func (x *UnaryOpExpression) print(w io.Writer, p *printer) {
 }
 
 func (*UnaryOpExpression) isExpression() {}
+
+// CodeReferenceExpression stores a piece of code in its raw string form, allowing it to
+// be printed during TF2Pulumi code generation in places where it may be convenient.
+type CodeReferenceExpression struct {
+	Value string
+}
+
+// SyntaxNode returns the syntax node associated with the raw string expression.
+func (x *CodeReferenceExpression) SyntaxNode() hclsyntax.Node { return nil }
+
+// NodeTokens returns the tokens associated with the raw string expression.
+func (x *CodeReferenceExpression) NodeTokens() syntax.NodeTokens { return nil }
+
+// Type returns the type of the raw string expression.
+func (x *CodeReferenceExpression) Type() Type { return StringType }
+
+func (x *CodeReferenceExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics { return nil }
+
+func (x *CodeReferenceExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	return cty.NilVal, nil
+}
+
+func (x *CodeReferenceExpression) SetLeadingTrivia(t syntax.TriviaList) {}
+
+func (x *CodeReferenceExpression) GetLeadingTrivia() syntax.TriviaList { return nil }
+
+func (x *CodeReferenceExpression) SetTrailingTrivia(t syntax.TriviaList) {}
+
+func (x *CodeReferenceExpression) GetTrailingTrivia() syntax.TriviaList { return nil }
+
+func (x *CodeReferenceExpression) HasLeadingTrivia() bool { return false }
+
+func (x *CodeReferenceExpression) HasTrailingTrivia() bool { return false }
+
+func (*CodeReferenceExpression) isExpression() {}
+
+func (x *CodeReferenceExpression) print(w io.Writer, p *printer) {
+	p.fprintf(w, "%s", x.Value)
+}

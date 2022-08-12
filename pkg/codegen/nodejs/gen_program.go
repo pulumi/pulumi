@@ -43,8 +43,9 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
-	asyncMain     bool
-	configCreated bool
+	asyncMain                   bool
+	configCreated               bool
+	generatingComponentResource bool
 }
 
 func GenerateCode(program *pcl.Program, convertToComponentResource bool) (map[string][]byte, hcl.Diagnostics, error) {
@@ -61,7 +62,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	nodes := pcl.Linearize(program)
 
 	g := &generator{
-		program: program,
+		program:                     program,
+		generatingComponentResource: false,
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -104,7 +106,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 	indenter(func() {
 		for _, n := range nodes {
-			g.genNode(&index, n, false)
+			g.genNode(&index, n)
 		}
 		g.genAsync(&index, &nodes)
 	})
@@ -281,7 +283,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
-			if r.IsComponentResource {
+			if r.IsModule {
 				// Resource is a call to a Terraform Child module. Its "package" is the source path attribute which we added as a label earlier
 				sourcePath := r.Definition.Labels[1]
 				importSet.Add(sourcePath)
@@ -336,10 +338,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 }
 
-func (g *generator) genNode(w io.Writer, n pcl.Node, alreadyDeclared bool) {
+func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
 	case *pcl.Resource:
-		g.genResource(w, n, alreadyDeclared)
+		g.genResource(w, n)
 	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
@@ -372,7 +374,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 	var pkg, module, member string
 	var diagnostics hcl.Diagnostics
 
-	if r.IsComponentResource {
+	if r.IsModule {
 		// Terraform child modules are only differentiated by a local path. Creating a unique identifier out it.
 		pkg = makeValidIdentifier(path.Base(r.Definition.Labels[1]))
 		member = "Index"
@@ -414,54 +416,45 @@ func (g *generator) makeResourceName(baseName, count string) string {
 }
 
 func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
-	if opts == nil {
-		return ""
-	}
-
 	// Turn the resource options into an ObjectConsExpression and generate it.
-	var object *model.ObjectConsExpression
-	appendOption := func(name string, value model.Expression) {
-		if object == nil {
-			object = &model.ObjectConsExpression{}
+	var optsList *model.ObjectConsExpression
+
+	if opts == nil {
+		if g.generatingComponentResource {
+			// A component resource is being made with no options, so the parent is automatically `this`
+			optsList = appendOption(optsList, "parent", &model.CodeReferenceExpression{Value: "this"})
 		}
-		object.Items = append(object.Items, model.ObjectConsItem{
-			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
-			},
-			Value: value,
-		})
+	} else {
+		if opts.Parent != nil {
+			optsList = appendOption(optsList, "parent", opts.Parent)
+		} else if g.generatingComponentResource {
+			// A component resource is being made, so the parent is automatically `this` unless explicitly set
+			optsList = appendOption(optsList, "parent", &model.CodeReferenceExpression{Value: "this"})
+		}
+		if opts.Provider != nil {
+			optsList = appendOption(optsList, "provider", opts.Provider)
+		}
+		if opts.DependsOn != nil {
+			optsList = appendOption(optsList, "dependsOn", opts.DependsOn)
+		}
+		if opts.Protect != nil {
+			optsList = appendOption(optsList, "protect", opts.Protect)
+		}
+		if opts.IgnoreChanges != nil {
+			optsList = appendOption(optsList, "ignoreChanges", opts.IgnoreChanges)
+		}
 	}
-
-	if opts.Parent != nil {
-		appendOption("parent", opts.Parent)
-	}
-	if opts.Provider != nil {
-		appendOption("provider", opts.Provider)
-	}
-	if opts.DependsOn != nil {
-		appendOption("dependsOn", opts.DependsOn)
-	}
-	if opts.Protect != nil {
-		appendOption("protect", opts.Protect)
-	}
-	if opts.IgnoreChanges != nil {
-		appendOption("ignoreChanges", opts.IgnoreChanges)
-	}
-
-	if object == nil {
+	if optsList == nil {
 		return ""
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
+	g.Fgenf(&buffer, ", %v", g.lowerExpression(optsList, nil))
 	return buffer.String()
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
-// When converting modules to ComponentResources, `r` should have already been
-// declared earlier as a class member and `alreadyDeclared` should be set to true.
-func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bool) {
+func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	// Setting up names and helper variables for later use
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	if module != "" {
@@ -495,21 +488,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 				}
 
 				fmtString := "%s: %.v"
-				if alreadyDeclared {
-					// We are generating a Component Resource; parameters must have `this.`if they reference
-					// other resources & local variables, or `args.` if they reference config variables
-					part, err := getFirstTraversablePart(attr)
-					if err == nil {
-						switch (*part).(type) {
-						case *pcl.Resource:
-							fmtString = "%s: this.%.v"
-						case *pcl.LocalVariable:
-							fmtString = "%s: this.%.v"
-						case *pcl.ConfigVariable:
-							fmtString = "%s: args.%.v"
-						}
-					}
-				}
 				if len(r.Inputs) > 1 {
 					fmtString = "\n" + g.Indent + fmtString + ","
 				}
@@ -537,24 +515,24 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			// Resource can be safely converted into a special boolean type, no need to generate a loop
-			if !alreadyDeclared {
+			if !g.generatingComponentResource {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
 			}
 
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
-				if alreadyDeclared {
+				if g.generatingComponentResource {
 					g.Fgenf(w, "%sthis.%s = ", g.Indent, variableName)
 				} else {
-					g.Fgenf(w, "%s%s = ", g.Indent, variableName)
 				}
+				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
 				instantiate(g.makeResourceName(name, ""))
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
 			// For loop is required for resource generation
-			if !alreadyDeclared {
+			if !g.generatingComponentResource {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
 
@@ -574,7 +552,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 			// Generating for loop body
 			resName := g.makeResourceName(name, "range."+resKey)
 			g.Indented(func() {
-				if alreadyDeclared {
+				if g.generatingComponentResource {
 					g.Fgenf(w, "%sthis.%s.push(", g.Indent, variableName)
 				} else {
 					g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
@@ -586,7 +564,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource, alreadyDeclared bo
 		}
 	} else {
 		// Resource can be initialized without any loops
-		if alreadyDeclared {
+		if g.generatingComponentResource {
 			g.Fgenf(w, "%sthis.%s = ", g.Indent, variableName)
 		} else {
 			g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
@@ -631,7 +609,11 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
+	if g.generatingComponentResource {
+		g.Fgenf(w, "%sthis.%s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
+	} else {
+		g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
+	}
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
@@ -677,17 +659,17 @@ func (g *generator) genDeclareResourcesAndLocals(w *io.Writer, nodes *[]pcl.Node
 				g.Fgenf(*w, "%spublic readonly %s: %s;\n", g.Indent, n.LogicalName(), typeName)
 			}
 		case *pcl.LocalVariable:
-			g.Fgenf(*w, "%public readonly %s: %.v;\n", g.Indent, n.Name(), g.lowerExpression(n.Definition.Value, n.Type()).Type())
+			g.Fgenf(*w, "%spublic readonly %s: %.v;\n", g.Indent, n.Name(), g.lowerExpression(n.Definition.Value, n.Type()).Type())
 		}
 	}
 	g.Fgenf(*w, "\n")
 }
 
 func (g *generator) genConstructor(w *io.Writer, nodes *[]pcl.Node) {
-	g.Fgenf(*w, "%sconstructor(name: string, args: IndexArgs) {\n", g.Indent)
+	g.Fgenf(*w, "%sconstructor(name: string, args: IndexArgs, opts: pulumi.ComponentResourceOptions = {}) {\n", g.Indent)
 
 	g.Indented(func() {
-		g.Fgenf(*w, "%ssuper(\"pkg:index:component\", name);\n\n", g.Indent)
+		g.Fgenf(*w, "%ssuper(\"pkg:index:component\", name, args, opts);\n\n", g.Indent)
 		g.genInitializeResourcesAndLocals(w, nodes)
 		g.genRegisterOutputs(w, nodes)
 	})
@@ -706,7 +688,9 @@ func (g *generator) genInitializeResourcesAndLocals(w *io.Writer, nodes *[]pcl.N
 		for _, n := range *nodes {
 			switch n := n.(type) {
 			case *pcl.Resource:
-				g.genNode(*w, n, true)
+				g.genNode(*w, n)
+			case *pcl.LocalVariable:
+				g.genLocalVariable(*w, n)
 			}
 		}
 		g.genAsync(*w, nodes)
@@ -747,17 +731,27 @@ func (g *generator) genAsync(w io.Writer, nodes *[]pcl.Node) {
 }
 
 func (g *generator) genRegisterOutputs(w *io.Writer, nodes *[]pcl.Node) {
-	g.Fgenf(*w, "\n%ssuper.registerOutputs({\n", g.Indent)
+	var hasOutputs bool
+	for _, n := range *nodes {
+		switch n.(type) {
+		case *pcl.OutputVariable:
+			hasOutputs = true;
+			break;	
+		}
+	}
+	if !hasOutputs {
+		return
+	}
 
+	g.Fgenf(*w, "\n%ssuper.registerOutputs({\n", g.Indent)
 	g.Indented(func() {
 		for _, n := range *nodes {
 			switch n := n.(type) {
 			case *pcl.OutputVariable:
-				g.Fgenf(*w, "%s%s: this.%.v,\n", g.Indent, n.Name(), g.lowerExpression(n.Value, n.Type()))
+				g.Fgenf(*w, "%s%s: %.v,\n", g.Indent, n.Name(), g.lowerExpression(n.Value, n.Type()))
 			}
 		}
 	})
-
 	g.Fgenf(*w, "%s});\n", g.Indent)
 }
 

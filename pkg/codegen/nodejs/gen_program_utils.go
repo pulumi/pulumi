@@ -2,12 +2,15 @@ package nodejs
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Provides code for a method which will be placed in the program preamble if deemed
@@ -32,8 +35,9 @@ func linearizeAndSetupGenerator(program *pcl.Program) ([]pcl.Node, *generator, e
 
 	// Setup generator for procedural code generation
 	g := &generator{
-		program:   program,
-		asyncMain: needAsyncMain(&nodes),
+		program:                     program,
+		asyncMain:                   needAsyncMain(&nodes),
+		generatingComponentResource: true,
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -82,7 +86,7 @@ func (g *generator) getResourceTypeName(r *pcl.Resource) string {
 func (g *generator) getModelDestType(r *pcl.Resource, attr *model.Attribute) model.Traversable {
 	var destType model.Traversable
 	var diagnostics hcl.Diagnostics
-	if r.IsComponentResource {
+	if r.IsModule {
 		// Attribute belonged to a Module with custom types not listed in any offcial schema. Defaulting to DynamicType
 		destType = model.DynamicType
 	} else {
@@ -119,4 +123,32 @@ func getTypescriptTypeName(typeName string) string {
 	default:
 		return typeName
 	}
+}
+
+// Appends resource options to an ObjectConsExpression
+func appendOption(optionsList *model.ObjectConsExpression, name string, value model.Expression) *model.ObjectConsExpression {
+	if optionsList == nil {
+		optionsList = &model.ObjectConsExpression{}
+	}
+	optionsList.Items = append(optionsList.Items, model.ObjectConsItem{
+		Key: &model.LiteralValueExpression{
+			Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
+			Value:  cty.StringVal(name),
+		},
+		Value: value,
+	})
+	return optionsList
+}
+
+// Prints the given rootname with a special prefix when a component resource is being generated, allowing it
+// to reference component resource members or input arguments
+func (g *generator) genRootNameWithPrefix(w io.Writer, rootName string, expr *model.ScopeTraversalExpression) {
+	fmtString := "%s"
+	switch expr.Parts[0].(type) {
+	case *pcl.Resource, *pcl.LocalVariable:
+		fmtString = "this.%s"
+	case *pcl.ConfigVariable:
+		fmtString = "args.%s"
+	}
+	g.Fgenf(w, fmtString, rootName)
 }

@@ -60,6 +60,8 @@ type ExpressionGenerator interface {
 	GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression)
 	// GenUnaryOpExpression generates code for a UnaryOpExpression.
 	GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression)
+	// GenCodeReferenceExpression generates code for a CodeReferenceExpression.
+	GenCodeReferenceExpression(w io.Writer, expr *model.CodeReferenceExpression)
 }
 
 // Formatter is a convenience type that implements a number of common utilities used to emit source code. It implements
@@ -150,6 +152,8 @@ func (e *Formatter) gen(w io.Writer, parentPrecedence int, rhs bool, x model.Exp
 		e.g.GenTupleConsExpression(w, x)
 	case *model.UnaryOpExpression:
 		e.g.GenUnaryOpExpression(w, x)
+	case *model.CodeReferenceExpression:
+		e.g.GenCodeReferenceExpression(w, x)
 	default:
 		contract.Failf("unexpected expression node of type %T (%v)", x, x.SyntaxNode().Range())
 	}

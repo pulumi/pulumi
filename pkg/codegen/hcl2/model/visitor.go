@@ -340,6 +340,8 @@ func VisitExpression(n Expression, pre, post ExpressionVisitor) (Expression, hcl
 			nn, postDiags = visitTupleCons(n, pre, post)
 		case *UnaryOpExpression:
 			nn, postDiags = visitUnaryOp(n, pre, post)
+		case *CodeReferenceExpression:
+			nn, postDiags = post(n)
 		default:
 			contract.Failf("unexpected node type in visitExpression: %T", n)
 			return nil, nil

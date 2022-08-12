@@ -14,7 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
+func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool, checkPackages bool) {
 	dir := filepath.Dir(path)
 
 	removeFile := func(name string) {
@@ -54,7 +54,9 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
 	require.NoError(t, err)
 
-	TypeCheck(t, path, dependencies, linkLocal)
+	if checkPackages {
+		TypeCheck(t, path, dependencies, linkLocal)
+	}
 }
 
 func TypeCheck(t *testing.T, path string, _ codegen.StringSet, linkLocal bool) {

@@ -16,9 +16,25 @@ func TestGenerateProgram(t *testing.T) {
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, true)
+				Check(t, path, dependencies, true, true)
 			},
 			GenProgram: GenerateProgram,
 			TestCases:  test.PulumiPulumiProgramTests,
+		})
+}
+
+func TestGenerateComponentResource(t *testing.T) {
+	t.Parallel()
+
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, true, false)
+			},
+			GenProgram: GenerateComponentResource,
+			TestCases:  test.PulumiPulumiComponentResourceTests,
 		})
 }

@@ -33,7 +33,7 @@ func getResourceToken(node *Resource) (string, hcl.Range) {
 func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	if !node.IsComponentResource {
+	if !node.IsModule {
 		// Unlike a custom terraform module, this resource has known input and output types defined in a schema
 		typeDiags := b.bindResourceTypes(node)
 		diagnostics = append(diagnostics, typeDiags...)
