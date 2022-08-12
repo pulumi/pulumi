@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -48,6 +49,10 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+const (
+	PULUMI_BINARY_NAME = ".pulumi.out"
+)
+
 func findProgram(binary string) (*exec.Cmd, error) {
 	// we default to execution via `go run`
 	// the user can explicitly opt in to using a binary executable by specifying
@@ -61,7 +66,7 @@ func findProgram(binary string) (*exec.Cmd, error) {
 	}
 
 	// Fall back to 'go run' style executions
-	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via 'go run'")
+	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 	program, err := executable.FindExecutable("go")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
@@ -77,7 +82,17 @@ func findProgram(binary string) (*exec.Cmd, error) {
 		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
 	}
 
-	return exec.Command(program, "run", cwd), nil
+	binPath := path.Join(cwd, PULUMI_BINARY_NAME)
+	buildCmd := exec.Command(program, "build", "-o", binPath, cwd)
+	if err := buildCmd.Run(); err != nil {
+		logging.V(5).Infof("Unable to `go build` falling back to `go run`")
+		// fallback to old behavior if failure
+		// - directory is not writable.
+		// - etc.
+		return exec.Command(program, "run", cwd), nil
+	}
+
+	return exec.Command(binPath), nil
 }
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
