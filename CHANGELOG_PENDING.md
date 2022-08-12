@@ -13,6 +13,15 @@
 - [sdk/python] hide internal pulumi stacks in python stacktrace output
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
+- [automation] Add options for Automation API in each SDK to control logging and tracing, allowing
+  automation API to run with the equivalent of CLI arguments `--logflow`, `--verbose`,
+  `--logtostderr`, `--tracing` and `--debug`
+  [#10338](https://github.com/pulumi/pulumi/pull/10338)
+  
+- [yaml] [Updates Pulumi YAML to v0.5.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.4)
+
+- [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
@@ -38,4 +47,6 @@
 
 - [dotnet] Set environment exit code during `Deployment.RunAsync` in case users don't bubble it the program entry point themselves
   [#10217](https://github.com/pulumi/pulumi/pull/10217)
-  
+
+- [cli/display] Fix a panic in the color logic.
+  [#10354](https://github.com/pulumi/pulumi/pull/10354)
