@@ -50,7 +50,7 @@ import (
 )
 
 const (
-	PULUMI_BINARY_NAME = ".pulumi.out"
+	pulumiBinaryName = ".pulumi.out"
 )
 
 func findProgram(binary string) (*exec.Cmd, error) {
@@ -82,7 +82,7 @@ func findProgram(binary string) (*exec.Cmd, error) {
 		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
 	}
 
-	binaryToRun := path.Join(cwd, PULUMI_BINARY_NAME)
+	binaryToRun := path.Join(cwd, pulumiBinaryName)
 	buildCmd := exec.Command(program, "build", "-o", binaryToRun, cwd)
 	if err := buildCmd.Run(); err != nil {
 		logging.V(5).Infof("Unable to `go build` falling back to `go run`")

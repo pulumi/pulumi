@@ -19,6 +19,9 @@
 
 - [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
 
+- [sdk/go] enable direct compilation via go build 
+  [#10375](https://github.com/pulumi/pulumi/pull/10375)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
