@@ -14,6 +14,10 @@
   automation API to run with the equivalent of CLI arguments `--logflow`, `--verbose`,
   `--logtostderr`, `--tracing` and `--debug`
   [#10338](https://github.com/pulumi/pulumi/pull/10338)
+  
+- [yaml] [Updates Pulumi YAML to v0.5.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.4)
+
+- [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
 
 ### Bug Fixes
 
