@@ -21,6 +21,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per
@@ -101,4 +102,8 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	safeName = typeName + safeName
 
 	return safeName, nil
+}
+
+func camel(s string) string {
+	return cgstrings.Camel(s)
 }
