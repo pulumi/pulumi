@@ -157,8 +157,8 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
         }
     }
 
-    console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
-    console.error(`    Here is the raw exception message we received: ${error.message}`);
+    console.error("  * Pulumi encountered an unexpected error.");
+    console.error(`    Raw exception message: ${error.message}`);
     return;
 }
 
