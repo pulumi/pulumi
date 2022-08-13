@@ -93,7 +93,7 @@ namespace Pulumi.Tests.Mocks
             Assert.Equal("203.0.113.12", ip);
         }
 
-        /// Test for https://github.com/pulumi/pulumi/issues/8163
+        /// Test for https://github.com/mariospas/pulumi/issues/8163
         [Fact]
         public async Task TestInvokeThrowing()
         {

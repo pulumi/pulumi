@@ -31,12 +31,12 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/mariospas/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
 

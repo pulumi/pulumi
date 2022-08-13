@@ -1,5 +1,5 @@
 PROJECT_NAME    := Pulumi .NET Core SDK
-LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
+LANGHOST_PKG    := github.com/mariospas/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 PROJECT_ROOT    := $(realpath ../..)
@@ -38,10 +38,10 @@ build::
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
 	dotnet clean
 	dotnet build dotnet.sln -p:Version=${DOTNET_VERSION}
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/mariospas/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/mariospas/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install:: build install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
@@ -66,11 +66,11 @@ test_go:: $(TEST_ALL_DEPS)
 test_all:: dotnet_test test_auto test_go
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/mariospas/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/mariospas/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"

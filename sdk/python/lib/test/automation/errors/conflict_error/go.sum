@@ -161,8 +161,8 @@ github.com/prometheus/common v0.4.0/go.mod h1:TNfzLD0ON7rHzMJeJkieUDPYmFC7Snx/y8
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
-github.com/pulumi/pulumi/sdk/v3 v3.0.0-20210322210933-10a6a2caf014 h1:WUlOHsRhzO08oUCEjZhWS0VHssiIjCNio89VlAvD9ao=
-github.com/pulumi/pulumi/sdk/v3 v3.0.0-20210322210933-10a6a2caf014/go.mod h1:GBHyQ7awNQSRmiKp/p8kIKrGrMOZeA/k2czoM/GOqds=
+github.com/mariospas/pulumi/sdk/v3 v3.0.0-20210322210933-10a6a2caf014 h1:WUlOHsRhzO08oUCEjZhWS0VHssiIjCNio89VlAvD9ao=
+github.com/mariospas/pulumi/sdk/v3 v3.0.0-20210322210933-10a6a2caf014/go.mod h1:GBHyQ7awNQSRmiKp/p8kIKrGrMOZeA/k2czoM/GOqds=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94 h1:G04eS0JkAIVZfaJLjla9dNxkJCPiKIGZlw9AfOhzOD0=

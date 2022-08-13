@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 # provider.
 #
 # [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
-# [2] https://github.com/pulumi/pulumi-kubernetes/issues/984
+# [2] https://github.com/mariospas/pulumi-kubernetes/issues/984
 #
 # This setting requires a platform-specific and python version-specific .so file called
 # `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is

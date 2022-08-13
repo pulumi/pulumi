@@ -40,15 +40,15 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/pulumi/pulumi/sdk/v3/python"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/mariospas/pulumi/sdk/v3/proto/go"
+	"github.com/mariospas/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
 )
 
@@ -70,7 +70,7 @@ var (
 	// Any version less then `eolPythonVersion` is EOL.
 	eolPythonVersion = semver.MustParse("3.7.0")
 	// An url to the issue discussing EOL.
-	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
+	eolPythonVersionIssue = "https://github.com/mariospas/pulumi/issues/8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the

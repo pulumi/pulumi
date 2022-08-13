@@ -129,7 +129,7 @@ export class Stack {
                 callback(event);
             } catch (e) {
                 log.warn(`Failed to parse engine event
-If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
+If you're seeing this warning, please comment on https://github.com/mariospas/pulumi/issues/6768 with the event and any
 details about your environment.
 
 Event: ${line}\n${e.toString()}`);
@@ -243,7 +243,7 @@ Event: ${line}\n${e.toString()}`);
             await cleanUp(logFile, await logPromise);
         }
 
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        // TODO: do this in parallel after this is fixed https://github.com/mariospas/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
 
@@ -623,7 +623,7 @@ Event: ${line}\n${e.toString()}`);
  * Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
  * Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
  * format, and instead only use the stack name without an org/user or project to qualify it.
- * See: https://github.com/pulumi/pulumi/issues/2522
+ * See: https://github.com/mariospas/pulumi/issues/2522
  *
  * @param org The org (or user) that contains the Stack.
  * @param project The project that parents the Stack.

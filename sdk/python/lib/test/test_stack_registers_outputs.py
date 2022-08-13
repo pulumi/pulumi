@@ -16,7 +16,7 @@
 there are no outputs. This makes sure removing stack outputs from a
 program actually deletes them from the stack.
 
-Regresses https://github.com/pulumi/pulumi/issues/8273
+Regresses https://github.com/mariospas/pulumi/issues/8273
 
 """
 

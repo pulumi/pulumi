@@ -77,7 +77,7 @@ namespace Pulumi
                             await _logger.WarnAsync(
                                 $"Conflict between provider and providers field for package '{p.Package}'. "+
                                 "This behavior is depreciated, and will turn into an error July 2022. "+
-                                "For more information, see https://github.com/pulumi/pulumi/issues/8799.", res)
+                                "For more information, see https://github.com/mariospas/pulumi/issues/8799.", res)
                                 .ConfigureAwait(false);
                         }
                     }

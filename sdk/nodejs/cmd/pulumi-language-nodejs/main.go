@@ -46,14 +46,14 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/mariospas/pulumi/sdk/v3/proto/go"
 )
 
 const (

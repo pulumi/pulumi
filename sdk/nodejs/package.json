@@ -5,7 +5,7 @@
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/pulumi/pulumi.git",
+        "url": "https://github.com/mariospas/pulumi.git",
         "directory": "sdk/nodejs"
     },
     "dependencies": {

@@ -568,7 +568,7 @@ export async function monitorSupportsOutputValues(): Promise<boolean> {
 
 // sxsRandomIdentifier is a module level global that is transfered to process.env.
 // the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
-// and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.
+// and fail fast. See https://github.com/mariospas/pulumi/issues/7333 for details.
 const sxsRandomIdentifier = Math.random().toString();
 
 // indicates that the current runtime context is via an inline program via automation api.
@@ -596,6 +596,6 @@ function runSxSCheck() {
     // if we see a different identifier, another version of pulumi has been loaded and we should fail.
     if (!!envSxS && envSxS !== sxsRandomIdentifier) {
         throw new Error("Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
-            "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.");
+            "Use the yarn 'resolutions' field to pin to a single version: https://github.com/mariospas/pulumi/issues/5449.");
     }
 }

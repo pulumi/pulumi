@@ -24,8 +24,8 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/mariospas/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Unix specific pipe implementation. Fairly simple as it sits on top of a pair of standard fifo

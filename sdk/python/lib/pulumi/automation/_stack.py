@@ -692,7 +692,7 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
     Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
     format, and instead only use the stack name without an org/user or project to qualify it.
-    See: https://github.com/pulumi/pulumi/issues/2522
+    See: https://github.com/mariospas/pulumi/issues/2522
 
     :param org: The name of the org or user.
     :param project: The name of the project.
