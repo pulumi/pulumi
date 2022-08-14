@@ -47,6 +47,7 @@ require (
 
 require (
 	github.com/hashicorp/go-version v1.4.0
-	github.com/pulumi/pulumi/sdk/v3 v3.37.2
+	github.com/pulumi/pulumi/sdk/v3 v3.37.3-0.20220812232055-044aa8acac0d
 	google.golang.org/protobuf v1.24.0
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 )
