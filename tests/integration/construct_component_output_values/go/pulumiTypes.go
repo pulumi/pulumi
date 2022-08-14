@@ -16,7 +16,7 @@ type Bar struct {
 // BarInput is an input type that accepts BarArgs and BarOutput values.
 // You can construct a concrete instance of `BarInput` via:
 //
-//          BarArgs{...}
+//	BarArgs{...}
 type BarInput interface {
 	pulumi.Input
 
@@ -51,11 +51,11 @@ func (i BarArgs) ToBarPtrOutputWithContext(ctx context.Context) BarPtrOutput {
 // BarPtrInput is an input type that accepts BarArgs, BarPtr and BarPtrOutput values.
 // You can construct a concrete instance of `BarPtrInput` via:
 //
-//          BarArgs{...}
+//	        BarArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type BarPtrInput interface {
 	pulumi.Input
 
@@ -149,7 +149,7 @@ type Foo struct {
 // FooInput is an input type that accepts FooArgs and FooOutput values.
 // You can construct a concrete instance of `FooInput` via:
 //
-//          FooArgs{...}
+//	FooArgs{...}
 type FooInput interface {
 	pulumi.Input
 
@@ -184,11 +184,11 @@ func (i FooArgs) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 // FooPtrInput is an input type that accepts FooArgs, FooPtr and FooPtrOutput values.
 // You can construct a concrete instance of `FooPtrInput` via:
 //
-//          FooArgs{...}
+//	        FooArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type FooPtrInput interface {
 	pulumi.Input
 

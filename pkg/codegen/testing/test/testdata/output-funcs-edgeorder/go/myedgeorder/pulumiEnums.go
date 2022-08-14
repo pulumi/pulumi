@@ -142,7 +142,7 @@ func (o SupportedFilterTypesPtrOutput) ToStringPtrOutputWithContext(ctx context.
 // SupportedFilterTypesInput is an input type that accepts SupportedFilterTypesArgs and SupportedFilterTypesOutput values.
 // You can construct a concrete instance of `SupportedFilterTypesInput` via:
 //
-//          SupportedFilterTypesArgs{...}
+//	SupportedFilterTypesArgs{...}
 type SupportedFilterTypesInput interface {
 	pulumi.Input
 

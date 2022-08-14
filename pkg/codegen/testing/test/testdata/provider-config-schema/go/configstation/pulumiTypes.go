@@ -18,7 +18,7 @@ type Child struct {
 // ChildInput is an input type that accepts ChildArgs and ChildOutput values.
 // You can construct a concrete instance of `ChildInput` via:
 //
-//          ChildArgs{...}
+//	ChildArgs{...}
 type ChildInput interface {
 	pulumi.Input
 

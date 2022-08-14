@@ -67,22 +67,22 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 // The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
 // or a remote component resource:
 //
-// - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
-// - Local component resources act as aggregations of their descendents. Rather than adding the component resource
-//   itself, each child resource is added as a dependency.
-// - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
-//   with respect to dependencies: the construction of a remote component always waits on the construction of its
-//   children.
+//   - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
+//   - Local component resources act as aggregations of their descendents. Rather than adding the component resource
+//     itself, each child resource is added as a dependency.
+//   - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
+//     with respect to dependencies: the construction of a remote component always waits on the construction of its
+//     children.
 //
 // In other words, if we had:
 //
-//				  Comp1
-//			  /     |     \
-//		  Cust1   Comp2  Remote1
-//				  /   \       \
-//			  Cust2   Cust3  Comp3
-//			  /                 \
-//		  Cust4                Cust5
+//			  Comp1
+//		  /     |     \
+//	  Cust1   Comp2  Remote1
+//			  /   \       \
+//		  Cust2   Cust3  Comp3
+//		  /                 \
+//	  Cust4                Cust5
 //
 // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
 // It will *not* include:

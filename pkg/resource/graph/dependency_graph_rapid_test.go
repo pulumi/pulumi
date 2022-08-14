@@ -19,13 +19,13 @@
 // relevant to dependency calculations; `dependency_graph` only
 // accesses these fields:
 //
-//     type State struct {
-//         Dependencies []resource.URN
-//         URN          resource.URN
-//         Parent       resource.URN
-//         Provider     string
-//         Custom       bool
-//     }
+//	type State struct {
+//	    Dependencies []resource.URN
+//	    URN          resource.URN
+//	    Parent       resource.URN
+//	    Provider     string
+//	    Custom       bool
+//	}
 //
 // At the moment only `Custom=true` (Custom, not Component) resources
 // are tested.

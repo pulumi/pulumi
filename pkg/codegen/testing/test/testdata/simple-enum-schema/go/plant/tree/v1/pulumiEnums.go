@@ -139,7 +139,7 @@ func (o DiameterPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pu
 // DiameterInput is an input type that accepts DiameterArgs and DiameterOutput values.
 // You can construct a concrete instance of `DiameterInput` via:
 //
-//          DiameterArgs{...}
+//	DiameterArgs{...}
 type DiameterInput interface {
 	pulumi.Input
 
@@ -303,7 +303,7 @@ func (o FarmPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.
 // FarmInput is an input type that accepts FarmArgs and FarmOutput values.
 // You can construct a concrete instance of `FarmInput` via:
 //
-//          FarmArgs{...}
+//	FarmArgs{...}
 type FarmInput interface {
 	pulumi.Input
 
@@ -472,7 +472,7 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 // RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.
 // You can construct a concrete instance of `RubberTreeVarietyInput` via:
 //
-//          RubberTreeVarietyArgs{...}
+//	RubberTreeVarietyArgs{...}
 type RubberTreeVarietyInput interface {
 	pulumi.Input
 
@@ -510,7 +510,7 @@ func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutputWithContext(ctx cont
 // RubberTreeVarietyArrayInput is an input type that accepts RubberTreeVarietyArray and RubberTreeVarietyArrayOutput values.
 // You can construct a concrete instance of `RubberTreeVarietyArrayInput` via:
 //
-//          RubberTreeVarietyArray{ RubberTreeVarietyArgs{...} }
+//	RubberTreeVarietyArray{ RubberTreeVarietyArgs{...} }
 type RubberTreeVarietyArrayInput interface {
 	pulumi.Input
 
@@ -682,7 +682,7 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pul
 // TreeSizeInput is an input type that accepts TreeSizeArgs and TreeSizeOutput values.
 // You can construct a concrete instance of `TreeSizeInput` via:
 //
-//          TreeSizeArgs{...}
+//	TreeSizeArgs{...}
 type TreeSizeInput interface {
 	pulumi.Input
 
@@ -720,7 +720,7 @@ func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeS
 // TreeSizeMapInput is an input type that accepts TreeSizeMap and TreeSizeMapOutput values.
 // You can construct a concrete instance of `TreeSizeMapInput` via:
 //
-//          TreeSizeMap{ "key": TreeSizeArgs{...} }
+//	TreeSizeMap{ "key": TreeSizeArgs{...} }
 type TreeSizeMapInput interface {
 	pulumi.Input
 

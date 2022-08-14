@@ -104,7 +104,7 @@ func (i *Cat) ToCatOutputWithContext(ctx context.Context) CatOutput {
 // CatArrayInput is an input type that accepts CatArray and CatArrayOutput values.
 // You can construct a concrete instance of `CatArrayInput` via:
 //
-//          CatArray{ CatArgs{...} }
+//	CatArray{ CatArgs{...} }
 type CatArrayInput interface {
 	pulumi.Input
 
@@ -129,7 +129,7 @@ func (i CatArray) ToCatArrayOutputWithContext(ctx context.Context) CatArrayOutpu
 // CatMapInput is an input type that accepts CatMap and CatMapOutput values.
 // You can construct a concrete instance of `CatMapInput` via:
 //
-//          CatMap{ "key": CatArgs{...} }
+//	CatMap{ "key": CatArgs{...} }
 type CatMapInput interface {
 	pulumi.Input
 

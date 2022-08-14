@@ -33,7 +33,7 @@ func (val *Container) Defaults() *Container {
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.
 // You can construct a concrete instance of `ContainerInput` via:
 //
-//          ContainerArgs{...}
+//	ContainerArgs{...}
 type ContainerInput interface {
 	pulumi.Input
 
@@ -82,11 +82,11 @@ func (i ContainerArgs) ToContainerPtrOutputWithContext(ctx context.Context) Cont
 // ContainerPtrInput is an input type that accepts ContainerArgs, ContainerPtr and ContainerPtrOutput values.
 // You can construct a concrete instance of `ContainerPtrInput` via:
 //
-//          ContainerArgs{...}
+//	        ContainerArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ContainerPtrInput interface {
 	pulumi.Input
 
