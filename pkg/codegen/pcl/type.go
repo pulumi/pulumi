@@ -20,9 +20,11 @@ import (
 
 var (
 	// ArchiveType represents the set of Pulumi Archive values.
-	ArchiveType model.Type = model.MustNewOpaqueType("Archive")
+	ArchiveType model.Type = model.NewOpaqueType("Archive")
 	// AssetType represents the set of Pulumi Asset values.
-	AssetType model.Type = model.MustNewOpaqueType("Asset")
+	AssetType model.Type = model.NewOpaqueType("Asset")
 	// ResourcePropertyType represents a resource property reference.
-	ResourcePropertyType model.Type = model.MustNewOpaqueType("Property")
+	ResourcePropertyType model.Type = model.NewOpaqueType("Property")
+	// AssetOrArchiveType represents the set of Pulumi Archive values.
+	AssetOrArchiveType model.Type = model.NewUnionType(ArchiveType, AssetType)
 )

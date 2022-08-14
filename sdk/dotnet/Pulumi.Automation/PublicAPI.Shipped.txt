@@ -312,6 +312,10 @@ Pulumi.Automation.UpdateOptions.Parallel.get -> int?
 Pulumi.Automation.UpdateOptions.Parallel.set -> void
 Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>
 Pulumi.Automation.UpdateOptions.Target.set -> void
+Pulumi.Automation.UpdateOptions.PolicyPacks.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpdateOptions.PolicyPacks.set -> void
+Pulumi.Automation.UpdateOptions.PolicyPackConfigs.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpdateOptions.PolicyPackConfigs.set -> void
 Pulumi.Automation.UpdateOptions.UpdateOptions() -> void
 Pulumi.Automation.UpdateResult
 Pulumi.Automation.UpdateResult.StandardError.get -> string
@@ -468,3 +472,27 @@ Pulumi.Automation.StackDeployment.Json.get -> System.Text.Json.JsonElement
 static Pulumi.Automation.StackDeployment.FromJsonString(string jsonString) -> Pulumi.Automation.StackDeployment
 Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
 Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.PreviewOptions.Plan.get -> string
+Pulumi.Automation.PreviewOptions.Plan.set -> void
+Pulumi.Automation.UpOptions.Plan.get -> string
+Pulumi.Automation.UpOptions.Plan.set -> void
+Pulumi.Automation.UpdateOptions.Color.get -> string
+Pulumi.Automation.UpdateOptions.Color.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.DestroyOptions.ShowSecrets.set -> void
+Pulumi.Automation.DestroyOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpOptions.ShowSecrets.set -> void
+Pulumi.Automation.UpOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.RefreshOptions.ShowSecrets.set -> void
+Pulumi.Automation.RefreshOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpdateOptions.LogFlow.get -> bool?
+Pulumi.Automation.UpdateOptions.LogFlow.set -> void
+Pulumi.Automation.UpdateOptions.LogVerbosity.get -> int?
+Pulumi.Automation.UpdateOptions.LogVerbosity.set -> void
+Pulumi.Automation.UpdateOptions.LogToStdErr.get -> bool?
+Pulumi.Automation.UpdateOptions.LogToStdErr.set -> void
+Pulumi.Automation.UpdateOptions.Tracing.get -> string?
+Pulumi.Automation.UpdateOptions.Tracing.set -> void
+Pulumi.Automation.UpdateOptions.Debug.get -> bool?
+Pulumi.Automation.UpdateOptions.Debug.set -> void

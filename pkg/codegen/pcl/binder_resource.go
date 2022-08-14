@@ -64,23 +64,26 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
+	var res *schema.Resource
 	var inputProperties, properties []*schema.Property
-	if !isProvider {
-		res, ok := pkgSchema.resources[token]
-		if !ok {
-			canon := canonicalizeToken(token, pkgSchema.schema)
-			if res, ok = pkgSchema.resources[canon]; ok {
-				token = canon
-			}
+	if isProvider {
+		r, err := pkgSchema.schema.Provider()
+		if err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
-		if !ok {
+		res = r
+	} else {
+		r, tk, ok, err := pkgSchema.LookupResource(token)
+		if err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		} else if !ok {
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
-		node.Schema = res
-		inputProperties, properties = res.InputProperties, res.Properties
-	} else {
-		inputProperties, properties = pkgSchema.schema.Config, pkgSchema.schema.Config
+		res = r
+		token = tk
 	}
+	node.Schema = res
+	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
 
 	// Create input and output types for the schema.
@@ -248,6 +251,15 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	for _, item := range block.Body.Items {
 		switch item := item.(type) {
 		case *model.Attribute:
+			if item.Name == LogicalNamePropertyKey {
+				logicalName, lDiags := getStringAttrValue(item)
+				if lDiags != nil {
+					diagnostics = diagnostics.Append(lDiags)
+				} else {
+					node.logicalName = logicalName
+				}
+				continue
+			}
 			node.Inputs = append(node.Inputs, item)
 		case *model.Block:
 			switch item.Type {

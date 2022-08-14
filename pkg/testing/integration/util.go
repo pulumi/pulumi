@@ -114,6 +114,7 @@ func CopyFile(src, dst string) error {
 	var srcfd *os.File
 	var dstfd *os.File
 	var srcinfo os.FileInfo
+	var n int64
 
 	if srcfd, err = os.Open(src); err != nil {
 		return err
@@ -125,11 +126,14 @@ func CopyFile(src, dst string) error {
 	}
 	defer dstfd.Close()
 
-	if _, err = io.Copy(dstfd, srcfd); err != nil {
+	if n, err = io.Copy(dstfd, srcfd); err != nil {
 		return err
 	}
 	if srcinfo, err = os.Stat(src); err != nil {
 		return err
+	}
+	if n != srcinfo.Size() {
+		return fmt.Errorf("failed to copy all bytes from %v to %v", src, dst)
 	}
 	return os.Chmod(dst, srcinfo.Mode())
 }

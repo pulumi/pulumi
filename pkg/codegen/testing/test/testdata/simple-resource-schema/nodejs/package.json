@@ -12,8 +12,9 @@
         "typescript": "^3.7.0"
     },
     "pulumi": {
-        "version": "3.2.1",
         "resource": true,
-        "pluginDownloadURL": "example.com/download"
+        "name": "example",
+        "version": "3.2.1",
+        "server": "example.com/download"
     }
 }

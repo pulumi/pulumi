@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -59,7 +60,7 @@ func createTargetMap(targets []resource.URN) map[resource.URN]bool {
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
-func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) result.Result {
+func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op display.StepOp) result.Result {
 	if len(targets) == 0 {
 		return nil
 	}
@@ -95,6 +96,35 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) re
 	}
 
 	return nil
+}
+
+func (ex *deploymentExecutor) printPendingOperationsWarning() {
+	pendingOperations := ""
+	for _, op := range ex.deployment.prev.PendingOperations {
+		pendingOperations = pendingOperations + fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
+	}
+
+	resolutionMessage := `These resources are in an unknown state because the Pulumi CLI was interrupted while
+waiting for changes to these resources to complete. You should confirm whether or not the
+operations listed completed successfully by checking the state of the appropriate provider.
+For example, if you are using AWS, you can confirm using the AWS Console.
+	
+Once you have confirmed the status of the interrupted operations, you can repair your stack
+using 'pulumi refresh' which will refresh the state from the provider you are using and 
+clear the pending operations if there are any.
+
+Note that 'pulumi refresh' will not clear pending CREATE operations since those could have resulted in resources 
+which are not tracked by pulumi. To repair the stack and remove pending CREATE operation, 
+use 'pulumi stack export' which will  export your stack to a file. For each operation that succeeded,
+remove that operation from the "pending_operations" section of the file. Once this is complete,
+use 'pulumi stack import' to import the repaired stack.`
+
+	warning := "Attempting to deploy or update resources " +
+		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
+		pendingOperations +
+		resolutionMessage
+
+	ex.deployment.Diag().Warningf(diag.RawMessage("" /*urn*/, warning))
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
@@ -146,6 +176,11 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		if opts.RefreshOnly {
 			return nil, nil
 		}
+	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) > 0 && !preview {
+		// Print a warning for users that there are pending operations.
+		// Explain that these operations can be cleared using pulumi refresh (except for CREATE operations)
+		// since these require user intevention:
+		ex.printPendingOperationsWarning()
 	}
 
 	// The set of -t targets provided on the command line.  'nil' means 'update everything'.
@@ -610,7 +645,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			if refresh {
-				contract.Assert(old.Custom)
+				contract.Assertf(old.Custom, "Expected custom resource")
 				contract.Assert(!providers.IsProviderType(old.Type))
 			}
 			continue
@@ -637,6 +672,64 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
+	undangleParentResources(olds, resources)
+
 	ex.deployment.prev.Resources = resources
 	ex.deployment.olds, ex.deployment.depGraph = olds, graph.NewDependencyGraph(resources)
+}
+
+func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+	// Since a refresh may delete arbitrary resources, we need to handle the case where
+	// the parent of a still existing resource is deleted.
+	//
+	// Invalid parents need to be fixed since otherwise they leave the state invalid, and
+	// the user sees an error:
+	// ```
+	// snapshot integrity failure; refusing to use it: child resource ${validURN} refers to missing parent ${deletedURN}
+	// ```
+	// To solve the problem we traverse the topologically sorted list of resources in
+	// order, setting newly invalidated parent URNS to the URN of the parent's parent.
+	//
+	// This can be illustrated by an example. Consider the graph of resource parents:
+	//
+	//         A            xBx
+	//       /   \           |
+	//    xCx      D        xEx
+	//     |     /   \       |
+	//     F    G     xHx    I
+	//
+	// When a capital letter is marked for deletion, it is bracketed by `x`s.
+	// We can obtain a topological sort by reading left to right, top to bottom.
+	//
+	// A..D -> valid parents, so we do nothing
+	// E -> The parent of E is marked for deletion, so set E.Parent to E.Parent.Parent.
+	//      Since B (E's parent) has no parent, we set E.Parent to "".
+	// F -> The parent of F is marked for deletion, so set F.Parent to F.Parent.Parent.
+	//      We set F.Parent to "A"
+	// G, H -> valid parents, do nothing
+	// I -> The parent of I is marked for deletion, so set I.Parent to I.Parent.Parent.
+	//      The parent of I has parent "", (since we addressed the parent of E
+	//      previously), so we set I.Parent = "".
+	//
+	// The new graph looks like this:
+	//
+	//         A        xBx   xEx   I
+	//       / | \
+	//     xCx F  D
+	//          /   \
+	//         G    xHx
+	// We observe that it is perfectly valid for deleted nodes to be leaf nodes, but they
+	// cannot be intermediary nodes.
+	_, hasEmptyValue := undeleted[""]
+	contract.Assertf(!hasEmptyValue, "the zero value for an URN is not a valid URN")
+	availableParents := map[resource.URN]resource.URN{}
+	for _, r := range resources {
+		if _, ok := undeleted[r.Parent]; !ok {
+			// Since existing must obey a topological sort, we have already addressed
+			// p.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+			// exists, we set r.Parent as r.Parent.Parent.
+			r.Parent = availableParents[r.Parent]
+		}
+		availableParents[r.URN] = r.Parent
+	}
 }

@@ -18,11 +18,11 @@ import (
 	"context"
 	"path/filepath"
 
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/pkg/errors"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
-	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
@@ -97,14 +97,20 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	if repoArgs.CommitHash != "" {
 		hash = repoArgs.CommitHash
 	}
-	var branch string
+	var refName plumbing.ReferenceName
 	if repoArgs.Branch != "" {
-		branch = repoArgs.Branch
+		refName = plumbing.ReferenceName(repoArgs.Branch)
+		// We might be supplied `/refs/heads/main` or `main`; the first will answer true to
+		// `IsBranch()` and work OK as a reference for Checkout, the second will answer false and
+		// needs to be transformed into a branch ref.
+		if !refName.IsBranch() {
+			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
+		}
 	}
 
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash:   plumbing.NewHash(hash),
-		Branch: plumbing.ReferenceName(branch),
+		Branch: refName,
 		Force:  true,
 	})
 	if err != nil {

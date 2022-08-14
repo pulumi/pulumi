@@ -14,7 +14,6 @@
 
 import * as assert from "assert";
 import * as childProcess from "child_process";
-import * as os from "os";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
@@ -471,7 +470,7 @@ describe("rpc", () => {
                 ignoreDebug: true,
             },
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-                return { urn: makeUrn(t, name), id: name, props: undefined };
+                return { urn: makeUrn(t, name), id: name, props: res };
             },
             log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);

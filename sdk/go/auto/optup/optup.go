@@ -73,10 +73,17 @@ func TargetDependents() Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
+	})
+}
+
+// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental update stderr
+func ErrorProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ErrorProgressStreams = writers
 	})
 }
 
@@ -98,6 +105,20 @@ func EventStreams(channels ...chan<- events.EngineEvent) Option {
 func UserAgent(agent string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.UserAgent = agent
+	})
+}
+
+// Plan specifies the path to an update plan to use for the update.
+func Plan(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Plan = path
+	})
+}
+
+// Show config secrets when they appear.
+func ShowSecrets(show bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ShowSecrets = &show
 	})
 }
 
@@ -127,14 +148,24 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update stdout
 	ProgressStreams []io.Writer
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental update stderr
+	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
 	Color string
+	// Use the update plan at the given path.
+	Plan string
+	// Run one or more policy packs as part of this update
+	PolicyPacks []string
+	// Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag
+	PolicyPackConfigs []string
+	// Show config secrets when they appear.
+	ShowSecrets *bool
 }
 
 type optionFunc func(*Options)

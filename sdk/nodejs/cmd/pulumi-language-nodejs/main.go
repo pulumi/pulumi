@@ -37,6 +37,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -45,6 +46,8 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/mariospas/pulumi/sdk/v3/go/common/resource/plugin"
@@ -53,6 +56,7 @@ import (
 	"github.com/mariospas/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/mariospas/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/mariospas/pulumi/sdk/v3/go/common/version"
+	"github.com/mariospas/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/mariospas/pulumi/sdk/v3/proto/go"
 )
 
@@ -97,32 +101,28 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
-	nodePath, err := exec.LookPath("node")
-	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
-	}
-
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPath
-	}
-
-	runPath, err = locateModule(runPath, nodePath)
-	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
-	}
-
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
 	if len(args) > 0 {
 		engineAddress = args[0]
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
+			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -141,9 +141,19 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(mod string, nodePath string) (string, error) {
-	program := fmt.Sprintf("console.log(require.resolve('%s'));", mod)
-	cmd := exec.Command(nodePath, "-e", program)
+func locateModule(ctx context.Context, mod string, nodeBin string) (string, error) {
+	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
+
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		"locateModule",
+		opentracing.Tag{Key: "module", Value: mod},
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "args", Value: args})
+
+	defer tracingSpan.Finish()
+
+	cmd := exec.Command(nodeBin, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -154,8 +164,6 @@ func locateModule(mod string, nodePath string) (string, error) {
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
-	nodeBin       string
-	runPath       string
 	engineAddress string
 	tracing       string
 	typescript    bool
@@ -163,11 +171,12 @@ type nodeLanguageHost struct {
 	nodeargs      string
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(
+	engineAddress, tracing string,
+	typescript bool, tsconfigpath,
+	nodeargs string) pulumirpc.LanguageRuntimeServer {
+
 	return &nodeLanguageHost{
-		nodeBin:       nodePath,
-		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
@@ -476,8 +485,24 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		}
 	}()
 
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+	}
+
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPath
+	}
+
+	runPath, err = locateModule(ctx, runPath, nodeBin)
+	if err != nil {
+		cmdutil.ExitError(
+			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+	}
+
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(responseChannel, req, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
+	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
@@ -487,13 +512,13 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
-func (host *nodeLanguageHost) execNodejs(
+func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
-	address, pipesDirectory string) {
+	nodeBin, runPath, address, pipesDirectory string) {
 
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, address, pipesDirectory)
+		args := host.constructArguments(req, runPath, address, pipesDirectory)
 		config, err := host.constructConfig(req)
 		if err != nil {
 			err = errors.Wrap(err, "failed to serialize configuration")
@@ -524,16 +549,23 @@ func (host *nodeLanguageHost) execNodejs(
 
 		if logging.V(5) {
 			commandStr := strings.Join(nodeargs, " ")
-			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
+			logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
 		}
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
-		cmd := exec.Command(host.nodeBin, nodeargs...)
+		cmd := exec.Command(nodeBin, nodeargs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env
+
+		tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+			"execNodejs",
+			opentracing.Tag{Key: "component", Value: "exec.Command"},
+			opentracing.Tag{Key: "command", Value: nodeBin},
+			opentracing.Tag{Key: "args", Value: nodeargs})
+		defer tracingSpan.Finish()
 
 		if err := cmd.Run(); err != nil {
 			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
@@ -582,8 +614,10 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
-	args := []string{host.runPath}
+func (host *nodeLanguageHost) constructArguments(
+	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string) []string {
+
+	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k, v)
@@ -664,4 +698,39 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (host *nodeLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	_, err = npm.Install(server.Context(), req.Directory, false /*production*/, stdout, stderr)
+	if err != nil {
+		return fmt.Errorf("npm install failed: %w", err)
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (host *nodeLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }

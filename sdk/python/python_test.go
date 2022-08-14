@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -37,7 +38,7 @@ func TestIsVirtualEnv(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
+	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
 	assert.NoError(t, err)
 	err = cmd.Run()
 	assert.NoError(t, err)
@@ -67,6 +68,10 @@ func TestActivateVirtualEnv(t *testing.T) {
 			input:    []string{"PYTHONHOME=foo", "FOO=blah"},
 			expected: []string{"FOO=blah", fmt.Sprintf("PATH=%s", venvDir)},
 		},
+		{
+			input:    []string{"PythonHome=foo", "Path=bar"},
+			expected: []string{fmt.Sprintf("Path=%s%sbar", venvDir, string(os.PathListSeparator))},
+		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
@@ -94,7 +99,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
+	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
 	assert.NoError(t, err)
 	err = cmd.Run()
 	assert.NoError(t, err)

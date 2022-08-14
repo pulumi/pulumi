@@ -7,10 +7,10 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo-bar
+namespace Pulumi.FooBar
 {
-    [Foo-barResourceType("pulumi:providers:foo-bar")]
-    public partial class Provider : Pulumi.ProviderResource
+    [FooBarResourceType("pulumi:providers:foo-bar")]
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -37,10 +37,11 @@ namespace Pulumi.Foo-bar
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

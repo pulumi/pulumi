@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -43,7 +44,7 @@ func TestNPMInstall(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
-	os.Setenv("PULUMI_PREFER_YARN", "true")
+	t.Setenv("PULUMI_PREFER_YARN", "true")
 	testInstall(t, "yarn", false /*production*/)
 	testInstall(t, "yarn", true /*production*/)
 }
@@ -75,7 +76,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
-	bin, err := Install(pkgdir, production, nil, nil)
+	bin, err := Install(context.Background(), pkgdir, production, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBin, bin)
 }

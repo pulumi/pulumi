@@ -9,46 +9,48 @@ import (
 func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 
-	value := NewObjectProperty(NewPropertyMapFromMap(map[string]interface{}{
-		"root": map[string]interface{}{
-			"nested": map[string]interface{}{
-				"array": []interface{}{
-					map[string]interface{}{
-						"double": []interface{}{
-							nil,
-							true,
+	makeValue := func() PropertyValue {
+		return NewObjectProperty(NewPropertyMapFromMap(map[string]interface{}{
+			"root": map[string]interface{}{
+				"nested": map[string]interface{}{
+					"array": []interface{}{
+						map[string]interface{}{
+							"double": []interface{}{
+								nil,
+								true,
+							},
 						},
 					},
 				},
-			},
-			"double": map[string]interface{}{
-				"nest": true,
-			},
-			"array": []interface{}{
-				map[string]interface{}{
-					"nested": true,
+				"double": map[string]interface{}{
+					"nest": true,
 				},
-				true,
-			},
-			"array2": []interface{}{
-				[]interface{}{
-					nil,
+				"array": []interface{}{
 					map[string]interface{}{
 						"nested": true,
 					},
+					true,
 				},
+				"array2": []interface{}{
+					[]interface{}{
+						nil,
+						map[string]interface{}{
+							"nested": true,
+						},
+					},
+				},
+				`key with "escaped" quotes`: true,
+				"key with a .":              true,
 			},
-			`key with "escaped" quotes`: true,
-			"key with a .":              true,
-		},
-		`root key with "escaped" quotes`: map[string]interface{}{
-			"nested": true,
-		},
-		"root key with a .": []interface{}{
-			nil,
-			true,
-		},
-	}))
+			`root key with "escaped" quotes`: map[string]interface{}{
+				"nested": true,
+			},
+			"root key with a .": []interface{}{
+				nil,
+				true,
+			},
+		}))
+	}
 
 	cases := []struct {
 		path     string
@@ -142,6 +144,8 @@ func TestPropertyPath(t *testing.T) {
 			assert.Equal(t, c.parsed, parsed)
 			assert.Equal(t, c.expected, parsed.String())
 
+			value := makeValue()
+
 			v, ok := parsed.Get(value)
 			assert.True(t, ok)
 			assert.False(t, v.IsNull())
@@ -226,6 +230,8 @@ func TestPropertyPath(t *testing.T) {
 
 			parsed, err := ParsePropertyPath(c)
 			if err == nil {
+				value := makeValue()
+
 				v, ok := parsed.Get(value)
 				assert.False(t, ok)
 				assert.True(t, v.IsNull())

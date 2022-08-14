@@ -12,7 +12,8 @@
         "typescript": "^3.7.0"
     },
     "pulumi": {
-        "version": "0.0.1",
-        "resource": true
+        "resource": true,
+        "name": "plant",
+        "version": "0.0.1"
     }
 }

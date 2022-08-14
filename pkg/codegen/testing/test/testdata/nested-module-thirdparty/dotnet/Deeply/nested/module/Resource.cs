@@ -7,10 +7,10 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo-bar.Deeply/nested/module
+namespace Pulumi.FooBar.Deeply/nested/module
 {
-    [Foo-barResourceType("foo-bar:deeply/nested/module:Resource")]
-    public partial class Resource : Pulumi.CustomResource
+    [FooBarResourceType("foo-bar:deeply/nested/module:Resource")]
+    public partial class Resource : global::Pulumi.CustomResource
     {
         [Output("baz")]
         public Output<string?> Baz { get; private set; } = null!;
@@ -62,7 +62,7 @@ namespace Pulumi.Foo-bar.Deeply/nested/module
         }
     }
 
-    public sealed class ResourceArgs : Pulumi.ResourceArgs
+    public sealed class ResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("baz")]
         private Input<string>? _baz;
@@ -79,5 +79,6 @@ namespace Pulumi.Foo-bar.Deeply/nested/module
         public ResourceArgs()
         {
         }
+        public static new ResourceArgs Empty => new ResourceArgs();
     }
 }

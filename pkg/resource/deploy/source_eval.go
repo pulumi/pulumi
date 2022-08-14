@@ -85,7 +85,7 @@ func (src *evalSource) Project() tokens.PackageName {
 }
 
 // Stack is the name of the stack being targeted by this evaluation source.
-func (src *evalSource) Stack() tokens.QName {
+func (src *evalSource) Stack() tokens.Name {
 	return src.runinfo.Target.Name
 }
 
@@ -350,7 +350,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 	if denyCreation {
 		logging.V(5).Infof("denied default provider request for package %s", req)
-		return providers.NewDenyDefaultProvider(tokens.AsQName(string(req.Package().Name()))), nil
+		return providers.NewDenyDefaultProvider(tokens.QName(string(req.Package().Name()))), nil
 	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
@@ -470,6 +470,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
+	diagostics                diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
@@ -504,6 +505,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
+		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
 		regChan:                   regChan,
@@ -634,7 +636,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
 	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
@@ -668,7 +670,8 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
-		KeepResources: true,
+		KeepSecrets:   true,
+		KeepResources: req.GetAcceptResources(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
@@ -770,7 +773,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 }
 
 func (rm *resmon) StreamInvoke(
-	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
@@ -1014,6 +1017,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if req.GetPluginDownloadURL() != "" {
 			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
+
+		// Make sure that an explicit provider which doesn't specify its plugin gets the
+		// same plugin as the default provider for the package.
+		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[providers.GetProviderPackage(t)]
+		if ok && req.GetVersion() == "" && req.GetPluginDownloadURL() == "" {
+			if defaultProvider.Version != nil {
+				providers.SetProviderVersion(props, defaultProvider.Version)
+			}
+			if defaultProvider.PluginDownloadURL != "" {
+				providers.SetProviderURL(props, defaultProvider.PluginDownloadURL)
+			}
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
@@ -1097,6 +1112,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if err != nil {
 			return nil, err
 		}
+
 		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -1159,6 +1175,39 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		outputs = filtered
 	}
 
+	// TODO(@platform):
+	// Currently component resources ignore these options:
+	// • ignoreChanges
+	// • customTimeouts
+	// • additionalSecretOutputs
+	// • replaceOnChanges
+	// • retainOnDelete
+	// Revisit these semantics in Pulumi v4.0
+	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
+	if !custom {
+		rm.checkComponentOption(result.State.URN, "ignoreChanges", func() bool {
+			return len(ignoreChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "customTimeouts", func() bool {
+			if customTimeouts == nil {
+				return false
+			}
+			var hasUpdateTimeout = customTimeouts.Update != ""
+			var hasCreateTimeout = customTimeouts.Create != ""
+			var hasDeleteTimeout = customTimeouts.Delete != ""
+			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
+		})
+		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
+			return len(additionalSecretOutputs) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "replaceOnChanges", func() bool {
+			return len(replaceOnChanges) > 0
+		})
+		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
+			return retainOnDelete
+		})
+	}
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
 		result.State.Type, result.State.URN, len(outputs))
@@ -1180,6 +1229,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 	}, nil
+}
+
+// checkComponentOption generates a warning message on the resource
+// 'urn' if 'check' returns true.
+// This function is intended to validate options passed to component resources,
+// so urn is expected to refer to a component.
+func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
+	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
+	if check() {
+		rm.diagostics.Warningf(diag.Message(
+			urn,
+			msg,
+		))
+	}
 }
 
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
@@ -1320,7 +1383,7 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp inter
 
 	switch method {
 	case "/pulumirpc.ResourceMonitor/Invoke":
-		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.ResourceInvokeRequest).Tok)
 	case "/pulumirpc.ResourceMonitor/ReadResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.ReadResourceRequest).Type)
 	case "/pulumirpc.ResourceMonitor/RegisterResource":

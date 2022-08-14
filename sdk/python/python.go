@@ -15,6 +15,7 @@
 package python
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -77,16 +79,16 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 
 // Command returns an *exec.Cmd for running `python`. Uses `ComandPath`
 // internally to find the correct executable.
-func Command(arg ...string) (*exec.Cmd, error) {
+func Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 	pythonPath, pythonCmd, err := CommandPath()
 	if err != nil {
 		return nil, err
 	}
 	if needsPythonShim(pythonPath) {
 		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
-		return exec.Command(shimCmd, arg...), nil
+		return exec.CommandContext(ctx, shimCmd, arg...), nil
 	}
-	return exec.Command(pythonPath, arg...), nil
+	return exec.CommandContext(ctx, pythonPath, arg...), nil
 }
 
 // resolveWindowsExecutionAlias performs a lookup for python among UWP
@@ -194,14 +196,18 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 	var hasPath bool
 	var result []string
 	for _, env := range environ {
-		if strings.HasPrefix(env, "PATH=") {
+		split := strings.SplitN(env, "=", 2)
+		contract.Assert(len(split) == 2)
+		key, value := split[0], split[1]
+
+		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
+		if strings.EqualFold(key, "PATH") {
 			hasPath = true
 			// Prepend the virtual environment bin directory to PATH so any calls to run
 			// python or pip will use the binaries in the virtual environment.
-			originalValue := env[len("PATH="):]
-			path := fmt.Sprintf("PATH=%s%s%s", virtualEnvBin, string(os.PathListSeparator), originalValue)
+			path := fmt.Sprintf("%s=%s%s%s", key, virtualEnvBin, string(os.PathListSeparator), value)
 			result = append(result, path)
-		} else if strings.HasPrefix(env, "PYTHONHOME=") {
+		} else if strings.EqualFold(key, "PYTHONHOME") {
 			// Skip PYTHONHOME to "unset" this value.
 		} else {
 			result = append(result, env)
@@ -215,11 +221,12 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(root, venvDir string, showOutput bool) error {
-	return InstallDependenciesWithWriters(root, venvDir, showOutput, os.Stdout, os.Stderr)
+func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
+	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
 }
 
-func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+func InstallDependenciesWithWriters(ctx context.Context,
+	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
 	print := func(message string) {
 		if showOutput {
 			fmt.Fprintf(infoWriter, "%s\n", message)
@@ -233,7 +240,7 @@ func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoW
 		venvDir = filepath.Join(root, venvDir)
 	}
 
-	cmd, err := Command("-m", "venv", venvDir)
+	cmd, err := Command(ctx, "-m", "venv", venvDir)
 	if err != nil {
 		return err
 	}

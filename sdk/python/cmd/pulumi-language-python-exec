@@ -23,6 +23,9 @@ It looks like the Pulumi SDK has not been installed. Have you run pip install?
 If you are running in a virtualenv, you must run pip install -r requirements.txt from inside the virtualenv.""", file=sys.stderr)
     sys.exit(1)
 
+# use exit code 32 to signal to the language host that an error message was displayed to the user
+PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE = 32
+
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
     ap = argparse.ArgumentParser(description='Execute a Pulumi Python program')
@@ -102,19 +105,21 @@ if __name__ == "__main__":
     # In order to paper over this for our users, we simply turn off the logger for asyncio. Users won't see any asyncio
     # error messages, but if they stick to the Pulumi programming model, they wouldn't be seeing any anyway.
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+    exit_code = 1
     try:
         coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
         loop.run_until_complete(coro)
-        successful = True
+        exit_code = 0
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:
-        pulumi.log.error("Program failed with an unhandled exception:")
-        pulumi.log.error(traceback.format_exc())
+        # provide the user with traceback information for troubleshooting
+        error_msg = "Program failed with an unhandled exception:\n" + traceback.format_exc()
+        pulumi.log.error(error_msg)
+        exit_code = PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE
     finally:
         loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
 
-    exit_code = 0 if successful else 1
     sys.exit(exit_code)

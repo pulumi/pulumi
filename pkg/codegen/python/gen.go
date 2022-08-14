@@ -60,8 +60,8 @@ func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bo
 	}
 }
 
-func (imports imports) addEnum(mod *modContext, tok string) {
-	if imp := mod.importEnumFromToken(tok); imp != "" {
+func (imports imports) addEnum(mod *modContext, enum *schema.EnumType) {
+	if imp := mod.importEnumType(enum); imp != "" {
 		codegen.StringSet(imports).Add(imp)
 	}
 }
@@ -319,9 +319,7 @@ func printComment(w io.Writer, comment string, indent string) {
 	}
 
 	// Known special characters that need escaping.
-	// TODO: Consider replacing the docstring with a raw string which may make sense if this
-	// list grows much further.
-	replacer := strings.NewReplacer(`"""`, `\"\"\"`, `\x`, `\\x`, `\N`, `\\N`)
+	replacer := strings.NewReplacer(`\`, `\\`, `"""`, `\"\"\"`)
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
 	for _, l := range lines {
 		if l == "" {
@@ -353,6 +351,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 		relRoot := path.Dir(rel)
 		relImport := relPathToRelImport(relRoot)
 
+		fmt.Fprintf(w, "import copy\n")
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
@@ -394,13 +393,15 @@ func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
 	fmt.Fprintf(buffer, utilitiesFile)
+	optionalURL := "None"
 	if url := mod.pkg.PluginDownloadURL; url != "" {
-		_, err := fmt.Fprintf(buffer, `
-def get_plugin_download_url():
-	return %q
-`, url)
-		contract.AssertNoError(err)
+		optionalURL = fmt.Sprintf("%q", url)
 	}
+	_, err := fmt.Fprintf(buffer, `
+def get_plugin_download_url():
+	return %s
+`, optionalURL)
+	contract.AssertNoError(err)
 	return buffer.Bytes()
 }
 
@@ -564,7 +565,12 @@ func (mod *modContext) isEmpty() bool {
 }
 
 func (mod *modContext) submodulesExist() bool {
-	return len(mod.children) > 0
+	for _, submod := range mod.children {
+		if !submod.isEmpty() {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *modContext) unqualifiedImportName() string {
@@ -640,6 +646,7 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
+
 		fmt.Fprintf(w, "if typing.TYPE_CHECKING:\n")
 
 		for _, submod := range children {
@@ -731,8 +738,12 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 	return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, components[0])
 }
 
-func (mod *modContext) importEnumFromToken(tok string) string {
-	modName := mod.tokenToModule(tok)
+func (mod *modContext) importEnumType(e *schema.EnumType) string {
+	if e.Package != mod.pkg {
+		return fmt.Sprintf("import %s", pyPack(e.Package.Name))
+	}
+
+	modName := mod.tokenToModule(e.Token)
 	if modName == mod.mod {
 		return "from ._enums import *"
 	}
@@ -925,7 +936,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 							return imp != "from ._inputs import *"
 						})
 					case *schema.EnumType:
-						imports.addEnum(mod, t.Token)
+						imports.addEnum(mod, t)
 					case *schema.ResourceType:
 						imports.addResource(mod, t)
 					}
@@ -936,7 +947,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 			}
 		}
 		for _, e := range mod.enums {
-			imports.addEnum(mod, e.Token)
+			imports.addEnum(mod, e)
 		}
 
 		mod.genHeader(w, true /*needsSDK*/, imports)
@@ -1006,6 +1017,9 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		fmt.Fprintf(w, ", %s=None", PyName(prop.Name))
 	}
 	fmt.Fprintf(w, "):\n")
+	if len(obj.Properties) == 0 {
+		fmt.Fprintf(w, "        pass")
+	}
 	for _, prop := range obj.Properties {
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
@@ -1045,13 +1059,13 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	fmt.Fprintf(w, "    def __await__(self):\n")
 	fmt.Fprintf(w, "        if False:\n")
 	fmt.Fprintf(w, "            yield self\n")
-	fmt.Fprintf(w, "        return %s(\n", baseName)
+	fmt.Fprintf(w, "        return %s(", baseName)
 	for i, prop := range obj.Properties {
 		if i > 0 {
-			fmt.Fprintf(w, ",\n")
+			fmt.Fprintf(w, ",")
 		}
 		pname := PyName(prop.Name)
-		fmt.Fprintf(w, "            %s=self.%s", pname, pname)
+		fmt.Fprintf(w, "\n            %s=self.%s", pname, pname)
 	}
 	fmt.Fprintf(w, ")\n")
 
@@ -1216,17 +1230,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "        if opts is None:\n")
-	fmt.Fprintf(w, "            opts = pulumi.ResourceOptions()\n")
+	fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
-	fmt.Fprintf(w, "        if opts.version is None:\n")
-	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
-	if mod.pkg.PluginDownloadURL != "" {
-		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
-		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
-	}
-
 	if res.IsComponent {
 		fmt.Fprintf(w, "        if opts.id is not None:\n")
 		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
@@ -1701,14 +1707,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	// If the caller explicitly specified a version, use it, otherwise inject this package's version.
-	fmt.Fprintf(w, "    if opts is None:\n")
-	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
-	fmt.Fprintf(w, "    if opts.version is None:\n")
-	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
-	if mod.pkg.PluginDownloadURL != "" {
-		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
-		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
-	}
+	fmt.Fprintf(w, "    opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)\n")
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string
@@ -1722,17 +1721,16 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// And copy the results to an object, if there are indeed any expected returns.
 	if fun.Outputs != nil {
-		fmt.Fprintf(w, "    return %s(\n", retTypeName)
+		fmt.Fprintf(w, "    return %s(", retTypeName)
 		for i, ret := range rets {
+			if i > 0 {
+				fmt.Fprintf(w, ",")
+			}
 			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
 			// object has a get property that masks the underlying dict subclass's get method.
-			fmt.Fprintf(w, "        %[1]s=__ret__.%[1]s", PyName(ret.Name))
-			if i == len(rets)-1 {
-				fmt.Fprintf(w, ")\n")
-			} else {
-				fmt.Fprintf(w, ",\n")
-			}
+			fmt.Fprintf(w, "\n        %[1]s=__ret__.%[1]s", PyName(ret.Name))
 		}
+		fmt.Fprintf(w, ")\n")
 	}
 
 	mod.genFunctionOutputVersion(w, fun)
@@ -1920,7 +1918,7 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 		case *schema.ObjectType:
 			imports.addType(mod, t, input)
 		case *schema.EnumType:
-			imports.addEnum(mod, t.Token)
+			imports.addEnum(mod, t)
 		case *schema.ResourceType:
 			// Don't import itself.
 			if t.Resource != res {
@@ -2958,6 +2956,17 @@ _version_str = str(_version)
 def get_version():
     return _version_str
 
+def get_resource_opts_defaults() -> pulumi.ResourceOptions:
+    return pulumi.ResourceOptions(
+        version=get_version(),
+        plugin_download_url=get_plugin_download_url(),
+    )
+
+def get_invoke_opts_defaults() -> pulumi.InvokeOptions:
+    return pulumi.InvokeOptions(
+        version=get_version(),
+        plugin_download_url=get_plugin_download_url(),
+    )
 
 def get_resource_args_opts(resource_args_type, resource_options_type, *args, **kwargs):
     """

@@ -13,12 +13,9 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import * as fs from "fs";
 
 import { AsyncIterable } from "@pulumi/query/interfaces";
 
-import * as asset from "../asset";
-import { Config } from "../config";
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -37,6 +34,7 @@ import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
+const resourceproto = require("../proto/resource_pb.js");
 
 /**
  * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
@@ -198,7 +196,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
 
-    const req = new providerproto.InvokeRequest();
+    const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider);
@@ -307,7 +305,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             const rpcDeps = resp.getReturndependenciesMap();
             if (rpcDeps) {
                 const urns = new Set<string>();
-                for (const [k, returnDeps] of rpcDeps.entries()) {
+                for (const [, returnDeps] of rpcDeps.entries()) {
                     for (const urn of returnDeps.getUrnsList()) {
                         urns.add(urn);
                     }

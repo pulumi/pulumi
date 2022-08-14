@@ -11,10 +11,12 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
@@ -27,10 +29,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), false)
-	expr, _ = g.lowerProxyApplies(expr)
-	expr = pcl.RewriteConversions(expr, typ)
-	expr, quotes, _ := g.rewriteQuotes(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	diags = diags.Extend(lowerProxyDiags)
+	diags = diags.Extend(convertDiags)
+	diags = diags.Extend(quoteDiags)
+
+	g.diagnostics = g.diagnostics.Extend(diags)
 
 	return expr, quotes
 }
@@ -183,13 +191,20 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 var functionImports = map[string][]string{
 	"fileArchive":      {"pulumi"},
+	"remoteArchive":    {"pulumi"},
+	"assetArchive":     {"pulumi"},
 	"fileAsset":        {"pulumi"},
+	"stringAsset":      {"pulumi"},
+	"remoteAsset":      {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
 	"toBase64":         {"base64"},
 	"toJSON":           {"json"},
 	"sha1":             {"hashlib"},
+	"stack":            {"pulumi"},
+	"project":          {"pulumi"},
+	"cwd":              {"os"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -205,11 +220,52 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
-		switch arg := expr.Args[0].(type) {
-		case *model.ObjectConsExpression:
-			g.genObjectConsExpression(w, arg, expr.Type())
+		from := expr.Args[0]
+		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
+		output, isOutput := to.(*model.OutputType)
+		if isOutput {
+			to = output.ElementType
+		}
+		switch to := to.(type) {
+		case *model.EnumType:
+			components := strings.Split(to.Token, ":")
+			contract.Assertf(len(components) == 3, "malformed token %v", to.Token)
+			enum, ok := pcl.GetSchemaForType(to)
+			if !ok {
+				// No schema was provided
+				g.Fgenf(w, "%.v", expr.Args[0])
+				return
+			}
+			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
+			pkg := strings.ReplaceAll(components[0], "-", "_")
+			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
+				pkg += "." + m
+			}
+			enumName := tokenToName(to.Token)
+
+			if isOutput {
+				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
+			} else {
+				pcl.GenEnum(to, from, func(member *schema.Enum) {
+					tag := member.Name
+					if tag == "" {
+						tag = fmt.Sprintf("%v", member.Value)
+					}
+					tag, err := makeSafeEnumName(tag, enumName)
+					contract.AssertNoError(err)
+					g.Fgenf(w, "%s.%s.%s", pkg, enumName, tag)
+				}, func(from model.Expression) {
+					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
+				})
+			}
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0])
+			switch arg := from.(type) {
+			case *model.ObjectConsExpression:
+				g.genObjectConsExpression(w, arg, expr.Type())
+			default:
+				g.Fgenf(w, "%.v", expr.Args[0])
+			}
+
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
@@ -219,8 +275,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "pulumi.RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgenf(w, "pulumi.AssetArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "pulumi.StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "pulumi.remoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
 	case "filebase64sha256":
@@ -313,6 +377,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
+	case "project":
+		g.Fgen(w, "pulumi.get_project()")
+	case "stack":
+		g.Fgen(w, "pulumi.get_stack()")
+	case "cwd":
+		g.Fgen(w, "os.getcwd()")
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

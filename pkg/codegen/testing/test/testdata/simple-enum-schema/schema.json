@@ -107,6 +107,9 @@
           "name": "Synthetic",
           "description": "What if triple quotes \"\"\" are used in the description",
           "value": "SYNTHETIC"
+        },
+        {
+          "value": "_NO_NAME"
         }
       ]
     },

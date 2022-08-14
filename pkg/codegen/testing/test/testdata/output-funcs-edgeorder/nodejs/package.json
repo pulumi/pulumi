@@ -14,6 +14,7 @@
         "@pulumi/pulumi": "latest"
     },
     "pulumi": {
-        "resource": true
+        "resource": true,
+        "name": "myedgeorder"
     }
 }

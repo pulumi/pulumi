@@ -76,35 +76,64 @@ type provider struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
-	// Load the plugin's path by using the standard workspace logic.
-	_, path, err := workspace.GetPluginPath(
-		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
-	if err != nil {
-		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
+
+	// See if this is a provider we just want to attach to
+	var plug *plugin
+	var optAttach string
+	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
+		for _, provider := range strings.Split(providersEnvVar, ",") {
+			parts := strings.SplitN(provider, ":", 2)
+
+			if parts[0] == pkg.String() {
+				optAttach = parts[1]
+				break
+			}
+		}
 	}
 
-	// Runtime options are passed as environment variables to the provider.
-	env := os.Environ()
-	for k, v := range options {
-		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+	prefix := fmt.Sprintf("%v (resource)", pkg)
+
+	if optAttach != "" {
+		conn, err := dialPlugin(optAttach, pkg.String(), prefix)
+		if err != nil {
+			return nil, err
+		}
+
+		// Done; store the connection and return the plugin info.
+		plug = &plugin{
+			Conn: conn,
+			// Nothing to kill
+			Kill: func() error { return nil },
+		}
+	} else {
+		// Load the plugin's path by using the standard workspace logic.
+		path, err := workspace.GetPluginPath(
+			workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1),
+			version, host.GetProjectPlugins())
+		if err != nil {
+			return nil, err
+		}
+
+		contract.Assert(path != "")
+
+		// Runtime options are passed as environment variables to the provider.
+		env := os.Environ()
+		for k, v := range options {
+			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+		}
+
+		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
-	if err != nil {
-		return nil, err
-	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	return &provider{
+	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		plug:                   plug,
@@ -112,7 +141,17 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
-	}, nil
+	}
+
+	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	if plug.Bin == "" {
+		err := p.Attach(host.ServerAddr())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return p, nil
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
@@ -527,7 +566,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -563,10 +602,10 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:            string(urn),
-		Olds:           molds,
-		News:           mnews,
-		SequenceNumber: int32(sequenceNumber),
+		Urn:        string(urn),
+		Olds:       molds,
+		News:       mnews,
+		RandomSeed: randomSeed,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -805,8 +844,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 func (p *provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(inputs), len(state))
@@ -1225,9 +1264,8 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:             string(tok),
-		Args:            margs,
-		AcceptResources: p.acceptResources,
+		Tok:  string(tok),
+		Args: margs,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1290,9 +1328,8 @@ func (p *provider) StreamInvoke(
 
 	streamClient, err := client.StreamInvoke(
 		p.requestContext(), &pulumirpc.InvokeRequest{
-			Tok:             string(tok),
-			Args:            margs,
-			AcceptResources: p.acceptResources,
+			Tok:  string(tok),
+			Args: margs,
 		})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1466,6 +1503,23 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind:    workspace.ResourcePlugin,
 		Version: version,
 	}, nil
+}
+
+// Attach attaches this plugin to the engine
+func (p *provider) Attach(address string) error {
+	label := fmt.Sprintf("%s.Attach()", p.label())
+	logging.V(7).Infof("%s executing", label)
+
+	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
+	// Thus, we access the clientRaw property, rather than calling getClient.
+	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return rpcError
+	}
+
+	return nil
 }
 
 func (p *provider) SignalCancellation() error {

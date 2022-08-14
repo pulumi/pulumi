@@ -168,7 +168,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
-		apiEvent, convErr := display.ConvertEngineEvent(event)
+		apiEvent, convErr := display.ConvertEngineEvent(event, false /* showSecrets */)
 		if convErr != nil {
 			return fmt.Errorf("converting engine event: %w", convErr)
 		}
@@ -272,7 +272,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeUntypedDeployment(untypedDeployment, stack.DefaultSecretsProvider)
+	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return nil, err
 	}

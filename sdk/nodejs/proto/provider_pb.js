@@ -1,19 +1,22 @@
-// source: provider.proto
+// source: pulumi/provider.proto
 /**
  * @fileoverview
  * @enhanceable
+ * @suppress {missingRequire} reports error on implicit type usages.
  * @suppress {messageConventions} JS Compiler reports an error if a variable or
  *     field starts with 'MSG_' and isn't a translatable message.
  * @public
  */
 // GENERATED CODE -- DO NOT EDIT!
+/* eslint-disable */
+// @ts-nocheck
 
 var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { pulumirpc: {} }, global = proto;
 
-var plugin_pb = require('./plugin_pb.js');
-goog.object.extend(proto, plugin_pb);
+var pulumi_plugin_pb = require('./plugin_pb.js');
+goog.object.extend(proto, pulumi_plugin_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
@@ -1757,11 +1760,7 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, "")
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1807,22 +1806,6 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setArgs(value);
       break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setProvider(value);
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 5:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setAcceptresources(value);
-      break;
-    case 6:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPlugindownloadurl(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -1865,34 +1848,6 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getProvider();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
-  f = message.getAcceptresources();
-  if (f) {
-    writer.writeBool(
-      5,
-      f
-    );
-  }
-  f = message.getPlugindownloadurl();
-  if (f.length > 0) {
-    writer.writeString(
-      6,
-      f
     );
   }
 };
@@ -1950,78 +1905,6 @@ proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
  */
 proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
   return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * optional string provider = 3;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional string version = 4;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional bool acceptResources = 5;
- * @return {boolean}
- */
-proto.pulumirpc.InvokeRequest.prototype.getAcceptresources = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setAcceptresources = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 5, value);
-};
-
-
-/**
- * optional string pluginDownloadURL = 6;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getPlugindownloadurl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setPlugindownloadurl = function(value) {
-  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
@@ -3370,7 +3253,7 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    sequencenumber: jspb.Message.getFieldWithDefault(msg, 4, 0)
+    randomseed: msg.getRandomseed_asB64()
   };
 
   if (includeInstance) {
@@ -3421,9 +3304,9 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
       break;
-    case 4:
-      var value = /** @type {number} */ (reader.readInt32());
-      msg.setSequencenumber(value);
+    case 5:
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setRandomseed(value);
       break;
     default:
       reader.skipField();
@@ -3477,10 +3360,10 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getSequencenumber();
-  if (f !== 0) {
-    writer.writeInt32(
-      4,
+  f = message.getRandomseed_asU8();
+  if (f.length > 0) {
+    writer.writeBytes(
+      5,
       f
     );
   }
@@ -3580,20 +3463,44 @@ proto.pulumirpc.CheckRequest.prototype.hasNews = function() {
 
 
 /**
- * optional int32 sequenceNumber = 4;
- * @return {number}
+ * optional bytes randomSeed = 5;
+ * @return {!(string|Uint8Array)}
  */
-proto.pulumirpc.CheckRequest.prototype.getSequencenumber = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+proto.pulumirpc.CheckRequest.prototype.getRandomseed = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /**
- * @param {number} value
+ * optional bytes randomSeed = 5;
+ * This is a type-conversion wrapper around `getRandomseed()`
+ * @return {string}
+ */
+proto.pulumirpc.CheckRequest.prototype.getRandomseed_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getRandomseed()));
+};
+
+
+/**
+ * optional bytes randomSeed = 5;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getRandomseed()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CheckRequest.prototype.getRandomseed_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getRandomseed()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.pulumirpc.CheckRequest} returns this
  */
-proto.pulumirpc.CheckRequest.prototype.setSequencenumber = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
+proto.pulumirpc.CheckRequest.prototype.setRandomseed = function(value) {
+  return jspb.Message.setProto3BytesField(this, 5, value);
 };
 
 

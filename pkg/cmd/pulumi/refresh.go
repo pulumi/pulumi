@@ -65,10 +65,11 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			yes = yes || skipConfirmations()
+			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
@@ -168,7 +169,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(errors.New("refresh cancelled"))
 			case res != nil:
 				return PrintEngineResult(res)
-			case expectNop && changes != nil && changes.HasChanges():
+			case expectNop && changes != nil && engine.HasChanges(changes):
 				return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 			default:
 				return nil
@@ -215,7 +216,7 @@ func newRefreshCmd() *cobra.Command {
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not perform a preview before performing the refresh")
+		"Do not calculate a preview before performing the refresh")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

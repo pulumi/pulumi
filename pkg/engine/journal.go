@@ -1,3 +1,17 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package engine
 
 import (
@@ -28,7 +42,7 @@ type JournalEntry struct {
 
 type JournalEntries []JournalEntry
 
-func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
@@ -111,6 +125,17 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	if base != nil {
+		// Track pending create operations from the base snapshot
+		// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+		// because these must require user intervention to be cleared or resolved.
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
+		}
+	}
+
 	// If we have a base snapshot, copy over its secrets manager.
 	var secretsManager secrets.Manager
 	if base != nil {
@@ -119,8 +144,13 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
 
+	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations)
+	normSnap, err := snap.NormalizeURNReferences()
+	if err != nil {
+		return snap, err
+	}
+	return normSnap, normSnap.VerifyIntegrity()
 }
 
 type Journal struct {
@@ -178,7 +208,7 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (j *Journal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 

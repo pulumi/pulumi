@@ -243,7 +243,7 @@ def get_resource(
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
-            req = provider_pb2.InvokeRequest(
+            req = resource_pb2.ResourceInvokeRequest(
                 tok="pulumi:pulumi:getResource", args=inputs, provider="", version=""
             )
 
@@ -799,11 +799,10 @@ async def _add_dependency(
 
     from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
-    if isinstance(res, ComponentResource):
+    if isinstance(res, ComponentResource) and not res._remote:
         for child in res._childResources:
             await _add_dependency(deps, child, from_resource)
-        if not res._remote:
-            return
+        return
 
     no_cycles = declare_dependency(from_resource, res) if from_resource else True
     if no_cycles:

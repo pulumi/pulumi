@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,11 +29,12 @@ import (
 )
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
+	var stack string
 	var cmd = &cobra.Command{
 		Use:   "change-secrets-provider <new-secrets-provider>",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Change the secrets provider for the current stack",
-		Long: "Change the secrets provider for the current stack. " +
+		Short: "Change the secrets provider for a stack",
+		Long: "Change the secrets provider for a stack. " +
 			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
 			"To change to using the Pulumi Default Secrets Provider, use the following:\n" +
 			"\n" +
@@ -68,7 +69,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			// Get the current stack and its project
-			currentStack, err := requireStack("", false, opts, true /*setCurrent*/)
+			currentStack, err := requireStack(stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -103,6 +104,10 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			return migrateOldConfigAndCheckpointToNewSecretsProvider(commandContext(), currentStack, currentConfig, decrypter)
 		}),
 	}
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }
@@ -149,7 +154,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	if err != nil {
 		return err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, stack.DefaultSecretsProvider)
 	if err != nil {
 		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
 	}

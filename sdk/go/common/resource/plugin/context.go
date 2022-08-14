@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Context is used to group related operations together so that
@@ -36,24 +37,40 @@ type Context struct {
 	Root       string    // the root directory of the project.
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
+
+	cancelFuncs []context.CancelFunc
+	baseContext context.Context
 }
 
 // NewContext allocates a new context with a given sink and host. Note
 // that the host is "owned" by this context from here forwards, such
 // that when the context's resources are reclaimed, so too are the
 // host's.
-func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
+func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span) (*Context, error) {
 
+	// TODO: I think really this ought to just take plugins *workspace.Plugins as an arg, but yaml depends on
+	// this function so *sigh*. For now just see if there's a project we should be using, and use it if there
+	// is.
+	projPath, err := workspace.DetectProjectPath()
+	var plugins *workspace.Plugins
+	if err == nil && projPath != "" {
+		project, err := workspace.LoadProject(projPath)
+		if err == nil {
+			plugins = project.Plugins
+		}
+	}
+
 	root := ""
-	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan)
+	return NewContextWithRoot(d, statusD, host, pwd, root, runtimeOptions,
+		disableProviderPreview, parentSpan, plugins)
 }
 
-// Variation of NewContext that also sets known project Root.
-func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
+// Variation of NewContext that also sets known project Root. Additionally accepts Plugins
+func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span) (*Context, error) {
+	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
 
 	if d == nil {
 		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
@@ -70,7 +87,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview)
+		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins)
 		if err != nil {
 			return nil, err
 		}
@@ -81,12 +98,23 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	// TODO[pulumi/pulumi#143]: support cancellation.
-	return opentracing.ContextWithSpan(context.Background(), ctx.tracingSpan)
+	c := ctx.baseContext
+	if c == nil {
+		c = context.Background()
+	}
+	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
+	c, cancel := context.WithCancel(c)
+	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
+	return c
 }
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
+	defer func() {
+		for _, cancel := range ctx.cancelFuncs {
+			cancel()
+		}
+	}()
 	if ctx.tracingSpan != nil {
 		ctx.tracingSpan.Finish()
 	}
@@ -95,4 +123,19 @@ func (ctx *Context) Close() error {
 		return err
 	}
 	return nil
+}
+
+// WithCancelChannel registers a close channel which will close the returned Context when
+// the channel is closed.
+//
+// WARNING: Calling this function without ever closing `c` will leak go routines.
+func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
+	copy := *ctx
+	go func() {
+		select {
+		case _, _ = <-c:
+			copy.Close()
+		}
+	}()
+	return &copy
 }

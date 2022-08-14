@@ -27,6 +27,11 @@ type OutputVariable struct {
 	syntax *hclsyntax.Block
 	typ    model.Type
 
+	// The name visible to API calls related to the output. Used as the Name argument in stack output
+	// constructors (typically a method called "export"), and through those calls to
+	// RegisterResourceOutputs. Must not be modified during code generation to ensure that stack
+	// outputs are not renamed, breaking stack references.
+	logicalName string
 	// The definition of the output.
 	Definition *model.Block
 	// The value of the output.
@@ -48,6 +53,16 @@ func (ov *OutputVariable) VisitExpressions(pre, post model.ExpressionVisitor) hc
 
 func (ov *OutputVariable) Name() string {
 	return ov.Definition.Labels[0]
+}
+
+// Returns the ID of the output, if the output has an ID it is returned surrounded by double
+// quotes, otherwise the defaultValue is returned as is.
+func (ov *OutputVariable) LogicalName() string {
+	if ov.logicalName != "" {
+		return ov.logicalName
+	}
+
+	return ov.Name()
 }
 
 // Type returns the type of the output variable.

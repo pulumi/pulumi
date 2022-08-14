@@ -96,6 +96,39 @@ See sdk/go/common/resource/properties.go.
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
+# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
+# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
+# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
+# up causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s
+# provider.
+#
+# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
+# [2] https://github.com/pulumi/pulumi-kubernetes/issues/984
+#
+# This setting requires a platform-specific and python version-specific .so file called
+# `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is
+# released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
+# python programs using a new version.
+try:
+    from google.protobuf.pyext._message import (  # pylint: disable-msg=C0412
+        SetAllowOversizeProtos,
+    )  # pylint: disable-msg=E0611
+
+    SetAllowOversizeProtos(True)
+except ImportError:
+    pass
+
+# New versions of protobuf have moved the above import to api_implementation
+try:
+    from google.protobuf.pyext import (
+        cpp_message,
+    )  # pylint: disable-msg=E0611
+
+    if cpp_message._message is not None:
+        cpp_message._message.SetAllowOversizeProtos(True)
+except ImportError:
+    pass
+
 
 def isLegalProtobufValue(value: Any) -> bool:
     """
@@ -161,7 +194,9 @@ async def serialize_properties(
     if typ is not None:
         py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
         types = _types.input_type_types(typ)
+        # pylint: disable=C3001
         translate = lambda k: py_name_to_pulumi_name.get(k) or k
+        # pylint: disable=C3001
         get_type = lambda k: types.get(translate(k))  # type: ignore
 
     struct = struct_pb2.Struct()
@@ -405,7 +440,9 @@ async def serialize_property(
             if _types.is_input_type(typ):
                 # If it's intended to be an input type, translate using the type's metadata.
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
+                # pylint: disable=C3001
                 types = _types.input_type_types(typ)
+                # pylint: disable=C3001
                 translate = lambda k: py_name_to_pulumi_name.get(k) or k
                 get_type = types.get
             else:
@@ -414,6 +451,7 @@ async def serialize_property(
                 if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                     args = _types.get_args(typ)
                     if len(args) == 2 and args[0] is str:
+                        # pylint: disable=C3001
                         get_type = lambda k: args[1]
                         translate = None
                 else:
@@ -833,10 +871,12 @@ def translate_output_properties(
             if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
+                    # pylint: disable=C3001
                     get_type = lambda k: args[1]
                     # If transform_using_type_metadata is True, don't translate its keys because
                     # it is intended to be a user-defined dict.
                     if transform_using_type_metadata:
+                        # pylint: disable=C3001
                         translate = lambda k: k
             else:
                 raise AssertionError(
@@ -971,7 +1011,9 @@ def resolve_outputs(
     )
     if transform_using_type_metadata:
         pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
+        # pylint: disable=C3001
         translate = lambda k: pulumi_to_py_names.get(k) or k
+        # pylint: disable=C3001
         translate_to_pass = lambda k: k
 
     for key, value in deserialize_properties(outputs).items():

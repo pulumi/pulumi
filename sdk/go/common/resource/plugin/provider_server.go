@@ -143,6 +143,20 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
 }
 
+func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
+	// so for now we type test here
+	if grpcProvider, ok := p.provider.(GrpcProvider); ok {
+		err := grpcProvider.Attach(req.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+		return &pbempty.Empty{}, nil
+	}
+	// Else report this is unsupported
+	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
+}
+
 func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
 	if err := p.provider.SignalCancellation(); err != nil {
 		return nil, err
@@ -252,7 +266,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, int(req.SequenceNumber))
+	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}

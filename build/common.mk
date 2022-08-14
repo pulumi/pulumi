@@ -80,25 +80,15 @@
 # green text) to the console. All the targets provided by this makefile
 # do that by default.
 #
-# The ensure target also provides some default behavior, detecting if
-# there is a Gopkg.toml or package.json file in the current folder and
-# if so calling dep ensure -v or yarn install. This behavior means that
-# projects will not often need to augment the ensure target.
-#
-# Unlike the other leaf targets, ensure will call the ensure target on
-# any sub-projects.
-#
 # Importing common.mk should be the first thing your Makefile does, after
 # optionally setting SUB_PROJECTS, PROJECT_NAME and NODE_MODULE_NAME.
-SHELL       := /bin/bash
+SHELL       ?= /bin/bash
 .SHELLFLAGS := -ec
 
-STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
+STEP_MESSAGE = @printf "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m\n"
 
 # Our install targets place items item into $PULUMI_ROOT.
-ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=$(realpath "$$HOME/.pulumi-dev")
-endif
+PULUMI_ROOT ?= $$HOME/.pulumi-dev
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
 # runtime.
@@ -108,13 +98,17 @@ PIP ?= pip3
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
-GO_TEST_OPTIONS     :=
 
-GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
-GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+# Extra options to pass to `go test` command, for example:
+#
+#     make GO_TEST_OPTIONS="-short -test.v" test_fast
+GO_TEST_OPTIONS :=
+
+GO_TEST_FLAGS = -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
 GOPROXY = 'https://proxy.golang.org'
 
-.PHONY: default all ensure only_build only_test build lint install test_all core
+.PHONY: default all only_build only_test lint install test_all core build
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -129,7 +123,6 @@ default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
 install_all:: $(SUB_PROJECTS:%=%_install_all)
 test_all:: $(SUB_PROJECTS:%=%_test_all)
-ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
 endif
@@ -141,21 +134,18 @@ core:: build lint install test_fast
 # print a nice banner.
 ifneq ($(PROJECT_NAME),)
 default::
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
-	@echo -e "\033[1;37m$(PROJECT_NAME)\033[1;37m"
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
+	@printf "\033[1;37m$(PROJECT_NAME)\033[1;37m\n"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
 all::
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
-	@echo -e "\033[1;37m$(PROJECT_NAME)\033[1;37m"
-	@echo -e "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
+	@printf "\033[1;37m$(PROJECT_NAME)\033[1;37m\n"
+	@printf "\033[1;37m$(shell echo '$(PROJECT_NAME)' | sed -e 's/./=/g')\033[1;37m\n"
 endif
 
 default:: build install lint test_fast
 all:: build install lint test_all
 
-ensure::
-	$(call STEP_MESSAGE)
-	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
 
 build::
 	$(call STEP_MESSAGE)
@@ -244,3 +234,17 @@ format::
 		-path "./*/compilation_error/*" -or \
 		-path "./*/testdata/*" \
 	\) | xargs gofmt -s -w
+
+# Defines the target `%.ensure` where `%` is an executable to check for. For
+# example, the target `ensure.foo` will check that `foo` is available on the
+# user's path.
+%.ensure:
+	@pad=$$(printf '%0.1s' "."{1..20});                                        \
+	exec=$$(echo $@ | sed 's/\.ensure//');                                     \
+	printf "Checking for %s %*.*s " "$${exec}" 0 $$((20 - $${#exec})) "$$pad"; \
+	if command -v $${exec} > /dev/null ; then                                  \
+	    echo "\033[0;32m✓\033[0m";                                             \
+	else                                                                       \
+	    echo "\033[0;31mX\033[0m";                                             \
+	    exit 1;                                                                \
+	fi                                                                         \

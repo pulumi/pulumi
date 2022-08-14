@@ -36,7 +36,7 @@ import (
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func ShowEvents(
-	op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
@@ -56,21 +56,21 @@ func ShowEvents(
 
 	switch opts.Type {
 	case DisplayDiff:
-		ShowDiffEvents(op, action, events, done, opts)
+		ShowDiffEvents(op, events, done, opts)
 	case DisplayProgress:
 		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
 	case DisplayQuery:
 		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
 			"directly instead of through ShowEvents")
 	case DisplayWatch:
-		ShowWatchEvents(op, action, events, done, opts)
+		ShowWatchEvents(op, events, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}
 }
 
 func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
-	apiEvent, err := ConvertEngineEvent(event)
+	apiEvent, err := ConvertEngineEvent(event, false /* showSecrets */)
 	if err != nil {
 		return err
 	}

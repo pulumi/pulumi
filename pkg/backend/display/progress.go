@@ -18,7 +18,6 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"sort"
@@ -27,7 +26,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -35,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -93,7 +93,7 @@ type ProgressDisplay struct {
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.QName
+	stack tokens.Name
 	// proj is the project this progress pertains to.
 	proj tokens.PackageName
 
@@ -270,7 +270,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout
@@ -434,10 +434,14 @@ func (display *ProgressDisplay) refreshColumns(
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
-	if display.isTerminal {
-		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
-	} else {
-		display.writeSimpleMessage(msg)
+	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
+	// asserts in later display functions if we try to show it
+	if msg != "" {
+		if display.isTerminal {
+			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+		} else {
+			display.writeSimpleMessage(msg)
+		}
 	}
 }
 
@@ -898,7 +902,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := engine.GetResourceOutputsPropertiesString(
+	props := getResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
@@ -914,7 +918,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 	display.writeSimpleMessage(msg)
 }
 
@@ -1228,7 +1232,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we'll print out summary text describing the step instead of a
 		// past-tense verb describing the step that was performed.
-		return op.Color() + display.getPreviewDoneText(step) + colors.Reset
+		return deploy.Color(op) + display.getPreviewDoneText(step) + colors.Reset
 	}
 
 	getDescription := func() string {
@@ -1295,7 +1299,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return makeError(getDescription())
 	}
 
-	return op.Color() + getDescription() + colors.Reset
+	return deploy.Color(op) + getDescription() + colors.Reset
 }
 
 func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
@@ -1365,7 +1369,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	return ""
 }
 
-func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
+func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display.StepOp {
 	op := step.Op
 
 	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
@@ -1391,7 +1395,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 }
 
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
-	return display.getStepOp(step).Prefix(done) + colors.Reset
+	return deploy.Prefix(display.getStepOp(step), done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -1442,10 +1446,5 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.ColorProgress() + getDescription() + colors.Reset
-}
-
-func writeString(b io.StringWriter, s string) {
-	_, err := b.WriteString(s)
-	contract.IgnoreError(err)
+	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }

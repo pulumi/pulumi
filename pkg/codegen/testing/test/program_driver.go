@@ -34,6 +34,15 @@ var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
+		Directory:   "assets-archives",
+		Description: "Assets and archives",
+	},
+	{
+		Directory:   "synthetic-resource-properties",
+		Description: "Synthetic resource properties",
+		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"), // not a real package
+	},
+	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: allProgLanguages.Except("go"),
@@ -60,10 +69,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: allProgLanguages.Except("python"),
-		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
+		SkipCompile: allProgLanguages.Except("python").Except("dotnet"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
+	},
+	{
+		Directory:   "aws-iam-policy",
+		Description: "AWS IAM Policy",
 	},
 	{
 		Directory:   "aws-optionals",
@@ -119,8 +131,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-resource-options",
 		Description: "Resource Options",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#8076]
 	},
 	{
 		Directory:   "aws-secret",
@@ -129,11 +139,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "functions",
 		Description: "Functions",
-		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8077]
-		// Blocked on dotnet:
-		//   TODO[pulumi/pulumi#8078]
-		//   TODO[pulumi/pulumi#8079]
 	},
 	{
 		Directory:   "output-funcs-aws",
@@ -151,6 +158,25 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "invalid-go-sprintf",
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   "typed-enum",
+		Description: "Supply strongly typed enums",
+	},
+	{
+		Directory:   "python-resource-names",
+		Description: "Repro for #9357",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   "logical-name",
+		Description: "Logical names",
+	},
+	{
+		Directory:   "aws-lambda",
+		Description: "AWS Lambdas",
+		// We have special testing for this case because lambda is a python keyword.
+		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
 }
 
@@ -183,8 +209,6 @@ type ProgramCodegenOptions struct {
 //nolint: revive
 func TestProgramCodegen(
 	t *testing.T,
-	// language string,
-	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramCodegenOptions,
 ) {
 	if runtime.GOOS == "windows" {
@@ -192,8 +216,8 @@ func TestProgramCodegen(
 	}
 
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
-	ensureValidSchemaVersions(t)
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
 		t.Run(tt.Description, func(t *testing.T) {
@@ -262,7 +286,7 @@ func TestProgramCodegen(
 			} else {
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
-			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
+			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
 				extraPulumiPackages := codegen.NewStringSet()
 				for _, n := range program.Nodes {
 					if r, isResource := n.(*pcl.Resource); isResource {

@@ -24,20 +24,25 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>funcWithAllOptionalInputs<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithAllOptionalInputsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>></span
 ><span class="k">
 function </span>funcWithAllOptionalInputsOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithAllOptionalInputsOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>func_with_all_optional_inputs<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[HelmReleaseSettings]</span> = None<span class="p">,</span>
                                   <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -47,10 +52,12 @@ def </span>func_with_all_optional_inputs_output<span class="p">(</span><span cla
                                   <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[FuncWithAllOptionalInputsResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>FuncWithAllOptionalInputs<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithAllOptionalInputsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>, error)</span
 ><span class="k">
@@ -59,101 +66,187 @@ func </span>FuncWithAllOptionalInputsOutput<span class="p">(</span><span class="
 
 &gt; Note: This function is named `FuncWithAllOptionalInputs` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">FuncWithAllOptionalInputs </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">FuncWithAllOptionalInputsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>> <span class="p">Invoke(</span><span class="nx">FuncWithAllOptionalInputsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">FuncWithAllOptionalInputsResult</a></span>> </span>funcWithAllOptionalInputs<span class="p">(</span><span class="nx">FuncWithAllOptionalInputsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> example:funcWithAllOptionalInputs
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_csharp">
-<a href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Property A{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
-<a href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Property B{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_go">
-<a href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Property A{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
-<a href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Property B{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="a_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_java" style="color: inherit; text-decoration: inherit;">a</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="b_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_java" style="color: inherit; text-decoration: inherit;">b</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_nodejs">
-<a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Property A{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
-<a href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Property B{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_python">
-<a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}Property A{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
-<a href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Property B{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="a_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_yaml" style="color: inherit; text-decoration: inherit;">a</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
+    </dt>
+    <dd><p>Property A</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="b_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_yaml" style="color: inherit; text-decoration: inherit;">b</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Property B</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -164,53 +257,89 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_csharp">
-<a href="#r_csharp" style="color: inherit; text-decoration: inherit;">R</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_csharp" style="color: inherit; text-decoration: inherit;">R</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_go">
-<a href="#r_go" style="color: inherit; text-decoration: inherit;">R</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_go" style="color: inherit; text-decoration: inherit;">R</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="r_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_java" style="color: inherit; text-decoration: inherit;">r</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_nodejs">
-<a href="#r_nodejs" style="color: inherit; text-decoration: inherit;">r</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_nodejs" style="color: inherit; text-decoration: inherit;">r</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_python">
-<a href="#r_python" style="color: inherit; text-decoration: inherit;">r</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_python" style="color: inherit; text-decoration: inherit;">r</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="r_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_yaml" style="color: inherit; text-decoration: inherit;">r</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -222,117 +351,203 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_csharp">
-<a href="#requiredarg_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
-<a href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
-<a href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_go">
-<a href="#requiredarg_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
-<a href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
-<a href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_java" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="driver_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_java" style="color: inherit; text-decoration: inherit;">driver</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="pluginspath_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_java" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_nodejs">
-<a href="#requiredarg_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
-<a href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
-<a href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_arg_python">
-<a href="#required_arg_python" style="color: inherit; text-decoration: inherit;">required_<wbr>arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_arg_python" style="color: inherit; text-decoration: inherit;">required_<wbr>arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
-<a href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
-<a href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="driver_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_yaml" style="color: inherit; text-decoration: inherit;">driver</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="pluginspath_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_yaml" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

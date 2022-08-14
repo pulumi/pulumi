@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@ import { ResourceError } from "../../errors";
 import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
-import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
+import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap } from "./parseFunction";
+import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
@@ -412,7 +413,9 @@ async function analyzeFunctionInfoAsync(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(functionString);
+
+        const pf: typeof parseFunctionModule = require("./parseFunction");
+        const [error, parsedFunction] = pf.parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }
@@ -749,7 +752,7 @@ function getFunctionName(loc: FunctionLocation): string {
         // the entire lambda if it's lots of statements.
         const semicolonIndex = funcString.indexOf(";");
         if (semicolonIndex >= 0) {
-            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+            funcString = funcString.slice(0, semicolonIndex + 1) + " ...";
         }
 
         // squash all whitespace to single spaces.
@@ -1290,10 +1293,6 @@ async function getOrCreateEntryAsync(
         emptyOutputEntry.object.env.set(envEntry,  {entry: valEntry});
         return emptyOutputEntry;
     }
-}
-
-async function isOutputAsync(obj: any): Promise<boolean> {
-    return Output.isInstance(obj);
 }
 
 // Is this a constructor derived from a noCapture constructor.  if so, we don't want to

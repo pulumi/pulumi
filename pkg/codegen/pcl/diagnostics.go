@@ -41,8 +41,16 @@ func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown package '%s'", pkg)
 }
 
+func resourceLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagnostic {
+	return errorf(tokenRange, "error loading resource type '%s': %v", token, err)
+}
+
 func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
+}
+
+func functionLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagnostic {
+	return errorf(tokenRange, "error loading function '%s': %v", token, err)
 }
 
 func unknownFunction(token string, tokenRange hcl.Range) *hcl.Diagnostic {
@@ -67,4 +75,8 @@ func tokenMustBeStringLiteral(tokenExpr model.Expression) *hcl.Diagnostic {
 
 func duplicateBlock(blockType string, typeRange hcl.Range) *hcl.Diagnostic {
 	return errorf(typeRange, "duplicate block of type '%v'", blockType)
+}
+
+func stringAttributeError(attr *model.Attribute) *hcl.Diagnostic {
+	return errorf(attr.Syntax.Expr.Range(), "attribute %v must be a string literal", attr.Name)
 }

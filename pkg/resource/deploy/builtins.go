@@ -66,7 +66,7 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
 func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := urn.Type()
 	if typ != stackReferenceType {
@@ -147,7 +147,8 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	outputs, err := p.readStackReference(state)

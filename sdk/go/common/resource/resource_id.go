@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 
 	"github.com/pkg/errors"
+	"lukechampine.com/frand"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -120,13 +121,52 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 	_, err := hasher.Write([]byte(urn))
 	contract.AssertNoError(err)
 
-	bytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bytes, uint32(sequenceNumber))
-	_, err = hasher.Write(bytes)
+	err = binary.Write(hasher, binary.LittleEndian, uint32(sequenceNumber))
 	contract.AssertNoError(err)
 
 	bs := hasher.Sum(nil)
 	contract.Assert(len(bs) == 64)
 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil
+}
+
+// NewUniqueName generates a new "random" string primarily intended for use by resource providers for
+// autonames. It will take the optional prefix and append randlen random characters (defaulting to 8 if not >
+// 0). The result must not exceed maxlen total characters (if > 0). The characters that make up the random
+// suffix can be set via charset, and will default to [a-f0-9]. Note that capping to maxlen necessarily
+// increases the risk of collisions. The randomness for this method is a function of randomSeed if given, else
+// it falls back to a non-deterministic source of randomness.
+func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charset []rune) (string, error) {
+	if randlen <= 0 {
+		randlen = 8
+	}
+	if maxlen > 0 && len(prefix)+randlen > maxlen {
+		return "", errors.Errorf(
+			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
+	}
+
+	if charset == nil {
+		charset = []rune("0123456789abcdef")
+	}
+
+	var random *frand.RNG
+	if len(randomSeed) == 0 {
+		random = frand.New()
+	} else {
+		// frand.NewCustom needs a 32 byte seed. Take the SHA256 hash of whatever bytes we've been given as a
+		// seed and pass the 32 byte result of that to frand.
+		hash := crypto.SHA256.New()
+		hash.Write(randomSeed)
+		seed := hash.Sum(nil)
+		bufsize := 1024 // Same bufsize as used by frand.New.
+		rounds := 12    // Same rounds as used by frand.New.
+		random = frand.NewCustom(seed, bufsize, rounds)
+	}
+
+	randomSuffix := make([]rune, randlen)
+	for i := range randomSuffix {
+		randomSuffix[i] = charset[random.Intn(len(charset))]
+	}
+
+	return prefix + string(randomSuffix), nil
 }

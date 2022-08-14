@@ -11,7 +11,7 @@ using Pulumi;
 namespace Other.Example
 {
     [ExampleResourceType("pulumi:providers:example")]
-    public partial class Provider : Pulumi.ProviderResource
+    public partial class Provider : global::Pulumi.ProviderResource
     {
         /// <summary>
         /// Create a Provider resource with the given unique name, arguments, and options.
@@ -39,10 +39,11 @@ namespace Other.Example
         }
     }
 
-    public sealed class ProviderArgs : Pulumi.ResourceArgs
+    public sealed class ProviderArgs : global::Pulumi.ResourceArgs
     {
         public ProviderArgs()
         {
         }
+        public static new ProviderArgs Empty => new ProviderArgs();
     }
 }

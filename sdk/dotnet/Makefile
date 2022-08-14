@@ -2,9 +2,8 @@ PROJECT_NAME    := Pulumi .NET Core SDK
 LANGHOST_PKG    := github.com/mariospas/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-PROJECT_ROOT    := $(realpath ../..)
 
-DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
+DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language dotnet))
 
 TESTPARALLELISM ?= 10
 
@@ -14,15 +13,20 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= install
 
-ensure::
+ensure:: dotnet.ensure .ensure.phony
+.ensure.phony: dotnet.sln **/*.csproj
 	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
 	dotnet restore dotnet.sln
+	@touch .ensure.phony
 
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 TEST_COVERAGE_ARGS := -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 else
 TEST_COVERAGE_ARGS := -p:CollectCoverage=false -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 endif
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 build::
 	# From the nuget docs:

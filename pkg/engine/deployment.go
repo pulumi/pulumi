@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,7 +38,7 @@ import (
 const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
+func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
 	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 
@@ -50,8 +51,8 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, config, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan)
+	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -147,11 +148,12 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	contract.Assert(proj != nil)
 	contract.Assert(target != nil)
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host, target,
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)
 	if err != nil {
 		return nil, err
 	}
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
@@ -217,13 +219,13 @@ type deployment struct {
 type runActions interface {
 	deploy.Events
 
-	Changes() ResourceChanges
+	Changes() display.ResourceChanges
 	MaybeCorrupt() bool
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
+	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)

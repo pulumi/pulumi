@@ -75,14 +75,17 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return result.Errorf(
-						"'%s' still has resources; removal rejected; pass --force to override", s.Ref())
+						"'%s' still has resources; removal rejected. Possible actions:\n"+
+							"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
+							"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`\n"+
+							"- Run `pulumi stack rm --force` to override this error", s.Ref())
 				}
 				return result.FromError(err)
 			}
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
+				if path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 						return result.FromError(err)
 					}

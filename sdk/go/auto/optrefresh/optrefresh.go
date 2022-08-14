@@ -52,10 +52,17 @@ func Target(urns []string) Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
+	})
+}
+
+// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
+func ErrorProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ErrorProgressStreams = writers
 	})
 }
 
@@ -80,6 +87,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Show config secrets when they appear in the config.
+func ShowSecrets(show bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ShowSecrets = &show
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -98,8 +112,10 @@ type Options struct {
 	ExpectNoChanges bool
 	// Specify an exclusive list of resource URNs to re
 	Target []string
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stdout
 	ProgressStreams []io.Writer
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
+	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
@@ -108,6 +124,8 @@ type Options struct {
 	UserAgent string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
 	Color string
+	// Show config secrets when they appear.
+	ShowSecrets *bool
 }
 
 type optionFunc func(*Options)

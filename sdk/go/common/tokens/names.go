@@ -43,12 +43,6 @@ func IsName(s string) bool {
 	return s != "" && NameRegexp.FindString(s) == s
 }
 
-// AsName converts a given string to a Name, asserting its validity.
-func AsName(s string) Name {
-	contract.Assertf(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexpPattern)
-	return Name(s)
-}
-
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
 // conforms to NameRegexpPattern.  For example, "pulumi/pulumi/stack".
 type QName string
@@ -89,13 +83,7 @@ func IntoQName(s string) QName {
 	if result == "" {
 		result = "_"
 	}
-	return AsQName(result)
-}
-
-// AsQName converts a given string to a QName, asserting its validity.
-func AsQName(s string) QName {
-	contract.Assertf(IsQName(s), "Expected string '%v' to be a name (%v)", s, QNameRegexpPattern)
-	return QName(s)
+	return QName(result)
 }
 
 // Name extracts the Name portion of a QName (dropping any namespace).

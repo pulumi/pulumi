@@ -175,6 +175,16 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--target", tURN);
                 }
             }
+            if (opts.policyPacks) {
+                for (const pack of opts.policyPacks) {
+                    args.push("--policy-pack", pack);
+                }
+            }
+            if (opts.policyPackConfigs) {
+                for (const packConfig of opts.policyPackConfigs) {
+                    args.push("--policy-pack-config", packConfig);
+                }
+            }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
@@ -184,9 +194,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
+            if (opts.plan) {
+                args.push("--plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -231,10 +242,9 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
         try {
-            upResult = await upPromise;
+            upResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
@@ -245,7 +255,7 @@ Event: ${line}\n${e.toString()}`);
 
         // TODO: do this in parallel after this is fixed https://github.com/mariospas/pulumi/issues/6050
         const outputs = await this.outputs();
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
 
         return {
             stdout: upResult.stdout,
@@ -288,6 +298,16 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--target", tURN);
                 }
             }
+            if (opts.policyPacks) {
+                for (const pack of opts.policyPacks) {
+                    args.push("--policy-pack", pack);
+                }
+            }
+            if (opts.policyPackConfigs) {
+                for (const packConfig of opts.policyPackConfigs) {
+                    args.push("--policy-pack-config", packConfig);
+                }
+            }
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
@@ -297,9 +317,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
+            if (opts.plan) {
+                args.push("--save-plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -335,7 +356,7 @@ Event: ${line}\n${e.toString()}`);
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const rlPromise = this.readLines(logFile, (event) => {
+        const logPromise = this.readLines(logFile, (event) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
@@ -344,18 +365,16 @@ Event: ${line}\n${e.toString()}`);
                 onEvent(event);
             }
         });
-        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
-        let preResult: CommandResult;
-        let rlResult: ReadlineResult | undefined;
+        let previewResult: CommandResult;
         try {
-            [preResult, rlResult] = await Promise.all([prePromise, rlPromise]);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, rlResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         if (!summaryEvent) {
@@ -363,8 +382,8 @@ Event: ${line}\n${e.toString()}`);
         }
 
         return {
-            stdout: preResult.stdout,
-            stderr: preResult.stderr,
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
             changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
@@ -395,9 +414,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -420,7 +437,7 @@ Event: ${line}\n${e.toString()}`);
         const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
@@ -453,9 +470,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -478,7 +493,7 @@ Event: ${line}\n${e.toString()}`);
         const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info();
+        const summary = await this.info(opts?.showSecrets);
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
@@ -548,8 +563,11 @@ Event: ${line}\n${e.toString()}`);
      * Returns a list summarizing all previous and current results from Stack lifecycle operations
      * (up/preview/refresh/destroy).
      */
-    async history(pageSize?: number, page?: number): Promise<UpdateSummary[]> {
-        const args = ["stack", "history", "--json", "--show-secrets"];
+    async history(pageSize?: number, page?: number, showSecrets?: boolean): Promise<UpdateSummary[]> {
+        const args = ["stack", "history", "--json"];
+        if (showSecrets ?? true) {
+            args.push("--show-secrets");
+        }
         if (pageSize) {
             if (!page || page < 1) {
                 page = 1;
@@ -565,8 +583,8 @@ Event: ${line}\n${e.toString()}`);
             return value;
         });
     }
-    async info(): Promise<UpdateSummary | undefined> {
-        const history = await this.history(1 /*pageSize*/);
+    async info(showSecrets?: boolean): Promise<UpdateSummary | undefined> {
+        const history = await this.history(1 /*pageSize*/, undefined, showSecrets);
         if (!history || history.length === 0) {
             return undefined;
         }
@@ -614,6 +632,27 @@ Event: ${line}\n${e.toString()}`);
         const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;
+    }
+}
+
+function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
+    if (opts.color) {
+        args.push("--color", opts.color);
+    }
+    if (opts.logFlow) {
+        args.push("--logflow");
+    }
+    if (opts.logVerbosity) {
+        args.push("--verbose", opts.logVerbosity.toString());
+    }
+    if (opts.logToStdErr) {
+        args.push("--logtostderr");
+    }
+    if (opts.tracing) {
+        args.push("--tracing", opts.tracing);
+    }
+    if (opts.debug) {
+        args.push("--debug");
     }
 }
 
@@ -734,33 +773,59 @@ export interface DestroyResult {
     summary: UpdateSummary;
 }
 
+export interface GlobalOpts {
+    /** Colorize output. */
+    color?: "always" | "never" | "raw" | "auto";
+    /** Flow log settings to child processes (like plugins) */
+    logFlow?: boolean;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    logVerbosity?: number;
+    /** Log to stderr instead of to files */
+    logToStdErr?: boolean;
+    /** Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Print detailed debugging output during resource operations */
+    debug?: boolean;
+}
+
 /**
  * Options controlling the behavior of a Stack.up() operation.
  */
-export interface UpOptions {
+export interface UpOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
     diff?: boolean;
     replace?: string[];
+    policyPacks?: string[];
+    policyPackConfigs?: string[];
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
-    color?: "always" | "never" | "raw" | "auto";
+    /**
+     * Plan specifies the path to an update plan to use for the update.
+     */
+    plan?: string;
+    /**
+     * Include secrets in the UpSummary.
+     */
+    showSecrets?: boolean;
 }
 
 /**
  * Options controlling the behavior of a Stack.preview() operation.
  */
-export interface PreviewOptions {
+export interface PreviewOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
     diff?: boolean;
     replace?: string[];
+    policyPacks?: string[];
+    policyPackConfigs?: string[];
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
@@ -768,12 +833,16 @@ export interface PreviewOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    /**
+     * Plan specifies the path where the update plan should be saved.
+     */
+    plan?: string;
 }
 
 /**
  * Options controlling the behavior of a Stack.refresh() operation.
  */
-export interface RefreshOptions {
+export interface RefreshOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -782,12 +851,14 @@ export interface RefreshOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    // Include secrets in the RefreshSummary
+    showSecrets?: boolean;
 }
 
 /**
  * Options controlling the behavior of a Stack.destroy() operation.
  */
-export interface DestroyOptions {
+export interface DestroyOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     target?: string[];
@@ -796,6 +867,8 @@ export interface DestroyOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    // Include secrets in the DestroySummary
+    showSecrets?: boolean;
 }
 
 const execKind = {
@@ -804,8 +877,6 @@ const execKind = {
 };
 
 type StackInitMode = "create" | "select" | "createOrSelect";
-
-const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));
 
 const createLogFile = (command: string) => {
     const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), `automation-logs-${command}-`));

@@ -219,6 +219,14 @@ def serialize_provider(provider: ResourceProvider) -> str:
     old_pickler = pickle.Pickler
     pickle.Pickler = pickle._Pickler  # pylint: disable=protected-access
 
+    # See: https://github.com/uqfoundation/dill/issues/481#issuecomment-1133789848
+    unsorted_batch_setitems = pickle.Pickler._batch_setitems
+
+    def batch_set_items_sorted(self, items):
+        unsorted_batch_setitems(self, sorted(items))
+
+    pickle.Pickler._batch_setitems = batch_set_items_sorted
+
     def save_dict_sorted(self, obj):
         if self.bin:
             self.write(pickle.EMPTY_DICT)
@@ -226,7 +234,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
             self.write(pickle.MARK + pickle.DICT)
 
         self.memoize(obj)
-        self._batch_setitems(sorted(obj.items()))  # pylint: disable=protected-access
+        self._batch_setitems(obj.items())  # pylint: disable=protected-access
 
     pickle.Pickler.save_dict = save_dict_sorted
 

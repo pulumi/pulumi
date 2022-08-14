@@ -5,7 +5,7 @@
     "Deeply/nested/module/README.md",
     "Deeply/nested/module/Resource.cs",
     "Provider.cs",
-    "Pulumi.Foo-bar.csproj",
+    "Pulumi.FooBar.csproj",
     "README.md",
     "Utilities.cs",
     "logo.png",

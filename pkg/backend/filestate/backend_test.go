@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -154,15 +155,14 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
-		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 		_, err := b.RemoveStack(ctx, aStack, true)
 		assert.NoError(t, err)
 	}()
 	deployment, err := makeUntypedDeployment("a", "abc123",
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	assert.NoError(t, err)
-	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
-	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 	err = b.ImportDeployment(ctx, aStack, deployment)
 	assert.NoError(t, err)
 
@@ -173,15 +173,14 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
-		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 		_, err := b.RemoveStack(ctx, bStack, true)
 		assert.NoError(t, err)
 	}()
 	deployment, err = makeUntypedDeployment("b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	assert.NoError(t, err)
-	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
-	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 	err = b.ImportDeployment(ctx, bStack, deployment)
 	assert.NoError(t, err)
 
@@ -280,4 +279,126 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 	err = lb.checkForLock(ctx, aStackRef)
 	assert.NoError(t, err)
+}
+
+func TestRemoveMakesBackups(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Check that creating a new stack doesn't make a backup file
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists, but the backup file doesn't
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	assert.NoError(t, err)
+	assert.False(t, backupFileExists)
+
+	// Now remove the stack
+	removed, err := b.RemoveStack(ctx, aStack, false)
+	assert.NoError(t, err)
+	assert.False(t, removed)
+
+	// Check the stack file is now gone, but the backup file exists
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	assert.NoError(t, err)
+	assert.True(t, backupFileExists)
+}
+
+func TestRenameWorks(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Create a new stack
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Fake up some history
+	err = lb.addToHistory("a", backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	assert.NoError(t, err)
+	// And pollute the history folder
+	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory("a"), "randomfile.txt"), []byte{0, 13}, nil)
+	assert.NoError(t, err)
+
+	// Rename the stack
+	bStackRef, err := b.RenameStack(ctx, aStack, "b")
+	assert.NoError(t, err)
+	assert.Equal(t, "b", bStackRef.String())
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Rename again
+	bStack, err := b.GetStack(ctx, bStackRef)
+	assert.NoError(t, err)
+	cStackRef, err := b.RenameStack(ctx, bStack, "c")
+	assert.NoError(t, err)
+	assert.Equal(t, "c", cStackRef.String())
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(cStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Check we can still get the history
+	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
+	assert.NoError(t, err)
+	assert.Len(t, history, 1)
+	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
+}
+
+func TestLoginToNonExistingFolderFails(t *testing.T) {
+	t.Parallel()
+
+	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
+	b, err := New(cmdutil.Diag(), fakeDir)
+	assert.Error(t, err)
+	assert.Nil(t, b)
 }

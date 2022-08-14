@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/tstypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -213,7 +214,11 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 	modName, name := namingCtx.tokenToModName(tok), tokenToName(tok)
 
 	if enum {
-		return "enums." + modName + title(name)
+		prefix := "enums."
+		if external {
+			prefix = pkgName
+		}
+		return prefix + modName + title(name)
 	}
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
@@ -288,7 +293,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(t.Package, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
@@ -648,7 +653,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): %s {\n",
 			stateParam, optionsType, name)
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(r.DeprecationMessage))
 		}
 		fmt.Fprintf(w, "        return new %s(name, %s{ ...opts, id: id });\n", name, stateRef)
 		fmt.Fprintf(w, "    }\n")
@@ -815,7 +820,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(r.DeprecationMessage))
 		}
 		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        opts = opts || {};\n")
@@ -954,7 +959,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "    %s(%s): %s {\n", methodName, argsig, retty)
 		if fun.DeprecationMessage != "" {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s.%s is deprecated: %s\")\n", name, methodName,
-				fun.DeprecationMessage)
+				escape(fun.DeprecationMessage))
 		}
 
 		// Zero initialize the args if empty and necessary.
@@ -1084,7 +1089,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n",
 		name, argsig, functionReturnType(fun))
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
+		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
 
 	// Zero initialize the args if empty and necessary.
@@ -1302,6 +1307,12 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.EnumType:
+		// If the enum is from another package, add an import for the external package.
+		if t.Package != nil && t.Package != mod.pkg {
+			pkg := t.Package.Name
+			writeImports(pkg)
+			return false
+		}
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
@@ -1516,7 +1527,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		enumsImport := ""
+		var enumsImport string
 		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
 		if containsEnums {
 			enumsImport = ", enums"
@@ -1620,6 +1631,12 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) error {
 	indent := strings.Repeat("    ", level)
 
+	// We generate the input and output namespaces when there are enums, regardless of if
+	// they are empty.
+	if ns == nil {
+		return nil
+	}
+
 	sort.Slice(ns.types, func(i, j int) bool {
 		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
 	})
@@ -1653,16 +1670,20 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	return nil
 }
 
+func enumMemberName(typeName string, member *schema.Enum) (string, error) {
+	if member.Name == "" {
+		member.Name = fmt.Sprintf("%v", member.Value)
+	}
+	return makeSafeEnumName(member.Name, typeName)
+}
+
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
 		// If the enum doesn't have a name, set the value as the name.
-		if e.Name == "" {
-			e.Name = fmt.Sprintf("%v", e.Value)
-		}
-		safeName, err := makeSafeEnumName(e.Name, enumName)
+		safeName, err := enumMemberName(enumName, e)
 		if err != nil {
 			return err
 		}
@@ -1819,7 +1840,8 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	// Nested types
-	if len(mod.types) > 0 {
+	// Importing enums always imports inputs and outputs, so if we have enums we generate inputs and outputs
+	if len(mod.types) > 0 || (mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums && mod.mod == "types") {
 		input, output, err := mod.genTypes()
 		if err != nil {
 			return err
@@ -1886,6 +1908,10 @@ func (mod *modContext) genIndex(exports []string) string {
 	if info.ContainsEnums {
 		if mod.mod == "types" {
 			children.Add("enums")
+			// input & output might be empty, but they will be imported with enums, so we
+			// need to have them.
+			children.Add("input")
+			children.Add("output")
 		} else if len(mod.enums) > 0 {
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "// Export enums:\n")
@@ -2022,11 +2048,9 @@ func (mod *modContext) hasEnums() bool {
 	if len(mod.enums) > 0 {
 		return true
 	}
-	if len(mod.children) > 0 {
-		for _, mod := range mod.children {
-			if mod.hasEnums() {
-				return true
-			}
+	for _, mod := range mod.children {
+		if mod.hasEnums() {
+			return true
 		}
 	}
 	return false
@@ -2086,26 +2110,19 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) err
 }
 
 type npmPackage struct {
-	Name             string            `json:"name"`
-	Version          string            `json:"version"`
-	Description      string            `json:"description,omitempty"`
-	Keywords         []string          `json:"keywords,omitempty"`
-	Homepage         string            `json:"homepage,omitempty"`
-	Repository       string            `json:"repository,omitempty"`
-	License          string            `json:"license,omitempty"`
-	Scripts          map[string]string `json:"scripts,omitempty"`
-	Dependencies     map[string]string `json:"dependencies,omitempty"`
-	DevDependencies  map[string]string `json:"devDependencies,omitempty"`
-	PeerDependencies map[string]string `json:"peerDependencies,omitempty"`
-	Resolutions      map[string]string `json:"resolutions,omitempty"`
-	Pulumi           npmPulumiManifest `json:"pulumi,omitempty"`
-}
-
-type npmPulumiManifest struct {
-	Name              string `json:"name,omitempty"`
-	Version           string `json:"version,omitempty"`
-	Resource          bool   `json:"resource,omitempty"`
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
+	Name             string                  `json:"name"`
+	Version          string                  `json:"version"`
+	Description      string                  `json:"description,omitempty"`
+	Keywords         []string                `json:"keywords,omitempty"`
+	Homepage         string                  `json:"homepage,omitempty"`
+	Repository       string                  `json:"repository,omitempty"`
+	License          string                  `json:"license,omitempty"`
+	Scripts          map[string]string       `json:"scripts,omitempty"`
+	Dependencies     map[string]string       `json:"dependencies,omitempty"`
+	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
+	PeerDependencies map[string]string       `json:"peerDependencies,omitempty"`
+	Resolutions      map[string]string       `json:"resolutions,omitempty"`
+	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -2137,6 +2154,13 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		scriptVersion = pluginVersion
 	}
 
+	pluginName := info.PluginName
+	// Default to the pulumi package name if PluginName isn't set by the user. This is different to the npm
+	// package name, e.g. the npm package "@pulumiverse/sentry" has a pulumi package name of just "sentry".
+	if pluginName == "" {
+		pluginName = pkg.Name
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
@@ -2151,11 +2175,11 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
 		},
 		DevDependencies: devDependencies,
-		Pulumi: npmPulumiManifest{
-			Resource:          true,
-			PluginDownloadURL: pkg.PluginDownloadURL,
-			Name:              info.PluginName,
-			Version:           pluginVersion,
+		Pulumi: plugin.PulumiPluginJSON{
+			Resource: true,
+			Server:   pkg.PluginDownloadURL,
+			Name:     pluginName,
+			Version:  pluginVersion,
 		},
 	}
 
@@ -2378,7 +2402,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 			continue
 		}
 	}
-	if len(types.types) > 0 {
+	if len(types.types) > 0 || info.ContainsEnums {
 		typeDetails, typeList := types.typeDetails, types.types
 		types = getMod("types")
 		types.typeDetails, types.types = typeDetails, typeList

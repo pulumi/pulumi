@@ -198,9 +198,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
 	},
 	{
-		Directory:        "plain-and-default",
-		Description:      "Ensure that a resource with a plain default property works correctly",
-		SkipCompileCheck: codegen.NewStringSet(nodejs),
+		Directory:   "plain-and-default",
+		Description: "Ensure that a resource with a plain default property works correctly",
 	},
 	{
 		Directory:   "plain-object-defaults",
@@ -263,6 +262,30 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "external-python-same-module-name",
 		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
 		Skip:        allLanguages.Except("python/any"),
+	},
+	{
+		Directory:   "enum-reference",
+		Description: "Ensure referencing external types/resources with referenced enums import correctly",
+	},
+	{
+		Directory:   "external-enum",
+		Description: "Ensure we generate valid tokens for external enums",
+		Skip:        codegen.NewStringSet("dotnet/any"),
+	},
+	{
+		Directory:   "internal-dependencies-go",
+		Description: "Emit Go internal dependencies",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "go-plain-ref-repro",
+		Description: "Generate a resource that accepts a plain input type",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "go-nested-collections",
+		Description: "Generate a resource that outputs [][][]Foo",
+		Skip:        allLanguages.Except("go/any"),
 	},
 }
 
@@ -363,6 +386,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
 	for _, tt := range opts.TestCases {
 		tt := tt // avoid capturing loop variable `sdkTest` in the closure
+
 		t.Run(tt.Directory, func(t *testing.T) {
 			t.Parallel()
 

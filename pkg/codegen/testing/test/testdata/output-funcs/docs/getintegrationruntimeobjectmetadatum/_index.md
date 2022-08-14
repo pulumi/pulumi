@@ -25,20 +25,25 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getIntegrationRuntimeObjectMetadatum<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>></span
 ><span class="k">
 function </span>getIntegrationRuntimeObjectMetadatumOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetIntegrationRuntimeObjectMetadatumOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_integration_runtime_object_metadatum<span class="p">(</span><span class="nx">factory_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                              <span class="nx">integration_runtime_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -52,10 +57,12 @@ def </span>get_integration_runtime_object_metadatum_output<span class="p">(</spa
                                              <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetIntegrationRuntimeObjectMetadatumResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetIntegrationRuntimeObjectMetadatum<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>, error)</span
 ><span class="k">
@@ -64,165 +71,295 @@ func </span>GetIntegrationRuntimeObjectMetadatumOutput<span class="p">(</span><s
 
 &gt; Note: This function is named `GetIntegrationRuntimeObjectMetadatum` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetIntegrationRuntimeObjectMetadatum </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetIntegrationRuntimeObjectMetadatumInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>> </span>getIntegrationRuntimeObjectMetadatum<span class="p">(</span><span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:getIntegrationRuntimeObjectMetadatum
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_csharp">
-<a href="#factoryname_csharp" style="color: inherit; text-decoration: inherit;">Factory<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factoryname_csharp" style="color: inherit; text-decoration: inherit;">Factory<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The factory name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_csharp">
-<a href="#integrationruntimename_csharp" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_csharp" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The integration runtime name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
-<a href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The resource group name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_csharp">
-<a href="#metadatapath_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata path.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_go">
-<a href="#factoryname_go" style="color: inherit; text-decoration: inherit;">Factory<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factoryname_go" style="color: inherit; text-decoration: inherit;">Factory<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The factory name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_go">
-<a href="#integrationruntimename_go" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_go" style="color: inherit; text-decoration: inherit;">Integration<wbr>Runtime<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The integration runtime name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
-<a href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The resource group name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_go">
-<a href="#metadatapath_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata path.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="factoryname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factoryname_java" style="color: inherit; text-decoration: inherit;">factory<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="integrationruntimename_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_java" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="metadatapath_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_nodejs">
-<a href="#factoryname_nodejs" style="color: inherit; text-decoration: inherit;">factory<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factoryname_nodejs" style="color: inherit; text-decoration: inherit;">factory<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The factory name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="integrationruntimename_nodejs">
-<a href="#integrationruntimename_nodejs" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_nodejs" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The integration runtime name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
-<a href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The resource group name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="metadatapath_nodejs">
-<a href="#metadatapath_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata path.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factory_name_python">
-<a href="#factory_name_python" style="color: inherit; text-decoration: inherit;">factory_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factory_name_python" style="color: inherit; text-decoration: inherit;">factory_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The factory name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="integration_runtime_name_python">
-<a href="#integration_runtime_name_python" style="color: inherit; text-decoration: inherit;">integration_<wbr>runtime_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integration_runtime_name_python" style="color: inherit; text-decoration: inherit;">integration_<wbr>runtime_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The integration runtime name.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
-<a href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The resource group name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_path_python">
-<a href="#metadata_path_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_path_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata path.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="factoryname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#factoryname_yaml" style="color: inherit; text-decoration: inherit;">factory<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The factory name.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="integrationruntimename_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#integrationruntimename_yaml" style="color: inherit; text-decoration: inherit;">integration<wbr>Runtime<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The integration runtime name.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The resource group name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="metadatapath_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatapath_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Path</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata path.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -233,85 +370,149 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_csharp">
-<a href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The link to the next page of results, if any remaining results exist.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
             title="">
         <span id="value_csharp">
-<a href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;object&gt;</span>
     </dt>
-    <dd>{{% md %}}List of SSIS object metadata.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_go">
-<a href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The link to the next page of results, if any remaining results exist.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
             title="">
         <span id="value_go">
-<a href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]interface{}</span>
     </dt>
-    <dd>{{% md %}}List of SSIS object metadata.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="nextlink_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="value_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Object&gt;</span>
+    </dt>
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
-<a href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The link to the next page of results, if any remaining results exist.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
             title="">
         <span id="value_nodejs">
-<a href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">(Ssis<wbr>Environment<wbr>Response | Ssis<wbr>Folder<wbr>Response | Ssis<wbr>Package<wbr>Response | Ssis<wbr>Project<wbr>Response)[]</span>
     </dt>
-    <dd>{{% md %}}List of SSIS object metadata.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="next_link_python">
-<a href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The link to the next page of results, if any remaining results exist.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
             title="">
         <span id="value_python">
-<a href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[Any]</span>
     </dt>
-    <dd>{{% md %}}List of SSIS object metadata.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="nextlink_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The link to the next page of results, if any remaining results exist.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="value_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Property Map | Property Map | Property Map | Property Map&gt;</span>
+    </dt>
+    <dd><p>List of SSIS object metadata.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -323,1581 +524,2711 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_csharp">
-<a href="#environmentfoldername_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Folder<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentfoldername_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Folder<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment folder name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_csharp">
-<a href="#environmentname_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Environment reference id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_csharp">
-<a href="#referencetype_csharp" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_csharp" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference type{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_go">
-<a href="#environmentfoldername_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Folder<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentfoldername_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Folder<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment folder name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_go">
-<a href="#environmentname_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Environment reference id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_go">
-<a href="#referencetype_go" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_go" style="color: inherit; text-decoration: inherit;">Reference<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference type{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="environmentfoldername_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentfoldername_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Folder<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="environmentname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="referencetype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_java" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_nodejs">
-<a href="#environmentfoldername_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Folder<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentfoldername_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Folder<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment folder name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentname_nodejs">
-<a href="#environmentname_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Environment name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Environment reference id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="referencetype_nodejs">
-<a href="#referencetype_nodejs" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_nodejs" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference type{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environment_folder_name_python">
-<a href="#environment_folder_name_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>folder_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environment_folder_name_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>folder_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Environment folder name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environment_name_python">
-<a href="#environment_name_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environment_name_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Environment name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Environment reference id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="reference_type_python">
-<a href="#reference_type_python" style="color: inherit; text-decoration: inherit;">reference_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#reference_type_python" style="color: inherit; text-decoration: inherit;">reference_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Reference type{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="environmentfoldername_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentfoldername_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Folder<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Environment folder name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="environmentname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentname_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Environment name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Environment reference id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="referencetype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#referencetype_yaml" style="color: inherit; text-decoration: inherit;">reference<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Reference type</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisenvironmentresponse">Ssis<wbr>Environment<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
-<a href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains environment.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_csharp">
-<a href="#variables_csharp" style="color: inherit; text-decoration: inherit;">Variables</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_csharp" style="color: inherit; text-decoration: inherit;">Variables</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">List&lt;Ssis<wbr>Variable<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Variable in environment{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
-<a href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains environment.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_go">
-<a href="#variables_go" style="color: inherit; text-decoration: inherit;">Variables</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_go" style="color: inherit; text-decoration: inherit;">Variables</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">[]Ssis<wbr>Variable<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Variable in environment{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="variables_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_java" style="color: inherit; text-decoration: inherit;">variables</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisvariableresponse">List&lt;Ssis<wbr>Variable<wbr>Response&gt;</a></span>
+    </dt>
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
-<a href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains environment.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_nodejs">
-<a href="#variables_nodejs" style="color: inherit; text-decoration: inherit;">variables</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_nodejs" style="color: inherit; text-decoration: inherit;">variables</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">Ssis<wbr>Variable<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Variable in environment{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
-<a href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains environment.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variables_python">
-<a href="#variables_python" style="color: inherit; text-decoration: inherit;">variables</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_python" style="color: inherit; text-decoration: inherit;">variables</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisvariableresponse">Sequence[Ssis<wbr>Variable<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Variable in environment{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Folder id which contains environment.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="variables_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variables_yaml" style="color: inherit; text-decoration: inherit;">variables</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisvariableresponse">List&lt;Property Map&gt;</a></span>
+    </dt>
+    <dd><p>Variable in environment</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisfolderresponse">Ssis<wbr>Folder<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssispackageresponse">Ssis<wbr>Package<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
-<a href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_csharp">
-<a href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in package{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_csharp">
-<a href="#projectid_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Project id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_csharp">
-<a href="#projectversion_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_csharp" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Project version which contains package.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
-<a href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_go">
-<a href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">[]Ssis<wbr>Parameter<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in package{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_go">
-<a href="#projectid_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Project id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_go">
-<a href="#projectversion_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_go" style="color: inherit; text-decoration: inherit;">Project<wbr>Version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Project version which contains package.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="parameters_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
+    </dt>
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="projectid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_java" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="projectversion_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_java" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
-<a href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_nodejs">
-<a href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in package{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectid_nodejs">
-<a href="#projectid_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Project id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="projectversion_nodejs">
-<a href="#projectversion_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_nodejs" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Project version which contains package.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
-<a href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_python">
-<a href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Sequence[Ssis<wbr>Parameter<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in package{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="project_id_python">
-<a href="#project_id_python" style="color: inherit; text-decoration: inherit;">project_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#project_id_python" style="color: inherit; text-decoration: inherit;">project_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Project id which contains package.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="project_version_python">
-<a href="#project_version_python" style="color: inherit; text-decoration: inherit;">project_<wbr>version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#project_version_python" style="color: inherit; text-decoration: inherit;">project_<wbr>version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Project version which contains package.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Folder id which contains package.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="parameters_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
+    </dt>
+    <dd><p>Parameters in package</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="projectid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectid_yaml" style="color: inherit; text-decoration: inherit;">project<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Project id which contains package.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="projectversion_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#projectversion_yaml" style="color: inherit; text-decoration: inherit;">project<wbr>Version</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Project version which contains package.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_csharp">
-<a href="#datatype_csharp" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_csharp" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_csharp">
-<a href="#defaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_csharp">
-<a href="#designdefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Design default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Parameter id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="required_csharp">
-<a href="#required_csharp" style="color: inherit; text-decoration: inherit;">Required</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_csharp" style="color: inherit; text-decoration: inherit;">Required</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is required.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_csharp">
-<a href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_csharp">
-<a href="#sensitivedefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default sensitive value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_csharp">
-<a href="#valueset_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Parameter value set.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_csharp">
-<a href="#valuetype_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_csharp" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter value type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_csharp">
-<a href="#variable_csharp" style="color: inherit; text-decoration: inherit;">Variable</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_csharp" style="color: inherit; text-decoration: inherit;">Variable</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter reference variable.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_go">
-<a href="#datatype_go" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_go" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_go">
-<a href="#defaultvalue_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_go">
-<a href="#designdefaultvalue_go" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_go" style="color: inherit; text-decoration: inherit;">Design<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Design default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Parameter id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="required_go">
-<a href="#required_go" style="color: inherit; text-decoration: inherit;">Required</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_go" style="color: inherit; text-decoration: inherit;">Required</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is required.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_go">
-<a href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_go">
-<a href="#sensitivedefaultvalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default sensitive value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_go">
-<a href="#valueset_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Set</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Parameter value set.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_go">
-<a href="#valuetype_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_go" style="color: inherit; text-decoration: inherit;">Value<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter value type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_go">
-<a href="#variable_go" style="color: inherit; text-decoration: inherit;">Variable</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_go" style="color: inherit; text-decoration: inherit;">Variable</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter reference variable.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="datatype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_java" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="defaultvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_java" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="designdefaultvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_java" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="required_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_java" style="color: inherit; text-decoration: inherit;">required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitive_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_java" style="color: inherit; text-decoration: inherit;">sensitive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitivedefaultvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_java" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="valueset_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_java" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="valuetype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_java" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="variable_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_java" style="color: inherit; text-decoration: inherit;">variable</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_nodejs">
-<a href="#datatype_nodejs" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_nodejs" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="defaultvalue_nodejs">
-<a href="#defaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="designdefaultvalue_nodejs">
-<a href="#designdefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Design default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Parameter id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="required_nodejs">
-<a href="#required_nodejs" style="color: inherit; text-decoration: inherit;">required</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_nodejs" style="color: inherit; text-decoration: inherit;">required</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is required.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_nodejs">
-<a href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivedefaultvalue_nodejs">
-<a href="#sensitivedefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default sensitive value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valueset_nodejs">
-<a href="#valueset_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}Parameter value set.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="valuetype_nodejs">
-<a href="#valuetype_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_nodejs" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter value type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_nodejs">
-<a href="#variable_nodejs" style="color: inherit; text-decoration: inherit;">variable</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_nodejs" style="color: inherit; text-decoration: inherit;">variable</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Parameter reference variable.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="data_type_python">
-<a href="#data_type_python" style="color: inherit; text-decoration: inherit;">data_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#data_type_python" style="color: inherit; text-decoration: inherit;">data_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Parameter type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="default_value_python">
-<a href="#default_value_python" style="color: inherit; text-decoration: inherit;">default_<wbr>value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#default_value_python" style="color: inherit; text-decoration: inherit;">default_<wbr>value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Parameter description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="design_default_value_python">
-<a href="#design_default_value_python" style="color: inherit; text-decoration: inherit;">design_<wbr>default_<wbr>value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#design_default_value_python" style="color: inherit; text-decoration: inherit;">design_<wbr>default_<wbr>value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Design default value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Parameter id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Parameter name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="required_python">
-<a href="#required_python" style="color: inherit; text-decoration: inherit;">required</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_python" style="color: inherit; text-decoration: inherit;">required</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is required.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_python">
-<a href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether parameter is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_default_value_python">
-<a href="#sensitive_default_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>default_<wbr>value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_default_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>default_<wbr>value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Default sensitive value of parameter.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_set_python">
-<a href="#value_set_python" style="color: inherit; text-decoration: inherit;">value_<wbr>set</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_set_python" style="color: inherit; text-decoration: inherit;">value_<wbr>set</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Parameter value set.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_type_python">
-<a href="#value_type_python" style="color: inherit; text-decoration: inherit;">value_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_type_python" style="color: inherit; text-decoration: inherit;">value_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Parameter value type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="variable_python">
-<a href="#variable_python" style="color: inherit; text-decoration: inherit;">variable</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_python" style="color: inherit; text-decoration: inherit;">variable</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Parameter reference variable.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="datatype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_yaml" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="defaultvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#defaultvalue_yaml" style="color: inherit; text-decoration: inherit;">default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="designdefaultvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#designdefaultvalue_yaml" style="color: inherit; text-decoration: inherit;">design<wbr>Default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Design default value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Parameter id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="required_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_yaml" style="color: inherit; text-decoration: inherit;">required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether parameter is required.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitive_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_yaml" style="color: inherit; text-decoration: inherit;">sensitive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether parameter is sensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitivedefaultvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivedefaultvalue_yaml" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Default<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default sensitive value of parameter.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="valueset_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valueset_yaml" style="color: inherit; text-decoration: inherit;">value<wbr>Set</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Parameter value set.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="valuetype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#valuetype_yaml" style="color: inherit; text-decoration: inherit;">value<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter value type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="variable_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#variable_yaml" style="color: inherit; text-decoration: inherit;">variable</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Parameter reference variable.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisprojectresponse">Ssis<wbr>Project<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_csharp">
-<a href="#environmentrefs_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_csharp" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Ssis<wbr>Environment<wbr>Reference<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Environment reference in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_csharp">
-<a href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_csharp" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains project.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_csharp">
-<a href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_csharp" style="color: inherit; text-decoration: inherit;">Parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="version_csharp">
-<a href="#version_csharp" style="color: inherit; text-decoration: inherit;">Version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_csharp" style="color: inherit; text-decoration: inherit;">Version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Project version.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_go">
-<a href="#environmentrefs_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_go" style="color: inherit; text-decoration: inherit;">Environment<wbr>Refs</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">[]Ssis<wbr>Environment<wbr>Reference<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Environment reference in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_go">
-<a href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_go" style="color: inherit; text-decoration: inherit;">Folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains project.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_go">
-<a href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_go" style="color: inherit; text-decoration: inherit;">Parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">[]Ssis<wbr>Parameter<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="version_go">
-<a href="#version_go" style="color: inherit; text-decoration: inherit;">Version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_go" style="color: inherit; text-decoration: inherit;">Version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Project version.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="environmentrefs_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_java" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Ssis<wbr>Environment<wbr>Reference<wbr>Response&gt;</a></span>
+    </dt>
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_java" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="parameters_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_java" style="color: inherit; text-decoration: inherit;">parameters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Ssis<wbr>Parameter<wbr>Response&gt;</a></span>
+    </dt>
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="version_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_java" style="color: inherit; text-decoration: inherit;">version</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environmentrefs_nodejs">
-<a href="#environmentrefs_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_nodejs" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">Ssis<wbr>Environment<wbr>Reference<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Environment reference in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folderid_nodejs">
-<a href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_nodejs" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains project.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_nodejs">
-<a href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_nodejs" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="version_nodejs">
-<a href="#version_nodejs" style="color: inherit; text-decoration: inherit;">version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_nodejs" style="color: inherit; text-decoration: inherit;">version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Project version.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="environment_refs_python">
-<a href="#environment_refs_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>refs</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environment_refs_python" style="color: inherit; text-decoration: inherit;">environment_<wbr>refs</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisenvironmentreferenceresponse">Sequence[Ssis<wbr>Environment<wbr>Reference<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Environment reference in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="folder_id_python">
-<a href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folder_id_python" style="color: inherit; text-decoration: inherit;">folder_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Folder id which contains project.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Metadata id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Metadata name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="parameters_python">
-<a href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_python" style="color: inherit; text-decoration: inherit;">parameters</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#ssisparameterresponse">Sequence[Ssis<wbr>Parameter<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Parameters in project{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="version_python">
-<a href="#version_python" style="color: inherit; text-decoration: inherit;">version</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_python" style="color: inherit; text-decoration: inherit;">version</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Project version.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="environmentrefs_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#environmentrefs_yaml" style="color: inherit; text-decoration: inherit;">environment<wbr>Refs</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisenvironmentreferenceresponse">List&lt;Property Map&gt;</a></span>
+    </dt>
+    <dd><p>Environment reference in project</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="folderid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#folderid_yaml" style="color: inherit; text-decoration: inherit;">folder<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Folder id which contains project.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Metadata id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Metadata name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="parameters_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#parameters_yaml" style="color: inherit; text-decoration: inherit;">parameters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#ssisparameterresponse">List&lt;Property Map&gt;</a></span>
+    </dt>
+    <dd><p>Parameters in project</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="version_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#version_yaml" style="color: inherit; text-decoration: inherit;">version</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Project version.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisvariableresponse">Ssis<wbr>Variable<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_csharp">
-<a href="#datatype_csharp" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_csharp" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
-<a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Variable id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_csharp">
-<a href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_csharp" style="color: inherit; text-decoration: inherit;">Sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether variable is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_csharp">
-<a href="#sensitivevalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_csharp" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable sensitive value.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_csharp">
-<a href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable value.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_go">
-<a href="#datatype_go" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_go" style="color: inherit; text-decoration: inherit;">Data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_go">
-<a href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Variable id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_go">
-<a href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_go" style="color: inherit; text-decoration: inherit;">Sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether variable is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_go">
-<a href="#sensitivevalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_go" style="color: inherit; text-decoration: inherit;">Sensitive<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable sensitive value.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_go">
-<a href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable value.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="datatype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_java" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitive_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_java" style="color: inherit; text-decoration: inherit;">sensitive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitivevalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_java" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="value_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_nodejs">
-<a href="#datatype_nodejs" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_nodejs" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
-<a href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Variable id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_nodejs">
-<a href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_nodejs" style="color: inherit; text-decoration: inherit;">sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}Whether variable is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitivevalue_nodejs">
-<a href="#sensitivevalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_nodejs" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable sensitive value.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_nodejs">
-<a href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Variable value.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="data_type_python">
-<a href="#data_type_python" style="color: inherit; text-decoration: inherit;">data_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#data_type_python" style="color: inherit; text-decoration: inherit;">data_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Variable type.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="description_python">
-<a href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Variable description.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Variable id.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Variable name.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_python">
-<a href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_python" style="color: inherit; text-decoration: inherit;">sensitive</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}Whether variable is sensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="sensitive_value_python">
-<a href="#sensitive_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_value_python" style="color: inherit; text-decoration: inherit;">sensitive_<wbr>value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Variable sensitive value.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="value_python">
-<a href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Variable value.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="datatype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#datatype_yaml" style="color: inherit; text-decoration: inherit;">data<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable type.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable description.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Variable id.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable name.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitive_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitive_yaml" style="color: inherit; text-decoration: inherit;">sensitive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Whether variable is sensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sensitivevalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sensitivevalue_yaml" style="color: inherit; text-decoration: inherit;">sensitive<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable sensitive value.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="value_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Variable value.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

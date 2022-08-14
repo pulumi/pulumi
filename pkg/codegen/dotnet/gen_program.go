@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -27,8 +29,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type GenerateProgramOptions struct {
+	// Determines whether ResourceArg types have an implicit name
+	// when constructing a resource. For example:
+	// when implicitResourceArgsTypeName is set to true,
+	// new Bucket("name", new BucketArgs { ... })
+	// becomes
+	// new Bucket("name", new() { ... });
+	// The latter syntax is only available on .NET 6 or later
+	implicitResourceArgsTypeName bool
+}
 
 type generator struct {
 	// The formatter to use when generating code.
@@ -42,18 +57,29 @@ type generator struct {
 	tokenToModules map[string]func(x string) string
 	// Type names per invoke function token.
 	functionArgs map[string]string
+	// keep track of variable identifiers which are the result of an invoke
+	// for example "var resourceGroup = GetResourceGroup.Invoke(...)"
+	// we will keep track of the reference "resourceGroup"
+	//
+	// later on when apply a traversal such as resourceGroup.name,
+	// we should rewrite it as resourceGroup.Apply(resourceGroupResult => resourceGroupResult.name)
+	functionInvokes map[string]*schema.Function
 	// Whether awaits are needed, and therefore an async Initialize method should be declared.
-	asyncInit     bool
-	configCreated bool
-	diagnostics   hcl.Diagnostics
-	// Helper map to emit custom type name suffixes that match
-	// those emitted by codegen.
-	usedInFunctionOutputVersionInputs map[schema.Type]bool
+	asyncInit            bool
+	configCreated        bool
+	diagnostics          hcl.Diagnostics
+	insideFunctionInvoke bool
+	insideAwait          bool
+	// Program generation options
+	generateOptions GenerateProgramOptions
 }
 
 const pulumiPackage = "pulumi"
 
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProgramWithOptions(
+	program *pcl.Program,
+	options GenerateProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
@@ -62,7 +88,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	compatibilities := make(map[string]string)
 	tokenToModules := make(map[string]func(x string) string)
 	functionArgs := make(map[string]string)
-	for _, p := range program.Packages() {
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
 			return make(map[string][]byte), nil, err
 		}
@@ -89,7 +119,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		compatibilities: compatibilities,
 		tokenToModules:  tokenToModules,
 		functionArgs:    functionArgs,
+		functionInvokes: map[string]*schema.Function{},
+		generateOptions: options,
 	}
+
 	g.Formatter = format.NewFormatter(g)
 
 	for _, n := range nodes {
@@ -103,23 +136,103 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	g.genPreamble(&index, program)
 
 	g.Indented(func() {
-		// Emit async Initialize if needed
-		if g.asyncInit {
-			g.genInitialize(&index, nodes)
+		for _, n := range nodes {
+			g.genNode(&index, n)
 		}
-
-		g.Indented(func() {
-			for _, n := range nodes {
-				g.genNode(&index, n)
-			}
-		})
 	})
 	g.genPostamble(&index, nodes)
 
 	files := map[string][]byte{
-		"MyStack.cs": index.Bytes(),
+		"Program.cs": index.Bytes(),
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	defaultOptions := GenerateProgramOptions{
+		// by default, we generate C# code that targets .NET 6
+		implicitResourceArgsTypeName: true,
+	}
+
+	return GenerateProgramWithOptions(program, defaultOptions)
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build a .csproj based on the packages used by program
+	var csproj bytes.Buffer
+	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0</TargetFramework>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Pulumi" Version="3.*" />
+`)
+
+	// For each package add a PackageReference line
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
+	for _, p := range packages {
+		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
+
+		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+			return err
+		}
+
+		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
+		if langInfo, found := p.Language["csharp"]; found {
+			csharpInfo, ok := langInfo.(CSharpPackageInfo)
+			if ok {
+				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+			}
+		}
+		if p.Version != nil {
+			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+		} else {
+			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, "*"))
+		}
+	}
+
+	csproj.WriteString(`	</ItemGroup>
+
+</Project>`)
+
+	files[project.Name.String()+".csproj"] = csproj.Bytes()
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(dotnetGitIgnore)
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // genTrivia generates the list of trivia associated with a given token.
@@ -136,6 +249,53 @@ func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
+func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{}) {
+	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+		Severity: hcl.DiagWarning,
+		Summary:  fmt.Sprintf(reason, args...),
+		Subject:  location,
+	})
+}
+
+func (g *generator) findFunctionSchema(function string, location *hcl.Range) (*schema.Function, bool) {
+	function = LowerCamelCase(function)
+	for _, pkg := range g.program.PackageReferences() {
+		for it := pkg.Functions().Range(); it.Next(); {
+			if strings.HasSuffix(it.Token(), function) {
+				fn, err := it.Function()
+
+				if err != nil {
+					g.warnf(location, "Could not find function schema for '%s'; err %s", function, err.Error())
+					return nil, false
+				}
+
+				return fn, true
+			}
+		}
+	}
+
+	return nil, false
+}
+
+func (g *generator) isFunctionInvoke(localVariable *pcl.LocalVariable) (*schema.Function, bool) {
+	value := localVariable.Definition.Value
+	switch value.(type) {
+	case *model.FunctionCallExpression:
+		call := value.(*model.FunctionCallExpression)
+		switch call.Name {
+		case pcl.Invoke:
+			args := call.Args[0]
+			_, fullFunctionName := g.functionName(args)
+			functionNameParts := strings.Split(fullFunctionName, ".")
+			functionName := functionNameParts[len(functionNameParts)-1]
+			location := value.SyntaxNode().Range().Ptr()
+			return g.findFunctionSchema(functionName, location)
+		}
+	}
+
+	return nil, false
+}
+
 // genComment generates a comment into the output.
 func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	for _, l := range comment.Lines {
@@ -147,7 +307,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	// Accumulate other using statements for the various providers and packages. Don't emit them yet, as we need
 	// to sort them later on.
-	systemUsings := codegen.NewStringSet()
+	systemUsings := codegen.NewStringSet("System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
@@ -162,9 +322,6 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 					}
 				}
 				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
-			}
-			if r.Options != nil && r.Options.Range != nil {
-				systemUsings.Add("System.Collections.Generic")
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -204,69 +361,52 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 
 	g.Fprint(w, "\n")
 
-	// Emit Stack class signature
-	g.Fprint(w, "class MyStack : Stack\n")
-	g.Fprint(w, "{\n")
-
 	// If we collected any helper methods that should be added, write them just before the main func
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "\t%s\n\n", preambleHelperMethodBody)
 	}
 
-	g.Fprint(w, "    public MyStack()\n")
-	g.Fprint(w, "    {\n")
+	asyncKeywordWhenNeeded := ""
+	if g.asyncInit {
+		asyncKeywordWhenNeeded = "async"
+	}
+	g.Fprintf(w, "return await Deployment.RunAsync(%s() => \n", asyncKeywordWhenNeeded)
+	g.Fprint(w, "{\n")
 }
 
-// genInitialize generates the declaration and the call to the async Initialize method, and also fills stack
-// outputs from the initialization result.
-func (g *generator) genInitialize(w io.Writer, nodes []pcl.Node) {
-	g.Indented(func() {
-		g.Fgenf(w, "%svar dict = Output.Create(Initialize());\n", g.Indent)
-		for _, n := range nodes {
-			switch n := n.(type) {
-			case *pcl.OutputVariable:
-				g.Fprintf(w, "%sthis.%s = dict.Apply(dict => dict[\"%s\"]);\n", g.Indent,
-					propertyName(n.Name()), makeValidIdentifier(n.Name()))
-			}
+// hasOutputVariables checks whether there are any output declarations
+func hasOutputVariables(nodes []pcl.Node) bool {
+	for _, n := range nodes {
+		switch n.(type) {
+		case *pcl.OutputVariable:
+			return true
 		}
-	})
-	g.Fgenf(w, "%s}\n\n", g.Indent)
-	g.Fgenf(w, "%sprivate async Task<IDictionary<string, Output<string>>> Initialize()\n", g.Indent)
-	g.Fgenf(w, "%s{\n", g.Indent)
+	}
+
+	return false
 }
 
 // genPostamble closes the method and the class and declares stack output statements.
 func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
-	g.Indented(func() {
-		// Return outputs from Initialize if needed
-		if g.asyncInit {
-			// Emit stack output dictionary
+	if hasOutputVariables(nodes) {
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn new Dictionary<string, object?>\n", g.Indent)
+			g.Fgenf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
-				g.Fprintf(w, "\n%sreturn new Dictionary<string, Output<string>>\n%[1]s{\n", g.Indent)
-				g.Indented(func() {
-					for _, n := range nodes {
-						switch n := n.(type) {
-						case *pcl.OutputVariable:
-							g.Fgenf(w, "%s{ \"%s\", %[2]s },\n", g.Indent, n.Name())
-						}
+				// Emit stack output properties
+				for _, n := range nodes {
+					switch n := n.(type) {
+					case *pcl.OutputVariable:
+						outputID := fmt.Sprintf(`"%s"`, g.escapeString(n.LogicalName(), false, false))
+						g.Fgenf(w, "%s[%s] = %.3v,\n", g.Indent, outputID, g.lowerExpression(n.Value, n.Type()))
 					}
-				})
-				g.Fprintf(w, "%s};\n", g.Indent)
+				}
 			})
-		}
-
-		// Close class constructor or Initialize
-		g.Fprintf(w, "%s}\n\n", g.Indent)
-
-		// Emit stack output properties
-		for _, n := range nodes {
-			switch n := n.(type) {
-			case *pcl.OutputVariable:
-				g.genOutputProperty(w, n)
-			}
-		}
-	})
-	g.Fprint(w, "}\n")
+			g.Fgenf(w, "%s};\n", g.Indent)
+		})
+	}
+	// Close lambda call expression
+	g.Fprintf(w, "});\n\n")
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -277,8 +417,6 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
-	case *pcl.OutputVariable:
-		g.genOutputAssignment(w, n)
 	}
 }
 
@@ -297,9 +435,6 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == pulumiPackage && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -313,19 +448,29 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	return qualifiedMemberName
 }
 
+func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
+	// Extract language-specific property names from schema
+	var csharpInputPropertyNameMap = make(map[string]string)
+	if r.Schema != nil {
+		for _, inputProperty := range r.Schema.InputProperties {
+			if val, ok := inputProperty.Language["csharp"]; ok {
+				csharpInputPropertyNameMap[inputProperty.Name] = val.(CSharpPropertyInfo).Name
+			}
+		}
+	}
+	return csharpInputPropertyNameMap
+}
+
 // resourceArgsTypeName computes the C# arguments class name for the given resource.
 func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
-	if pkg == pulumiPackage && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
-	if g.compatibilities[pkg] == "kubernetes20" {
+	if g.compatibilities[pkg] == "kubernetes20" && module != "" {
 		namespace = fmt.Sprintf("Types.Inputs.%s", namespace)
 	}
 
@@ -365,12 +510,8 @@ func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
 
 // argumentTypeName computes the C# argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
-	schemaType, ok := g.toSchemaType(destType)
-	if !ok {
-		return ""
-	}
 	suffix := "Args"
-	if g.usedInFunctionOutputVersionInputs[schemaType] {
+	if g.insideFunctionInvoke {
 		suffix = "InputArgs"
 	}
 	return g.argumentTypeNameWithSuffix(expr, destType, suffix)
@@ -430,7 +571,6 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts == nil {
 		return ""
 	}
-
 	var result bytes.Buffer
 	appendOption := func(name string, value model.Expression) {
 		if result.Len() == 0 {
@@ -439,7 +579,25 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 			contract.IgnoreError(err)
 		}
 
-		g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+		if name == "IgnoreChanges" {
+			// ignore changes need to be special cased
+			// because new [] { "field" } cannot be implicitly casted to List<string>
+			// which is the type of IgnoreChanges
+			if changes, isTuple := value.(*model.TupleConsExpression); isTuple {
+				g.Fgenf(&result, "\n%sIgnoreChanges =", g.Indent)
+				g.Fgenf(&result, "\n%s{", g.Indent)
+				g.Indented(func() {
+					for _, v := range changes.Expressions {
+						g.Fgenf(&result, "\n%s\"%.v\",", g.Indent, v)
+					}
+				})
+				g.Fgenf(&result, "\n%s}", g.Indent)
+			} else {
+				g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+			}
+		} else {
+			g.Fgenf(&result, "\n%s%s = %v,", g.Indent, name, g.lowerExpression(value, value.Type()))
+		}
 	}
 
 	if opts.Parent != nil {
@@ -470,18 +628,21 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
-	argsName := g.resourceArgsTypeName(r)
+	csharpInputPropertyNameMap := g.extractInputPropertyNameMap(r)
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+		if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
+			input.Name = csharpName
+		}
 	}
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
-
+	name := r.LogicalName()
+	variableName := makeValidIdentifier(r.Name())
+	argsName := g.resourceArgsTypeName(r)
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
 		g.genTrivia(w, l)
@@ -489,15 +650,25 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	instantiate := func(resName string) {
-		g.Fgenf(w, "new %s(%s, new %s\n", qualifiedMemberName, resName, argsName)
-		g.Fgenf(w, "%s{\n", g.Indent)
-		g.Indented(func() {
-			for _, attr := range r.Inputs {
-				g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
-				g.Fgenf(w, " %.v,\n", attr.Value)
+		if len(r.Inputs) == 0 && r.Options == nil {
+			// only resource name is provided
+			g.Fgenf(w, "new %s(%s)", qualifiedMemberName, resName)
+		} else {
+			if g.generateOptions.implicitResourceArgsTypeName {
+				g.Fgenf(w, "new %s(%s, new()\n", qualifiedMemberName, resName)
+			} else {
+				g.Fgenf(w, "new %s(%s, new %s\n", qualifiedMemberName, resName, argsName)
 			}
-		})
-		g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options))
+
+			g.Fgenf(w, "%s{\n", g.Indent)
+			g.Indented(func() {
+				for _, attr := range r.Inputs {
+					g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
+					g.Fgenf(w, " %.v,\n", attr.Value)
+				}
+			})
+			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options))
+		}
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
@@ -531,7 +702,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	} else {
 		g.Fgenf(w, "%svar %s = ", g.Indent, variableName)
 		instantiate(g.makeResourceName(name, ""))
-		g.Fgenf(w, ";\n")
+		g.Fgenf(w, ";\n\n")
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
@@ -573,26 +744,18 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	g.Fgenf(w, ";\n")
 }
 
-func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
-	// TODO(pdg): trivia
-	expr := g.lowerExpression(v.Definition.Value, v.Type())
-	g.Fgenf(w, "%svar %s = %.3v;\n", g.Indent, makeValidIdentifier(v.Name()), expr)
-}
-
-func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
-	if g.asyncInit {
-		g.Fgenf(w, "%svar %s", g.Indent, makeValidIdentifier(v.Name()))
+func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariable) {
+	variableName := makeValidIdentifier(localVariable.Name())
+	value := localVariable.Definition.Value
+	functionSchema, isInvokeCall := g.isFunctionInvoke(localVariable)
+	if isInvokeCall {
+		result := g.lowerExpressionWithoutApplies(value, value.Type())
+		g.functionInvokes[variableName] = functionSchema
+		g.Fgenf(w, "%svar %s = %v;\n\n", g.Indent, variableName, result)
 	} else {
-		g.Fgenf(w, "%sthis.%s", g.Indent, propertyName(v.Name()))
+		result := g.lowerExpression(value, value.Type())
+		g.Fgenf(w, "%svar %s = %v;\n\n", g.Indent, variableName, result)
 	}
-	g.Fgenf(w, " = %.3v;\n", g.lowerExpression(v.Value, v.Type()))
-}
-
-func (g *generator) genOutputProperty(w io.Writer, v *pcl.OutputVariable) {
-	// TODO(pdg): trivia
-	g.Fgenf(w, "%s[Output(\"%s\")]\n", g.Indent, v.Name())
-	// TODO(msh): derive the element type of the Output from the type of its value.
-	g.Fgenf(w, "%spublic Output<string> %s { get; set; }\n", g.Indent, propertyName(v.Name()))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

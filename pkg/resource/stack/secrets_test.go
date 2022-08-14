@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
@@ -32,18 +34,25 @@ func (t *testSecretsManager) Decrypter() (config.Decrypter, error) {
 	return t, nil
 }
 
-func (t *testSecretsManager) EncryptValue(plaintext string) (string, error) {
+func (t *testSecretsManager) EncryptValue(
+	ctx context.Context, plaintext string) (string, error) {
 	t.encryptCalls++
 	return fmt.Sprintf("%v:%v", t.encryptCalls, plaintext), nil
 }
 
-func (t *testSecretsManager) DecryptValue(ciphertext string) (string, error) {
+func (t *testSecretsManager) DecryptValue(
+	ctx context.Context, ciphertext string) (string, error) {
 	t.decryptCalls++
 	i := strings.Index(ciphertext, ":")
 	if i == -1 {
 		return "", errors.New("invalid ciphertext format")
 	}
 	return ciphertext[i+1:], nil
+}
+
+func (t *testSecretsManager) BulkDecrypt(
+	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	return config.DefaultBulkDecrypt(ctx, t, ciphertexts)
 }
 
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
@@ -221,28 +230,32 @@ type mapTestDecrypter struct {
 	bulkDecryptCalls int
 }
 
-func (t *mapTestDecrypter) DecryptValue(ciphertext string) (string, error) {
+func (t *mapTestDecrypter) DecryptValue(
+	ctx context.Context, ciphertext string) (string, error) {
 	t.decryptCalls++
-	return t.d.DecryptValue(ciphertext)
+	return t.d.DecryptValue(ctx, ciphertext)
 }
 
-func (t *mapTestDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+func (t *mapTestDecrypter) BulkDecrypt(
+	ctx context.Context, ciphertexts []string) (map[string]string, error) {
 	t.bulkDecryptCalls++
-	return config.BulkDecrypt(t.d, ciphertexts)
+	return config.DefaultBulkDecrypt(ctx, t.d, ciphertexts)
 }
 
 func TestMapCrypter(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-secrets.json")
 	require.NoError(t, err)
 
-	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
+	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
 	require.NoError(t, err)
 
 	var prov mapTestSecretsProvider
 
-	_, err = DeserializeDeploymentV3(*chk.Latest, &prov)
+	_, err = DeserializeDeploymentV3(ctx, *chk.Latest, &prov)
 	require.NoError(t, err)
 
 	d := prov.m.d

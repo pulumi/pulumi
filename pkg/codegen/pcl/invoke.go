@@ -69,15 +69,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
-	fn, ok := pkgSchema.functions[token]
-	if !ok {
-		canon := canonicalizeToken(token, pkgSchema.schema)
-		if fn, ok = pkgSchema.functions[canon]; ok {
-			token, lit.Value = canon, cty.StringVal(canon)
-		}
-	}
-	if !ok {
+	var fn *schema.Function
+	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+	} else if !ok {
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
+	} else {
+		fn = f
+		lit.Value = cty.StringVal(tk)
 	}
 
 	if len(args) < 2 {

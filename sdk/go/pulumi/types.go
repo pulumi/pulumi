@@ -96,8 +96,7 @@ const (
 
 // OutputState holds the internal details of an Output and implements the Apply and ApplyWithContext methods.
 type OutputState struct {
-	mutex sync.Mutex
-	cond  *sync.Cond
+	cond *sync.Cond
 
 	join *workGroup // the wait group associated with this output, if any.
 
@@ -146,9 +145,9 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 		return
 	}
 
-	o.mutex.Lock()
+	o.cond.L.Lock()
 	defer func() {
-		o.mutex.Unlock()
+		o.cond.L.Unlock()
 		o.cond.Broadcast()
 	}()
 
@@ -196,19 +195,30 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 			// We didn't get any new dependencies, so no need to merge.
 			return
 		}
-		depSet := make(map[Resource]struct{})
-		for _, d := range o.deps {
-			depSet[d] = struct{}{}
-		}
-		for _, d := range deps {
-			depSet[d] = struct{}{}
-		}
-		mergedDeps := make([]Resource, 0, len(depSet))
-		for d := range depSet {
-			mergedDeps = append(mergedDeps, d)
-		}
-		o.deps = mergedDeps
+		o.deps = mergeDependencies(o.deps, deps)
 	}
+}
+
+func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
+	if len(ours) == 0 && len(theirs) == 0 {
+		return nil
+	} else if len(theirs) == 0 {
+		return append(make([]Resource, 0, len(ours)), ours...)
+	} else if len(ours) == 0 {
+		return append(make([]Resource, 0, len(ours)), theirs...)
+	}
+	depSet := make(map[Resource]struct{})
+	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
+	for _, d := range ours {
+		depSet[d] = struct{}{}
+	}
+	for _, d := range theirs {
+		depSet[d] = struct{}{}
+	}
+	for d := range depSet {
+		mergedDeps = append(mergedDeps, d)
+	}
+	return mergedDeps
 }
 
 func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Resource) {
@@ -224,34 +234,41 @@ func (o *OutputState) reject(err error) {
 }
 
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	known := true
+	secret := false
+	var deps []Resource
+
 	for {
 		if o == nil {
 			// If the state is nil, treat its value as resolved and unknown.
 			return nil, false, false, nil, nil
 		}
 
-		o.mutex.Lock()
+		o.cond.L.Lock()
 		for o.state == outputPending {
 			if ctx.Err() != nil {
 				return nil, true, false, nil, ctx.Err()
 			}
 			o.cond.Wait()
 		}
-		o.mutex.Unlock()
+		o.cond.L.Unlock()
 
+		deps = mergeDependencies(deps, o.deps)
+		known = known && o.known
+		secret = secret || o.secret
 		if !o.known || o.err != nil {
-			return nil, o.known, o.secret, o.deps, o.err
+			return nil, known, secret, deps, o.err
 		}
 
 		// If the result is an Output, await it in turn.
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		ov, ok := o.value.(Output)
-		if !ok {
-			return o.value, true, o.secret, o.deps, nil
+		if ov, ok := o.value.(Output); ok {
+			o = ov.getState()
+		} else {
+			return o.value, true, secret, deps, nil
 		}
-		o = ov.getState()
 	}
 }
 
@@ -264,12 +281,17 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 		join.Add(1)
 	}
 
+	var m sync.Mutex
 	out := &OutputState{
 		join:    join,
 		element: elementType,
 		deps:    deps,
+		// Note: Calling registerResource or readResource with the same resource state can report a
+		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
+		//
+		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
+		cond: sync.NewCond(&m),
 	}
-	out.cond = sync.NewCond(&out.mutex)
 	return out
 }
 
@@ -450,8 +472,23 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(fn.Type().Out(0)); ok {
+	applierReturnType := fn.Type().Out(0)
+
+	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
+	} else if applierReturnType.Implements(outputType) {
+		resultType = applierReturnType
+	} else if applierReturnType.Implements(inputType) {
+		if ct, ok := inputInterfaceTypeToConcreteType.Load(applierReturnType); ok {
+			applierReturnType = ct.(reflect.Type)
+		}
+
+		if applierReturnType.Kind() != reflect.Interface {
+			unwrappedType := reflect.New(applierReturnType).Interface().(Input).ElementType()
+			if ot, ok := concreteTypeToOutputType.Load(unwrappedType); ok {
+				resultType = ot.(reflect.Type)
+			}
+		}
 	}
 
 	result := newOutput(o.join, resultType, o.dependencies()...)
@@ -472,9 +509,13 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 			result.getState().reject(results[1].Interface().(error))
 			return
 		}
-
+		var fulfilledDeps []Resource
+		fulfilledDeps = append(fulfilledDeps, deps...)
+		if resultOutput, ok := results[0].Interface().(Output); ok {
+			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
+		}
 		// Fulfill the result.
-		result.getState().fulfillValue(results[0], true, secret, deps, nil)
+		result.getState().fulfillValue(results[0], true, secret, fulfilledDeps, nil)
 	}()
 	return result
 }
@@ -504,13 +545,19 @@ func ToSecret(input interface{}) Output {
 	return ToSecretWithContext(context.Background(), input)
 }
 
+// Creates an unknown output. This is a low level API and should not be used in programs as this
+// will cause "pulumi up" to fail if called and used during a non-dryrun deployment.
+func UnsafeUnknownOutput(deps []Resource) Output {
+	output, _, _ := NewOutput()
+	output.getState().resolve(nil, false, false, deps)
+	return output
+}
+
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	x := true
 	o := toOutputWithContext(ctx, nil, input, &x)
-	// set immediate secretness ahead of resolution/fufillment
-	o.getState().secret = true
 	return o
 }
 
@@ -528,14 +575,13 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencies(v interface{}) ([]Resource, workGroups) {
+func gatherJoins(v interface{}) workGroups {
 	if v == nil {
-		return nil, nil
+		return nil
 	}
 
-	depSet := make(map[Resource]struct{})
 	joinSet := make(map[*workGroup]struct{})
-	gatherDependencySet(reflect.ValueOf(v), depSet, joinSet)
+	gatherJoinSet(reflect.ValueOf(v), joinSet)
 
 	var joins workGroups
 	if len(joinSet) > 0 {
@@ -545,20 +591,12 @@ func gatherDependencies(v interface{}) ([]Resource, workGroups) {
 		}
 	}
 
-	var deps []Resource
-	if len(depSet) > 0 {
-		deps = make([]Resource, 0, len(depSet))
-		for d := range depSet {
-			deps = append(deps, d)
-		}
-	}
-
-	return deps, joins
+	return joins
 }
 
 var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
 
-func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*workGroup]struct{}) {
+func gatherJoinSet(v reflect.Value, joins map[*workGroup]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
@@ -566,17 +604,10 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[
 			if join := output.getState().join; join != nil {
 				joins[join] = struct{}{}
 			}
-			for _, d := range output.getState().dependencies() {
-				deps[d] = struct{}{}
-			}
 			return
 		}
 		// Check for an actual Resource.
 		if v.Type().Implements(resourceType) {
-			if v.CanInterface() {
-				resource := v.Convert(resourceType).Interface().(Resource)
-				deps[resource] = struct{}{}
-			}
 			return
 		}
 
@@ -590,18 +621,18 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[
 		case reflect.Struct:
 			numFields := v.Type().NumField()
 			for i := 0; i < numFields; i++ {
-				gatherDependencySet(v.Field(i), deps, joins)
+				gatherJoinSet(v.Field(i), joins)
 			}
 		case reflect.Array, reflect.Slice:
 			l := v.Len()
 			for i := 0; i < l; i++ {
-				gatherDependencySet(v.Index(i), deps, joins)
+				gatherJoinSet(v.Index(i), joins)
 			}
 		case reflect.Map:
 			iter := v.MapRange()
 			for iter.Next() {
-				gatherDependencySet(iter.Key(), deps, joins)
-				gatherDependencySet(iter.Value(), deps, joins)
+				gatherJoinSet(iter.Key(), joins)
+				gatherJoinSet(iter.Value(), joins)
 			}
 		}
 		return
@@ -635,6 +666,28 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 	return toOutputMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})[0].Interface().(Output), true
 }
 
+// awaitInputs recursively discovers the Inputs in a value, awaits them, and sets resolved to the result of the await.
+// It is essentially an attempt to port the logic in the NodeJS SDK's `pulumi.output` function, which takes a value and
+// returns its fully-resolved value. The fully-resolved value `W` of some value `V` has the same shape as `V`, but with
+// all outputs recursively replaced with their resolved values. Unforunately, the way Outputs are represented in Go
+// combined with Go's strong typing and relatively simplistic type system make this challenging.
+//
+// The logic to do this is pretty arcane, and very special-casey when it comes to finding Inputs, converting them to
+// Outputs, and awaiting their values. Roughly speaking:
+//
+// 1. If we cannot set resolved--e.g. because it was derived from an unexported field--we do nothing
+// 2. If the value is an Input:
+//     a. If the value is `nil`, do nothing. The value is already fully-resolved. `resolved` is not set.
+//     b. Otherwise, convert the Input to an appropriately-typed Output by calling the corresponding `ToOutput` method.
+//        The desired type is determined based on the type of the destination, and the conversion method is determined
+//        from the name of the desired type. If no conversion method is available, we will attempt to assign the Input
+//        itself, and will panic if that assignment is not well-typed.
+//     c. Replace the value to await with the resolved value of the input.
+// 3. Depending on the kind of the value:
+//     a. If the value is a Resource, stop.
+//     b. If the value is a primitive, stop.
+//     c. If the value is a slice, array, struct, or map, recur on its contents.
+//
 func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []Resource, error) {
 	contract.Assert(v.IsValid())
 
@@ -717,16 +770,29 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr {
-				v, valueType = v.Elem(), valueType.Elem()
-
-				resolved.Set(reflect.New(resolved.Type().Elem()))
-				resolved = resolved.Elem()
+			if v.Kind() == reflect.Ptr && !v.Type().Implements(resourceType) {
+				v = v.Elem()
+				valueType = valueType.Elem()
+				if resolved.Type() != anyType {
+					// resolved should be some pointer type U such that value Type is convertable to U.
+					resolved.Set(reflect.New(resolved.Type().Elem()))
+					resolved = resolved.Elem()
+				} else {
+					// Allocate storage for a pointer and assign that to resolved, then continue below with resolved set to the inner value of the pointer just allocated
+					ptr := reflect.New(valueType)
+					resolved.Set(ptr)
+					resolved = ptr.Elem()
+				}
 			}
 		}
 	}
 
 	contract.Assertf(valueType.AssignableTo(resolved.Type()), "%s not assignable to %s", valueType.String(), resolved.Type().String())
+
+	if v.Type().Implements(resourceType) {
+		resolved.Set(v)
+		return true, false, nil, nil
+	}
 
 	// If the resolved type is an interface, make an appropriate destination from the value's type.
 	if resolved.Kind() == reflect.Interface {
@@ -818,7 +884,9 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 }
 
 func toOutputTWithContext(ctx context.Context, join *workGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
-	deps, joins := gatherDependencies(v)
+	// forceSecretVal enables ensuring the value is marked secret before the secret field of the
+	// output could be observed (read: raced) by any user of the returned Output prior to awaiting.
+	joins := gatherJoins(v)
 
 	done := joins.done
 	if join == nil {
@@ -837,7 +905,10 @@ func toOutputTWithContext(ctx context.Context, join *workGroup, outputType refle
 	}
 	joins.add()
 
-	output := newOutput(join, outputType, deps...)
+	output := newOutput(join, outputType)
+	if forceSecretVal != nil {
+		output.getState().secret = *forceSecretVal
+	}
 	go func() {
 		defer done()
 

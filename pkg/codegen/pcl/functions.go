@@ -84,9 +84,37 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: ArchiveType,
 	}),
+	"remoteArchive": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "uri",
+			Type: model.StringType,
+		}},
+		ReturnType: ArchiveType,
+	}),
+	"assetArchive": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "assets",
+			Type: model.NewMapType(AssetOrArchiveType),
+		}},
+		ReturnType: ArchiveType,
+	}),
 	"fileAsset": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "path",
+			Type: model.StringType,
+		}},
+		ReturnType: AssetType,
+	}),
+	"stringAsset": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "value",
+			Type: model.StringType,
+		}},
+		ReturnType: AssetType,
+	}),
+	"remoteAsset": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "uri",
 			Type: model.StringType,
 		}},
 		ReturnType: AssetType,
@@ -270,6 +298,18 @@ var pulumiBuiltins = map[string]*model.Function{
 			Name: "value",
 			Type: model.DynamicType,
 		}},
+		ReturnType: model.StringType,
+	}),
+	// Returns the name of the current stack
+	"stack": model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.StringType,
+	}),
+	// Returns the name of the current project
+	"project": model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.StringType,
+	}),
+	// Returns the directory from which pulumi was run
+	"cwd": model.NewFunction(model.StaticFunctionSignature{
 		ReturnType: model.StringType,
 	}),
 }

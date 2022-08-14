@@ -12,6 +12,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.DestroyOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Events.CancelEvent">
             <summary>
             <see cref="T:Pulumi.Automation.Events.CancelEvent"/> is emitted when the user initiates a cancellation of the update in progress, or
@@ -305,6 +310,11 @@
         <member name="T:Pulumi.Automation.HistoryOptions">
             <summary>
             Options controlling the behavior of a <see cref="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.HistoryOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.LocalProgramArgs">
@@ -682,6 +692,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Plan">
+            <summary>
+            Plan specifies the path where the update plan should be saved.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.PreviewOptions.Logger">
             <summary>
             A custom logger instance that will be used for the action. Note that it will only be used
@@ -835,6 +850,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.RefreshOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.StackDeployment">
             <summary>
             Represents the state of a stack deployment as used by
@@ -907,6 +927,16 @@
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Plan">
+            <summary>
+            Plan specifies the path to an update plan to use for the update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.ShowSecrets">
+            <summary>
+            Show config secrets when they appear.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.UpOptions.Logger">

@@ -26,14 +26,13 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 )
 
 // LocalWorkspace is a default implementation of the Workspace interface.
@@ -555,7 +554,13 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 			env = append(env, strings.Join(e, "="))
 		}
 	}
-	return runPulumiCommandSync(ctx, l.WorkDir(), nil /* additionalOutputs */, env, args...)
+	return runPulumiCommandSync(ctx,
+		l.WorkDir(),
+		nil, /* additionalOutputs */
+		nil, /* additionalErrorOutputs */
+		env,
+		args...,
+	)
 }
 
 // NewLocalWorkspace creates and configures a LocalWorkspace. LocalWorkspaceOptions can be used to

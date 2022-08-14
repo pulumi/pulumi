@@ -16,6 +16,8 @@ package plugin
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,16 +49,13 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	options map[string]interface{}) (LanguageRuntime, error) {
 
-	_, path, err := workspace.GetPluginPath(
-		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
+	path, err := workspace.GetPluginPath(
+		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.LanguagePlugin,
-			Name: runtime,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	args, err := buildArgsForNewPlugin(host, ctx, options)
 	if err != nil {
@@ -88,10 +88,6 @@ func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface
 	}
 
 	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
-
-	if cmdutil.IsTracingEnabled() {
-		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
-	}
 
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
@@ -238,4 +234,53 @@ func (h *langhost) Close() error {
 		return h.plug.Close()
 	}
 	return nil
+}
+
+func (h *langhost) InstallDependencies(directory string) error {
+	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) executing",
+		h.runtime, directory)
+	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
+		Directory:  directory,
+		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
+	})
+
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
+			h.runtime, directory, rpcError)
+
+		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
+		// method.  In such cases, we will silently error (with the above log left behind).
+		if rpcError.Code() == codes.Unimplemented {
+			return nil
+		}
+
+		return rpcError
+	}
+
+	for {
+		output, err := resp.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
+				h.runtime, directory, rpcError)
+			return rpcError
+		}
+
+		if len(output.Stdout) != 0 {
+			os.Stdout.Write(output.Stdout)
+		}
+
+		if len(output.Stderr) != 0 {
+			os.Stderr.Write(output.Stderr)
+		}
+	}
+
+	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
+		h.runtime, directory)
+	return nil
+
 }

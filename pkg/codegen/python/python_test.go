@@ -58,7 +58,7 @@ func TestPyNameLegacy(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
-			result := PyNameLegacy(tt.input)
+			result := pyName(tt.input, true /*legacy*/)
 			assert.Equal(t, tt.legacy, result)
 		})
 	}

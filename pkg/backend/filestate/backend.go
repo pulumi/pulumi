@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import (
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
+	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -49,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -57,6 +59,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// PulumiFilestateGzipEnvVar is an env var that must be truthy
+// to enable gzip compression when using the filestate backend.
+const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -77,17 +83,19 @@ type localBackend struct {
 	mutex  sync.Mutex
 
 	lockID string
+
+	gzip bool
 }
 
 type localBackendReference struct {
-	name tokens.QName
+	name tokens.Name
 }
 
 func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.QName {
+func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
@@ -123,7 +131,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
 	if p.Scheme == gcsblob.Scheme {
-		blobmux, err = GoogleCredentialsMux(context.TODO())
+		blobmux, err = authhelpers.GoogleCredentialsMux(context.TODO())
 		if err != nil {
 			return nil, err
 		}
@@ -145,11 +153,21 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
+	isAcc, err := bucket.IsAccessible(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
+	}
+	if !isAcc {
+		return nil, fmt.Errorf("bucket %s is not accessible", u)
+	}
+
 	// Allocate a unique lock ID for this backend instance.
 	lockID, err := uuid.NewV4()
 	if err != nil {
 		return nil, err
 	}
+
+	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
 	return &localBackend{
 		d:           d,
@@ -157,6 +175,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
 		lockID:      lockID.String(),
+		gzip:        gzipCompression,
 	}, nil
 }
 
@@ -248,13 +267,16 @@ func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ ba
 	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsTags() bool {
+	return false
+}
+
 func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
@@ -293,7 +315,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, err := b.getStack(stackName); err == nil {
+	if _, _, err := b.getStack(ctx, stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -318,7 +340,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	snapshot, path, err := b.getStack(stackName)
+	snapshot, path, err := b.getStack(ctx, stackName)
 
 	switch {
 	case gcerrors.Code(err) == gcerrors.NotFound:
@@ -365,7 +387,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	defer b.Unlock(ctx, stack.Ref())
 
 	stackName := stack.Ref().Name()
-	snapshot, _, err := b.getStack(stackName)
+	snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return false, err
 	}
@@ -389,7 +411,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -400,8 +422,10 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 
+	newStackName := newRef.Name()
+
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newStackName))
 	if err != nil {
 		return nil, err
 	}
@@ -411,13 +435,13 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, ""); err != nil {
+		if err = edit.RenameStack(snap, newStackName, ""); err != nil {
 			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newName, snap, nil); err != nil {
+	if _, err = b.saveStack(newStackName, snap, nil); err != nil {
 		return nil, err
 	}
 
@@ -425,8 +449,8 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	file := b.stackPath(stackName)
 	backupTarget(b.bucket, file, false)
 
-	// And rename the histoy folder as well.
-	if err = b.renameHistory(stackName, newName); err != nil {
+	// And rename the history folder as well.
+	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}
 	return newRef, err
@@ -455,7 +479,7 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -466,7 +490,7 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -478,7 +502,7 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation, imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -491,7 +515,7 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -503,7 +527,7 @@ func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -528,7 +552,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -541,7 +565,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(stackName, op)
+	update, err := b.newUpdate(ctx, stackName, op)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -585,7 +609,7 @@ func (b *localBackend) apply(
 	// Perform the update
 	start := time.Now().Unix()
 	var plan *deploy.Plan
-	var changes engine.ResourceChanges
+	var changes sdkDisplay.ResourceChanges
 	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
@@ -713,7 +737,7 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stack.Ref().Name()
-	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
+	target, err := b.getTarget(ctx, stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -748,7 +772,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stk backend.Stack) (*apitype.UntypedDeployment, error) {
 
 	stackName := stk.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -783,12 +807,12 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err = b.getStack(stackName)
+	_, _, err = b.getStack(ctx, stackName)
 	if err != nil {
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}
@@ -805,16 +829,16 @@ func (b *localBackend) LogoutAll() error {
 	return workspace.DeleteAllAccounts()
 }
 
-func (b *localBackend) CurrentUser() (string, error) {
+func (b *localBackend) CurrentUser() (string, []string, error) {
 	user, err := user.Current()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return user.Username, nil
+	return user.Username, nil, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
-	var stacks []tokens.QName
+func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
+	var stacks []tokens.Name
 
 	// Read the stack directory.
 	path := b.stackPath("")
@@ -833,25 +857,23 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		// Skip files without valid extensions (e.g., *.bak files).
 		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
+		// But accept gzip compression
+		if ext == encoding.GZIPExt {
+			stackfn = strings.TrimSuffix(stackfn, encoding.GZIPExt)
+			ext = filepath.Ext(stackfn)
+		}
+
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
 		}
 
 		// Read in this stack's information.
-		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
 
 		stacks = append(stacks, name)
 	}
 
 	return stacks, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *localBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-
-	// The local backend does not currently persist tags.
-	return nil, errors.New("stack tags not supported in --local mode")
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

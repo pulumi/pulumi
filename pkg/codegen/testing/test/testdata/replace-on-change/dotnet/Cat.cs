@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Cat")]
-    public partial class Cat : Pulumi.CustomResource
+    public partial class Cat : global::Pulumi.CustomResource
     {
         [Output("foes")]
         public Output<ImmutableDictionary<string, Outputs.Toy>?> Foes { get; private set; } = null!;
@@ -83,10 +83,11 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class CatArgs : Pulumi.ResourceArgs
+    public sealed class CatArgs : global::Pulumi.ResourceArgs
     {
         public CatArgs()
         {
         }
+        public static new CatArgs Empty => new CatArgs();
     }
 }

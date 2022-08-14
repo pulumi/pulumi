@@ -159,36 +159,35 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	v, ok, err := currentProjectStack.Config.Get(key, path)
 	if err != nil {
 		return err
-	}
-	if ok {
-		if v.Secure() {
-			var err error
-			if decrypter, err = getStackDecrypter(currentStack); err != nil {
-				return fmt.Errorf("could not create a decrypter: %w", err)
-			}
-		} else {
-			decrypter = config.NewPanicCrypter()
-		}
-
-		encrypter, cerr := getStackEncrypter(destinationStack)
-		if cerr != nil {
-			return cerr
-		}
-
-		val, err := v.Copy(decrypter, encrypter)
-		if err != nil {
-			return err
-		}
-
-		err = destinationProjectStack.Config.Set(key, val, path)
-		if err != nil {
-			return err
-		}
-
-		return saveProjectStack(destinationStack, destinationProjectStack)
+	} else if !ok {
+		return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 	}
 
-	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+	if v.Secure() {
+		var err error
+		if decrypter, err = getStackDecrypter(currentStack); err != nil {
+			return fmt.Errorf("could not create a decrypter: %w", err)
+		}
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	encrypter, cerr := getStackEncrypter(destinationStack)
+	if cerr != nil {
+		return cerr
+	}
+
+	val, err := v.Copy(decrypter, encrypter)
+	if err != nil {
+		return err
+	}
+
+	err = destinationProjectStack.Config.Set(key, val, path)
+	if err != nil {
+		return err
+	}
+
+	return saveProjectStack(destinationStack, destinationProjectStack)
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,
@@ -469,6 +468,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -515,7 +515,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}
@@ -579,6 +579,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -616,7 +617,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if cerr != nil {
 					return cerr
 				}
-				enc, eerr := c.EncryptValue(value)
+				enc, eerr := c.EncryptValue(ctx, value)
 				if eerr != nil {
 					return eerr
 				}
@@ -672,21 +673,21 @@ var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStackPath(stack.Ref().Name())
+		return workspace.DetectProjectStackPath(stack.Ref().Name().Q())
 	}
 	return stackConfigFile, nil
 }
 
 func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stack.Ref().Name())
+		return workspace.DetectProjectStack(stack.Ref().Name().Q())
 	}
 	return workspace.LoadProjectStack(stackConfigFile)
 }
 
 func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
 	if stackConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name(), ps)
+		return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 	}
 	return ps.Save(stackConfigFile)
 }
@@ -913,17 +914,25 @@ func looksLikeSecret(k config.Key, v string) bool {
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+	var cfg config.Map
 	workspaceStack, err := loadProjectStack(stack)
-	if err != nil {
-		return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
+	if err != nil || workspaceStack == nil {
+		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
+		cfg, err = backend.GetLatestConfiguration(commandContext(), stack)
+		if err != nil {
+			return backend.StackConfiguration{}, fmt.Errorf(
+				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
+		}
+	} else {
+		cfg = workspaceStack.Config
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the local backend would involve prompting for a passphrase)
-	if !workspaceStack.Config.HasSecureValue() {
+	if !cfg.HasSecureValue() {
 		return backend.StackConfiguration{
-			Config:    workspaceStack.Config,
+			Config:    cfg,
 			Decrypter: config.NewPanicCrypter(),
 		}, nil
 	}
@@ -932,9 +941,8 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
-
 	return backend.StackConfiguration{
-		Config:    workspaceStack.Config,
+		Config:    cfg,
 		Decrypter: crypter,
 	}, nil
 }

@@ -29,9 +29,43 @@ import (
 )
 
 type packageSchema struct {
-	schema    *schema.Package
-	resources map[string]*schema.Resource
-	functions map[string]*schema.Function
+	schema schema.PackageReference
+
+	// These maps map from canonical tokens to actual tokens.
+	resourceTokenMap map[string]string
+	functionTokenMap map[string]string
+}
+
+func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
+	contract.Assert(ps != nil)
+
+	schemaToken, ok := ps.functionTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.functionTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
+		}
+	}
+
+	fn, ok, err := ps.schema.Functions().Get(schemaToken)
+	return fn, token, ok, err
+}
+
+func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
+	contract.Assert(ps != nil)
+
+	schemaToken, ok := ps.resourceTokenMap[token]
+	if !ok {
+		token = canonicalizeToken(token, ps.schema)
+		schemaToken, ok = ps.resourceTokenMap[token]
+		if !ok {
+			return nil, "", false, nil
+		}
+	}
+
+	res, ok, err := ps.schema.Resources().Get(schemaToken)
+	return res, token, ok, err
 }
 
 type PackageCache struct {
@@ -64,24 +98,24 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 	}
 
 	version := (*semver.Version)(nil)
-	pkg, err := loader.LoadPackage(name, version)
+	pkg, err := schema.LoadPackageReference(loader, name, version)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := map[string]*schema.Resource{}
-	for _, r := range pkg.Resources {
-		resources[canonicalizeToken(r.Token, pkg)] = r
+	resourceTokenMap := map[string]string{}
+	for it := pkg.Resources().Range(); it.Next(); {
+		resourceTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
-	functions := map[string]*schema.Function{}
-	for _, f := range pkg.Functions {
-		functions[canonicalizeToken(f.Token, pkg)] = f
+	functionTokenMap := map[string]string{}
+	for it := pkg.Functions().Range(); it.Next(); {
+		functionTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
 	}
 
 	schema := &packageSchema{
-		schema:    pkg,
-		resources: resources,
-		functions: functions,
+		schema:           pkg,
+		resourceTokenMap: resourceTokenMap,
+		functionTokenMap: functionTokenMap,
 	}
 
 	c.m.Lock()
@@ -96,21 +130,23 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 }
 
 // canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
-func canonicalizeToken(tok string, pkg *schema.Package) string {
+func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkg.Name, pkg.TokenToModule(tok), member)
+	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
-// loadReferencedPackageSchemas loads the schemas for any pacakges referenced by a given node.
+// loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	// TODO: package versions
 	packageNames := codegen.StringSet{}
 
 	if r, ok := n.(*Resource); ok {
 		token, tokenRange := getResourceToken(r)
-		packageName, _, _, _ := DecomposeToken(token, tokenRange)
-		if packageName != "pulumi" {
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName != pulumiPackage {
 			packageNames.Add(packageName)
+		} else if mod == "providers" {
+			packageNames.Add(name)
 		}
 	}
 
@@ -123,9 +159,11 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if !ok {
 			return nil
 		}
-		packageName, _, _, _ := DecomposeToken(token, tokenRange)
-		if packageName != "pulumi" {
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName != pulumiPackage {
 			packageNames.Add(packageName)
+		} else if mod == "providers" {
+			packageNames.Add(name)
 		}
 		return nil
 	})
@@ -144,16 +182,44 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	return nil
 }
 
+func buildEnumValue(v interface{}) cty.Value {
+	switch v := v.(type) {
+	case string:
+		return cty.StringVal(v)
+	case bool:
+		return cty.BoolVal(v)
+	case int:
+		return cty.NumberIntVal(int64(v))
+	case int64:
+		return cty.NumberIntVal(v)
+	case float64:
+		return cty.NumberFloatVal(v)
+	default:
+		contract.Failf("Found unexpected constant type %T: %[1]v", v)
+		return cty.NilVal
+	}
+}
+
+// A marker struct to ensure type safety when retrieving the type from an
+// annotated `model.EnumType`.
+type enumSchemaType struct {
+	Type *schema.EnumType
+}
+
 // schemaTypeToType converts a schema.Type to a model Type.
-func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
+func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 	switch src := src.(type) {
 	case *schema.ArrayType:
 		return model.NewListType(b.schemaTypeToType(src.ElementType))
 	case *schema.MapType:
 		return model.NewMapType(b.schemaTypeToType(src.ElementType))
 	case *schema.EnumType:
-		// TODO(codegen): make this a union of constant types.
-		return b.schemaTypeToType(src.ElementType)
+		values := []cty.Value{}
+		elType := b.schemaTypeToType(src.ElementType)
+		for _, el := range src.Elements {
+			values = append(values, buildEnumValue(el.Value))
+		}
+		return model.NewEnumType(src.Token, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
 			return t
@@ -168,31 +234,11 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 				typ = &schema.OptionalType{ElementType: typ}
 			}
 
-			t := b.schemaTypeToType(typ)
-			if prop.ConstValue != nil {
-				var value cty.Value
-				switch v := prop.ConstValue.(type) {
-				case bool:
-					value = cty.BoolVal(v)
-				case float64:
-					value = cty.NumberFloatVal(v)
-				case string:
-					value = cty.StringVal(v)
-				default:
-					contract.Failf("unexpected constant type %T", v)
-				}
-				t = model.NewConstType(t, value)
-			}
-			properties[prop.Name] = t
+			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
 		}
 		return objType
 	case *schema.TokenType:
-		t, ok := model.GetOpaqueType(src.Token)
-		if !ok {
-			tt, err := model.NewOpaqueType(src.Token)
-			contract.IgnoreError(err)
-			t = tt
-		}
+		t := model.NewOpaqueType(src.Token)
 
 		if src.UnderlyingType != nil {
 			underlyingType := b.schemaTypeToType(src.UnderlyingType)
@@ -215,6 +261,23 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 			return model.NewUnionTypeAnnotated(types, src)
 		}
 		return model.NewUnionType(types...)
+	case *schema.ResourceType:
+		if t, ok := b.schemaTypes[src]; ok {
+			return t
+		}
+
+		properties := map[string]model.Type{}
+		objType := model.NewObjectType(properties, src)
+		b.schemaTypes[src] = objType
+		for _, prop := range src.Resource.Properties {
+			typ := prop.Type
+			if !prop.IsRequired() {
+				typ = &schema.OptionalType{ElementType: typ}
+			}
+
+			properties[prop.Name] = b.schemaTypeToTypeOrConst(typ, prop)
+		}
+		return objType
 	default:
 		switch src {
 		case schema.BoolType:
@@ -237,6 +300,26 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 			return model.NoneType
 		}
 	}
+}
+
+func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property) model.Type {
+	t := b.schemaTypeToType(typ)
+	if prop.ConstValue != nil {
+		var value cty.Value
+		switch v := prop.ConstValue.(type) {
+		case bool:
+			value = cty.BoolVal(v)
+		case float64:
+			value = cty.NumberFloatVal(v)
+		case string:
+			value = cty.StringVal(v)
+		default:
+			contract.Failf("unexpected constant type %T", v)
+		}
+		t = model.NewConstType(t, value)
+	}
+
+	return t
 }
 
 var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)
@@ -302,6 +385,14 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 			return schemaTypes[0], true
 		}
 		return &schema.UnionType{ElementTypes: schemaTypes}, true
+	case *model.EnumType:
+		for _, t := range t.Annotations {
+			if t, ok := t.(enumSchemaType); ok {
+				contract.Assert(t.Type != nil)
+				return t.Type, true
+			}
+		}
+		return nil, false
 	default:
 		return nil, false
 	}
@@ -334,4 +425,81 @@ func getDiscriminatedUnionObjectItem(t model.Type) (string, model.Type) {
 		return getDiscriminatedUnionObjectItem(t.ElementType)
 	}
 	return "", nil
+}
+
+// EnumMember returns the name of the member that matches the given `value`. If
+// no member if found, (nil, true) returned. If the query is nonsensical, either
+// because no schema is associated with the EnumMember or if the type of value
+// mismatches the type of the schema, (nil, false) is returned.
+func EnumMember(t *model.EnumType, value cty.Value) (*schema.Enum, bool) {
+	srcBase, ok := GetSchemaForType(t)
+	if !ok {
+		return nil, false
+	}
+	src := srcBase.(*schema.EnumType)
+
+	switch {
+	case t.Type.Equals(model.StringType):
+		s := value.AsString()
+		for _, el := range src.Elements {
+			v := el.Value.(string)
+			if v == s {
+				return el, true
+			}
+		}
+		return nil, true
+	case t.Type.Equals(model.NumberType):
+		f, _ := value.AsBigFloat().Float64()
+		for _, el := range src.Elements {
+			if el.Value.(float64) == f {
+				return el, true
+			}
+		}
+		return nil, true
+	case t.Type.Equals(model.IntType):
+		f, _ := value.AsBigFloat().Int64()
+		for _, el := range src.Elements {
+			if el.Value.(int64) == f {
+				return el, true
+			}
+		}
+		return nil, true
+	default:
+		return nil, false
+	}
+}
+
+// GenEnum is a helper function when generating an enum.
+// Given an enum, and instructions on what to do when you find a known value,
+// and an unknown value, return a function that will generate an the given enum
+// from the given expression.
+//
+// This function should probably live in the `codegen` namespace, but cannot
+// because of import cycles.
+func GenEnum(
+	t *model.EnumType,
+	from model.Expression,
+	safeEnum func(member *schema.Enum),
+	unsafeEnum func(from model.Expression),
+) {
+	known := cty.NilVal
+	if from, ok := from.(*model.TemplateExpression); ok && len(from.Parts) == 1 {
+		if from, ok := from.Parts[0].(*model.LiteralValueExpression); ok {
+			known = from.Value
+		}
+	}
+	if from, ok := from.(*model.LiteralValueExpression); ok {
+		known = from.Value
+	}
+	if known != cty.NilVal {
+		// If the value is known, but we can't find a member, we should have
+		// indicated a conversion is impossible when type checking.
+		member, ok := EnumMember(t, known)
+		contract.Assertf(ok,
+			"We have determined %s is a safe enum, which we define as "+
+				"being able to calculate a member for", t)
+		safeEnum(member)
+	} else {
+		unsafeEnum(from)
+	}
 }

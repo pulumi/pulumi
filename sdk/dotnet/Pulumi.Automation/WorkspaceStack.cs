@@ -225,17 +225,17 @@ namespace Pulumi.Automation
                 if (options.Logger != null)
                     logger = options.Logger;
 
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
                 if (options.Diff is true)
                     args.Add("--diff");
+
+                if (options.Plan != null)
+                {
+                    args.Add("--plan");
+                    args.Add(options.Plan);
+                }
 
                 if (options.Replace?.Any() == true)
                 {
@@ -246,29 +246,10 @@ namespace Pulumi.Automation
                     }
                 }
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -308,7 +289,7 @@ namespace Pulumi.Automation
                 }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
-                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+                var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -348,17 +329,17 @@ namespace Pulumi.Automation
                 if (options.Logger != null)
                     logger = options.Logger;
 
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
                 if (options.Diff is true)
                     args.Add("--diff");
+
+                if (options.Plan != null)
+                {
+                    args.Add("--save-plan");
+                    args.Add(options.Plan);
+                }
 
                 if (options.Replace?.Any() == true)
                 {
@@ -369,29 +350,11 @@ namespace Pulumi.Automation
                     }
                 }
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
 
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -482,35 +445,10 @@ namespace Pulumi.Automation
 
             if (options != null)
             {
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -518,7 +456,7 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -543,35 +481,10 @@ namespace Pulumi.Automation
 
             if (options != null)
             {
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -579,7 +492,7 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -606,8 +519,12 @@ namespace Pulumi.Automation
                 "stack",
                 "history",
                 "--json",
-                "--show-secrets",
             };
+
+            if (options?.ShowSecrets ?? true)
+            {
+                args.Add("--show-secrets");
+            }
 
             if (options?.PageSize.HasValue == true)
             {
@@ -653,10 +570,16 @@ namespace Pulumi.Automation
 
         public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
+            return await GetInfoAsync(cancellationToken, true);
+        }
+
+        private async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default, bool? showSecrets = default)
+        {
             var history = await this.GetHistoryAsync(
                 new HistoryOptions
                 {
                     PageSize = 1,
+                    ShowSecrets = showSecrets,
                 },
                 cancellationToken).ConfigureAwait(false);
 
@@ -801,6 +724,81 @@ namespace Pulumi.Automation
                 this._portRegistration.Unregister();
                 await this._host.StopAsync(this._cancelToken).ConfigureAwait(false);
                 this._host.Dispose();
+            }
+        }
+
+        static void ApplyUpdateOptions(UpdateOptions options, List<string> args)
+        {
+            if (options.Parallel.HasValue)
+            {
+                args.Add("--parallel");
+                args.Add(options.Parallel.Value.ToString());
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Message))
+            {
+                args.Add("--message");
+                args.Add(options.Message);
+            }
+
+            if (options.Target?.Any() == true)
+            {
+                foreach (var item in options.Target)
+                {
+                    args.Add("--target");
+                    args.Add(item);
+                }
+            }
+
+            if (options.PolicyPacks?.Any() == true)
+            {
+                foreach (var item in options.PolicyPacks)
+                {
+                    args.Add("--policy-pack");
+                    args.Add(item);
+                }
+            }
+
+            if (options.PolicyPackConfigs?.Any() == true)
+            {
+                foreach (var item in options.PolicyPackConfigs)
+                {
+                    args.Add("--policy-pack-configs");
+                    args.Add(item);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Color))
+            {
+                args.Add("--color");
+                args.Add(options.Color);
+            }
+
+            if (options.LogFlow is true)
+            {
+                args.Add("--logflow");
+            }
+
+            if (options.LogVerbosity.HasValue)
+            {
+                args.Add("--verbose");
+                args.Add(options.LogVerbosity.Value.ToString());
+            }
+
+            if (options.LogToStdErr is true)
+            {
+                args.Add("--logtostderr");
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Tracing))
+            {
+                args.Add("--tracing");
+                args.Add(options.Tracing);
+            }
+
+            if (options.Debug is true)
+            {
+                args.Add("--debug");
             }
         }
     }

@@ -22,20 +22,25 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>overlayFunction<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">OverlayFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>></span
 ><span class="k">
 function </span>overlayFunctionOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">OverlayFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>overlay_function<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[Resource]</span> = None<span class="p">,</span>
                      <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>OverlayFunctionResult</span
@@ -43,10 +48,12 @@ function </span>overlayFunctionOutput<span class="p">(</span><span class="nx">ar
 def </span>overlay_function_output<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Resource]]</span> = None<span class="p">,</span>
                      <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[OverlayFunctionResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>OverlayFunction<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">OverlayFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">OverlayFunctionResult</a></span>, error)</span
 ><span class="k">
@@ -55,69 +62,127 @@ func </span>OverlayFunctionOutput<span class="p">(</span><span class="nx">ctx</s
 
 &gt; Note: This function is named `OverlayFunction` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">OverlayFunction </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">OverlayFunctionArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>> <span class="p">Invoke(</span><span class="nx">OverlayFunctionInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>> </span>overlayFunction<span class="p">(</span><span class="nx">OverlayFunctionArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> example:overlayFunction
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_csharp">
-<a href="#arg1_csharp" style="color: inherit; text-decoration: inherit;">Arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_csharp" style="color: inherit; text-decoration: inherit;">Arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Other.<wbr>Example.<wbr>Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_go">
-<a href="#arg1_go" style="color: inherit; text-decoration: inherit;">Arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_go" style="color: inherit; text-decoration: inherit;">Arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="arg1_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_java" style="color: inherit; text-decoration: inherit;">arg1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_nodejs">
-<a href="#arg1_nodejs" style="color: inherit; text-decoration: inherit;">arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_nodejs" style="color: inherit; text-decoration: inherit;">arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_python">
-<a href="#arg1_python" style="color: inherit; text-decoration: inherit;">arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_python" style="color: inherit; text-decoration: inherit;">arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="arg1_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_yaml" style="color: inherit; text-decoration: inherit;">arg1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">example:Resource</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -128,53 +193,89 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_csharp">
-<a href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Other.<wbr>Example.<wbr>Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_go">
-<a href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="result_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_java" style="color: inherit; text-decoration: inherit;">result</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Resource</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_nodejs">
-<a href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_python">
-<a href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="result_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_yaml" style="color: inherit; text-decoration: inherit;">result</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">example:Resource</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

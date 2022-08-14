@@ -18,8 +18,8 @@ Although we are using the `html/template` package, it has the same exact interfa
   * Read more [here](https://golang.org/pkg/text/template/#hdr-Text_and_spaces).
 * To render un-encoded content use the custom global function `htmlSafe`.
   * **Note**: This should only be used if you know for sure you are not injecting any user-generated content, as it by-passes the HTML encoding.
+* To render strings to Markdown, use the custom global function `markdownify`.
 * To print regular strings, that share the same syntax as the Go templating engine, use the built-in global function `print` [function](https://golang.org/pkg/text/template/#hdr-Functions).
-  * For example, if you need to render `{{% md %}}`, you will instead need to do `{{print "{{% md %}}"}}`.
 
 Learn more from here: https://curtisvermeeren.github.io/2017/09/14/Golang-Templates-Cheatsheet
 
@@ -30,5 +30,5 @@ We run tests that validate our template-rendering output. If you need to make ch
 For minor diffs, you can just update the test files manually and include those updates with your PR. But for large diffs, you may want to regenerate the full set. To do that, from the root of the repo, run:
 
 ```
-PULUMI_ACCEPT=true pushd pkg/codegen/docs && go test . && popd
+cd pkg/codegen/docs && PULUMI_ACCEPT=true go test . && cd -
 ```

@@ -54,15 +54,15 @@ var (
 	// NoneType represents the undefined value.
 	NoneType Type = noneType(0)
 	// BoolType represents the set of boolean values.
-	BoolType = MustNewOpaqueType("boolean")
+	BoolType = NewOpaqueType("boolean")
 	// IntType represents the set of 32-bit integer values.
-	IntType = MustNewOpaqueType("int")
+	IntType = NewOpaqueType("int")
 	// NumberType represents the set of arbitrary-precision values.
-	NumberType = MustNewOpaqueType("number")
+	NumberType = NewOpaqueType("number")
 	// StringType represents the set of UTF-8 string values.
-	StringType = MustNewOpaqueType("string")
+	StringType = NewOpaqueType("string")
 	// DynamicType represents the set of all values.
-	DynamicType = MustNewOpaqueType("dynamic")
+	DynamicType = NewOpaqueType("dynamic")
 )
 
 func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
@@ -86,7 +86,11 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 	case *UnionType:
 		return src.conversionTo(dest, unifying, seen)
 	case *ConstType:
-		return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+		// We want `EnumType`s too see const types, since they allow safe
+		// conversions.
+		if _, ok := dest.(*EnumType); !ok {
+			return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+		}
 	}
 	if src == DynamicType {
 		return UnsafeConversion, nil

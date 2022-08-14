@@ -3,6 +3,7 @@ package stack
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -116,6 +117,7 @@ func SerializeResourcePlan(
 
 	return apitype.ResourcePlanV1{
 		Goal:    goal,
+		Seed:    plan.Seed,
 		Steps:   steps,
 		Outputs: outputs,
 	}, nil
@@ -143,19 +145,42 @@ func DeserializeResourcePlan(
 	dec config.Decrypter,
 	enc config.Encrypter) (*deploy.ResourcePlan, error) {
 
-	checkedInputs, err := DeserializeProperties(plan.Goal.CheckedInputs, dec, enc)
-	if err != nil {
-		return nil, err
-	}
+	var goal *deploy.GoalPlan
+	if plan.Goal != nil {
+		checkedInputs, err := DeserializeProperties(plan.Goal.CheckedInputs, dec, enc)
+		if err != nil {
+			return nil, err
+		}
 
-	inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec, enc)
-	if err != nil {
-		return nil, err
-	}
+		inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec, enc)
+		if err != nil {
+			return nil, err
+		}
 
-	outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
-	if err != nil {
-		return nil, err
+		outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
+		if err != nil {
+			return nil, err
+		}
+
+		goal = &deploy.GoalPlan{
+			Type:                    plan.Goal.Type,
+			Name:                    plan.Goal.Name,
+			Custom:                  plan.Goal.Custom,
+			CheckedInputs:           checkedInputs,
+			InputDiff:               inputDiff,
+			OutputDiff:              outputDiff,
+			Parent:                  plan.Goal.Parent,
+			Protect:                 plan.Goal.Protect,
+			Dependencies:            plan.Goal.Dependencies,
+			Provider:                plan.Goal.Provider,
+			PropertyDependencies:    plan.Goal.PropertyDependencies,
+			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
+			IgnoreChanges:           plan.Goal.IgnoreChanges,
+			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
+			Aliases:                 plan.Goal.Aliases,
+			ID:                      plan.Goal.ID,
+			CustomTimeouts:          plan.Goal.CustomTimeouts,
+		}
 	}
 
 	var outputs resource.PropertyMap
@@ -167,33 +192,14 @@ func DeserializeResourcePlan(
 		outputs = outs
 	}
 
-	goal := &deploy.GoalPlan{
-		Type:                    plan.Goal.Type,
-		Name:                    plan.Goal.Name,
-		Custom:                  plan.Goal.Custom,
-		CheckedInputs:           checkedInputs,
-		InputDiff:               inputDiff,
-		OutputDiff:              outputDiff,
-		Parent:                  plan.Goal.Parent,
-		Protect:                 plan.Goal.Protect,
-		Dependencies:            plan.Goal.Dependencies,
-		Provider:                plan.Goal.Provider,
-		PropertyDependencies:    plan.Goal.PropertyDependencies,
-		DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-		IgnoreChanges:           plan.Goal.IgnoreChanges,
-		AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-		Aliases:                 plan.Goal.Aliases,
-		ID:                      plan.Goal.ID,
-		CustomTimeouts:          plan.Goal.CustomTimeouts,
-	}
-
-	ops := make([]deploy.StepOp, len(plan.Steps))
+	ops := make([]display.StepOp, len(plan.Steps))
 	for i, op := range plan.Steps {
-		ops[i] = deploy.StepOp(op)
+		ops[i] = display.StepOp(op)
 	}
 
 	return &deploy.ResourcePlan{
 		Goal:    goal,
+		Seed:    plan.Seed,
 		Ops:     ops,
 		Outputs: outputs,
 	}, nil

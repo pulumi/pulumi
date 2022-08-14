@@ -15,11 +15,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/blang/semver"
@@ -72,6 +75,9 @@ func newPluginInstallCmd() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("invalid plugin semver: %w", err)
 					}
+				}
+				if len(args) < 3 && file != "" {
+					return errors.New("missing plugin version argument, this is required if installing from a file")
 				}
 
 				pluginInfo := workspace.PluginInfo{
@@ -135,23 +141,33 @@ func newPluginInstallCmd() *cobra.Command {
 
 				// If we got here, actually try to do the download.
 				var source string
-				var tarball io.ReadCloser
+				var payload workspace.PluginContent
 				var err error
 				if file == "" {
-					var size int64
-					if tarball, size, err = install.Download(); err != nil {
+					withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+						return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", displayOpts.Color)
+					}
+					retry := func(err error, attempt int, limit int, delay time.Duration) {
+						cmdutil.Diag().Warningf(
+							diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+					}
+
+					r, err := workspace.DownloadToFile(install, withProgress, retry)
+					if err != nil {
 						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
-					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
+
+					payload = workspace.TarPlugin(r)
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
-					if tarball, err = os.Open(file); err != nil {
-						return fmt.Errorf("opening file %s: %w", source, err)
+					payload, err = getFilePayload(file, install)
+					if err != nil {
+						return err
 					}
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.Install(tarball, reinstall); err != nil {
+				if err = install.InstallWithContext(context.Background(), payload, reinstall); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}
@@ -165,9 +181,42 @@ func newPluginInstallCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&exact,
 		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,
-		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
+		"file", "f", "", "Install a plugin from a binary, folder or tarball, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 
 	return cmd
+}
+
+func getFilePayload(file string, info workspace.PluginInfo) (workspace.PluginContent, error) {
+	source := file
+	stat, err := os.Stat(file)
+	if err != nil {
+		return nil, fmt.Errorf("stat on file %s: %w", source, err)
+	}
+
+	if stat.IsDir() {
+		return workspace.DirPlugin(file), nil
+	}
+
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, fmt.Errorf("opening file %s: %w", source, err)
+	}
+	compressHeader := make([]byte, 5)
+	_, err = f.Read(compressHeader)
+	if err != nil {
+		return nil, fmt.Errorf("reading file %s: %w", source, err)
+	}
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("seeking back in file %s: %w", source, err)
+	}
+	if !encoding.IsCompressed(compressHeader) {
+		if (stat.Mode() & 0100) == 0 {
+			return nil, fmt.Errorf("%s is not executable", source)
+		}
+		return workspace.SingleFilePlugin(f, info), nil
+	}
+	return workspace.TarPlugin(f), nil
 }

@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"sort"
 	"strings"
 
@@ -27,7 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type generator struct {
@@ -42,6 +46,7 @@ type generator struct {
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	g, err := newGenerator(program)
 	if err != nil {
 		return nil, nil, err
@@ -65,9 +70,75 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "python" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("python", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build a requirements.txt based on the packages used by program
+	var requirementsTxt bytes.Buffer
+	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+
+	// For each package add a PackageReference line
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
+			return err
+		}
+
+		packageName := "pulumi-" + p.Name
+		if langInfo, found := p.Language["python"]; found {
+			pyInfo, ok := langInfo.(PackageInfo)
+			if ok && pyInfo.PackageName != "" {
+				packageName = pyInfo.PackageName
+			}
+		}
+		if p.Version != nil {
+			requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
+		} else {
+			requirementsTxt.WriteString(fmt.Sprintf("%s\n", packageName))
+		}
+	}
+
+	files["requirements.txt"] = requirementsTxt.Bytes()
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`*.pyc
+venv/`)
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func newGenerator(program *pcl.Program) (*generator, error) {
 	// Import Python-specific schema info.
-	for _, p := range program.Packages() {
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}
@@ -204,8 +275,22 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	}
 }
 
-// resourceTypeName computes the Python package, module, and type name for the given resource.
-func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
+func tokenToQualifiedName(pkg, module, member string) string {
+	components := strings.Split(module, "/")
+	for i, component := range components {
+		components[i] = PyName(component)
+	}
+	module = strings.Join(components, ".")
+	if module != "" {
+		module = "." + module
+	}
+
+	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
+
+}
+
+// resourceTypeName computes the qualified name of a python resource.
+func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
 
@@ -220,11 +305,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		}
 	}
 
-	components := strings.Split(module, "/")
-	for i, component := range components {
-		components[i] = PyName(component)
-	}
-	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
+	return tokenToQualifiedName(pkg, module, member), diagnostics
 }
 
 // argumentTypeName computes the Python argument class name for the given expression and model type.
@@ -258,14 +339,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 			modName = m
 		}
 	}
-	if modName != "" {
-		modName = "." + PyName(modName)
-	}
-	modName = strings.Replace(modName, "_", ".", -1)
-	member = member + "Args"
-
-	// Example: aws.s3.BucketLoggingArgs
-	return fmt.Sprintf("%s%s.%s", PyName(pkgName), modName, title(member))
+	return tokenToQualifiedName(pkgName, modName, member) + "Args"
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -345,16 +419,13 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
-	pkg, module, memberName, diagnostics := resourceTypeName(r)
+	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-	if module != "" {
-		module = "." + module
-	}
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
 
-	name := PyName(r.Name())
+	name := r.LogicalName()
+	nameVar := PyName(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.Labels {
@@ -379,7 +450,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		}
 		indenter(func() {
 			for _, attr := range r.Inputs {
-				propertyName := PyName(attr.Name)
+				propertyName := InitParamName(attr.Name)
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
@@ -394,15 +465,15 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
 		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
-			g.Fgenf(w, "%s%s = None\n", g.Indent, name)
+			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
 			g.Indented(func() {
-				g.Fprintf(w, "%s%s = ", g.Indent, name)
-				instantiate(g.makeResourceName(r.Name(), ""))
+				g.Fprintf(w, "%s%s = ", g.Indent, nameVar)
+				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
 		} else {
-			g.Fgenf(w, "%s%s = []\n", g.Indent, name)
+			g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -412,16 +483,16 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(r.Name(), fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s.append(", g.Indent, name)
+				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
 				g.Fprint(w, ")\n")
 			})
 		}
 	} else {
-		g.Fgenf(w, "%s%s = ", g.Indent, name)
-		instantiate(g.makeResourceName(r.Name(), ""))
+		g.Fgenf(w, "%s%s = ", g.Indent, nameVar)
+		instantiate(g.makeResourceName(name, ""))
 		g.Fprint(w, "\n")
 	}
 
@@ -490,7 +561,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.Name(), value)
+	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

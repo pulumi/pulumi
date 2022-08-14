@@ -20,13 +20,17 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	netUrl "net/url"
 
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
-	_ "gocloud.dev/secrets/gcpkms"        // support for gcpkms://
+	"gocloud.dev/secrets/gcpkms"          // support for gcpkms://
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
+	"google.golang.org/api/cloudkms/v1"
 
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -51,6 +55,34 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 	return NewCloudSecretsManager(s.URL, s.EncryptedKey)
 }
 
+// openKeeper opens the keeper, handling pulumi-specifc cases in the URL.
+func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
+	u, err := netUrl.Parse(url)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to parse the secrets provider URL")
+	}
+
+	switch u.Scheme {
+	case gcpkms.Scheme:
+		credentials, err := authhelpers.ResolveGoogleCredentials(ctx, cloudkms.CloudkmsScope)
+		if err != nil {
+			return nil, errors.Wrap(err, "missing google credentials")
+		}
+
+		kmsClient, _, err := gcpkms.Dial(ctx, credentials.TokenSource)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to connect to gcpkms")
+		}
+		opener := gcpkms.URLOpener{
+			Client: kmsClient,
+		}
+
+		return opener.OpenKeeperURL(ctx, u)
+	default:
+		return gosecrets.OpenKeeper(ctx, url)
+	}
+}
+
 // GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
 // using the target cloud key management service.
 func GenerateNewDataKey(url string) ([]byte, error) {
@@ -59,7 +91,7 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	keeper, err := gosecrets.OpenKeeper(context.Background(), url)
+	keeper, err := openKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +101,7 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 // NewCloudSecretsManager returns a secrets manager that uses the target cloud key management
 // service to encrypt/decrypt a data key used for envelope encryption of secrets values.
 func NewCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
-	keeper, err := gosecrets.OpenKeeper(context.Background(), url)
+	keeper, err := openKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}

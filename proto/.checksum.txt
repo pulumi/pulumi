@@ -1,0 +1,14 @@
+3003861496 625 proto/build-container/scripts/install-go.sh
+853251015 873 proto/build-container/scripts/install-node.sh
+2003827277 549 proto/build-container/scripts/install-packages.sh
+3888622976 1701 proto/build-container/scripts/install-protobuf-tools.sh
+3972899080 941 proto/build-container/scripts/install-python.sh
+2099022623 1282 proto/build-container/scripts/utils.sh
+3892283777 4835 proto/generate.sh
+4084535862 9229 proto/pulumi/analyzer.proto
+3172449786 3236 proto/pulumi/engine.proto
+1917216136 789 proto/pulumi/errors.proto
+2627519599 4930 proto/pulumi/language.proto
+2872506167 1739 proto/pulumi/plugin.proto
+1972040389 19438 proto/pulumi/provider.proto
+1996882897 10695 proto/pulumi/resource.proto

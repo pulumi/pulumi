@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,14 +25,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const Type = "service"
-
-var _ config.BulkDecrypter = (*serviceCrypter)(nil)
 
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
@@ -44,28 +43,28 @@ func newServiceCrypter(client *client.Client, stack client.StackIdentifier) conf
 	return &serviceCrypter{client: client, stack: stack}
 }
 
-func (c *serviceCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
+func (c *serviceCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertext, err := c.client.EncryptValue(ctx, c.stack, []byte(plaintext))
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
+func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
 	if err != nil {
 		return "", err
 	}
 
-	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
+	plaintext, err := c.client.DecryptValue(ctx, c.stack, ciphertext)
 	if err != nil {
 		return "", err
 	}
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error) {
+func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
 	var secretsToDecrypt [][]byte
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
@@ -75,7 +74,7 @@ func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error
 		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
 	}
 
-	decryptedList, err := c.client.BulkDecryptValue(context.Background(), c.stack, secretsToDecrypt)
+	decryptedList, err := c.client.BulkDecryptValue(ctx, c.stack, secretsToDecrypt)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +154,8 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{}))
+	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
+		Color: colors.Never}))
 
 	return &serviceSecretsManager{
 		state:   s,

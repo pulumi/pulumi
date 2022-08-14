@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -30,7 +31,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -52,11 +53,14 @@ const (
 	langNodejs = "nodejs"
 	langDotnet = "dotnet"
 	langGo     = "go"
+	langJava   = "java"
+	langYAML   = "yaml"
 )
 
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
 	var transitiveDependencies bool
+	var stack string
 	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
@@ -74,7 +78,8 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				summary := getSummaryAbout(transitiveDependencies)
+				ctx := context.Background()
+				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 				if jsonOut {
 					return printJSON(summary)
 				}
@@ -84,6 +89,9 @@ func newAboutCmd() *cobra.Command {
 		}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to get info on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVarP(
 		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
 
@@ -106,7 +114,7 @@ type summaryAbout struct {
 	LogMessage    string                    `json:"-"`
 }
 
-func getSummaryAbout(transitiveDependencies bool) summaryAbout {
+func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -140,13 +148,13 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 		addError(err, "Failed to read project")
 	} else {
 		var runtime projectRuntimeAbout
-		if runtime, err = getProjectRuntimeAbout(proj); err != nil {
+		if runtime, err = getProjectRuntimeAbout(ctx, proj); err != nil {
 			addError(err, "Failed to get information about the project runtime")
 		} else {
 			result.Runtime = &runtime
 		}
-		if deps, err := getProgramDependenciesAbout(proj, pwd, transitiveDependencies); err != nil {
-			addError(err, "Failed to get information about the Puluimi program's plugins")
+		if deps, err := getProgramDependenciesAbout(ctx, proj, pwd, transitiveDependencies); err != nil {
+			addError(err, "Failed to get information about the Pulumi program's plugins")
 		} else {
 			result.Dependencies = deps
 		}
@@ -158,7 +166,7 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 		addError(err, "Could not access the backend")
 	} else {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(backend); err != nil {
+		if stack, err = getCurrentStackAbout(backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -280,22 +288,22 @@ func (host hostAbout) String() string {
 }
 
 type backendAbout struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-	User string `json:"user"`
+	Name          string   `json:"name"`
+	URL           string   `json:"url"`
+	User          string   `json:"user"`
+	Organizations []string `json:"organizations"`
 }
 
 func getBackendAbout(b backend.Backend) backendAbout {
-	var err error
-	var currentUser string
-	currentUser, err = b.CurrentUser()
+	currentUser, currentOrgs, err := b.CurrentUser()
 	if err != nil {
 		currentUser = "Unknown"
 	}
 	return backendAbout{
-		Name: b.Name(),
-		URL:  b.URL(),
-		User: currentUser,
+		Name:          b.Name(),
+		URL:           b.URL(),
+		User:          currentUser,
+		Organizations: currentOrgs,
 	}
 }
 
@@ -306,6 +314,7 @@ func (b backendAbout) String() string {
 			{"Name", b.Name},
 			{"URL", b.URL},
 			{"User", b.User},
+			{"Organizations", strings.Join(b.Organizations, ", ")},
 		}),
 	}.String()
 }
@@ -321,17 +330,27 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(b backend.Backend) (currentStackAbout, error) {
+func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStackAbout, error) {
 	context := commandContext()
 	var stack backend.Stack
 	var err error
-	stack, err = state.CurrentStack(context, b)
+	if selectedStack == "" {
+		stack, err = state.CurrentStack(context, b)
+	} else {
+		var ref backend.StackReference
+		ref, err = b.ParseStackReference(selectedStack)
+		if err != nil {
+			return currentStackAbout{}, err
+		}
+		stack, err = b.GetStack(context, ref)
+	}
 	if err != nil {
 		return currentStackAbout{}, err
 	}
 	if stack == nil {
 		return currentStackAbout{}, errors.New("No current stack")
 	}
+
 	name := stack.Ref().String()
 	var snapshot *deploy.Snapshot
 	snapshot, err = stack.Snapshot(context)
@@ -471,17 +490,17 @@ func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error
 
 // Calls a python command as pulumi would. This means we need to accommodate for
 // a virtual environment if it exists.
-func callPythonCommand(proj *workspace.Project, root string, args ...string) (string, error) {
+func callPythonCommand(ctx context.Context, proj *workspace.Project, root string, args ...string) (string, error) {
 	if proj == nil {
 		return "", errors.New("Project must not be nil")
 	}
 	options := proj.Runtime.Options()
 	if options == nil {
-		return callPythonCommandNoEnvironment(args...)
+		return callPythonCommandNoEnvironment(ctx, args...)
 	}
 	virtualEnv, exists := options["virtualenv"]
 	if !exists {
-		return callPythonCommandNoEnvironment(args...)
+		return callPythonCommandNoEnvironment(ctx, args...)
 	}
 	virtualEnvPath := virtualEnv.(string)
 	// We now know that a virtual environment exists.
@@ -498,8 +517,8 @@ func callPythonCommand(proj *workspace.Project, root string, args ...string) (st
 
 // Call a python command in a runtime agnostic way. Call python from the path.
 // Do not use a virtual environment.
-func callPythonCommandNoEnvironment(args ...string) (string, error) {
-	cmd, err := python.Command(args...)
+func callPythonCommandNoEnvironment(ctx context.Context, args ...string) (string, error) {
+	cmd, err := python.Command(ctx, args...)
 	if err != nil {
 		return "", err
 	}
@@ -511,14 +530,14 @@ func callPythonCommandNoEnvironment(args ...string) (string, error) {
 	return string(result), nil
 }
 
-func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
+func getPythonProgramDependencies(ctx context.Context, proj *workspace.Project, rootDir string,
 	transitive bool) ([]programDependencieAbout, error) {
 	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
 	if !transitive {
 		cmdArgs = append(cmdArgs, "--not-required")
 
 	}
-	out, err := callPythonCommand(proj, rootDir, cmdArgs...)
+	out, err := callPythonCommand(ctx, proj, rootDir, cmdArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -780,31 +799,39 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 	return result, nil
 }
 
-func getProgramDependenciesAbout(proj *workspace.Project, root string,
+func getProgramDependenciesAbout(ctx context.Context, proj *workspace.Project, root string,
 	transitive bool) ([]programDependencieAbout, error) {
 	language := proj.Runtime.Name()
 	switch language {
 	case langNodejs:
 		return getNodeProgramDependencies(root, transitive)
 	case langPython:
-		return getPythonProgramDependencies(proj, root, transitive)
+		return getPythonProgramDependencies(ctx, proj, root, transitive)
 	case langGo:
 		return getGoProgramDependencies(transitive)
 	case langDotnet:
 		return getDotNetProgramDependencies(proj, transitive)
+	case langJava:
+		// TODO: Implement dependency fetcher for Java
+		return nil, nil
+	case langYAML:
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("Unknown Language: %s", language)
 	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencieAbout) string {
+	if len(deps) == 0 {
+		return "No dependencies found\n"
+	}
 	rows := make([]cmdutil.TableRow, len(deps))
 	for i, v := range deps {
 		rows[i] = cmdutil.TableRow{
 			Columns: []string{v.Name, v.Version},
 		}
 	}
-	return cmdutil.Table{
+	return "Dependencies:\n" + cmdutil.Table{
 		Headers: []string{"NAME", "VERSION"},
 		Rows:    rows,
 	}.String()
@@ -855,68 +882,122 @@ func formatLogAbout() string {
 }
 
 type projectRuntimeAbout struct {
-	Language   string `json:"language"`
-	Executable string `json:"executable"`
-	// We want Version to conform to the semvar format: v0.0.0
-	Version string `json:"version"`
+	Language   string
+	Executable string
+	Version    string
+	other      map[string]string
 }
 
-func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error) {
+func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
+	m := make(map[string]string, len(runtime.other)+3)
+	assignIf := func(k, v string) {
+		if v != "" {
+			m[k] = v
+		}
+	}
+	for k, v := range runtime.other {
+		assignIf(k, v)
+	}
+
+	assignIf("language", runtime.Language)
+	assignIf("executable", runtime.Executable)
+	assignIf("version", runtime.Version)
+	return json.Marshal(m)
+}
+
+func getProjectRuntimeAbout(ctx context.Context, proj *workspace.Project) (projectRuntimeAbout, error) {
 	var ex, version string
 	var err error
 	var out []byte
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have
 	// to hard code here.
 	language := proj.Runtime.Name()
+	errCouldNotGet := func(err error) (projectRuntimeAbout, error) {
+		return projectRuntimeAbout{}, fmt.Errorf("failed to get %s version: %w", language, err)
+	}
+
+	getResponse := func(execString string, args ...string) (string, error) {
+		ex, err = executable.FindExecutable(execString)
+		if err != nil {
+			return "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+
+	other := map[string]string{}
 	switch language {
 	case langNodejs:
-		ex, err = executable.FindExecutable("node")
+		node, err := getResponse("node", "--version")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find node executable: %w", err)
+			return projectRuntimeAbout{}, err
 		}
-		cmd := exec.Command(ex, "--version")
-		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get node version: %w", err)
-		}
-		version = string(out)
+		version = node
 	case langPython:
 		var cmd *exec.Cmd
 		// if CommandPath has an error, then so will Command. The error can
 		// therefore be ignored as redundant.
 		ex, _, _ = python.CommandPath()
-		cmd, err = python.Command("--version")
+		cmd, err = python.Command(ctx, "--version")
 		if err != nil {
 			return projectRuntimeAbout{}, err
 		}
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get python version: %w", err)
+			return errCouldNotGet(err)
 		}
-		version = "v" + strings.TrimPrefix(string(out), "Python ")
+		version = strings.TrimPrefix(string(out), "Python ")
 	case langGo:
-		ex, err = executable.FindExecutable("go")
+		goVersion, err := getResponse("go", "version")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find python executable: %w", err)
+			return projectRuntimeAbout{}, err
 		}
-		cmd := exec.Command(ex, "version")
-		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get go version: %w", err)
-		}
-		version = "v" + strings.TrimPrefix(string(out), "go version go")
+
+		version = strings.TrimPrefix(goVersion, "go version go")
 	case langDotnet:
-		ex, err = executable.FindExecutable("dotnet")
+		dotnet, err := getResponse("dotnet", "--version")
 		if err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Could not find dotnet executable: %w", err)
+			return projectRuntimeAbout{}, err
 		}
-		cmd := exec.Command(ex, "--version")
-		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, fmt.Errorf("Failed to get dotnet version: %w", err)
+		version = dotnet
+	case langYAML:
+		return projectRuntimeAbout{Language: language}, nil
+	case langJava:
+
+		java, err := getResponse("java", "--version")
+		if err != nil {
+			return projectRuntimeAbout{}, err
 		}
-		version = "v" + string(out)
+		other["java"] = strings.Split(java, "\n")[0]
+		javac, err := getResponse("javac", "--version")
+		if err != nil {
+			javac = "unknown"
+		}
+		other["javac"] = strings.TrimPrefix(javac, "javac ")
+		if maven, err := getResponse("mvn", "--version"); err == nil {
+			// We add this only if there are no errors
+			other["maven"] = strings.Split(maven, "\n")[0]
+		}
+		if gradle, err := getResponse("gradle", "--version"); err == nil {
+			for _, line := range strings.Split(gradle, "\n") {
+				if strings.HasPrefix(line, "Gradle") {
+					other["gradle"] = strings.TrimPrefix(line, "Gradle ")
+					break
+				}
+			}
+		}
 	default:
 		return projectRuntimeAbout{}, fmt.Errorf("Unknown Language: %s: %w", language, err)
 	}
 	version = strings.TrimSpace(version)
 	return projectRuntimeAbout{
+		other:      other,
 		Language:   language,
 		Executable: ex,
 		Version:    version,
@@ -924,8 +1005,23 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	return fmt.Sprintf("This project is written in %s (%s %s)\n",
-		runtime.Language, runtime.Executable, runtime.Version)
+	var params []string
+
+	if r := runtime.Executable; r != "" {
+		params = append(params, fmt.Sprintf("executable='%s'", r))
+	}
+	if v := runtime.Version; v != "" {
+		params = append(params, fmt.Sprintf("version='%s'", v))
+	}
+	for k, v := range runtime.other {
+		params = append(params, fmt.Sprintf("%s='%s'", k, v))
+	}
+	paramString := ""
+	if len(params) > 0 {
+		paramString = fmt.Sprintf(": %s", strings.Join(params, " "))
+	}
+	return fmt.Sprintf("This project is written in %s%s\n",
+		runtime.Language, paramString)
 }
 
 // This is necessary because dotnet invokes build during the call to

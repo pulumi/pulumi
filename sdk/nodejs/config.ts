@@ -13,10 +13,9 @@
 // limitations under the License.
 
 import { RunError } from "./errors";
-import * as log from "./log";
 import { getProject } from "./metadata";
 import { Output } from "./output";
-import { getConfig, isConfigSecret } from "./runtime";
+import { getConfig } from "./runtime/config";
 
 function makeSecret<T>(value: T): Output<T> {
     return new Output(

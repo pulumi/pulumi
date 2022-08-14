@@ -581,6 +581,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 			field := typ.Field(i)
 			tag, has := field.Tag.Lookup("pulumi")
+			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 			if !has || tag != k {
 				continue
 			}

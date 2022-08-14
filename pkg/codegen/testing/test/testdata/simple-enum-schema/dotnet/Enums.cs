@@ -36,6 +36,7 @@ namespace Pulumi.Plant
         /// What if triple quotes """ are used in the description
         /// </summary>
         public static CloudAuditOptionsLogName Synthetic { get; } = new CloudAuditOptionsLogName("SYNTHETIC");
+        public static CloudAuditOptionsLogName CloudAuditOptionsLogName_NO_NAME { get; } = new CloudAuditOptionsLogName("_NO_NAME");
 
         public static bool operator ==(CloudAuditOptionsLogName left, CloudAuditOptionsLogName right) => left.Equals(right);
         public static bool operator !=(CloudAuditOptionsLogName left, CloudAuditOptionsLogName right) => !left.Equals(right);

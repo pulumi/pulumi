@@ -26,12 +26,15 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
@@ -97,8 +100,20 @@ func main() {
 	}
 	engineAddress := args[0]
 
+	ctx, cancel := context.WithCancel(context.Background())
+	// map the context Done channel to the rpcutil boolean cancel channel
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
+	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
@@ -419,4 +434,53 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (host *goLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return err
+	}
+
+	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
+		return err
+	}
+
+	cmd := exec.Command(gobin, "mod", "tidy")
+	cmd.Dir = req.Directory
+	cmd.Env = os.Environ()
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
+
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (host *goLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }

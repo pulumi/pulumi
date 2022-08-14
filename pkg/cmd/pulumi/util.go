@@ -32,9 +32,9 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 
+	git "github.com/go-git/go-git/v5"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
-	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -476,13 +476,10 @@ func readProject() (*workspace.Project, string, error) {
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w", pwd, err)
-
-	} else if path == "" {
-		return nil, "", fmt.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", pwd)
+		logging.Warningf("failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %s"+
+			"continuing with an empty project", pwd, err.Error())
+		return &workspace.Project{}, "", nil
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
@@ -900,7 +897,8 @@ func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.
 }
 
 func buildStackName(stackName string) (string, error) {
-	if strings.Count(stackName, "/") == 2 {
+	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
+	if strings.Contains(stackName, "/") {
 		return stackName, nil
 	}
 

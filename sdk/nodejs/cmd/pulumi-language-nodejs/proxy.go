@@ -101,7 +101,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 				// decode and dispatch the request
 				logging.V(10).Infof("Sync invoke: Unmarshalling request")
-				var req pulumirpc.InvokeRequest
+				var req pulumirpc.ResourceInvokeRequest
 				if err := pbcodec.Unmarshal(reqBytes, &req); err != nil {
 					logging.V(10).Infof("Sync invoke: Received error reading full from pipe: %s\n", err)
 					return err
@@ -187,12 +187,12 @@ type monitorProxy struct {
 }
 
 func (p *monitorProxy) Invoke(
-	ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	return p.target.Invoke(ctx, req)
 }
 
 func (p *monitorProxy) StreamInvoke(
-	req *pulumirpc.InvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer) error {
+	req *pulumirpc.ResourceInvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
 	client, err := p.target.StreamInvoke(context.Background(), req)
 	if err != nil {

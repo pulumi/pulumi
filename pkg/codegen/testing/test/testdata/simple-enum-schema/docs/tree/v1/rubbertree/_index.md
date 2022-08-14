@@ -16,14 +16,19 @@ no_edit_this_page: true
 
 
 ## Create a RubberTree Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -36,17 +41,42 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewRubberTree</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RubberTree</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">plant:tree/v1:RubberTree</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -68,9 +98,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -92,9 +124,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -122,9 +156,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -146,193 +182,320 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">RubberTreeArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
 
 ## RubberTree Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The RubberTree resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The RubberTree resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_csharp">
-<a href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
-<a href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="container_csharp">
-<a href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="farm_csharp">
-<a href="#farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="size_csharp">
-<a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_go">
-<a href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="type_go">
-<a href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="container_go">
-<a href="#container_go" style="color: inherit; text-decoration: inherit;">Container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_go" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="farm_go">
-<a href="#farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="size_go">
-<a href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="diameter_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_java" style="color: inherit; text-decoration: inherit;">diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="type_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="container_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_java" style="color: inherit; text-decoration: inherit;">container</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="farm_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_java" style="color: inherit; text-decoration: inherit;">farm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#farm">Farm</a> | String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="size_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_java" style="color: inherit; text-decoration: inherit;">size</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_nodejs">
-<a href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
-<a href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="container_nodejs">
-<a href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="farm_nodejs">
-<a href="#farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="size_nodejs">
-<a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_python">
-<a href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="type_python">
-<a href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="container_python">
-<a href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="farm_python">
-<a href="#farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="size_python">
-<a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="diameter_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_yaml" style="color: inherit; text-decoration: inherit;">diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">6 | 12</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="type_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rubbertreevariety">&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="container_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_yaml" style="color: inherit; text-decoration: inherit;">container</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#container">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="farm_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_yaml" style="color: inherit; text-decoration: inherit;">farm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#farm">&#34;Pulumi Planters Inc.&#34; | &#34;Plants&#39;R&#39;Us&#34;</a> | String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="size_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_yaml" style="color: inherit; text-decoration: inherit;">size</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#treesize">&#34;small&#34; | &#34;medium&#34; | &#34;large&#34;</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -341,82 +504,147 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
 ## Look up an Existing RubberTree Resource {#look-up}
 
 Get an existing RubberTree resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">id</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#ID">Input&lt;ID&gt;</a></span><span class="p">,</span> <span class="nx">state</span><span class="p">?:</span> <span class="nx">RubberTreeState</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">): </span><span class="nx">RubberTree</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[Farm, str]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>GetRubberTree<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">id</span><span class="p"> </span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#IDInput">IDInput</a></span><span class="p">,</span> <span class="nx">state</span><span class="p"> *</span><span class="nx">RubberTreeState</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RubberTree</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span><span class="nx">RubberTree</span><span class="nf"> Get</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.Input-1.html">Input&lt;string&gt;</a></span><span class="p"> </span><span class="nx">id<span class="p">,</span> <span class="nx">RubberTreeState</span><span class="p">? </span><span class="nx">state<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static </span><span class="nx">RubberTree</span><span class="nf"> get</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx">Output&lt;String&gt;</span><span class="p"> </span><span class="nx">id<span class="p">,</span> <span class="nx">RubberTreeState</span><span class="p"> </span><span class="nx">state<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource lookup is not supported in YAML</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
@@ -441,9 +669,11 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     <dd>A bag of options that control this resource's behavior.</dd>
 </dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
         <span>resource_name</span>
@@ -456,36 +686,11 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     </dt>
     <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
 </dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
-
-<dl class="resources-properties">
-    <dt class="property-required" title="Required">
-        <span>name</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>The unique name of the resulting resource.</dd>
-    <dt class="property-required" title="Required">
-        <span>id</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
-    <dt class="property-optional" title="Optional">
-        <span>state</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>Any extra arguments used during the lookup.</dd>
-    <dt class="property-optional" title="Optional">
-        <span>opts</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>A bag of options that control this resource's behavior.</dd>
-</dl>
-
-{{% /choosable %}}
-
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
@@ -510,58 +715,157 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     <dd>A bag of options that control this resource's behavior.</dd>
 </dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+<dl class="resources-properties">
+    <dt class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The unique name of the resulting resource.</dd>
+    <dt class="property-required" title="Required">
+        <span>id</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>state</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>Any extra arguments used during the lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>opts</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>A bag of options that control this resource's behavior.</dd>
+</dl>
+
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties">
+    <dt class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The unique name of the resulting resource.</dd>
+    <dt class="property-required" title="Required">
+        <span>id</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>state</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>Any extra arguments used during the lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>opts</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>A bag of options that control this resource's behavior.</dd>
+</dl>
+
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="typescript,javascript,python,go,csharp,java">
 The following state arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_csharp">
-<a href="#state_farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_go">
-<a href="#state_farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="state_farm_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_java" style="color: inherit; text-decoration: inherit;">farm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#farm">Farm</a> | String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_nodejs">
-<a href="#state_farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_python">
-<a href="#state_farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="state_farm_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_yaml" style="color: inherit; text-decoration: inherit;">farm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#farm">&#34;Pulumi Planters Inc.&#34; | &#34;Plants&#39;R&#39;Us&#34;</a> | String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+</pulumi-choosable>
+</div>
 
 
 
@@ -574,347 +878,631 @@ The following state arguments are supported:
 
 <h4 id="container">Container</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_csharp">
-<a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Pulumi.<wbr>Plant.<wbr>Container<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_csharp">
-<a href="#brightness_csharp" style="color: inherit; text-decoration: inherit;">Brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_csharp" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Pulumi.<wbr>Plant.<wbr>Container<wbr>Brightness</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="color_csharp">
-<a href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Pulumi.<wbr>Plant.<wbr>Container<wbr>Color</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="material_csharp">
-<a href="#material_csharp" style="color: inherit; text-decoration: inherit;">Material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_csharp" style="color: inherit; text-decoration: inherit;">Material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_go">
-<a href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_go">
-<a href="#brightness_go" style="color: inherit; text-decoration: inherit;">Brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_go" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="color_go">
-<a href="#color_go" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_go" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="material_go">
-<a href="#material_go" style="color: inherit; text-decoration: inherit;">Material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_go" style="color: inherit; text-decoration: inherit;">Material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="size_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_java" style="color: inherit; text-decoration: inherit;">size</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="brightness_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_java" style="color: inherit; text-decoration: inherit;">brightness</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="color_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_java" style="color: inherit; text-decoration: inherit;">color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="material_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_java" style="color: inherit; text-decoration: inherit;">material</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_nodejs">
-<a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_nodejs">
-<a href="#brightness_nodejs" style="color: inherit; text-decoration: inherit;">brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_nodejs" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="color_nodejs">
-<a href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="material_nodejs">
-<a href="#material_nodejs" style="color: inherit; text-decoration: inherit;">material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_nodejs" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_python">
-<a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_python">
-<a href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="color_python">
-<a href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="material_python">
-<a href="#material_python" style="color: inherit; text-decoration: inherit;">material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_python" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="size_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_yaml" style="color: inherit; text-decoration: inherit;">size</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containersize">4 | 6 | 8</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="brightness_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_yaml" style="color: inherit; text-decoration: inherit;">brightness</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containerbrightness">0.1 | 1</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="color_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_yaml" style="color: inherit; text-decoration: inherit;">color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#containercolor">&#34;red&#34; | &#34;blue&#34; | &#34;yellow&#34;</a> | String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="material_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_yaml" style="color: inherit; text-decoration: inherit;">material</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="containerbrightness">Container<wbr>Brightness</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Brightness<wbr>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>Container<wbr>Brightness<wbr>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
+    <dd>0.1</dd><dt>One</dt>
+    <dd>1</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>ZERO_POINT_ONE</dt>
     <dd>0.1</dd><dt>ONE</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>%!q(float64=0.1)</dt>
+    <dd>0.1</dd><dt>%!q(float64=1)</dt>
+    <dd>1</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="containercolor">Container<wbr>Color</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Red</dt>
     <dd>red</dd><dt>Blue</dt>
     <dd>blue</dd><dt>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Color<wbr>Red</dt>
     <dd>red</dd><dt>Container<wbr>Color<wbr>Blue</dt>
     <dd>blue</dd><dt>Container<wbr>Color<wbr>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Red</dt>
     <dd>red</dd><dt>Blue</dt>
     <dd>blue</dd><dt>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Red</dt>
+    <dd>red</dd><dt>Blue</dt>
+    <dd>blue</dd><dt>Yellow</dt>
+    <dd>yellow</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>RED</dt>
     <dd>red</dd><dt>BLUE</dt>
     <dd>blue</dd><dt>YELLOW</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"red"</dt>
+    <dd>red</dd><dt>"blue"</dt>
+    <dd>blue</dd><dt>"yellow"</dt>
+    <dd>yellow</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="containersize">Container<wbr>Size</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated: {{% md %}}Eight inch pots are no longer supported.{{% /md %}}</p></dd></dl>
-{{% /choosable %}}
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Size<wbr>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Container<wbr>Size<wbr>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated: {{% md %}}Eight inch pots are no longer supported.{{% /md %}}</p></dd></dl>
-{{% /choosable %}}
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated: {{% md %}}Eight inch pots are no longer supported.{{% /md %}}</p></dd></dl>
-{{% /choosable %}}
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Four<wbr>Inch</dt>
+    <dd>4</dd><dt>Six<wbr>Inch</dt>
+    <dd>6</dd><dt>Eight<wbr>Inch</dt>
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>FOUR_INCH</dt>
     <dd>4</dd><dt>SIX_INCH</dt>
     <dd>6</dd><dt>EIGHT_INCH</dt>
-    <dd>8<p class="property-message">Deprecated: {{% md %}}Eight inch pots are no longer supported.{{% /md %}}</p></dd></dl>
-{{% /choosable %}}
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>'\x04'</dt>
+    <dd>4</dd><dt>'\x06'</dt>
+    <dd>6</dd><dt>'\b'</dt>
+    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
+</p></dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="diameter">Diameter</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Sixinch</dt>
     <dd>6</dd><dt>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Diameter<wbr>Sixinch</dt>
     <dd>6</dd><dt>Diameter<wbr>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Sixinch</dt>
     <dd>6</dd><dt>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Sixinch</dt>
+    <dd>6</dd><dt>Twelveinch</dt>
+    <dd>12</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>SIXINCH</dt>
     <dd>6</dd><dt>TWELVEINCH</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>%!q(float64=6)</dt>
+    <dd>6</dd><dt>%!q(float64=12)</dt>
+    <dd>12</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="farm">Farm</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Farm_Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Farm_Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
+    <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
+    <dd>Plants'R'Us</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>PULUMI_PLANTERS_INC_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>PLANTS_R_US</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"Pulumi Planters Inc."</dt>
+    <dd>Pulumi Planters Inc.</dd><dt>"Plants'R'Us"</dt>
+    <dd>Plants'R'Us</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy{{% md %}}A burgundy rubber tree.{{% /md %}}</dd><dt>Ruby</dt>
-    <dd>Ruby{{% md %}}A ruby rubber tree.{{% /md %}}</dd><dt>Tineke</dt>
-    <dd>Tineke{{% md %}}A tineke rubber tree.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>Ruby</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>Tineke</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>Burgundy{{% md %}}A burgundy rubber tree.{{% /md %}}</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>Ruby{{% md %}}A ruby rubber tree.{{% /md %}}</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
-    <dd>Tineke{{% md %}}A tineke rubber tree.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy{{% md %}}A burgundy rubber tree.{{% /md %}}</dd><dt>Ruby</dt>
-    <dd>Ruby{{% md %}}A ruby rubber tree.{{% /md %}}</dd><dt>Tineke</dt>
-    <dd>Tineke{{% md %}}A tineke rubber tree.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>Ruby</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>Tineke</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Burgundy</dt>
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>Ruby</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>Tineke</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>Burgundy{{% md %}}A burgundy rubber tree.{{% /md %}}</dd><dt>RUBY</dt>
-    <dd>Ruby{{% md %}}A ruby rubber tree.{{% /md %}}</dd><dt>TINEKE</dt>
-    <dd>Tineke{{% md %}}A tineke rubber tree.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>RUBY</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>TINEKE</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"Burgundy"</dt>
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>"Ruby"</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>"Tineke"</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="treesize">Tree<wbr>Size</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Tree<wbr>Size<wbr>Small</dt>
     <dd>small</dd><dt>Tree<wbr>Size<wbr>Medium</dt>
     <dd>medium</dd><dt>Tree<wbr>Size<wbr>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
+<dl class="tabular"><dt>Small</dt>
+    <dd>small</dd><dt>Medium</dt>
+    <dd>medium</dd><dt>Large</dt>
+    <dd>large</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>SMALL</dt>
     <dd>small</dd><dt>MEDIUM</dt>
     <dd>medium</dd><dt>LARGE</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"small"</dt>
+    <dd>small</dd><dt>"medium"</dt>
+    <dd>medium</dd><dt>"large"</dt>
+    <dd>large</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

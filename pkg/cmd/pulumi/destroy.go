@@ -58,21 +58,25 @@ func newDestroyCmd() *cobra.Command {
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
-		SuggestFor: []string{"delete", "down", "kill", "remove", "rm", "stop"},
-		Short:      "Destroy an existing stack and its resources",
-		Long: "Destroy an existing stack and its resources\n" +
+		Aliases:    []string{"down"},
+		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
+		Short:      "Destroy all existing resources in the stack",
+		Long: "Destroy all existing resources in the stack, but not the stack itself\n" +
 			"\n" +
-			"This command deletes an entire existing stack by name.  The current state is\n" +
+			"Deletes all the resources in the selected stack.  The current state is\n" +
 			"loaded from the associated state file in the workspace.  After running to completion,\n" +
-			"all of this stack's resources and associated state will be gone.\n" +
+			"all of this stack's resources and associated state are deleted.\n" +
+			"\n" +
+			"The stack itself is not deleted. Use `pulumi stack rm` to delete the stack.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			yes = yes || skipConfirmations()
+			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
@@ -123,6 +127,7 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
+
 			proj, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
@@ -133,19 +138,21 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return result.FromError(err)
+			}
+
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
+				// fallback on snapshot SecretsManager
+				sm = snap.SecretsManager
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
-			}
 
-			snap, err := s.Snapshot(commandContext())
-			if err != nil {
-				return result.FromError(err)
 			}
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
@@ -269,7 +276,7 @@ func newDestroyCmd() *cobra.Command {
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not perform a preview before performing the destroy")
+		"Do not calculate a preview before performing the destroy")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

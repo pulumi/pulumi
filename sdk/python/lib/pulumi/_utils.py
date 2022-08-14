@@ -27,12 +27,16 @@ def _empty():
 
 def _empty_doc():
     """Empty function docstring."""
-    ...
 
 
-_empty_lambda = lambda: None
+def _empty_lambda():
+    return None
 
-_empty_lambda_doc = lambda: None
+
+def _empty_lambda_doc():
+    return None
+
+
 _empty_lambda_doc.__doc__ = """Empty lambda docstring."""
 
 

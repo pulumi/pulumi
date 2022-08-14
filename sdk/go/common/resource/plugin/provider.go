@@ -57,7 +57,7 @@ type Provider interface {
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
 	Check(urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error)
+		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
@@ -101,6 +101,15 @@ type Provider interface {
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
+}
+
+type GrpcProvider interface {
+	Provider
+
+	// Attach triggers an attach for a currently running provider to the engine
+	// TODO It would be nice if this was a HostClient rather than the string address but due to dependency
+	// ordering we don't have access to declare that here.
+	Attach(address string) error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

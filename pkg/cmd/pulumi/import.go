@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,12 +31,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/importer"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -47,6 +43,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+
+	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -180,12 +183,14 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	return imports, names, nil
 }
 
-func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(context.Background())
+func getCurrentDeploymentForStack(
+	ctx context.Context,
+	s backend.Stack) (*deploy.Snapshot, error) {
+	deployment, err := s.ExportDeployment(ctx)
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
@@ -202,7 +207,7 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 
 type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
+func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool) (bool, error) {
 
@@ -233,7 +238,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		if i.Parent != "" {
 			parentType = i.Parent.QualifiedType()
 		}
-		urn := resource.NewURN(stackName, projectName, parentType, i.Type, i.Name)
+		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
 			s := *state
@@ -358,6 +363,8 @@ func newImportCmd() *cobra.Command {
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
+
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
@@ -399,10 +406,11 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			yes = yes || skipConfirmations()
+			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
@@ -460,6 +468,10 @@ func newImportCmd() *cobra.Command {
 				programGenerator = nodejs.GenerateProgram
 			case "python":
 				programGenerator = python.GenerateProgram
+			case "java":
+				programGenerator = javagen.GenerateProgram
+			case "yaml":
+				programGenerator = yamlgen.GenerateProgram
 			default:
 				return result.Errorf("cannot generate resource definitions for %v", proj.Runtime.Name())
 			}
@@ -491,7 +503,7 @@ func newImportCmd() *cobra.Command {
 				UseLegacyDiff: useLegacyDiff(),
 			}
 
-			_, res := s.Import(commandContext(), backend.UpdateOperation{
+			_, res := s.Import(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -502,7 +514,7 @@ func newImportCmd() *cobra.Command {
 			}, imports)
 
 			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(s)
+				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -585,7 +597,7 @@ func newImportCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
-		"Do not perform a preview before performing the refresh")
+		"Do not calculate a preview before performing the import")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -595,7 +607,7 @@ func newImportCmd() *cobra.Command {
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
-		"Automatically approve and perform the refresh after previewing it")
+		"Automatically approve and perform the import after previewing it")
 	cmd.PersistentFlags().BoolVarP(
 		&protectResources, "protect", "", true,
 		"Allow resources to be imported with protection from deletion enabled")

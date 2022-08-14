@@ -193,6 +193,142 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, false, opts.DeleteBeforeReplace)
 }
 
+func TestResourceOptionComposite(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []ResourceOption
+		want  *resourceOptions
+	}{
+		{
+			name:  "no options",
+			input: []ResourceOption{},
+			want:  &resourceOptions{},
+		},
+		{
+			name: "single option",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "multiple conflicting options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: false,
+			},
+		},
+		{
+			name: "bouncing options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "different options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				Protect(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+				Protect:             true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := &resourceOptions{}
+			Composite(tt.input...).applyResourceOption(opts)
+			assert.Equal(t, tt.want, opts)
+		})
+	}
+}
+
+func TestInvokeOptionComposite(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []InvokeOption
+		want  *invokeOptions
+	}{
+		{
+			name:  "no options",
+			input: []InvokeOption{},
+			want:  &invokeOptions{},
+		},
+		{
+			name: "single option",
+			input: []InvokeOption{
+				Version("test"),
+			},
+			want: &invokeOptions{
+				Version: "test",
+			},
+		},
+		{
+			name: "multiple conflicting options",
+			input: []InvokeOption{
+				Version("test1"),
+				Version("test2"),
+			},
+			want: &invokeOptions{
+				Version: "test2",
+			},
+		},
+		{
+			name: "bouncing options",
+			input: []InvokeOption{
+				Version("test1"),
+				Version("test2"),
+				Version("test1"),
+			},
+			want: &invokeOptions{
+				Version: "test1",
+			},
+		},
+		{
+			name: "different options",
+			input: []InvokeOption{
+				Version("test"),
+				PluginDownloadURL("url"),
+			},
+			want: &invokeOptions{
+				Version:           "test",
+				PluginDownloadURL: "url",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := &invokeOptions{}
+			CompositeInvoke(tt.input...).applyInvokeOption(opts)
+			assert.Equal(t, tt.want, opts)
+		})
+	}
+}
+
 func TestResourceOptionMergingImport(t *testing.T) {
 	t.Parallel()
 
@@ -376,9 +512,9 @@ func TestNewResourceInput(t *testing.T) {
 	t.Parallel()
 
 	var resource Resource = &testRes{foo: "abracadabra"}
-	var resourceInput ResourceInput = NewResourceInput(resource)
+	resourceInput := NewResourceInput(resource)
 
-	var resourceOutput ResourceOutput = resourceInput.ToResourceOutput()
+	resourceOutput := resourceInput.ToResourceOutput()
 
 	channel := make(chan interface{})
 	resourceOutput.ApplyT(func(res interface{}) interface{} {
@@ -549,13 +685,13 @@ func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
 }
 
 func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 	return i.inner.Invoke(ctx, in, opts...)
 }
 
 func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
 	return i.inner.StreamInvoke(ctx, in, opts...)
 }

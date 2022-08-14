@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -260,7 +261,7 @@ func (data *resourceRowData) IsDone() bool {
 	return data.ContainsOutputsStep(data.step.Op)
 }
 
-func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
+func (data *resourceRowData) ContainsOutputsStep(op display.StepOp) bool {
 	for _, s := range data.outputSteps {
 		if s.Op == op {
 			return true
@@ -277,7 +278,7 @@ func (data *resourceRowData) ColorizedSuffix() string {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-			return op.ColorProgress() + ellipses + colors.Reset
+			return deploy.ColorProgress(op) + ellipses + colors.Reset
 		}
 	}
 
@@ -290,7 +291,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	urn := data.step.URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
-		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
+		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())
@@ -406,7 +407,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if step.DetailedDiff != nil {
-			diff = translateDetailedDiff(step)
+			diff = engine.TranslateDetailedDiff(&step)
 		} else if diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)
@@ -478,9 +479,9 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	return changesBuf.String()
 }
 
-func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
+func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 	if len(keys) > 0 {
-		writeString(b, strings.Trim(op.Prefix(true /*done*/), " "))
+		writeString(b, strings.Trim(deploy.Prefix(op, true /*done*/), " "))
 
 		sort.Strings(keys)
 

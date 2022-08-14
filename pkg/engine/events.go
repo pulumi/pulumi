@@ -16,13 +16,13 @@ package engine
 
 import (
 	"bytes"
-	"reflect"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -127,11 +127,11 @@ type PreludeEventPayload struct {
 }
 
 type SummaryEventPayload struct {
-	IsPreview       bool              // true if this summary is for a plan operation
-	MaybeCorrupt    bool              // true if one or more resources may be corrupt
-	Duration        time.Duration     // the duration of the entire update operation (zero values for previews)
-	ResourceChanges ResourceChanges   // count of changed resources, useful for reporting
-	PolicyPacks     map[string]string // {policy-pack: version} for each policy pack applied
+	IsPreview       bool                    // true if this summary is for a plan operation
+	MaybeCorrupt    bool                    // true if one or more resources may be corrupt
+	Duration        time.Duration           // the duration of the entire update operation (zero values for previews)
+	ResourceChanges display.ResourceChanges // count of changed resources, useful for reporting
+	PolicyPacks     map[string]string       // {policy-pack: version} for each policy pack applied
 }
 
 type ResourceOperationFailedPayload struct {
@@ -154,7 +154,7 @@ type ResourcePreEventPayload struct {
 
 // StepEventMetadata contains the metadata associated with a step the engine is performing.
 type StepEventMetadata struct {
-	Op           deploy.StepOp                  // the operation performed by this step.
+	Op           display.StepOp                 // the operation performed by this step.
 	URN          resource.URN                   // the resource URN (for before and after).
 	Type         tokens.Type                    // the type affected by this step.
 	Old          *StepEventStateMetadata        // the state of the resource before performing this step.
@@ -290,7 +290,7 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	}
 }
 
-func makeStepEventMetadata(op deploy.StepOp, step deploy.Step, debug bool) StepEventMetadata {
+func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool) StepEventMetadata {
 	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
 
 	var keys, diffs []resource.PropertyKey
@@ -337,128 +337,11 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 		ID:         state.ID,
 		Parent:     state.Parent,
 		Protect:    state.Protect,
-		Inputs:     filterPropertyMap(state.Inputs, debug),
-		Outputs:    filterPropertyMap(state.Outputs, debug),
+		Inputs:     filterResourceProperties(state.Inputs, debug),
+		Outputs:    filterResourceProperties(state.Outputs, debug),
 		Provider:   state.Provider,
 		InitErrors: state.InitErrors,
 	}
-}
-
-func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.PropertyMap {
-	mappable := propertyMap.Mappable()
-
-	var filterValue func(v interface{}) interface{}
-
-	filterPropertyValue := func(pv resource.PropertyValue) resource.PropertyValue {
-		return resource.NewPropertyValue(filterValue(pv.Mappable()))
-	}
-
-	// filter values walks unwrapped (i.e. non-PropertyValue) values and applies the filter function
-	// to them recursively.  The only thing the filter actually applies to is strings.
-	//
-	// The return value of this function should have the same type as the input value.
-	filterValue = func(v interface{}) interface{} {
-		if v == nil {
-			return nil
-		}
-
-		// Else, check for some known primitive types.
-		switch t := v.(type) {
-		case bool, int, uint, int32, uint32,
-			int64, uint64, float32, float64:
-			// simple types.  map over as is.
-			return v
-		case string:
-			// have to ensure we filter out secrets.
-			return logging.FilterString(t)
-		case *resource.Asset:
-			text := t.Text
-			if text != "" {
-				// we don't want to include the full text of an asset as we serialize it over as
-				// events.  They represent user files and are thus are unbounded in size.  Instead,
-				// we only include the text if it represents a user's serialized program code, as
-				// that is something we want the receiver to see to display as part of
-				// progress/diffs/etc.
-				if t.IsUserProgramCode() {
-					// also make sure we filter this in case there are any secrets in the code.
-					text = logging.FilterString(resource.MassageIfUserProgramCodeAsset(t, debug).Text)
-				} else {
-					// We need to have some string here so that we preserve that this is a
-					// text-asset
-					text = "<stripped>"
-				}
-			}
-
-			return &resource.Asset{
-				Sig:  t.Sig,
-				Hash: t.Hash,
-				Text: text,
-				Path: t.Path,
-				URI:  t.URI,
-			}
-		case *resource.Archive:
-			return &resource.Archive{
-				Sig:    t.Sig,
-				Hash:   t.Hash,
-				Path:   t.Path,
-				URI:    t.URI,
-				Assets: filterValue(t.Assets).(map[string]interface{}),
-			}
-		case resource.Secret:
-			return "[secret]"
-		case resource.Computed:
-			return resource.Computed{
-				Element: filterPropertyValue(t.Element),
-			}
-		case resource.Output:
-			return resource.Output{
-				Element: filterPropertyValue(t.Element),
-			}
-		case resource.ResourceReference:
-			return resource.ResourceReference{
-				URN:            resource.URN(filterValue(string(t.URN)).(string)),
-				ID:             resource.PropertyValue{V: filterValue(t.ID.V)},
-				PackageVersion: filterValue(t.PackageVersion).(string),
-			}
-		}
-
-		// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
-		rv := reflect.ValueOf(v)
-		switch rk := rv.Type().Kind(); rk {
-		case reflect.Array, reflect.Slice:
-			// If an array or slice, just create an array out of it.
-			var arr []interface{}
-			for i := 0; i < rv.Len(); i++ {
-				arr = append(arr, filterValue(rv.Index(i).Interface()))
-			}
-			return arr
-		case reflect.Ptr:
-			if rv.IsNil() {
-				return nil
-			}
-
-			v1 := filterValue(rv.Elem().Interface())
-			return &v1
-		case reflect.Map:
-			obj := make(map[string]interface{})
-			for _, key := range rv.MapKeys() {
-				k := key.Interface().(string)
-				v := rv.MapIndex(key).Interface()
-				obj[k] = filterValue(v)
-			}
-			return obj
-		default:
-			contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
-		}
-
-		return nil
-	}
-
-	return resource.NewPropertyMapFromMapRepl(
-		mappable, nil, /*replk*/
-		func(v interface{}) (resource.PropertyValue, bool) {
-			return resource.NewPropertyValue(filterValue(v)), true
-		})
 }
 
 func (e *eventEmitter) Close() {
@@ -478,7 +361,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 	})
 }
 
-func (e *eventEmitter) resourceOutputsEvent(op deploy.StepOp, step deploy.Step, planning bool, debug bool) {
+func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.ch <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
@@ -517,8 +400,8 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	})
 }
 
-func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration, resourceChanges ResourceChanges,
-	policyPacks map[string]string) {
+func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
+	resourceChanges display.ResourceChanges, policyPacks map[string]string) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -604,4 +487,100 @@ func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemera
 
 func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
 	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
+}
+
+func filterResourceProperties(m resource.PropertyMap, debug bool) resource.PropertyMap {
+	return filterPropertyValue(resource.NewObjectProperty(m), debug).ObjectValue()
+}
+
+func filterPropertyValue(v resource.PropertyValue, debug bool) resource.PropertyValue {
+	switch {
+	case v.IsNull(), v.IsBool(), v.IsNumber():
+		return v
+	case v.IsString():
+		// have to ensure we filter out secrets.
+		return resource.NewStringProperty(logging.FilterString(v.StringValue()))
+	case v.IsAsset():
+		return resource.NewAssetProperty(filterAsset(v.AssetValue(), debug))
+	case v.IsArchive():
+		return resource.NewArchiveProperty(filterArchive(v.ArchiveValue(), debug))
+	case v.IsArray():
+		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
+		for i, v := range v.ArrayValue() {
+			arr[i] = filterPropertyValue(v, debug)
+		}
+		return resource.NewArrayProperty(arr)
+	case v.IsObject():
+		obj := make(resource.PropertyMap, len(v.ObjectValue()))
+		for k, v := range v.ObjectValue() {
+			obj[k] = filterPropertyValue(v, debug)
+		}
+		return resource.NewObjectProperty(obj)
+	case v.IsComputed():
+		return resource.MakeComputed(filterPropertyValue(v.Input().Element, debug))
+	case v.IsOutput():
+		return resource.MakeComputed(filterPropertyValue(v.OutputValue().Element, debug))
+	case v.IsSecret():
+		return resource.MakeSecret(resource.NewStringProperty("[secret]"))
+	case v.IsResourceReference():
+		ref := v.ResourceReferenceValue()
+		return resource.NewResourceReferenceProperty(resource.ResourceReference{
+			URN:            resource.URN(logging.FilterString(string(ref.URN))),
+			ID:             filterPropertyValue(ref.ID, debug),
+			PackageVersion: logging.FilterString(ref.PackageVersion),
+		})
+	default:
+		contract.Failf("unexpected property value type %T", v.V)
+		return resource.PropertyValue{}
+	}
+}
+
+func filterAsset(v *resource.Asset, debug bool) *resource.Asset {
+	if !v.IsText() {
+		return v
+	}
+
+	// we don't want to include the full text of an asset as we serialize it over as
+	// events.  They represent user files and are thus are unbounded in size.  Instead,
+	// we only include the text if it represents a user's serialized program code, as
+	// that is something we want the receiver to see to display as part of
+	// progress/diffs/etc.
+	var text string
+	if v.IsUserProgramCode() {
+		// also make sure we filter this in case there are any secrets in the code.
+		text = logging.FilterString(resource.MassageIfUserProgramCodeAsset(v, debug).Text)
+	} else {
+		// We need to have some string here so that we preserve that this is a
+		// text-asset
+		text = "<contents elided>"
+	}
+
+	return &resource.Asset{
+		Sig:  v.Sig,
+		Hash: v.Hash,
+		Text: text,
+	}
+}
+
+func filterArchive(v *resource.Archive, debug bool) *resource.Archive {
+	if !v.IsAssets() {
+		return v
+	}
+
+	assets := make(map[string]interface{})
+	for k, v := range v.Assets {
+		switch v := v.(type) {
+		case *resource.Asset:
+			assets[k] = filterAsset(v, debug)
+		case *resource.Archive:
+			assets[k] = filterArchive(v, debug)
+		default:
+			contract.Failf("Unrecognized asset map type %T", v)
+		}
+	}
+	return &resource.Archive{
+		Sig:    v.Sig,
+		Hash:   v.Hash,
+		Assets: assets,
+	}
 }

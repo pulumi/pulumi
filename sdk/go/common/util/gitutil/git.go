@@ -22,12 +22,12 @@ import (
 	"sort"
 	"strings"
 
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.
@@ -328,6 +328,9 @@ func parseGistURL(u *url.URL) (string, error) {
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
 // For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
 // "https://github.com/pulumi/templates.git" and "templates/javascript".
+// Additionally, it supports nested git projects, as used by GitLab.
+// For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
+// returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
 func ParseGitRepoURL(rawurl string) (string, string, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
@@ -351,6 +354,16 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	paths := strings.Split(path, "/")
 	if len(paths) < 2 {
 		return "", "", errors.New("invalid Git URL")
+	}
+
+	// Shortcut for general case: URI Path contains '.git'
+	// Cleave URI into what comes before and what comes after.
+	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
+		var extensionOffset = loc + len(defaultGitCloudRepositorySuffix)
+		var resultURL = u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
+		var gitRepoPath = path[extensionOffset:]
+		var resultPath = strings.Trim(gitRepoPath, "/")
+		return resultURL, resultPath, nil
 	}
 
 	owner := paths[0]

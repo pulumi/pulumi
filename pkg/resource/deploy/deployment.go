@@ -98,17 +98,6 @@ type Events interface {
 	PolicyEvents
 }
 
-// PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the
-// snapshot that we are preparing to operate upon. The engine does not allow any operations to be pending
-// when operating on a snapshot.
-type PlanPendingOperationsError struct {
-	Operations []resource.Operation
-}
-
-func (p PlanPendingOperationsError) Error() string {
-	return "one or more operations are currently pending"
-}
-
 type goalMap struct {
 	m sync.Map
 }
@@ -305,10 +294,6 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 		return nil, olds, nil
 	}
 
-	if prev.PendingOperations != nil && !preview {
-		return nil, nil, PlanPendingOperationsError{prev.PendingOperations}
-	}
-
 	for _, oldres := range prev.Resources {
 		// Ignore resources that are pending deletion; these should not be recorded in the LUT.
 		if oldres.Delete {
@@ -416,12 +401,12 @@ func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name token
 		parentType = parent.QualifiedType()
 	}
 
-	return resource.NewURN(d.Target().Name, d.source.Project(), parentType, ty, name)
+	return resource.NewURN(d.Target().Name.Q(), d.source.Project(), parentType, ty, name)
 }
 
 // defaultProviderURN generates the URN for the global provider given a package.
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
-	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
+	return resource.NewURN(target.Name.Q(), source.Project(), "", providers.MakeProviderType(pkg), "default")
 }
 
 // generateEventURN generates a URN for the resource associated with the given event.

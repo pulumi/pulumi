@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as minimist from "minimist";
-import * as path from "path";
-
 import * as grpc from "@grpc/grpc-js";
 
 import { Provider } from "./provider";
@@ -22,11 +19,11 @@ import { Provider } from "./provider";
 import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
-import { version } from "../version";
+import * as settings from "../runtime/settings";
+import * as rpc from "../runtime/rpc";
+import * as config from "../runtime/config";
 import { parseArgs } from "./internals";
 
-const requireFromString = require("require-from-string");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
 const emptyproto = require("google-protobuf/google/protobuf/empty_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -36,14 +33,14 @@ const plugproto = require("../proto/plugin_pb.js");
 const statusproto = require("../proto/status_pb.js");
 
 class Server implements grpc.UntypedServiceImplementation {
-    readonly engineAddr: string;
+    engineAddr: string | undefined;
     readonly provider: Provider;
     readonly uncaughtErrors: Set<Error>;
 
     /** Queue of construct calls. */
     constructCallQueue = Promise.resolve();
 
-    constructor(engineAddr: string, provider: Provider, uncaughtErrors: Set<Error>) {
+    constructor(engineAddr: string | undefined, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
         this.uncaughtErrors = uncaughtErrors;
@@ -55,6 +52,13 @@ class Server implements grpc.UntypedServiceImplementation {
     // Misc. methods
 
     public cancel(call: any, callback: any): void {
+        callback(undefined, new emptyproto.Empty());
+    }
+
+    public attach(call: any, callback: any): void {
+        const req = call.request;
+        const host = req.getAddress();
+        this.engineAddr = host;
         callback(undefined, new emptyproto.Empty());
     }
 
@@ -325,7 +329,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             resp.setUrn(await output(result.urn).promise());
 
-            const [state, stateDependencies] = await runtime.serializeResourceProperties(`construct(${type}, ${name})`, result.state);
+            const [state, stateDependencies] = await rpc.serializeResourceProperties(`construct(${type}, ${name})`, result.state);
             const stateDependenciesMap = resp.getStatedependenciesMap();
             for (const [key, resources] of stateDependencies) {
                 const deps = new provproto.ConstructResponse.PropertyDependencies();
@@ -335,7 +339,7 @@ class Server implements grpc.UntypedServiceImplementation {
             resp.setState(structproto.Struct.fromJavaScript(state));
 
             // Wait for RPC operations to complete.
-            await runtime.waitForRPCs();
+            await settings.waitForRPCs();
 
             callback(undefined, resp);
         } catch (e) {
@@ -393,7 +397,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             if (result.outputs) {
                 const [ret, retDependencies] =
-                    await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+                    await rpc.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
                 const returnDependenciesMap = resp.getReturndependenciesMap();
                 for (const [key, resources] of retDependencies) {
                     const deps = new provproto.CallResponse.ReturnDependencies();
@@ -415,7 +419,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             // Wait for RPC operations to complete.
-            await runtime.waitForRPCs();
+            await settings.waitForRPCs();
 
             callback(undefined, resp);
         } catch (e) {
@@ -469,10 +473,14 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string) {
+function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
-    runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
+    if (engineAddr === undefined) {
+        throw new Error("fatal: Missing <engine> address");
+    }
+
+    settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
         req.getMonitorendpoint(), req.getDryrun());
 
     const pulumiConfig: {[key: string]: string} = {};
@@ -482,7 +490,7 @@ function configureRuntime(req: any, engineAddr: string) {
             pulumiConfig[k] = v;
         }
     }
-    runtime.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
+    config.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
 }
 
 /**
@@ -492,10 +500,10 @@ function configureRuntime(req: any, engineAddr: string) {
 export async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
 
-    const deserializedInputs = runtime.deserializeProperties(inputsStruct);
+    const deserializedInputs = rpc.deserializeProperties(inputsStruct);
     for (const k of Object.keys(deserializedInputs)) {
         const input = deserializedInputs[k];
-        const isSecret = runtime.isRpcSecret(input);
+        const isSecret = rpc.isRpcSecret(input);
         const depsUrns: resource.URN[] = inputDependencies.get(k)?.getUrnsList() ?? [];
 
         if (!isSecret && (depsUrns.length === 0 || containsOutputs(input) || await isResourceReference(input, depsUrns))) {
@@ -508,7 +516,7 @@ export async function deserializeInputs(inputsStruct: any, inputDependencies: an
             // Note: If the value is or contains an unknown value, the Output will mark its value as
             // unknown automatically, so we just pass true for isKnown here.
             const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
-            result[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+            result[k] = new Output(deps, Promise.resolve(rpc.unwrapRpcSecret(input)), Promise.resolve(true),
                 Promise.resolve(isSecret), Promise.resolve([]));
         }
     }
@@ -622,19 +630,15 @@ export async function main(provider: Provider, args: string[]) {
 
     const parsedArgs = parseArgs(args);
 
-    // The program requires a single argument: the address of the RPC endpoint for the engine.  It
-    // optionally also takes a second argument, a reference back to the engine, but this may be missing.
-    if (parsedArgs === undefined) {
-        console.error("fatal: Missing <engine> address");
-        process.exit(-1);
-        return;
-    }
-    const engineAddr: string = parsedArgs.engineAddress;
-
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
+        "grpc.max_receive_message_length": settings.maxRPCMessageSize,
     });
+
+    // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It
+    // optionally also takes a second argument, a reference back to the engine, but this may be missing.
+
+    const engineAddr = parsedArgs?.engineAddress;
     server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
@@ -656,7 +660,7 @@ export async function main(provider: Provider, args: string[]) {
  * otherwise return an instance of DependencyProviderResource.
  */
 function createProviderResource(ref: string): resource.ProviderResource {
-    const [urn, _] = resource.parseResourceReference(ref);
+    const [urn] = resource.parseResourceReference(ref);
     const urnParts = urn.split("::");
     const qualifiedType = urnParts[2];
     const urnName = urnParts[3];
@@ -665,7 +669,7 @@ function createProviderResource(ref: string): resource.ProviderResource {
     const typeParts = type.split(":");
     const typName = typeParts.length > 2 ? typeParts[2] : "";
 
-    const resourcePackage = runtime.getResourcePackage(typName, /*version:*/ "");
+    const resourcePackage = rpc.getResourcePackage(typName, /*version:*/ "");
     if (resourcePackage) {
         return resourcePackage.constructProvider(urnName, type, urn);
     }

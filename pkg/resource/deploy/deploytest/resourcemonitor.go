@@ -85,24 +85,25 @@ func NewResourceMonitor(resmon pulumirpc.ResourceMonitorClient) *ResourceMonitor
 }
 
 type ResourceOptions struct {
-	Parent                resource.URN
-	Protect               bool
-	Dependencies          []resource.URN
-	Provider              string
-	Inputs                resource.PropertyMap
-	PropertyDeps          map[resource.PropertyKey][]resource.URN
-	DeleteBeforeReplace   *bool
-	Version               string
-	PluginDownloadURL     string
-	IgnoreChanges         []string
-	ReplaceOnChanges      []string
-	Aliases               []resource.URN
-	ImportID              resource.ID
-	CustomTimeouts        *resource.CustomTimeouts
-	RetainOnDelete        bool
-	SupportsPartialValues *bool
-	Remote                bool
-	Providers             map[string]string
+	Parent                  resource.URN
+	Protect                 bool
+	Dependencies            []resource.URN
+	Provider                string
+	Inputs                  resource.PropertyMap
+	PropertyDeps            map[resource.PropertyKey][]resource.URN
+	DeleteBeforeReplace     *bool
+	Version                 string
+	PluginDownloadURL       string
+	IgnoreChanges           []string
+	ReplaceOnChanges        []string
+	Aliases                 []resource.URN
+	ImportID                resource.ID
+	CustomTimeouts          *resource.CustomTimeouts
+	RetainOnDelete          bool
+	SupportsPartialValues   *bool
+	Remote                  bool
+	Providers               map[string]string
+	AdditionalSecretOutputs []resource.PropertyKey
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -167,6 +168,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if opts.SupportsPartialValues != nil {
 		supportsPartialValues = *opts.SupportsPartialValues
 	}
+	additionalSecretOutputs := make([]string, len(opts.AdditionalSecretOutputs))
+	for i, v := range opts.AdditionalSecretOutputs {
+		additionalSecretOutputs[i] = string(v)
+	}
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -192,6 +197,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		RetainOnDelete:             opts.RetainOnDelete,
+		AdditionalSecretOutputs:    additionalSecretOutputs,
 	}
 
 	// submit request
@@ -284,7 +290,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// submit request
-	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.InvokeRequest{
+	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 		Tok:      string(tok),
 		Provider: provider,
 		Args:     ins,

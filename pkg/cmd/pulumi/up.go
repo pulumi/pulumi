@@ -68,6 +68,7 @@ func newUpCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var skipPreview bool
+	var showFullOutput bool
 	var suppressOutputs bool
 	var suppressPermalink string
 	var yes bool
@@ -190,7 +191,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case expectNop && changes != nil && changes.HasChanges():
+		case expectNop && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -198,7 +199,8 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(templateNameOrURL string, opts backend.UpdateOptions) result.Result {
+	upTemplateNameOrURL := func(ctxt context.Context,
+		templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -302,12 +304,21 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(ctxt, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
 		// Install dependencies.
-		if err = installDependencies(proj, root); err != nil {
+
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		if err != nil {
+			return result.FromError(fmt.Errorf("building project context: %w", err))
+		}
+
+		defer ctx.Close()
+
+		if err = installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 			return result.FromError(err)
 		}
 
@@ -358,7 +369,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.New("update cancelled"))
 		case res != nil:
 			return PrintEngineResult(res)
-		case expectNop && changes != nil && changes.HasChanges():
+		case expectNop && changes != nil && engine.HasChanges(changes):
 			return result.FromError(errors.New("error: no changes were expected but changes occurred"))
 		default:
 			return nil
@@ -383,11 +394,13 @@ func newUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			yes = yes || skipConfirmations()
+			ctx := commandContext()
+			yes = yes || skipPreview || skipConfirmations()
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
@@ -411,6 +424,7 @@ func newUpCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
+				TruncateOutput:       !showFullOutput,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
@@ -438,7 +452,7 @@ func newUpCmd() *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				return upTemplateNameOrURL(args[0], opts)
+				return upTemplateNameOrURL(ctx, args[0], opts)
 			}
 
 			return upWorkingDirectory(opts)
@@ -529,10 +543,13 @@ func newUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not perform a preview before performing the update")
+		"Do not calculate a preview before performing the update")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&showFullOutput, "show-full-output", true,
+		"Display full length of stack outputs")
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
@@ -586,6 +603,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
+	ctx context.Context,
 	s backend.Stack,
 	templateNameOrURL string,
 	template workspace.Template,
@@ -624,7 +642,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}

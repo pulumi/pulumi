@@ -12,6 +12,7 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
   PR_COMMIT_SHA: ${{ github.event.client_payload.pull_request.head.sha }}
+  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   comment-notification:
@@ -58,9 +59,11 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
         with:
           repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
       - name: Check out source code
         uses: actions/checkout@v2
         with:
@@ -131,8 +134,8 @@ jobs:
           title: Preview resource docs changes for pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}
           body: |
             This PR was auto-generated from pulumi/pulumi#${{ steps.regenerate-resource-docs.outputs.prNumber }}.
-
             By default, this PR contains regenerated docs for AWS and Kubernetes only.
+            After review, this PR should be manually closed.
           # Assign the draft PR to the author of the current PR.
           assignees: ${{ github.event.pull_request.user.login }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}

@@ -36,7 +36,7 @@ namespace Pulumi.Automation
         private readonly LocalSerializer _serializer = new LocalSerializer();
         private readonly bool _ownsWorkingDir;
         private readonly Task _readyTask;
-        private static readonly SemVersion _minimumVersion = SemVersion.Parse("3.1.0");
+        private static readonly SemVersion _minimumVersion = new SemVersion(3, 1, 0);
 
         /// <inheritdoc/>
         public override string WorkDir { get; }
@@ -384,7 +384,7 @@ namespace Pulumi.Automation
 
         internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
         {
-            if (!SemVersion.TryParse(currentVersion, out SemVersion? version))
+            if (!SemVersion.TryParse(currentVersion, SemVersionStyles.Any, out SemVersion? version))
             {
                 version = null;
             }

@@ -579,8 +579,9 @@ func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {
 
 		// Read the blob
 		var text bytes.Buffer
-		_, err = io.Copy(&text, blob)
+		n, err := io.Copy(&text, blob)
 		assert.Nil(t, err)
+		assert.Equal(t, blob.Size(), n)
 		err = blob.Close()
 		assert.Nil(t, err)
 
@@ -635,8 +636,9 @@ func assertAssetTextEquals(t *testing.T, asset *Asset, expect string) {
 
 func assertAssetBlobEquals(t *testing.T, blob *Blob, expect string) {
 	var text bytes.Buffer
-	_, err := io.Copy(&text, blob)
+	n, err := io.Copy(&text, blob)
 	assert.Nil(t, err)
+	assert.Equal(t, blob.Size(), n)
 	assert.Equal(t, expect, text.String())
 	err = blob.Close()
 	assert.Nil(t, err)

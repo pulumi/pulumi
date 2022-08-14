@@ -21,6 +21,7 @@ Feel free to pick up any existing issue that looks interesting to you or fix a b
 
 For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before investing a lot of time so we can discuss the feature together.
 Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
+Finally, please limit your pull requests to contain only one feature at a time. Separating feature work into individual pull requests helps speed up code review and reduces the barrier to merge.
 
 ## Developing
 
@@ -28,21 +29,22 @@ Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/
 
 You'll want to install the following on your machine:
 
-- Go 1.17
+- Go 1.18 or later
 - NodeJS 14.X.X or later
 - Python 3.6 or later
-- [.NET Core](https://dotnet.microsoft.com/download)
+- [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
+- [jq](https://stedolan.github.io/jq/)
 
 ### Installing Pulumi dependencies on macOS
 
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
-curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
+brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils jq
+curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
 ```
@@ -57,7 +59,7 @@ If you have a web browser, you can get a fully pre-configured Pulumi development
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
-We build Pulumi in `$PULUMI_ROOT`, which defaults to `$HOME/.pulumi-dev`. If you would like to build Pulumi in another location, you do so by setting `$PULUMI_ROOT`. 
+We build Pulumi in `$PULUMI_ROOT`, which defaults to `$HOME/.pulumi-dev`. If you would like to build Pulumi in another location, you do so by setting `$PULUMI_ROOT`.
 
 ```bash
 export PATH=$HOME/.pulumi-dev/bin:$PATH
@@ -102,6 +104,12 @@ is a pretty standard starting point during debugging that will show a fairly com
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
 
 When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your pull request gets into the next release.
+
+### Pulumi employees
+
+Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Test can run directly without approval for PRs based on branches rather than forks.
+
+Please ensure that you nest your branches under a unique identifier such as your name (e.g. `refs/heads/pulumipus/cool_feature`).
 
 ## Getting Help
 

@@ -19,6 +19,7 @@
           },
           "plain": true,
           "language": {
+            "explanation": "Because the collection is marked as plain, we should see a plain type regardless of inputShape.",
             "test": {
               "expected": {
                 "dotnet": {

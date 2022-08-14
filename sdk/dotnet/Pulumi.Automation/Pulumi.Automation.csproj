@@ -46,13 +46,11 @@
 
   <ItemGroup>
     <None Remove="PublicAPI.Shipped.txt" />
-    <None Remove="PublicAPI.Unshipped.txt" />
     <None Remove="Pulumi.Automation.xml" />
   </ItemGroup>
 
   <ItemGroup>
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />
-    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
 
   <ItemGroup>

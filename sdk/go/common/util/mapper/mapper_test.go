@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type bag struct {
@@ -111,7 +112,31 @@ type bagtag struct {
 	StringSkipOpt string `pulumi:"sco,skip,optional"`
 }
 
-func TestMapper(t *testing.T) {
+type AnInterface interface {
+	isAnInterface()
+}
+
+func TestMapperEncode(t *testing.T) {
+	t.Parallel()
+	bag := bagtag{
+		String:    "something",
+		StringOpt: "ohmv",
+	}
+
+	md := New(nil)
+	m, err := md.Encode(bag)
+	require.Nil(t, err)
+	assert.Equal(t, "something", m["s"])
+	assert.Equal(t, "ohmv", m["so"])
+
+	// Encode a nil interface
+
+	m, err = md.Encode((AnInterface)(nil))
+	require.Nil(t, err)
+	assert.Len(t, m, 0)
+}
+
+func TestMapperDecode(t *testing.T) {
 	t.Parallel()
 
 	var err error

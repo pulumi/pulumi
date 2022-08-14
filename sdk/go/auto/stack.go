@@ -103,10 +103,13 @@ import (
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/opthistory"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -232,6 +235,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	for _, tURN := range preOpts.Target {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
+	for _, pack := range preOpts.PolicyPacks {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+	}
+	for _, packConfig := range preOpts.PolicyPackConfigs {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
+	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
@@ -242,7 +251,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
 	}
 	if preOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", preOpts.Color))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
+	}
+	if preOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
@@ -261,17 +273,19 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
-	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
+	eventsDone := make(chan bool)
+	go func() {
 		for {
 			event, ok := <-eventChannel
 			if !ok {
+				close(eventsDone)
 				return
 			}
 			if event.SummaryEvent != nil {
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
 		}
-	}(eventChannel, &summaryEvents)
+	}()
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
@@ -280,13 +294,22 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
-	defer cleanup(t, eventChannels)
+	defer t.Close()
 	args = append(args, "--event-log", t.Filename)
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		preOpts.ProgressStreams,      /* additionalOutput */
+		preOpts.ErrorProgressStreams, /* additionalErrorOutput */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
+
+	// Close the file watcher wait for all events to send
+	t.Close()
+	<-eventsDone
 
 	if len(summaryEvents) == 0 {
 		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
@@ -330,6 +353,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	for _, tURN := range upOpts.Target {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
+	for _, pack := range upOpts.PolicyPacks {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", pack))
+	}
+	for _, packConfig := range upOpts.PolicyPackConfigs {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", packConfig))
+	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
 	}
@@ -340,7 +369,10 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
 	}
 	if upOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", upOpts.Color))
+	}
+	if upOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
@@ -361,12 +393,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, upOpts.ErrorProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 	}
@@ -376,7 +408,11 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, err
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if upOpts.ShowSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*upOpts.ShowSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, err
 	}
@@ -424,7 +460,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
 	}
 	if refreshOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", refreshOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", refreshOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -438,16 +474,25 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		refreshOpts.ProgressStreams,      /* additionalOutputs */
+		refreshOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if showSecrets := refreshOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
@@ -495,7 +540,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
 	}
 	if destroyOpts.Color != "" {
-		args = append(args, fmt.Sprintf("--color=%q", destroyOpts.Color))
+		args = append(args, fmt.Sprintf("--color=%s", destroyOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -509,16 +554,25 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(
+		ctx,
+		destroyOpts.ProgressStreams,      /* additionalOutputs */
+		destroyOpts.ErrorProgressStreams, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	historyOpts := []opthistory.Option{}
+	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -544,12 +598,24 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
-func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSummary, error) {
+func (s *Stack) History(ctx context.Context,
+	pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
-	args := []string{"stack", "history", "--json", "--show-secrets"}
+	var options opthistory.Options
+	for _, opt := range opts {
+		opt.ApplyOption(&options)
+	}
+	showSecrets := true
+	if options.ShowSecrets != nil {
+		showSecrets = *options.ShowSecrets
+	}
+	args := []string{"stack", "history", "--json"}
+	if showSecrets {
+		args = append(args, "--show-secrets")
+	}
 	if pageSize > 0 {
 		// default page=1 if unset when pageSize is set
 		if page < 1 {
@@ -558,7 +624,12 @@ func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSu
 		args = append(args, "--page-size", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
 	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutputs */, args...)
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutputs */
+		nil, /* additionalErrorOutputs */
+		args...,
+	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
@@ -635,6 +706,7 @@ func (s *Stack) Cancel(ctx context.Context) error {
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
 		nil, /* additionalOutput */
+		nil, /* additionalErrorOutput */
 		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
@@ -789,6 +861,7 @@ const secretSentinel = "[secret]"
 func (s *Stack) runPulumiCmdSync(
 	ctx context.Context,
 	additionalOutput []io.Writer,
+	additionalErrorOutput []io.Writer,
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
@@ -811,7 +884,14 @@ func (s *Stack) runPulumiCmdSync(
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
 
-	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
+	stdout, stderr, errCode, err := runPulumiCommandSync(
+		ctx,
+		s.Workspace().WorkDir(),
+		additionalOutput,
+		additionalErrorOutput,
+		env,
+		args...,
+	)
 	if err != nil {
 		return stdout, stderr, errCode, err
 	}
@@ -971,7 +1051,71 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
+func (s *languageRuntimeServer) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest,
+	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+	return nil
+}
+
+func (s *languageRuntimeServer) About(_ context.Context, _ *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+}
+
+func (s *languageRuntimeServer) GetProgramDependencies(
+	_ context.Context, _ *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
+}
+
+type fileWatcher struct {
+	Filename  string
+	tail      *tail.Tail
+	receivers []chan<- events.EngineEvent
+	done      chan bool
+}
+
+func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
+	t, err := tail.TailFile(path, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	done := make(chan bool)
+	go func(tailedLog *tail.Tail) {
+		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: line.Err}
+				}
+				continue
+			}
+			var e apitype.EngineEvent
+			err = json.Unmarshal([]byte(line.Text), &e)
+			if err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: err}
+				}
+				continue
+			}
+			for _, r := range receivers {
+				r <- events.EngineEvent{EngineEvent: e}
+			}
+		}
+		for _, r := range receivers {
+			close(r)
+		}
+		close(done)
+	}(t)
+	return &fileWatcher{
+		Filename:  t.Filename,
+		tail:      t,
+		receivers: receivers,
+		done:      done,
+	}, nil
+}
+
+func tailLogs(command string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create logdir")
@@ -986,11 +1130,20 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail
 	return t, nil
 }
 
-func cleanup(t *tail.Tail, channels []chan<- events.EngineEvent) {
-	logDir := filepath.Dir(t.Filename)
-	t.Cleanup()
-	os.RemoveAll(logDir)
-	for _, ch := range channels {
-		close(ch)
+func (fw *fileWatcher) Close() {
+	if fw.tail == nil {
+		return
 	}
+
+	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
+
+	// nolint: errcheck
+	fw.tail.StopAtEOF()
+	<-fw.done
+	logDir := filepath.Dir(fw.tail.Filename)
+	fw.tail.Cleanup()
+	os.RemoveAll(logDir)
+
+	// set to nil so we can safely close again in defer
+	fw.tail = nil
 }

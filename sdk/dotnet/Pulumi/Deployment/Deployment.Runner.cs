@@ -19,6 +19,7 @@ namespace Pulumi
         {
             private readonly IDeploymentInternal _deployment;
             private readonly ILogger _deploymentLogger;
+            private readonly RunnerOptions _options;
 
             /// <summary>
             /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
@@ -50,10 +51,11 @@ namespace Pulumi
                 }
             }
 
-            public Runner(IDeploymentInternal deployment, ILogger deploymentLogger)
+            public Runner(IDeploymentInternal deployment, ILogger deploymentLogger, RunnerOptions? options = null)
             {
                 _deployment = deployment;
                 _deploymentLogger = deploymentLogger;
+                _options = options ?? new RunnerOptions { IsInlineAutomationProgram = false };
             }
 
             Task<int> IRunner.RunAsync<TStack>(IServiceProvider serviceProvider)
@@ -165,9 +167,21 @@ namespace Pulumi
                 // If we logged any exceptions, then return with a
                 // special error code stating as such so that our host
                 // does not print out another set of errors.
-                return (loggedExceptionCount > 0)
+                var exitCode = (loggedExceptionCount > 0)
                     ? _processExitedAfterLoggingUserActionableMessage
                     : 1;
+
+                if (!_options.IsInlineAutomationProgram)
+                {
+                    // We set the exit code explicitly here in case users
+                    // do not bubble up the exit code themselves to
+                    // top-level entry point of the program (for non-inline deployments). 
+                    // For example when users `await Deployment.RunAsync()` 
+                    // instead of `return await Deployment.RunAsync()`
+                    Environment.ExitCode = exitCode;
+                }
+
+                return exitCode;
             }
 
             private async Task<bool> LogExceptionToErrorStream(Exception exception)

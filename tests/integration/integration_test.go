@@ -884,6 +884,29 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("large_resource/nodejs")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.CWD = os.TempDir()
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
+}
+
 //nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
@@ -901,7 +924,7 @@ func TestRotatePassphrase(t *testing.T) {
 
 	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
 
-	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
 	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
 	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
 
@@ -1122,7 +1145,7 @@ func TestPassphrasePrompting(t *testing.T) {
 	e.NoPassphrase = true
 	// Setting PULUMI_TEST_PASSPHRASE allows prompting (reading from stdin)
 	// even though the test won't be interactive.
-	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.SetEnvVars("PULUMI_TEST_PASSPHRASE=true")
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 

@@ -51,7 +51,7 @@ func main() {
 				securityGroup.Name,
 			},
 			Ami:      pulumi.String(ami.Id),
-			UserData: pulumi.String(fmt.Sprintf("%v%v%v", "#!/bin/bash\n", "echo \"Hello, World!\" > index.html\n", "nohup python -m SimpleHTTPServer 80 &\n")),
+			UserData: pulumi.String(fmt.Sprintf("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n")),
 		})
 		if err != nil {
 			return err

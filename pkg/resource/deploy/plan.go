@@ -10,6 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -198,8 +199,10 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 // ordered.
 type ResourcePlan struct {
 	Goal    *GoalPlan
-	Ops     []StepOp
+	Ops     []display.StepOp
 	Outputs resource.PropertyMap
+	// The random byte seed used for resource goal.
+	Seed []byte
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
@@ -476,7 +479,6 @@ func (rp *ResourcePlan) checkGoal(
 	programGoal *resource.Goal) error {
 
 	contract.Assert(programGoal != nil)
-	contract.Assert(newInputs != nil)
 	// rp.Goal may be nil, but if it isn't Type and Name should match
 	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
 	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)

@@ -21,7 +21,7 @@ import grpc
 from .. import log
 from .. import _types
 from ..invoke import InvokeOptions
-from ..runtime.proto import provider_pb2
+from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
@@ -29,28 +29,6 @@ from .sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .. import Resource, Inputs, Output
-
-# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
-# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
-# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
-# up causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s
-# provider.
-#
-# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
-# [2] https://github.com/mariospas/pulumi-kubernetes/issues/984
-#
-# This setting requires a platform-specific and python version-specific .so file called
-# `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is
-# released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
-# python programs using a new version.
-try:
-    from google.protobuf.pyext._message import (
-        SetAllowOversizeProtos,
-    )  # pylint: disable-msg=E0611
-
-    SetAllowOversizeProtos(True)
-except ImportError:
-    pass
 
 
 class InvokeResult:
@@ -111,7 +89,7 @@ def invoke(
             os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
         )
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(
+        req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
             args=inputs,
             provider=provider_ref,

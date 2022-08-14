@@ -15,9 +15,11 @@
 package provider
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -42,17 +44,36 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 	cmdutil.InitTracing(name, name, tracing)
 
 	// Read the non-flags args and connect to the engine.
+	var cancelChannel chan bool
 	args := flag.Args()
+	var host *HostClient
 	if len(args) == 0 {
+		// Start the provider in Attach mode
+	} else if len(args) == 1 {
+		var err error
+		host, err = NewHostClient(args[0])
+		if err != nil {
+			return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
+		}
+
+		// If we have a host cancel our cancellation context if it fails the healthcheck
+		ctx, cancel := context.WithCancel(context.Background())
+		// map the context Done channel to the rpcutil boolean cancel channel
+		cancelChannel = make(chan bool)
+		go func() {
+			<-ctx.Done()
+			close(cancelChannel)
+		}()
+		err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
+		if err != nil {
+			return fmt.Errorf("could not start health check host RPC server: %w", err)
+		}
+	} else {
 		return errors.New("fatal: could not connect to host RPC; missing argument")
-	}
-	host, err := NewHostClient(args[0])
-	if err != nil {
-		return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
-	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			prov, proverr := provMaker(host)
 			if proverr != nil {

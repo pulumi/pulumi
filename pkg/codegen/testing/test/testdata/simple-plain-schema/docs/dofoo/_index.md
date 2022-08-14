@@ -17,94 +17,159 @@ no_edit_this_page: true
 
 ## Using doFoo {#using}
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>doFoo<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">DoFooArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">DoFooResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>do_foo<span class="p">(</span><span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Foo]</span> = None<span class="p">,</span>
            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>DoFooResult</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>DoFoo<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">DoFooArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">DoFooResult</a></span>, error)</span
 ></code></pre></div>
 
 &gt; Note: This function is named `DoFoo` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">DoFoo </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">DoFooResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">DoFooArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">DoFooResult</a></span>> </span>doFoo<span class="p">(</span><span class="nx">DoFooArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> example:doFoo
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_csharp">
-<a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_go">
-<a href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="foo_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_nodejs">
-<a href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_python">
-<a href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="foo_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#foo">Property Map</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -125,213 +190,329 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_csharp">
-<a href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_csharp">
-<a href="#c_csharp" style="color: inherit; text-decoration: inherit;">C</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_csharp" style="color: inherit; text-decoration: inherit;">C</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_csharp">
-<a href="#e_csharp" style="color: inherit; text-decoration: inherit;">E</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_csharp" style="color: inherit; text-decoration: inherit;">E</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
-<a href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_csharp">
-<a href="#d_csharp" style="color: inherit; text-decoration: inherit;">D</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_csharp" style="color: inherit; text-decoration: inherit;">D</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_csharp">
-<a href="#f_csharp" style="color: inherit; text-decoration: inherit;">F</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_csharp" style="color: inherit; text-decoration: inherit;">F</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_go">
-<a href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_go">
-<a href="#c_go" style="color: inherit; text-decoration: inherit;">C</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_go" style="color: inherit; text-decoration: inherit;">C</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_go">
-<a href="#e_go" style="color: inherit; text-decoration: inherit;">E</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_go" style="color: inherit; text-decoration: inherit;">E</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
-<a href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_go">
-<a href="#d_go" style="color: inherit; text-decoration: inherit;">D</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_go" style="color: inherit; text-decoration: inherit;">D</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_go">
-<a href="#f_go" style="color: inherit; text-decoration: inherit;">F</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_go" style="color: inherit; text-decoration: inherit;">F</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="a_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_java" style="color: inherit; text-decoration: inherit;">a</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="c_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_java" style="color: inherit; text-decoration: inherit;">c</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Integer</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="e_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_java" style="color: inherit; text-decoration: inherit;">e</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="b_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_java" style="color: inherit; text-decoration: inherit;">b</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="d_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_java" style="color: inherit; text-decoration: inherit;">d</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Integer</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="f_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_java" style="color: inherit; text-decoration: inherit;">f</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_nodejs">
-<a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_nodejs">
-<a href="#c_nodejs" style="color: inherit; text-decoration: inherit;">c</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_nodejs" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_nodejs">
-<a href="#e_nodejs" style="color: inherit; text-decoration: inherit;">e</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_nodejs" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
-<a href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_nodejs">
-<a href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_nodejs">
-<a href="#f_nodejs" style="color: inherit; text-decoration: inherit;">f</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_nodejs" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_python">
-<a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_python">
-<a href="#c_python" style="color: inherit; text-decoration: inherit;">c</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_python" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_python">
-<a href="#e_python" style="color: inherit; text-decoration: inherit;">e</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_python" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
-<a href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_python">
-<a href="#d_python" style="color: inherit; text-decoration: inherit;">d</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_python" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_python">
-<a href="#f_python" style="color: inherit; text-decoration: inherit;">f</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_python" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="a_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_yaml" style="color: inherit; text-decoration: inherit;">a</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="c_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_yaml" style="color: inherit; text-decoration: inherit;">c</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="e_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_yaml" style="color: inherit; text-decoration: inherit;">e</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="b_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_yaml" style="color: inherit; text-decoration: inherit;">b</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="d_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_yaml" style="color: inherit; text-decoration: inherit;">d</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="f_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_yaml" style="color: inherit; text-decoration: inherit;">f</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

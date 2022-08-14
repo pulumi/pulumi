@@ -16,6 +16,7 @@
 package passphrase
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -58,7 +59,9 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 	}
 
 	decrypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
+	// symmetricCrypter does not use ctx, safe to pass context.Background()
+	ignoredCtx := context.Background()
+	decrypted, err := decrypter.DecryptValue(ignoredCtx, state[indexN(state, ":", 2)+1:])
 	if err != nil || decrypted != "pulumi" {
 		return nil, ErrIncorrectPassphrase
 	}
@@ -254,7 +257,10 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 
 	// Encrypt a message and store it with the salt so we can test if the password is correct later.
 	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-	msg, err := crypter.EncryptValue("pulumi")
+
+	// symmetricCrypter does not use ctx, safe to use context.Background()
+	ignoredCtx := context.Background()
+	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
 	contract.AssertNoError(err)
 
 	// Encode the salt as the passphrase secrets manager state.
@@ -275,7 +281,7 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
 			return phrase, false, nil
 		}
-		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phraseFile != "" {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
@@ -314,12 +320,17 @@ func newLockedPasspharseSecretsManager(state localSecretsManagerState) secrets.M
 
 type errorCrypter struct{}
 
-func (ec *errorCrypter) EncryptValue(_ string) (string, error) {
+func (ec *errorCrypter) EncryptValue(ctx context.Context, _ string) (string, error) {
 	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (ec *errorCrypter) DecryptValue(_ string) (string, error) {
+func (ec *errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
 	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
+		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
+}
+
+func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) (map[string]string, error) {
+	return nil, errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }

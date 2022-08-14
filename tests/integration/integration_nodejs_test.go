@@ -314,8 +314,8 @@ func TestStackParenting(t *testing.T) {
 					case "g":
 						assert.Equal(t, urns["f"], res.Parent)
 					case "default":
-						// Default providers are not parented.
-						assert.Equal(t, "", string(res.Parent))
+						// Default providers should have the stack as a parent.
+						assert.Equal(t, stackRes.URN, res.Parent)
 					default:
 						t.Fatalf("unexpected name %s", res.URN.Name())
 					}
@@ -734,7 +734,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 			secretsProvider := stackInfo.Deployment.SecretsProviders
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
@@ -747,7 +747,6 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 
 			_, ok = out["ciphertext"]
 			assert.True(t, ok)
-			os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 		},
 	})
 
@@ -1116,6 +1115,12 @@ func TestGetResourceNode(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
+
+			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
 		},
 	})
 }

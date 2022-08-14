@@ -106,9 +106,13 @@ func (e *Environment) SetBackend(backend string) {
 	e.Backend = backend
 }
 
-// SetBackend sets the backend to use for commands in this environment.
-func (e *Environment) SetEnvVars(env []string) {
-	e.Env = env
+// SetEnvVars appends to the list of environment variables.
+// According to https://pkg.go.dev/os/exec#Cmd.Env:
+//     If Env contains duplicate environment keys, only the last
+//     value in the slice for each duplicate key is used.
+// So later values take precedence.
+func (e *Environment) SetEnvVars(env ...string) {
+	e.Env = append(e.Env, env...)
 }
 
 // ImportDirectory copies a folder into the test environment.

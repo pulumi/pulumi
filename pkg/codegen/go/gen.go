@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -120,6 +121,34 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 	return strings.ToLower(mod)
 }
 
+// A threadsafe cache for sharing between invocations of GenerateProgram.
+type Cache struct {
+	externalPackages map[*schema.Package]map[string]*pkgContext
+	m                *sync.Mutex
+}
+
+var globalCache = NewCache()
+
+func NewCache() *Cache {
+	return &Cache{
+		externalPackages: map[*schema.Package]map[string]*pkgContext{},
+		m:                new(sync.Mutex),
+	}
+}
+
+func (c *Cache) lookupContextMap(pkg *schema.Package) (map[string]*pkgContext, bool) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	m, ok := c.externalPackages[pkg]
+	return m, ok
+}
+
+func (c *Cache) setContextMap(pkg *schema.Package, m map[string]*pkgContext) {
+	c.m.Lock()
+	defer c.m.Unlock()
+	c.externalPackages[pkg] = m
+}
+
 type pkgContext struct {
 	pkg             *schema.Package
 	mod             string
@@ -135,6 +164,9 @@ type pkgContext struct {
 	schemaNames codegen.StringSet
 	names       codegen.StringSet
 	renamed     map[string]string
+
+	// A mapping between external packages and their bound contents.
+	externalPackages *Cache
 
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
@@ -218,6 +250,20 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	return strings.ReplaceAll(importPath+"."+name, "-provider", "")
 }
 
+// Resolve a enum type to its name.
+func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
+	if !pkg.isExternalReference(t) {
+		return pkg.tokenToEnum(t.Token)
+	}
+
+	extPkgCtx, _ := pkg.contextForExternalReference(t)
+	enumType := extPkgCtx.tokenToEnum(t.Token)
+	if !strings.Contains(enumType, ".") {
+		enumType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, enumType)
+	}
+	return enumType
+}
+
 func (pkg *pkgContext) tokenToEnum(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -234,6 +280,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
 	name = Title(name)
+
 	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
@@ -251,7 +298,15 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	if mod == "" {
 		mod = components[0]
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + name
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+	}
+
+	return importPath + "." + name
 }
 
 func (pkg *pkgContext) tokenToResource(tok string) string {
@@ -360,7 +415,7 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token) + "Input"
+		return pkg.resolveEnumType(t) + "Input"
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
@@ -422,7 +477,7 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		return pkg.argsTypeImpl(t.ElementType)
 	case *schema.EnumType:
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token)
+		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		en := pkg.argsTypeImpl(t.ElementType)
 		return strings.TrimSuffix(en, "Args") + "Array"
@@ -484,6 +539,20 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 			if isNilType(input.ElementType) || elem == "pulumi.Input" {
 				return elem
 			}
+			if pkg.isExternalReference(input.ElementType) {
+				_, details := pkg.contextForExternalReference(input.ElementType)
+
+				switch input.ElementType.(type) {
+				case *schema.ObjectType:
+					if !details.ptrInput {
+						return "*" + elem
+					}
+				case *schema.EnumType:
+					if !(details.ptrInput || details.input) {
+						return "*" + elem
+					}
+				}
+			}
 			if argsType {
 				return elem + "Ptr"
 			}
@@ -501,7 +570,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		}
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
-		return pkg.tokenToEnum(t.Token)
+		return pkg.resolveEnumType(t)
 	case *schema.ArrayType:
 		typ := "[]"
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
@@ -562,22 +631,37 @@ func (pkg *pkgContext) typeString(t schema.Type) string {
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
-	isExternal, _ := pkg.isExternalReferenceWithPackage(t)
+	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
 	return isExternal
 }
 
-func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package) {
+// Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
+func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
+	isExternal bool, extPkg *schema.Package, token string) {
+	var err error
 	switch typ := t.(type) {
 	case *schema.ObjectType:
 		isExternal = typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
 		if isExternal {
-			extPkg = typ.Package
+			extPkg, err = typ.PackageReference.Definition()
+			contract.AssertNoError(err)
+			token = typ.Token
 		}
 		return
 	case *schema.ResourceType:
 		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
 		if isExternal {
-			extPkg = typ.Resource.Package
+			extPkg, err = typ.Resource.PackageReference.Definition()
+			contract.AssertNoError(err)
+			token = typ.Token
+		}
+		return
+	case *schema.EnumType:
+		isExternal = pkg.pkg != nil && typ.Package != pkg.pkg
+		if isExternal {
+			extPkg, err = typ.PackageReference.Definition()
+			contract.AssertNoError(err)
+			token = typ.Token
 		}
 		return
 	}
@@ -592,7 +676,7 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	if !pkg.isExternalReference(t) {
 		return pkg.tokenToResource(t.Token)
 	}
-	extPkgCtx := pkg.contextForExternalReference(t)
+	extPkgCtx, _ := pkg.contextForExternalReference(t)
 	resType := extPkgCtx.tokenToResource(t.Token)
 	if !strings.Contains(resType, ".") {
 		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, resType)
@@ -605,18 +689,21 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
-	if !pkg.isExternalReference(t) {
+	isExternal, _, _ := pkg.isExternalReferenceWithPackage(t)
+
+	if !isExternal {
 		name := pkg.tokenToType(t.Token)
 		if t.IsInputShape() {
 			return name + "Args"
 		}
 		return name
 	}
-	return pkg.contextForExternalReference(t).typeString(t)
+	extPkg, _ := pkg.contextForExternalReference(t)
+	return extPkg.typeString(t)
 }
 
-func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
-	isExternal, extPkg := pkg.isExternalReferenceWithPackage(t)
+func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, typeDetails) {
+	isExternal, extPkg, token := pkg.isExternalReferenceWithPackage(t)
 	contract.Assert(isExternal)
 
 	var goInfo GoPackageInfo
@@ -646,13 +733,20 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
 		}
 	}
 
-	extPkgCtx := &pkgContext{
-		pkg:              extPkg,
-		importBasePath:   goInfo.ImportBasePath,
-		pkgImportAliases: pkgImportAliases,
-		modToPkg:         goInfo.ModuleToPackage,
+	var maps map[string]*pkgContext
+
+	if extMap, ok := pkg.externalPackages.lookupContextMap(extPkg); ok {
+		maps = extMap
+	} else {
+		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
+		pkg.externalPackages.setContextMap(extPkg, maps)
 	}
-	return extPkgCtx
+	extPkgCtx := maps[""]
+	extPkgCtx.pkgImportAliases = pkgImportAliases
+	extPkgCtx.externalPackages = pkg.externalPackages
+	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
+
+	return extPkgCtx, *maps[mod].detailsForType(t)
 }
 
 // outputTypeImpl does the meat of the generation of output type names from schema types. This function should only be
@@ -665,9 +759,22 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		if isNilType(t.ElementType) || elem == "pulumi.AnyOutput" {
 			return elem
 		}
+		if pkg.isExternalReference(t.ElementType) {
+			_, details := pkg.contextForExternalReference(t.ElementType)
+			switch t.ElementType.(type) {
+			case *schema.ObjectType:
+				if !details.ptrOutput {
+					return "*" + elem
+				}
+			case *schema.EnumType:
+				if !(details.ptrOutput || details.output) {
+					return "*" + elem
+				}
+			}
+		}
 		return strings.TrimSuffix(elem, "Output") + "PtrOutput"
 	case *schema.EnumType:
-		return pkg.tokenToEnum(t.Token) + "Output"
+		return pkg.resolveEnumType(t) + "Output"
 	case *schema.ArrayType:
 		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
 		if en == "pulumi.Any" {
@@ -1202,7 +1309,7 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 		if t != "" {
 			value = fmt.Sprintf("%s(%s)", t, value)
 		}
-		fmt.Fprintf(w, "\targs.%s = %s\n", Title(p.Name), value)
+		fmt.Fprintf(w, "\t%s.%s = %s\n", object, Title(p.Name), value)
 	} else if indirectAssign {
 		tmpName := camel(p.Name) + "_"
 		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
@@ -1224,7 +1331,7 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
+func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property) error {
 	defaults := []*schema.Property{}
 	for _, p := range properties {
@@ -1240,8 +1347,8 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 
 	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name), false)
 	fmt.Fprintf(w, "func (val *%[1]s) %[2]s() *%[1]s {\n", name, ProvideDefaultsMethodName)
-	fmt.Fprint(w, "if val == nil {\n return nil\n}\n")
-	fmt.Fprint(w, "tmp := *val\n")
+	fmt.Fprintf(w, "if val == nil {\n return nil\n}\n")
+	fmt.Fprintf(w, "tmp := *val\n")
 	for _, p := range defaults {
 		if p.DefaultValue != nil {
 			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
@@ -1255,16 +1362,17 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
 			var member string
 			if codegen.IsNOptionalInput(p.Type) {
-				f := fmt.Sprintf("func(v %[1]s) %[1]s { return v.%[2]s*() }", name, funcName)
-				member = fmt.Sprintf("tmp.%[1]s.ApplyT(%[2]s)\n", Title(p.Name), f)
+				// f := fmt.Sprintf("func(v %[1]s) %[1]s { return *v.%[2]s() }", name, funcName)
+				// member = fmt.Sprintf("tmp.%[1]s.ApplyT(%[2]s)", Title(p.Name), f)
 			} else {
-				member = fmt.Sprintf("tmp.%[1]s.%[2]s()\n", Title(p.Name), funcName)
+				member = fmt.Sprintf("tmp.%[1]s.%[2]s()", Title(p.Name), funcName)
+				sigil := ""
+				if p.IsRequired() {
+					sigil = "*"
+				}
+				pkg.assignProperty(w, p, "tmp", sigil+member, false)
 			}
-			sigil := ""
-			if p.IsRequired() {
-				sigil = "*"
-			}
-			pkg.assignProperty(w, p, "tmp", sigil+member, false)
+			fmt.Fprintln(w)
 		} else {
 			panic(fmt.Sprintf("Property %s[%s] should not be in the default list", p.Name, p.Type.String()))
 		}
@@ -1284,7 +1392,7 @@ func (pkg *pkgContext) provideDefaultsFuncName(typ schema.Type) string {
 	return ProvideDefaultsMethodName
 }
 
-func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) {
+func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) error {
 	contract.Assert(t.IsInputShape())
 
 	name := pkg.tokenToType(t.Token)
@@ -1293,9 +1401,16 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	if details.input {
 		pkg.genInputInterface(w, name)
 
-		pkg.genInputArgsStruct(w, name+"Args", t)
+		inputName := name + "Args"
+		pkg.genInputArgsStruct(w, inputName, t)
+		if !pkg.disableObjectDefaults {
+			if err := pkg.genObjectDefaultFunc(w, inputName, t.Properties); err != nil {
+				return err
+			}
+		}
 
-		genInputImplementation(w, name, name+"Args", name, details.ptrInput)
+		genInputImplementation(w, name, inputName, name, details.ptrInput)
+
 	}
 
 	// Generate the pointer input.
@@ -1330,6 +1445,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false)
 	}
+	return nil
 }
 
 func (pkg *pkgContext) genInputArgsStruct(w io.Writer, typeName string, t *schema.ObjectType) {
@@ -1613,6 +1729,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			originalValue := fmt.Sprintf("args.%s.%s()", Title(p.Name), toOutputMethod)
 			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
 				originalValue, resolvedType, optionalDeref, name, outputType)
+			if p.Plain {
+				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", Title(p.Name))
+			}
 
 			if !p.IsRequired() {
 				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
@@ -1742,8 +1861,18 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "// The set of arguments for constructing a %s resource.\n", name)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
+		typ := p.Type
+		if p.Plain {
+			typ = codegen.MapOptionalType(typ, func(typ schema.Type) schema.Type {
+				if input, ok := typ.(*schema.InputType); ok {
+					return input.ElementType
+				}
+				return typ
+			})
+		}
+
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(p.Type))
+		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(typ))
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -1906,6 +2035,22 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	// Emit the resource output type.
 	genOutputType(w, name, "*"+name, false)
 
+	// Emit chaining methods for the resource output type.
+	for _, p := range r.Properties {
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+		outputType := pkg.outputType(p.Type)
+
+		propName := Title(p.Name)
+		switch strings.ToLower(p.Name) {
+		case "elementtype", "issecret":
+			propName = "Get" + propName
+		}
+		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
+		fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s { return v.%s }).(%s)\n",
+			name, outputType, Title(p.Name), outputType)
+		fmt.Fprintf(w, "}\n\n")
+	}
+
 	if generateResourceContainerTypes && !r.IsProvider {
 		genArrayOutput(w, name, "*"+name)
 		genMapOutput(w, name, "*"+name)
@@ -2018,7 +2163,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		fnInputsName := pkg.functionArgsTypeName(f)
 		pkg.genPlainType(w, fnInputsName, f.Inputs.Comment, "", f.Inputs.Properties)
 		if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
-			if err := pkg.genPlainObjectDefaultFunc(w, fnInputsName, f.Inputs.Properties); err != nil {
+			if err := pkg.genObjectDefaultFunc(w, fnInputsName, f.Inputs.Properties); err != nil {
 				return err
 			}
 		}
@@ -2028,7 +2173,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		fnOutputsName := pkg.functionResultTypeName(f)
 		pkg.genPlainType(w, fnOutputsName, f.Outputs.Comment, "", f.Outputs.Properties)
 		if codegen.IsProvideDefaultsFuncRequired(f.Outputs) && !pkg.disableObjectDefaults {
-			if err := pkg.genPlainObjectDefaultFunc(w, fnOutputsName, f.Outputs.Properties); err != nil {
+			if err := pkg.genObjectDefaultFunc(w, fnOutputsName, f.Outputs.Properties); err != nil {
 				return err
 			}
 		}
@@ -2073,11 +2218,16 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 		ApplyT(func(v interface{}) (${fn}Result, error) {
 			args := v.(${fn}Args)
 			r, err := ${fn}(ctx, &args, opts...)
-			return *r, err
+			var s ${fn}Result
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(${outputType})
 }
 
 `
+
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprintf(w, code)
@@ -2222,12 +2372,14 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) error {
 	plainName := pkg.tokenToType(obj.Token)
 	pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
 	if !pkg.disableObjectDefaults {
-		if err := pkg.genPlainObjectDefaultFunc(w, plainName, obj.Properties); err != nil {
+		if err := pkg.genObjectDefaultFunc(w, plainName, obj.Properties); err != nil {
 			return err
 		}
 	}
 
-	pkg.genInputTypes(w, obj.InputShape, pkg.detailsForType(obj))
+	if err := pkg.genInputTypes(w, obj.InputShape, pkg.detailsForType(obj)); err != nil {
+		return err
+	}
 	pkg.genOutputTypes(w, genOutputTypesArgs{t: obj})
 	return nil
 }
@@ -2269,7 +2421,13 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Array"
+
+		// We make sure that subsidiary elements are marked for array as well
+		details := pkg.detailsForType(t)
+		pkg.detailsForType(t.ElementType).markArray(details.arrayInput, details.arrayOutput)
+
 		names = pkg.addSuffixesToName(t, elementTypeName)
+		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
 		if schema.IsPrimitiveType(t.ElementType) {
@@ -2277,9 +2435,15 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedType
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Map"
+
+		// We make sure that subsidiary elements are marked for map as well
+		details := pkg.detailsForType(t)
+		pkg.detailsForType(t.ElementType).markMap(details.mapInput, details.mapOutput)
+
 		names = pkg.addSuffixesToName(t, elementTypeName)
+		defer pkg.collectNestedCollectionTypes(types, t.ElementType)
 	default:
-		contract.Failf("unexpected type %T in collectNestedCollectionTypes", t)
+		return
 	}
 	nti, ok := types[elementTypeName]
 	if !ok {
@@ -2344,9 +2508,9 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	switch t := codegen.UnwrapType(typ).(type) {
 	case *schema.ArrayType:
-		return pkg.nestedTypeToType(t.ElementType)
+		return pkg.nestedTypeToType(t.ElementType) + "Array"
 	case *schema.MapType:
-		return pkg.nestedTypeToType(t.ElementType)
+		return pkg.nestedTypeToType(t.ElementType) + "Map"
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
 	}
@@ -2505,12 +2669,30 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 		return
 	}
 	seen[t] = struct{}{}
+
+	// Import an external type with `token` and return true.
+	// If the type is not external, return false.
+	importExternal := func(token string) bool {
+		if pkg.isExternalReference(t) {
+			extPkgCtx, _ := pkg.contextForExternalReference(t)
+			mod := extPkgCtx.tokenToPackage(token)
+			imp := path.Join(extPkgCtx.importBasePath, mod)
+			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+			return true
+		}
+		return false
+	}
+
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.InputType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.EnumType:
+		if importExternal(t.Token) {
+			break
+		}
+
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
@@ -2521,13 +2703,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	case *schema.MapType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.ObjectType:
-		if pkg.isExternalReference(t) {
-			extPkgCtx := pkg.contextForExternalReference(t)
-			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(extPkgCtx.importBasePath, mod)
-			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+		if importExternal(t.Token) {
 			break
 		}
+
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
 			p := path.Join(pkg.importBasePath, mod)
@@ -2536,15 +2715,14 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 		if recurse {
 			for _, p := range t.Properties {
-				pkg.getTypeImports(p.Type, recurse, importsAndAliases, seen)
+				// We only recurse one level into objects, since we need to name
+				// their properties but not the properties named in their
+				// properties.
+				pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 			}
 		}
 	case *schema.ResourceType:
-		if pkg.isExternalReference(t) {
-			extPkgCtx := pkg.contextForExternalReference(t)
-			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(extPkgCtx.importBasePath, mod)
-			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
+		if importExternal(t.Token) {
 			break
 		}
 		mod := pkg.tokenToPackage(t.Token)
@@ -2612,15 +2790,14 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 		for _, p := range member {
 			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 		}
-	case *schema.EnumType: // Just need pulumi sdk, see below
 	default:
 		return
 	}
 }
 
 func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAliases map[string]string) {
-	fmt.Fprintf(w, "// *** WARNING: this file was generated by %v. ***\n", pkg.tool)
-	fmt.Fprintf(w, "// *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
+	fmt.Fprintf(w, "// Code generated by %v DO NOT EDIT.\n", pkg.tool)
+	fmt.Fprintf(w, "// *** WARNING: Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 
 	var pkgName string
 	if pkg.mod == "" {
@@ -2751,6 +2928,15 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 	}
 
+	// If there are any internal dependencies, include them as blank imports.
+	if topLevelModule {
+		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
+			for _, dep := range goInfo.InternalDependencies {
+				imports[dep] = "_"
+			}
+		}
+	}
+
 	pkg.genHeader(w, []string{"fmt"}, imports)
 
 	var provider *schema.Resource
@@ -2849,8 +3035,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs *Cache) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
+
+	// Share the cache
+	if externalPkgs == nil {
+		externalPkgs = globalCache
+	}
+
 	getPkg := func(mod string) *pkgContext {
 		pack, ok := packages[mod]
 		if !ok {
@@ -2872,6 +3064,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
 				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 				disableObjectDefaults:         goInfo.DisableObjectDefaults,
+				externalPackages:              externalPkgs,
 			}
 			packages[mod] = pack
 		}
@@ -2929,6 +3122,14 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool) {
 		for _, p := range props {
+			if obj, ok := codegen.UnwrapType(p.Type).(*schema.ObjectType); ok && p.Plain {
+				pkg := getPkgFromToken(obj.Token)
+				details := pkg.detailsForType(obj)
+				details.mark(true, false)
+				input = true
+				_, hasOptional := p.Type.(*schema.OptionalType)
+				details.markPtr(hasOptional, false)
+			}
 			populateDetailsForTypes(seen, p.Type, !p.IsRequired() || optional, input, output)
 		}
 	}
@@ -3276,7 +3477,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, globalCache)
 
 	// emit each package
 	var pkgMods []string
@@ -3350,7 +3551,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo)
+	packages := generatePackageContextMap(tool, pkg, goPkgInfo, NewCache())
 
 	// emit each package
 	var pkgMods []string
@@ -3404,11 +3605,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			buffer := &bytes.Buffer{}
 			if pkg.pkg.Description != "" {
 				printComment(buffer, pkg.pkg.Description, false)
-				fmt.Fprintf(buffer, "//\n")
 			} else {
 				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", pkg.pkg.Name)
-				fmt.Fprintf(buffer, "//\n")
 			}
+			fmt.Fprintf(buffer, "\n")
 			fmt.Fprintf(buffer, "package %s\n", name)
 
 			setFile(path.Join(mod, "doc.go"), buffer.String())
@@ -3498,6 +3698,25 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				pkg.getImports(t, importsAndAliases)
 				hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
 			}
+
+			sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
+			for k := range knownTypes {
+				sortedKnownTypes = append(sortedKnownTypes, k)
+			}
+			sort.Slice(sortedKnownTypes, func(i, j int) bool {
+				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
+			})
+
+			collectionTypes := map[string]*nestedTypeInfo{}
+			for _, t := range sortedKnownTypes {
+				pkg.collectNestedCollectionTypes(collectionTypes, t)
+			}
+
+			// All collection types have Outputs
+			if len(collectionTypes) > 0 {
+				hasOutputs = true
+			}
+
 			var goImports []string
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
@@ -3512,22 +3731,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 					return nil, err
 				}
 				delete(knownTypes, t)
-			}
-
-			sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
-			for k := range knownTypes {
-				sortedKnownTypes = append(sortedKnownTypes, k)
-			}
-			sort.Slice(sortedKnownTypes, func(i, j int) bool {
-				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
-			})
-
-			collectionTypes := map[string]*nestedTypeInfo{}
-			for _, t := range sortedKnownTypes {
-				switch typ := t.(type) {
-				case *schema.ArrayType, *schema.MapType:
-					pkg.collectNestedCollectionTypes(collectionTypes, typ)
-				}
 			}
 
 			types := pkg.genNestedCollectionTypes(buffer, collectionTypes)
@@ -3668,14 +3871,20 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) {
 	const template string = `
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
 func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
-	defaults := []pulumi.%[1]sOption{%[2]s}
+	defaults := []pulumi.%[1]sOption{%[2]s%[3]s}
 
 	return append(defaults, opts...)
 }
 `
 	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
+	version := ""
+	if info := pkg.pkg.Language["go"]; info != nil {
+		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version != nil {
+			version = fmt.Sprintf(", pulumi.Version(%q)", pkg.pkg.Version.String())
+		}
+	}
 	for _, typ := range []string{"Resource", "Invoke"} {
-		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL)
+		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, version)
 		contract.AssertNoError(err)
 	}
 }

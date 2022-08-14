@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -600,6 +600,17 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		}
 	}
 
+	// Track pending create operations from the base snapshot
+	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+	// because these must require user intervention to be cleared or resolved.
+	if base := sm.baseSnapshot; base != nil {
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
+		}
+	}
+
 	manifest := deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -612,8 +623,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap := sm.snap()
-	if err := snap.NormalizeURNReferences(); err != nil {
+	snap, err := sm.snap().NormalizeURNReferences()
+	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 	if err := sm.persister.Save(snap); err != nil {
