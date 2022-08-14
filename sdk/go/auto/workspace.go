@@ -116,6 +116,7 @@ type Workspace interface {
 type ConfigValue struct {
 	Value  string
 	Secret bool
+	IsPath bool
 }
 
 // ConfigMap is a map of ConfigValue used by Pulumi programs.

@@ -110,7 +110,7 @@ namespace Pulumi
                 return "";
 
             // This will eventually be parsed by go's ParseDuration function here:
-            // https://github.com/pulumi/pulumi/blob/06d4dde8898b2a0de2c3c7ff8e45f97495b89d82/pkg/resource/deploy/source_eval.go#L967
+            // https://github.com/mariospas/pulumi/blob/06d4dde8898b2a0de2c3c7ff8e45f97495b89d82/pkg/resource/deploy/source_eval.go#L967
             //
             // So we generate a legal duration as allowed by
             // https://golang.org/pkg/time/#ParseDuration.

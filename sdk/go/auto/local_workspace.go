@@ -160,9 +160,16 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 		secretArg = "--secret"
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx,
-		"config", "set", key, secretArg, "--stack", stackName,
-		"--non-interactive", "--", val.Value)
+	var args []string
+	if val.IsPath {
+		args = []string{"config", "set", secretArg, "--path", key, "--stack", stackName,
+			"--non-interactive", "--", val.Value}
+	} else {
+		args = []string{"config", "set", secretArg, key, "--stack", stackName,
+			"--non-interactive", "--", val.Value}
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}

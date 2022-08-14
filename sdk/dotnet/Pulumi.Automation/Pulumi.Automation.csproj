@@ -8,7 +8,7 @@
     <Company>Pulumi Corp.</Company>
     <Description>Pulumi Automation API, the programmatic interface for driving Pulumi programs without the CLI.</Description>
     <PackageProjectUrl>https://www.pulumi.com</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/pulumi/pulumi</RepositoryUrl>
+    <RepositoryUrl>https://github.com/mariospas/pulumi</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageIcon>pulumi_logo_64x64.png</PackageIcon>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

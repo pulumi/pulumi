@@ -20,7 +20,7 @@
 // plugins that will be parsed with this function, it uses the
 // following code:
 //
-// https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/plugin/plugin.go#L281
+// https://github.com/mariospas/pulumi/blob/master/sdk/go/common/resource/plugin/plugin.go#L281
 //
 // The code can prepend `--logtostderr` and verbosity e.g. `-v=9`
 // arguments. We ignore these for the moment.

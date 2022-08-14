@@ -15,7 +15,7 @@ namespace Pulumi.Tests.Mocks.Issue7422
     /// placed `Task.Delay` and `Thread.Sleep`, but is in principle
     /// non-deterministic.
     ///
-    /// See https://github.com/pulumi/pulumi/issues/7422
+    /// See https://github.com/mariospas/pulumi/issues/7422
     /// </summary>
     class Issue7422Stack : Stack
     {

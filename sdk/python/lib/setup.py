@@ -27,7 +27,7 @@ setup(name='pulumi',
       description='Pulumi\'s Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',
-      url='https://github.com/pulumi/pulumi',
+      url='https://github.com/mariospas/pulumi',
       license='Apache 2.0',
       packages=find_packages(exclude=("test*",)),
       package_data={

@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/sdk/v3
+module github.com/mariospas/pulumi/sdk/v3
 
 go 1.17
 
@@ -46,43 +46,8 @@ require (
 )
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
-	github.com/acomagu/bufpipe v1.0.3 // indirect
-	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
-	github.com/go-git/gcfg v1.5.0 // indirect
-	github.com/go-git/go-billy/v5 v5.3.1 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
-)
-
-require (
-	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emirpasic/gods v1.12.0 // indirect
-	github.com/fatih/color v1.9.0 // indirect
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.4.1 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.4.0
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
-	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-runewidth v0.0.8 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/opentracing/basictracer-go v1.0.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	go.uber.org/atomic v1.6.0 // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/text v0.3.3 // indirect
-	google.golang.org/genproto v0.0.0-20200608115520-7c474a2e3482 // indirect
+	github.com/pulumi/pulumi/sdk/v3 v3.37.3-0.20220812232055-044aa8acac0d
 	google.golang.org/protobuf v1.24.0
-	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 )

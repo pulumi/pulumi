@@ -986,7 +986,7 @@ class Resource:
         if pkg and opts.provider:
             if pkg in opts_providers:
                 message = f"There is a conflict between the `provider` field ({pkg}) and a member of the `providers` map"
-                depreciation = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                depreciation = "This will become an error by the end of July 2022. See https://github.com/mariospas/pulumi/issues/8799 for more details"
                 warnings.warn(f"{message} for resource {t}. " + depreciation)
                 log.warn(f"{message}. {depreciation}", resource=self)
             else:

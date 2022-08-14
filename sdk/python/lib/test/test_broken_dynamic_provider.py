@@ -14,7 +14,7 @@
 
 """Verifies that type-related mistakes in dynamic providers result in
 exceptions and not hangs. Regresses
-https://github.com/pulumi/pulumi/issues/6981
+https://github.com/mariospas/pulumi/issues/6981
 
 """
 
