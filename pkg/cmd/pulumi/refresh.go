@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/AlecAivazis/survey.v1"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -155,8 +156,6 @@ func newRefreshCmd() *cobra.Command {
 					"cannot set both --skip-pending-creates and --clear-pending-creates"))
 			}
 
-			pendingCreates := hasPendingCreates(snap)
-
 			// First we handle explicit create->imports we were given
 			if importPendingCreates != nil {
 				if result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
@@ -168,16 +167,45 @@ func newRefreshCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 				}
-				pendingCreates = hasPendingCreates(snap)
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
-			if interactive && pendingCreates && !skipPendingCreates {
+			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
 
-				if result := editPendingCreates(s, opts.Display, yes, func(op resource.Operation) (*resource.Operation, error) {
+				if result := editPendingCreates(s, opts.Display, yes,
+					func(op resource.Operation) (*resource.Operation, error) {
+						option := "none"
+						if err := survey.AskOne(&survey.Select{
+							Message: fmt.Sprintf("Options for pending create of %s", op.Resource.URN),
+							Options: []string{"import", "clear", "skip"},
+						}, &option, nil); err != nil {
+							return nil, fmt.Errorf("no option selected")
+						}
 
-					return nil, fmt.Errorf("unimplemented")
-				}); result != nil {
+						switch option {
+						case "import":
+							var id string
+							if err := survey.AskOne(&survey.Input{
+								Message: "ID: ",
+							}, &id, func(ans interface{}) error {
+								if ans, ok := ans.(string); ok && ans == "" {
+									return fmt.Errorf("ID cannot be empty")
+								}
+								return nil
+							}); err != nil {
+								return nil, err
+							}
+							op.Resource.ID = resource.ID(id)
+							op.Type = resource.OperationTypeImporting
+							return &op, nil
+						case "clear":
+							return nil, nil
+						case "skip":
+							return &op, nil
+						default:
+							return nil, fmt.Errorf("unknown option: %q", option)
+						}
+					}); result != nil {
 					return result
 				}
 
@@ -185,11 +213,10 @@ func newRefreshCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 				}
-				pendingCreates = hasPendingCreates(snap)
 			}
 
-			// We remove
-			if clearPendingCreates && pendingCreates {
+			// We remove remaining pending creates
+			if clearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
 				result := editPendingCreates(s, opts.Display, yes, func(op resource.Operation) (*resource.Operation, error) {
 					return nil, nil
