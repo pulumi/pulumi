@@ -56,7 +56,7 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
 					return dotnet.GenerateProject(directory, project, p, nil)
 				}
-			case langGo:
+			case "go":
 				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
 					return gogen.GenerateProject(directory, project, p, nil)
 				}
@@ -64,7 +64,7 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
 					return nodejs.GenerateProject(directory, project, p, nil)
 				}
-			case langPython:
+			case "python":
 				projectGenerator = func(directory string, project workspace.Project, p *pcl.Program) error {
 					return python.GenerateProject(directory, project, p, nil)
 				}

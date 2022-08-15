@@ -41,6 +41,7 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
+	externalCache       *Cache
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -49,6 +50,7 @@ type generator struct {
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
+	ExternalCache              *Cache
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -63,8 +65,13 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if opts.ExternalCache == nil {
+		opts.ExternalCache = globalCache
+	}
+
 	for _, pkg := range packageDefs {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
 	}
 
 	g := &generator{
@@ -79,6 +86,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		externalCache:       opts.ExternalCache,
 	}
 
 	// Apply any generate options.
@@ -252,7 +260,7 @@ require (
 
 var packageContexts sync.Map
 
-func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
+func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkgContext {
 	if v, ok := packageContexts.Load(pkg); ok {
 		return v.(map[string]*pkgContext)
 	}
@@ -265,7 +273,7 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	v := generatePackageContextMap(tool, pkg, goPkgInfo)
+	v := generatePackageContextMap(tool, pkg, goPkgInfo, cache)
 	packageContexts.Store(pkg, v)
 	return v
 }
@@ -361,6 +369,10 @@ func (g *generator) collectImports(
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
+			if pkg == "pulumi" && mod == "providers" {
+				pkg = name
+				mod = ""
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				panic(err)
@@ -603,6 +615,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
+	if pkg == "pulumi" && mod == "providers" {
+		pkg = typ
+		mod = ""
+		typ = "Provider"
+	}
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
 	}

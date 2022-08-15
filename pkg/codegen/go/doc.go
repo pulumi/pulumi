@@ -98,7 +98,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
 func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
-	d.packages = generatePackageContextMap(tool, pkg, goInfo)
+	d.packages = generatePackageContextMap(tool, pkg, goInfo, nil)
 }
 
 // GetPropertyName returns the property name specific to Go.

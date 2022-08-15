@@ -153,7 +153,6 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
 		h.runtime, proj, info.Pwd, info.Program, len(results))
 	return results, nil
-
 }
 
 // Run executes a program in the language runtime for planning or deployment purposes.  If
@@ -283,4 +282,62 @@ func (h *langhost) InstallDependencies(directory string) error {
 		h.runtime, directory)
 	return nil
 
+}
+
+func (h *langhost) About() (AboutInfo, error) {
+	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
+	resp, err := h.client.About(h.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)
+
+		return AboutInfo{}, rpcError
+	}
+
+	result := AboutInfo{
+		Executable: resp.Executable,
+		Version:    resp.Version,
+		Metadata:   resp.Metadata,
+	}
+
+	logging.V(7).Infof("langhost[%v].About() success", h.runtime)
+	return result, nil
+}
+
+func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error) {
+	proj := string(info.Proj.Name)
+	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(proj=%s,pwd=%s,program=%s,transitiveDependencies=%t)",
+		h.runtime, proj, info.Pwd, info.Program, transitiveDependencies)
+
+	logging.V(7).Infof("%s executing", prefix)
+	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
+		Project:                proj,
+		Pwd:                    info.Pwd,
+		Program:                info.Program,
+		TransitiveDependencies: transitiveDependencies,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", prefix, rpcError)
+
+		return nil, rpcError
+	}
+
+	var results []DependencyInfo
+	for _, dep := range resp.GetDependencies() {
+		var version semver.Version
+		if v := dep.Version; v != "" {
+			version, err = semver.ParseTolerant(v)
+			if err != nil {
+				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", dep.Name, v)
+			}
+		}
+		results = append(results, DependencyInfo{
+			Name:    dep.Name,
+			Version: version,
+		})
+	}
+
+	logging.V(7).Infof("%s success: #versions=%d", prefix, len(results))
+	return results, nil
 }

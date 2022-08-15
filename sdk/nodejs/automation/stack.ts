@@ -194,12 +194,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -319,12 +317,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -418,9 +414,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -476,9 +470,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -643,6 +635,27 @@ Event: ${line}\n${e.toString()}`);
     }
 }
 
+function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
+    if (opts.color) {
+        args.push("--color", opts.color);
+    }
+    if (opts.logFlow) {
+        args.push("--logflow");
+    }
+    if (opts.logVerbosity) {
+        args.push("--verbose", opts.logVerbosity.toString());
+    }
+    if (opts.logToStdErr) {
+        args.push("--logtostderr");
+    }
+    if (opts.tracing) {
+        args.push("--tracing", opts.tracing);
+    }
+    if (opts.debug) {
+        args.push("--debug");
+    }
+}
+
 /**
  * Returns a stack name formatted with the greatest possible specificity:
  * org/project/stack or user/project/stack
@@ -760,10 +773,25 @@ export interface DestroyResult {
     summary: UpdateSummary;
 }
 
+export interface GlobalOpts {
+    /** Colorize output. */
+    color?: "always" | "never" | "raw" | "auto";
+    /** Flow log settings to child processes (like plugins) */
+    logFlow?: boolean;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    logVerbosity?: number;
+    /** Log to stderr instead of to files */
+    logToStdErr?: boolean;
+    /** Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Print detailed debugging output during resource operations */
+    debug?: boolean;
+}
+
 /**
  * Options controlling the behavior of a Stack.up() operation.
  */
-export interface UpOptions {
+export interface UpOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -777,7 +805,6 @@ export interface UpOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
-    color?: "always" | "never" | "raw" | "auto";
     /**
      * Plan specifies the path to an update plan to use for the update.
      */
@@ -791,7 +818,7 @@ export interface UpOptions {
 /**
  * Options controlling the behavior of a Stack.preview() operation.
  */
-export interface PreviewOptions {
+export interface PreviewOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -815,7 +842,7 @@ export interface PreviewOptions {
 /**
  * Options controlling the behavior of a Stack.refresh() operation.
  */
-export interface RefreshOptions {
+export interface RefreshOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -831,7 +858,7 @@ export interface RefreshOptions {
 /**
  * Options controlling the behavior of a Stack.destroy() operation.
  */
-export interface DestroyOptions {
+export interface DestroyOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     target?: string[];

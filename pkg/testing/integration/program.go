@@ -318,6 +318,13 @@ type ProgramTestOptions struct {
 
 	//List of Auxiliary Stacks to be used in the test.
 	Aux []AuxiliaryStack
+	// Array of dependencies which come from local packages.
+	LocalDependencies []LocalDependency
+}
+
+type LocalDependency struct {
+	Package string
+	Path    string
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {

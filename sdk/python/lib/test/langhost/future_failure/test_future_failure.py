@@ -20,7 +20,7 @@ class TestFutureFailure(LanghostTest):
         self.run_test(
             program=path.join(self.base_path(), "future_failure"),
             expected_resource_count=1,
-            expected_error="Program exited with non-zero exit code: 1")
+            expected_bail=True)
 
     def invoke(self, _ctx, token, args, provider, _version):
         self.assertEqual("test:index:MyFunction", token)
