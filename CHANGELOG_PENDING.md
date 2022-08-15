@@ -3,9 +3,8 @@
 - [cli] Updated to the latest version of go-git.
   [#10330](https://github.com/pulumi/pulumi/pull/10330)
 
-- [sdk]
-   - merge python error message and traceback into single error message.
-   [#10348](https://github.com/pulumi/pulumi/pull/10348)
+- [sdk] Merge python error message and traceback into single error message.
+  [#10348](https://github.com/pulumi/pulumi/pull/10348)
 
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
@@ -14,7 +13,10 @@
   automation API to run with the equivalent of CLI arguments `--logflow`, `--verbose`,
   `--logtostderr`, `--tracing` and `--debug`
   [#10338](https://github.com/pulumi/pulumi/pull/10338)
-  
+
+- [cli] Allow `pulumi refresh` to interactively resolve pending creates.
+  [#10394](https://github.com/pulumi/pulumi/pull/10394)
+
 - [yaml] [Updates Pulumi YAML to v0.5.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.4)
 
 - [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
