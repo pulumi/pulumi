@@ -27,6 +27,8 @@ import (
 	"strings"
 	"unicode"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
@@ -36,11 +38,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/yamlutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -246,46 +248,44 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := readProject()
+	proj, path, err := readProjectWithPath()
+	root := filepath.Dir(path)
 	if err != nil {
 		return err
 	}
-	proj.Name = tokens.PackageName(args.name)
-	proj.Description = &args.description
-	proj.Template = nil
-	// Workaround for python, most of our templates don't specify a venv but we want to use one
-	if proj.Runtime.Name() == "python" {
-		// If the template does give virtualenv use it, else default to "venv"
-		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
-			proj.Runtime.SetOption("virtualenv", "venv")
-		}
-	}
 
-	if err = workspace.SaveProject(proj); err != nil {
-		return fmt.Errorf("saving project: %w", err)
-	}
-
-	if proj.Runtime.Name() == "yaml" {
-		projFile := filepath.Join(root, "Pulumi.yaml")
-		f, err := ioutil.ReadFile(projFile)
+	if filepath.Ext(path) == ".yaml" {
+		filedata, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("could not find Pulumi.yaml: %w", err)
+			return err
 		}
-		appendFileName := "Pulumi.yaml.append"
-		appendFile := filepath.Join(root, appendFileName)
-		m, err := ioutil.ReadFile(appendFile)
-		if err == nil {
-			f = append(f, m...)
-			err = ioutil.WriteFile(projFile, f, 0600)
-			if err != nil {
-				return fmt.Errorf("failed to write %s: %w", projFile, err)
-			}
-			err = os.Remove(appendFile)
-			if err != nil {
-				return fmt.Errorf("could not remove %s: %w", appendFileName, err)
-			}
-		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("could not get %s: %w", appendFileName, err)
+		var workspaceDocument yaml.Node
+		err = yaml.Unmarshal(filedata, &workspaceDocument)
+		if err != nil {
+			return err
+		}
+
+		err = yamlutil.Insert(&workspaceDocument, "name", args.name)
+		if err != nil {
+			return err
+		}
+		err = yamlutil.Insert(&workspaceDocument, "description", args.description)
+		if err != nil {
+			return err
+		}
+		err = yamlutil.Delete(&workspaceDocument, "template")
+		if err != nil {
+			return err
+		}
+
+		projFile, err := yaml.Marshal(workspaceDocument.Content[0])
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(path, projFile, 0600)
+		if err != nil {
+			return err
 		}
 	}
 

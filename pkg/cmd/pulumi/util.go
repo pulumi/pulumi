@@ -471,6 +471,18 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
+	proj, path, err := readProjectWithPath()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return proj, filepath.Dir(path), nil
+}
+
+// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If the
+// project is successfully detected and read, it is returned along with the path to its containing
+// directory, which will be used as the root of the project's Pulumi program.
+func readProjectWithPath() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -489,7 +501,7 @@ func readProject() (*workspace.Project, string, error) {
 		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
