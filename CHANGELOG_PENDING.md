@@ -22,6 +22,12 @@
 - [cli] `pulumi about` now queries language plugins for information, rather than having hardcoded language logic.
   [#10392](https://github.com/pulumi/pulumi/pull/10392)
 
+- [sdk/python] Deprecate PULUMI_TEST_MODE
+  [#10400](https://github.com/pulumi/pulumi/pull/10400)
+
+- [sdk/nodejs] Deprecate PULUMI_TEST_MODE
+  [#10400](https://github.com/pulumi/pulumi/pull/10400)
+
 ### Bug Fixes
 
 - [cli] Paginate template options

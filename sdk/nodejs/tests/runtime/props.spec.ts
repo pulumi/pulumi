@@ -189,7 +189,6 @@ describe("runtime", () => {
 
             for (const test of generateTests()) {
                 it(`marshals ${test.name} correctly`, asyncTest(async () => {
-                    runtime._setTestModeEnabled(true);
                     runtime._setFeatureSupport("outputValues", true);
 
                     const inputs = { value: test.input };
@@ -234,8 +233,6 @@ describe("runtime", () => {
             assert.strictEqual(result.boolEnum, TestBoolEnum.One);
         }));
         it("marshals secrets correctly", asyncTest(async () => {
-            runtime._setTestModeEnabled(true);
-
             const inputs: Inputs = {
                 "secret1": secret(1),
                 "secret2": secret(undefined),
