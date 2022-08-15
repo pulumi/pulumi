@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -146,11 +148,6 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
-			snap, err := s.Snapshot(commandContext())
-			if err != nil {
-				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
-			}
-
 			if skipPendingCreates && clearPendingCreates {
 				return result.FromError(fmt.Errorf(
 					"cannot set both --skip-pending-creates and --clear-pending-creates"))
@@ -158,69 +155,39 @@ func newRefreshCmd() *cobra.Command {
 
 			// First we handle explicit create->imports we were given
 			if importPendingCreates != nil {
-				if result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
+				if unused, result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
 					return result
+				} else if len(unused) > 1 {
+					fmt.Fprintf(opts.Display.Stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
+						"warning: the following urns did not correspond to a pending create",
+						"warning", colors.SpecWarning)),
+						strings.Join(unused, "\"\n- \""))
+				} else if len(unused) > 0 {
+					fmt.Fprintf(opts.Display.Stderr, "%s: \"%s\" did not correspond to a pending create\n",
+						opts.Display.Color.Colorize(colors.Highlight("warning", "warning", colors.SpecWarning)),
+						unused[0])
 				}
-				// pendingCreates changes the snapshot, but doesn't effect the variable
-				// `snap`. To ensure it is still accurate, we fetch it again.
-				snap, err = s.Snapshot(commandContext())
-				if err != nil {
-					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
-				}
+			}
+
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
-
-				if result := editPendingCreates(s, opts.Display, yes,
-					func(op resource.Operation) (*resource.Operation, error) {
-						option := "none"
-						if err := survey.AskOne(&survey.Select{
-							Message: fmt.Sprintf("Options for pending create of %s", op.Resource.URN),
-							Options: []string{"import", "clear", "skip"},
-						}, &option, nil); err != nil {
-							return nil, fmt.Errorf("no option selected")
-						}
-
-						switch option {
-						case "import":
-							var id string
-							if err := survey.AskOne(&survey.Input{
-								Message: "ID: ",
-							}, &id, func(ans interface{}) error {
-								if ans, ok := ans.(string); ok && ans == "" {
-									return fmt.Errorf("ID cannot be empty")
-								}
-								return nil
-							}); err != nil {
-								return nil, err
-							}
-							op.Resource.ID = resource.ID(id)
-							op.Type = resource.OperationTypeImporting
-							return &op, nil
-						case "clear":
-							return nil, nil
-						case "skip":
-							return &op, nil
-						default:
-							return nil, fmt.Errorf("unknown option: %q", option)
-						}
-					}); result != nil {
+				if result := filterMapPendingCreates(s, opts.Display, yes, interactiveFixPendingCreate); result != nil {
 					return result
-				}
-
-				snap, err = s.Snapshot(commandContext())
-				if err != nil {
-					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 				}
 			}
 
 			// We remove remaining pending creates
 			if clearPendingCreates && hasPendingCreates(snap) {
 				// Remove all pending creates.
-				result := editPendingCreates(s, opts.Display, yes, func(op resource.Operation) (*resource.Operation, error) {
+				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
 					return nil, nil
-				})
+				}
+				result := filterMapPendingCreates(s, opts.Display, yes, removePendingCreates)
 				if result != nil {
 					return result
 				}
@@ -324,7 +291,7 @@ func newRefreshCmd() *cobra.Command {
 		"Clear all pending creates, dropping them from the state")
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
-		"A list of [urn,id] pairs to import. Each urn must be a pending create")
+		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
@@ -345,7 +312,9 @@ func newRefreshCmd() *cobra.Command {
 
 type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 
-func editPendingCreates(s backend.Stack, opts display.Options, yes bool, f editPendingOp) result.Result {
+// filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
+// is deleted. Otherwise is is replaced by the returned op.
+func filterMapPendingCreates(s backend.Stack, opts display.Options, yes bool, f editPendingOp) result.Result {
 	return totalStateEdit(s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
@@ -369,23 +338,33 @@ func editPendingCreates(s backend.Stack, opts display.Options, yes bool, f editP
 	})
 }
 
-func pendingCreatesToImports(s backend.Stack, yes bool, opts display.Options, importToCreates []string) result.Result {
+// Apply the CLI args from --import-pending-creates [[URN ID]...]. If an error was found,
+// it is returned. The list of URNs that were not mapped to a pending create is also
+// returned.
+func pendingCreatesToImports(s backend.Stack, yes bool, opts display.Options,
+	importToCreates []string) ([]string, result.Result) {
 	// A map from URN to ID
 	if len(importToCreates)%2 != 0 {
-		return result.Errorf("each URN must be followed by an ID: found an odd number of entries")
+		return nil, result.Errorf("each URN must be followed by an ID: found an odd number of entries")
 	}
 	alteredOps := make(map[string]string, len(importToCreates)/2)
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	return editPendingCreates(s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	result := filterMapPendingCreates(s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
 			op.Type = resource.OperationTypeImporting
+			delete(alteredOps, string(op.Resource.URN))
 			return &op, nil
 		}
 		return &op, nil
 	})
+	unusedKeys := make([]string, len(alteredOps))
+	for k := range alteredOps {
+		unusedKeys = append(unusedKeys, k)
+	}
+	return unusedKeys, result
 }
 
 func hasPendingCreates(snap *deploy.Snapshot) bool {
@@ -395,4 +374,38 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 		}
 	}
 	return false
+}
+
+func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
+	option := "none"
+	if err := survey.AskOne(&survey.Select{
+		Message: fmt.Sprintf("Options for pending create of %s", op.Resource.URN),
+		Options: []string{"import", "clear", "skip"},
+	}, &option, nil); err != nil {
+		return nil, fmt.Errorf("no option selected")
+	}
+
+	switch option {
+	case "import":
+		var id string
+		if err := survey.AskOne(&survey.Input{
+			Message: "ID: ",
+		}, &id, func(ans interface{}) error {
+			if ans, ok := ans.(string); ok && ans == "" {
+				return fmt.Errorf("ID cannot be empty")
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		op.Resource.ID = resource.ID(id)
+		op.Type = resource.OperationTypeImporting
+		return &op, nil
+	case "clear":
+		return nil, nil
+	case "skip":
+		return &op, nil
+	default:
+		return nil, fmt.Errorf("unknown option: %q", option)
+	}
 }
