@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -155,15 +156,19 @@ func newRefreshCmd() *cobra.Command {
 
 			// First we handle explicit create->imports we were given
 			if importPendingCreates != nil {
+				stderr := opts.Display.Stderr
+				if stderr == nil {
+					stderr = os.Stderr
+				}
 				if unused, result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
 					return result
 				} else if len(unused) > 1 {
-					fmt.Fprintf(opts.Display.Stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
+					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
 						"warning: the following urns did not correspond to a pending create",
 						"warning", colors.SpecWarning)),
 						strings.Join(unused, "\"\n- \""))
 				} else if len(unused) > 0 {
-					fmt.Fprintf(opts.Display.Stderr, "%s: \"%s\" did not correspond to a pending create\n",
+					fmt.Fprintf(stderr, "%s: \"%s\" did not correspond to a pending create\n",
 						opts.Display.Color.Colorize(colors.Highlight("warning", "warning", colors.SpecWarning)),
 						unused[0])
 				}
