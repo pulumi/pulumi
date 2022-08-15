@@ -139,17 +139,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func localNodejs(localProjects map[string]map[string]string, pkg string) (string, bool) {
-	local, ok := localProjects[pkg]
-	if !ok {
-		return "", false
-	}
-	py, ok := local["nodejs"]
-	return py, ok
-}
-
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
-	localProjects map[string]map[string]string) error {
+	localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -167,13 +158,13 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	files["Pulumi.yaml"] = projectBytes
 
 	if localProjects == nil {
-		localProjects = map[string]map[string]string{}
+		localProjects = map[string]string{}
 	}
 
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
 	pulumi := `@pulumi/pulumi": "^3.0.0`
-	if localPulumi, ok := localNodejs(localProjects, "pulumi"); ok {
+	if localPulumi, ok := localProjects["pulumi"]; ok {
 		pulumi = fmt.Sprintf("@pulumi/pulumi\": \"file:%s", localPulumi)
 	}
 	packageJSON.WriteString(fmt.Sprintf(`{
@@ -202,7 +193,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		if localPackage, ok := localNodejs(localProjects, p.Name); ok {
+		if localPackage, ok := localProjects[p.Name]; ok {
 			localPackage = filepath.Join(localPackage)
 			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, fmt.Sprintf("file:%s", localPackage)))
 		} else if p.Version != nil {

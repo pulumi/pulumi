@@ -129,7 +129,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 }
 
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
-	localProjects map[string]map[string]string) error {
+	localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -155,17 +155,13 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
 	gomod.WriteString("go 1.17\n")
-	for name, sdks := range localProjects {
+	for name, sdk := range localProjects {
 		if name == "go" {
-			sdk, ok := sdks["go"]
-			if ok {
-				gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi/sdk/v3/go => %s\n", sdk))
-			}
+			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi/sdk/v3/go => %s\n", sdk))
 
 		} else {
 			for _, p := range packages {
-				sdk, ok := sdks["go"]
-				if p.Name == name && ok {
+				if p.Name == name {
 					gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi-%s/sdk/go => %s\n", name, sdk))
 				}
 			}

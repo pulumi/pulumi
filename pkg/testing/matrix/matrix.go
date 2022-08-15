@@ -90,6 +90,14 @@ func Test(t *testing.T, opts TestOptions) {
 		dir = filepath.Join(pwd, dir)
 	}
 
+	for _, plugin := range opts.Plugins {
+		for _, cmd := range plugin.Build {
+			cmd.Dir = dir
+			err := cmd.Run()
+			assert.NoError(t, err)
+		}
+	}
+
 	projfile := filepath.Join(dir, workspace.ProjectFile+".yaml")
 	proj, err := workspace.LoadProject(projfile)
 	assert.NoError(t, err)
@@ -140,10 +148,6 @@ func Test(t *testing.T, opts TestOptions) {
 	localProjects["pulumi"] = opts.PulumiSDKs
 	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {
-		for _, cmd := range plugin.Build {
-			err := cmd.Run()
-			assert.NoError(t, err)
-		}
 		root := fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
 		localProjects[plugin.Name] = map[string]string{
 			NODEJS: filepath.Join(root, "nodejs", "bin"),
@@ -300,13 +304,29 @@ func Test(t *testing.T, opts TestOptions) {
 		var projectGenerator projectGeneratorFunc
 		switch langOpt.Language {
 		case DOTNET:
-			projectGenerator = dotnetgen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]map[string]string) error {
+
+				return dotnetgen.GenerateProject(directory, project, p, getLanguage(localProjects, "dotnet"))
+			}
 		case GO:
-			projectGenerator = gogen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]map[string]string) error {
+
+				return gogen.GenerateProject(directory, project, p, getLanguage(localProjects, "go"))
+			}
 		case NODEJS:
-			projectGenerator = jsgen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]map[string]string) error {
+
+				return jsgen.GenerateProject(directory, project, p, getLanguage(localProjects, "nodejs"))
+			}
 		case PYTHON:
-			projectGenerator = pygen.GenerateProject
+			projectGenerator = func(directory string, project workspace.Project,
+				p *pcl.Program, localProjects map[string]map[string]string) error {
+
+				return pygen.GenerateProject(directory, project, p, getLanguage(localProjects, "python"))
+			}
 		case JAVA:
 			projectGenerator = func(directory string, project workspace.Project,
 				p *pcl.Program, localProjects map[string]map[string]string) error {
@@ -408,4 +428,15 @@ func NodeConfigurePkg(pkg *schema.Package) error {
 	nodePkg.RespectSchemaVersion = true
 	pkg.Language["nodejs"] = nodePkg
 	return nil
+}
+
+func getLanguage(localProjects map[string]map[string]string, language string) map[string]string {
+	langProjects := map[string]string{}
+	for name, sdks := range localProjects {
+		sdk, ok := sdks[language]
+		if ok {
+			langProjects[name] = sdk
+		}
+	}
+	return langProjects
 }
