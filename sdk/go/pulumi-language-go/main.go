@@ -45,19 +45,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func findProgram(binary string) (*exec.Cmd, error) {
 
-	// the user can explicitly opt in to using a binary executable by specifying
-	// runtime.options.binary in the Pulumi.yaml
-	program, err := executable.FindExecutable(binary)
-	if err != nil {
-		return nil, errors.Wrap(err, "expected to find prebuilt executable")
-	}
-	return exec.Command(program), nil
 }
 
 func compileProgram(outfile string) (string, error) {
@@ -343,10 +337,19 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
+	// the user can explicitly opt in to using a binary executable by specifying
+	// runtime.options.binary in the Pulumi.yaml
 	program := host.binary
 	if program == "" {
+		// user did not specify a binary and we will compile and run the binary on-demand
 		logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
-		file, err := ioutil.TempFile(".", ".pulumi.out")
+
+		pulumiHome, err := workspace.GetPulumiHomeDir()
+		if err != nil {
+			return nil, err
+		}
+
+		file, err := ioutil.TempFile(pulumiHome, ".pulumi.out")
 		if err != nil {
 			return nil, errors.Wrap(err, "error in compiling Go")
 		}
@@ -356,7 +359,12 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		compileProgram(program)
 	}
 
-	cmd, err := findProgram(program)
+	bin, err := executable.FindExecutable(program)
+	if err != nil {
+		return nil, errors.Wrap(err, "expected to find prebuilt executable")
+	}
+
+	cmd := exec.Command(bin)
 	if err != nil {
 		return nil, err
 	}
