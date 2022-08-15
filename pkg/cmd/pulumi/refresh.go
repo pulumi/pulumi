@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -50,6 +51,11 @@ func newRefreshCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
+
+	// Flags for handling pending creates
+	var skipPendingCreates bool
+	var clearPendingCreates bool
+	var importPendingCreates *[]string
 
 	var cmd = &cobra.Command{
 		Use:   "refresh",
@@ -137,6 +143,60 @@ func newRefreshCmd() *cobra.Command {
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
+			}
+
+			if skipPendingCreates && clearPendingCreates {
+				return result.FromError(fmt.Errorf(
+					"cannot set both --skip-pending-creates and --clear-pending-creates"))
+			}
+
+			pendingCreates := hasPendingCreates(snap)
+
+			// First we handle explicit create->imports we were given
+			if importPendingCreates != nil {
+				if result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
+					return result
+				}
+				// pendingCreates changes the snapshot, but doesn't effect the variable
+				// `snap`. To ensure it is still accurate, we fetch it again.
+				snap, err = s.Snapshot(commandContext())
+				if err != nil {
+					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
+				}
+				pendingCreates = hasPendingCreates(snap)
+			}
+
+			// We then allow the user to interactively handle remaining pending creates.
+			if interactive && pendingCreates && !skipPendingCreates {
+
+				if result := editPendingCreates(s, opts.Display, yes, func(op resource.Operation) (*resource.Operation, error) {
+
+					return nil, fmt.Errorf("unimplemented")
+				}); result != nil {
+					return result
+				}
+
+				snap, err = s.Snapshot(commandContext())
+				if err != nil {
+					return result.FromError(fmt.Errorf("getting snapshot: %w", err))
+				}
+				pendingCreates = hasPendingCreates(snap)
+			}
+
+			// We remove
+			if clearPendingCreates && pendingCreates {
+				// Remove all pending creates.
+				result := editPendingCreates(s, opts.Display, yes, func(op resource.Operation) (*resource.Operation, error) {
+					return nil, nil
+				})
+				if result != nil {
+					return result
+				}
 			}
 
 			targetUrns := []resource.URN{}
@@ -228,6 +288,17 @@ func newRefreshCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
 
+	// Flags for pending creates
+	cmd.PersistentFlags().BoolVar(
+		&skipPendingCreates, "skip-pending-creates", false,
+		"Skip importing pending creates in interactive mode")
+	cmd.PersistentFlags().BoolVar(
+		&clearPendingCreates, "clear-pending-creates", false,
+		"Clear all pending creates, dropping them from the state")
+	importPendingCreates = cmd.PersistentFlags().StringArray(
+		"import-pending-creates", nil,
+		"A list of [urn,id] pairs to import. Each urn must be a pending create")
+
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
@@ -243,4 +314,58 @@ func newRefreshCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
+}
+
+type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
+
+func editPendingCreates(s backend.Stack, opts display.Options, yes bool, f editPendingOp) result.Result {
+	return totalStateEdit(s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+		var pending []resource.Operation
+		for _, op := range snap.PendingOperations {
+			if op.Resource == nil {
+				return fmt.Errorf("found operation without resource")
+			}
+			if op.Type != resource.OperationTypeCreating {
+				pending = append(pending, op)
+				continue
+			}
+			op, err := f(op)
+			if err != nil {
+				return err
+			}
+			if op != nil {
+				pending = append(pending, *op)
+			}
+		}
+		snap.PendingOperations = pending
+		return nil
+	})
+}
+
+func pendingCreatesToImports(s backend.Stack, yes bool, opts display.Options, importToCreates []string) result.Result {
+	// A map from URN to ID
+	if len(importToCreates)%2 != 0 {
+		return result.Errorf("each URN must be followed by an ID: found an odd number of entries")
+	}
+	alteredOps := make(map[string]string, len(importToCreates)/2)
+	for i := 0; i < len(importToCreates); i += 2 {
+		alteredOps[importToCreates[i]] = importToCreates[i+1]
+	}
+	return editPendingCreates(s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
+			op.Resource.ID = resource.ID(id)
+			op.Type = resource.OperationTypeImporting
+			return &op, nil
+		}
+		return &op, nil
+	})
+}
+
+func hasPendingCreates(snap *deploy.Snapshot) bool {
+	for _, op := range snap.PendingOperations {
+		if op.Type == resource.OperationTypeCreating {
+			return true
+		}
+	}
+	return false
 }

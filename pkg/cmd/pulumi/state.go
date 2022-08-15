@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -144,6 +145,11 @@ func runTotalStateEdit(
 	if err != nil {
 		return result.FromError(err)
 	}
+	return totalStateEdit(s, showPrompt, opts, operation)
+}
+
+func totalStateEdit(s backend.Stack, showPrompt bool, opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	snap, err := s.Snapshot(commandContext())
 	if err != nil {
 		return result.FromError(err)
