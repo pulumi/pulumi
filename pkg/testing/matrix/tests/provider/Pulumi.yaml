@@ -8,11 +8,3 @@ resources:
     properties:
       create: echo hello
       dir: ../
-
-plugins:
-  languages:
-    - name: yaml
-      path: bin
-  providers:
-    - name: command
-      path: bin

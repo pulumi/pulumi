@@ -15,6 +15,8 @@
 package matrix
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -25,6 +27,10 @@ import (
 
 func TestAll(t *testing.T) {
 	t.Parallel()
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	opts := []TestOptions{
 		{
 			Program: &i.ProgramTestOptions{
@@ -70,10 +76,8 @@ func TestAll(t *testing.T) {
 					Name: "command",
 					Kind: workspace.ResourcePlugin,
 					Build: []exec.Cmd{
-						*exec.Command("rm", "-rf", "~/.pulumi/plugins/resource-command-v0.4.1"),
 						*exec.Command("pulumi", "plugin", "install", "resource", "command", "0.4.1"),
-						*exec.Command("mv", "~/.pulumi/plugins/resource-command-v0.4.1/pulumi-resource-command", "./tests/provider/bin"),
-						*exec.Command("rm", "-rf", "~/.pulumi/plugins/resource-command-v0.4.1"),
+						*exec.Command("cp", "~/.pulumi/plugins/resource-command-v0.4.1/pulumi-resource-command", fmt.Sprintf("%s/tests/provider/bin", pwd)),
 					},
 					Bin:     "./bin",
 					Version: semver.MustParse("0.4.1"),
@@ -82,10 +86,8 @@ func TestAll(t *testing.T) {
 					Name: "yaml",
 					Kind: workspace.LanguagePlugin,
 					Build: []exec.Cmd{
-						*exec.Command("rm", "-rf", "~/.pulumi/plugins/language-yaml-v0.5.4"),
 						*exec.Command("pulumi", "plugin", "install", "language", "yaml", "0.5.4"),
-						*exec.Command("mv", "~/.pulumi/plugins/language-yaml-v0.5.4/pulumi-language-yaml", "./tests/provider/bin"),
-						*exec.Command("rm", "-rf", "~/.pulumi/plugins/language-yaml-v0.5.4"),
+						*exec.Command("cp", "~/.pulumi/plugins/language-yaml-v0.5.4/pulumi-language-yaml", fmt.Sprintf("%s/tests/provider/bin", pwd)),
 					},
 					Bin:     "./bin",
 					Version: semver.MustParse("0.5.4"),

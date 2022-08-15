@@ -92,9 +92,12 @@ func Test(t *testing.T, opts TestOptions) {
 
 	for _, plugin := range opts.Plugins {
 		for _, cmd := range plugin.Build {
-			cmd.Dir = dir
-			err := cmd.Run()
+			std, err := cmd.CombinedOutput()
 			assert.NoError(t, err)
+			if err != nil {
+				fmt.Printf("%s\n", std)
+				fmt.Printf("%s\n", err)
+			}
 		}
 	}
 
@@ -113,40 +116,10 @@ func Test(t *testing.T, opts TestOptions) {
 
 	var pclProgram *pcl.Program
 
-	//check if *.pp file exists in dir
-	files, err := ioutil.ReadDir(dir)
-	assert.NoError(t, err)
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".pp") {
-			parser := syntax.NewParser()
-			//get file content
-			ppFilePath := filepath.Join(dir, file.Name())
-			contents, err := ioutil.ReadFile(ppFilePath)
-			assert.NoError(t, err)
-			err = parser.ParseFile(bytes.NewReader(contents), ppFilePath)
-			assert.NoError(t, err)
-			program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(ctx.Host))
-			assert.NoError(t, err)
-			assert.Empty(t, diags)
-			pclProgram = program
-
-		}
-	}
-	if pclProgram == nil {
-		loader := schema.NewPluginLoader(ctx.Host)
-		_, pclProgram, err = yamlgen.Eject(pwd, loader)
-		assert.NoError(t, err)
-	}
-	assert.NotNil(t, proj)
-	assert.NotNil(t, pclProgram)
-
 	localProjects := map[string]map[string]string{}
 
-	//Here we are overriding the plugin links to use our own plugin links.
-	proj.Plugins = &workspace.Plugins{}
+	plugins := &workspace.Plugins{}
 
-	localProjects["pulumi"] = opts.PulumiSDKs
-	//Execute build commands and add plugin links
 	for _, plugin := range opts.Plugins {
 		root := fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
 		localProjects[plugin.Name] = map[string]string{
@@ -166,13 +139,47 @@ func Test(t *testing.T, opts TestOptions) {
 
 		switch plugin.Kind {
 		case workspace.AnalyzerPlugin:
-			proj.Plugins.Analyzers = append(proj.Plugins.Analyzers, p)
+			plugins.Analyzers = append(proj.Plugins.Analyzers, p)
 		case workspace.LanguagePlugin:
-			proj.Plugins.Languages = append(proj.Plugins.Languages, p)
+			plugins.Languages = append(proj.Plugins.Languages, p)
 		case workspace.ResourcePlugin:
-			proj.Plugins.Providers = append(proj.Plugins.Providers, p)
+			plugins.Providers = append(proj.Plugins.Providers, p)
 		}
 	}
+
+	host, err := plugin.NewDefaultHost(ctx, nil, false, plugins)
+	assert.NoError(t, err)
+
+	//check if *.pp file exists in dir
+	files, err := ioutil.ReadDir(dir)
+	assert.NoError(t, err)
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".pp") {
+			parser := syntax.NewParser()
+			//get file content
+			ppFilePath := filepath.Join(dir, file.Name())
+			contents, err := ioutil.ReadFile(ppFilePath)
+			assert.NoError(t, err)
+			err = parser.ParseFile(bytes.NewReader(contents), ppFilePath)
+			assert.NoError(t, err)
+			program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(host))
+			assert.NoError(t, err)
+			assert.Empty(t, diags)
+			pclProgram = program
+
+		}
+	}
+	if pclProgram == nil {
+		loader := schema.NewPluginLoader(host)
+		_, pclProgram, err = yamlgen.Eject(pwd, loader)
+		assert.NoError(t, err)
+	}
+	assert.NotNil(t, proj)
+	assert.NotNil(t, pclProgram)
+
+	localProjects["pulumi"] = opts.PulumiSDKs
+
+	proj.Plugins = plugins
 
 	//Replace relative paths with absolute paths
 
