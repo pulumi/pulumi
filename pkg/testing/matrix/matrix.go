@@ -148,7 +148,7 @@ func Test(t *testing.T, opts TestOptions) {
 		localProjects[plugin.Name] = map[string]string{
 			NODEJS: filepath.Join(root, "nodejs", "bin"),
 			PYTHON: filepath.Join(root, "python"),
-			JAVA:   filepath.Join(root, "java"),
+			GO:     filepath.Join(root, "go"),
 			DOTNET: filepath.Join(root, "dotnet"),
 		}
 

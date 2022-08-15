@@ -67,16 +67,26 @@ func TestAll(t *testing.T) {
 			Languages: allLanguages(),
 			Plugins: []PluginOptions{
 				{
-					Name:    "command",
-					Kind:    workspace.ResourcePlugin,
-					Build:   []exec.Cmd{},
-					Bin:     "./bin", //I've put a local version of the binary here, but it's not checked into git
+					Name: "command",
+					Kind: workspace.ResourcePlugin,
+					Build: []exec.Cmd{
+						*exec.Command("rm", "-rf", "~/.pulumi/plugins/resource-command-v0.4.2"),
+						*exec.Command("pulumi", "plugin", "install", "resouce", "command", "v0.4.2"),
+						*exec.Command("mv", "~/.pulumi/plugins/resource-command-v0.4.2/pulumi-resource-command", "./tests/provider/bin"),
+						*exec.Command("rm", "-rf", "~/.pulumi/plugins/resource-command-v0.4.2"),
+					},
+					Bin:     "./bin",
 					Version: semver.MustParse("0.4.2"),
 				},
 				{
-					Name:    "yaml",
-					Kind:    workspace.LanguagePlugin,
-					Build:   []exec.Cmd{},
+					Name: "yaml",
+					Kind: workspace.LanguagePlugin,
+					Build: []exec.Cmd{
+						*exec.Command("rm", "-rf", "~/.pulumi/plugins/language-yaml-v0.5.4"),
+						*exec.Command("pulumi", "plugin", "install", "language", "yaml", "v0.5.4"),
+						*exec.Command("mv", "~/.pulumi/plugins/language-yaml-v0.5.4/pulumi-language-yaml", "./tests/provider/bin"),
+						*exec.Command("rm", "-rf", "~/.pulumi/plugins/language-yaml-v0.5.4"),
+					},
 					Bin:     "./bin",
 					Version: semver.MustParse("0.5.4"),
 				},
