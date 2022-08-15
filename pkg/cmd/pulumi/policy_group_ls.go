@@ -45,7 +45,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			// Get backend.
 			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {

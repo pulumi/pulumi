@@ -42,7 +42,7 @@ func newCancelCmd() *cobra.Command {
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {

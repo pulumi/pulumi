@@ -363,7 +363,7 @@ func newImportCmd() *cobra.Command {
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 
 			var importFile importFile
 			if importFilePath != "" {

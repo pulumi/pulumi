@@ -60,7 +60,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 `,
 		Args: cmdutil.ExactArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			urn := resource.URN(args[0])
 			newResourceName := args[1]

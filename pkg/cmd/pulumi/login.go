@@ -87,7 +87,7 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

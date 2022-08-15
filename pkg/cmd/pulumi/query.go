@@ -46,7 +46,7 @@ func newQueryCmd() *cobra.Command {
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			interactive := cmdutil.Interactive()
 
 			opts := backend.UpdateOptions{}

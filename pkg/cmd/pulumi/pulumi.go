@@ -219,7 +219,7 @@ func NewPulumiCmd() *cobra.Command {
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					ctx := cmd.Context()
+					ctx := commandContext()
 					updateCheckResult <- checkForUpdate(ctx)
 					close(updateCheckResult)
 				}()

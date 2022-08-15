@@ -54,7 +54,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}

@@ -35,7 +35,7 @@ func newPolicyRmCmd() *cobra.Command {
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
 			policyPack, err := requirePolicyPack(ctx, args[0])

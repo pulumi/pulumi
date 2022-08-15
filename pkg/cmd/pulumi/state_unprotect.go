@@ -42,7 +42,7 @@ func newStateUnprotectCommand() *cobra.Command {
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes

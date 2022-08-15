@@ -39,7 +39,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"\n" +
 			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 
 			var orgName string
 			if len(args) > 0 {

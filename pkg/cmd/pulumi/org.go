@@ -77,7 +77,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			"If you try and set a default organization for a backend that does not \n" +
 			"support create organizations, then an error will be returned by the CLI",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -119,7 +119,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
