@@ -34,15 +34,14 @@ func newConsoleCmd() *cobra.Command {
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			currentBackend, err := currentBackend(opts)
+			currentBackend, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
-
-			ctx := commandContext()
 
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.

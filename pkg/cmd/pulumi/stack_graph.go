@@ -53,15 +53,16 @@ func newStackGraphCmd() *cobra.Command {
 			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return err
 			}

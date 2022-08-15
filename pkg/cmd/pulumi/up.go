@@ -80,8 +80,8 @@ func newUpCmd() *cobra.Command {
 	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
-	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
-		s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
+	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions) result.Result {
+		s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -106,13 +106,13 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
-		cfg, err := getStackConfiguration(s, sm)
+		cfg, err := getStackConfiguration(ctx, s, sm)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
 		targetURNs := []resource.URN{}
-		snap, err := s.Snapshot(commandContext())
+		snap, err := s.Snapshot(ctx)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -177,7 +177,7 @@ func newUpCmd() *cobra.Command {
 			opts.Engine.Plan = plan
 		}
 
-		changes, res := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(ctx, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -199,7 +199,7 @@ func newUpCmd() *cobra.Command {
 	}
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
-	upTemplateNameOrURL := func(ctxt context.Context,
+	upTemplateNameOrURL := func(ctx context.Context,
 		templateNameOrURL string, opts backend.UpdateOptions) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
@@ -251,7 +251,7 @@ func newUpCmd() *cobra.Command {
 		var description string
 		var s backend.Stack
 		if stack != "" {
-			if s, name, description, err = getStack(stack, opts.Display); err != nil {
+			if s, name, description, err = getStack(ctx, stack, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
@@ -296,7 +296,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(promptForValue, stack, name, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(ctx, promptForValue, stack, name, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
@@ -304,21 +304,21 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(ctxt, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(ctx, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
 		// Install dependencies.
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		pwd, _, pctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("building project context: %w", err))
 		}
 
-		defer ctx.Close()
+		defer pctx.Close()
 
-		if err = installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+		if err = installDependencies(pctx, &proj.Runtime, pwd); err != nil {
 			return result.FromError(err)
 		}
 
@@ -332,7 +332,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
-		cfg, err := getStackConfiguration(s, sm)
+		cfg, err := getStackConfiguration(ctx, s, sm)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
@@ -355,7 +355,7 @@ func newUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, res := s.Update(commandContext(), backend.UpdateOperation{
+		changes, res := s.Update(ctx, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -394,7 +394,7 @@ func newUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			yes = yes || skipPreview || skipConfirmations()
 
 			interactive := cmdutil.Interactive()
@@ -455,7 +455,7 @@ func newUpCmd() *cobra.Command {
 				return upTemplateNameOrURL(ctx, args[0], opts)
 			}
 
-			return upWorkingDirectory(opts)
+			return upWorkingDirectory(ctx, opts)
 		}),
 	}
 
@@ -613,13 +613,13 @@ func handleConfig(
 	opts display.Options) error {
 
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-	stackConfig, err := backend.GetLatestConfiguration(commandContext(), s)
+	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backend.ErrNoPreviousDeployment {
 		return err
 	}
 
 	// Get the existing snapshot.
-	snap, err := s.Snapshot(commandContext())
+	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return err
 	}

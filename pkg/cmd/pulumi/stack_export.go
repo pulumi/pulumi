@@ -45,13 +45,13 @@ func newStackExportCmd() *cobra.Command {
 			"in a stack's state due to failed deployments, manual changes to cloud\n" +
 			"resources, etc.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

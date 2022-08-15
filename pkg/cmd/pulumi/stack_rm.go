@@ -46,6 +46,7 @@ func newStackRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := cmd.Context()
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
@@ -59,7 +60,7 @@ func newStackRmCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -71,7 +72,7 @@ func newStackRmCmd() *cobra.Command {
 				return result.Bail()
 			}
 
-			hasResources, err := s.Remove(commandContext(), force)
+			hasResources, err := s.Remove(ctx, force)
 			if err != nil {
 				if hasResources {
 					return result.Errorf(

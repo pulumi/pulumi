@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,16 +52,17 @@ func newConfigCmd() *cobra.Command {
 			"for a specific configuration key, use `pulumi config get <key-name>`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			stack, err := requireStack(stack, true, opts, true /*setCurrent*/)
+			stack, err := requireStack(ctx, stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			return listConfig(stack, showSecrets, jsonOut)
+			return listConfig(ctx, stack, showSecrets, jsonOut)
 		}),
 	}
 
@@ -99,12 +101,13 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			"then all of the config from the current stack will be copied to the destination stack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			currentStack, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -117,7 +120,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(destinationStackName, false, opts, false /*setCurrent*/)
+			destinationStack, err := requireStack(ctx, destinationStackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -252,11 +255,12 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -266,7 +270,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			return getConfig(s, key, path, jsonOut)
+			return getConfig(ctx, s, key, path, jsonOut)
 		}),
 	}
 	getCmd.Flags().BoolVarP(
@@ -293,11 +297,12 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -341,11 +346,12 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -384,17 +390,18 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 		Short: "Update the local configuration based on the most recent deployment of the stack",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			c, err := backend.GetLatestConfiguration(commandContext(), s)
+			c, err := backend.GetLatestConfiguration(ctx, s)
 			if err != nil {
 				return err
 			}
@@ -468,13 +475,13 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -579,13 +586,13 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    value of `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, true, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -734,7 +741,7 @@ type configValueJSON struct {
 	Secret      bool        `json:"secret"`
 }
 
-func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
+func listConfig(ctx context.Context, stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -813,13 +820,13 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	}
 
 	if showSecrets {
-		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, "", "pulumi config")
+		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, "", "pulumi config")
 	}
 
 	return nil
 }
 
-func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
+func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -869,7 +876,7 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 			fmt.Printf("%v\n", raw)
 		}
 
-		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, key.Name(), "")
+		log3rdPartySecretsProviderDecryptionEvent(ctx, stack, key.Name(), "")
 
 		return nil
 	}
@@ -913,12 +920,14 @@ func looksLikeSecret(k config.Key, v string) bool {
 
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
-func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+func getStackConfiguration(
+	ctx context.Context, stack backend.Stack,
+	sm secrets.Manager) (backend.StackConfiguration, error) {
 	var cfg config.Map
 	workspaceStack, err := loadProjectStack(stack)
 	if err != nil || workspaceStack == nil {
 		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
-		cfg, err = backend.GetLatestConfiguration(commandContext(), stack)
+		cfg, err = backend.GetLatestConfiguration(ctx, stack)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)

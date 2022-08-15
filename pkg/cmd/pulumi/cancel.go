@@ -42,6 +42,7 @@ func newCancelCmd() *cobra.Command {
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := cmd.Context()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {
@@ -55,7 +56,7 @@ func newCancelCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -69,7 +70,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Cancel the update.
-			if err := s.Backend().CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
+			if err := s.Backend().CancelCurrentUpdate(ctx, s.Ref()); err != nil {
 				return result.FromError(err)
 			}
 

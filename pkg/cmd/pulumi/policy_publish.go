@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -38,6 +39,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"\n" +
 			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 
 			var orgName string
 			if len(args) > 0 {
@@ -60,7 +62,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
 			//
 
-			policyPack, err := requirePolicyPack(policyPackRef)
+			policyPack, err := requirePolicyPack(ctx, policyPackRef)
 			if err != nil {
 				return err
 			}
@@ -90,7 +92,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Attempt to publish the PolicyPack.
 			//
 
-			res := policyPack.Publish(commandContext(), backend.PublishOperation{
+			res := policyPack.Publish(ctx, backend.PublishOperation{
 				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
 			if res != nil && res.Error() != nil {
 				return res.Error()
@@ -103,7 +105,7 @@ func newPolicyPublishCmd() *cobra.Command {
 	return cmd
 }
 
-func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
+func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
 	//
@@ -118,7 +120,7 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+	b, err := httpstate.Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +129,7 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 	// Obtain PolicyPackReference.
 	//
 
-	policy, err := b.GetPolicyPack(commandContext(), policyPack, cmdutil.Diag())
+	policy, err := b.GetPolicyPack(ctx, policyPack, cmdutil.Diag())
 	if err != nil {
 		return nil, err
 	}

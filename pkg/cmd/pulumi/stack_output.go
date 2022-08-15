@@ -40,16 +40,17 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the current stack and its output properties.
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ func newStackOutputCmd() *cobra.Command {
 			}
 
 			if showSecrets {
-				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack output")
+				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack output")
 			}
 
 			return nil

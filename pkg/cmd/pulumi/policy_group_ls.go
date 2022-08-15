@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -46,8 +45,9 @@ func newPolicyGroupLsCmd() *cobra.Command {
 		Short: "List all Policy Groups for a Pulumi organization",
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := cmd.Context()
 			// Get backend.
-			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return fmt.Errorf("failed to get current backend: %w", err)
 			}
@@ -64,7 +64,6 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			}
 
 			// Gather all Policy Groups for the organization.
-			ctx := context.Background()
 			var (
 				allPolicyGroups []apitype.PolicyGroupSummary
 				inContToken     backend.ContinuationToken

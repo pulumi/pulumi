@@ -67,11 +67,12 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(opts)
+			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
@@ -117,14 +118,14 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			newStack, err := createStack(ctx, b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
 			if err != nil {
 				return err
 			}
 
 			if stackToCopy != "" {
 				// load the old stack and its project
-				copyStack, err := requireStack(stackToCopy, false, opts, false /*setCurrent*/)
+				copyStack, err := requireStack(ctx, stackToCopy, false, opts, false /*setCurrent*/)
 				if err != nil {
 					return err
 				}

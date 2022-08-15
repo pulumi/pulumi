@@ -43,11 +43,12 @@ func newStackSelectCmd() *cobra.Command {
 			"If provided stack name is not found you may pass the --create flag to create and select it",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(opts)
+			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
@@ -67,7 +68,7 @@ func newStackSelectCmd() *cobra.Command {
 					return stackErr
 				}
 
-				s, stackErr := b.GetStack(commandContext(), stackRef)
+				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
 					return stackErr
 				} else if s != nil {
@@ -75,7 +76,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := stackInit(b, stack, false, secretsProvider)
+					s, err := stackInit(ctx, b, stack, false, secretsProvider)
 					if err != nil {
 						return err
 					}
@@ -86,7 +87,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(b, true, opts, true /*setCurrent*/)
+			stack, err := chooseStack(ctx, b, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

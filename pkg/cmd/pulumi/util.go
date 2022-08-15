@@ -109,7 +109,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
-func currentBackend(opts display.Options) (backend.Backend, error) {
+func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
 	}
@@ -122,7 +122,7 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
+	return httpstate.Login(ctx, cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -144,7 +144,9 @@ func commandContext() context.Context {
 	return ctx
 }
 
-func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
+func createSecretsManager(
+	ctx context.Context, b backend.Backend,
+	stackRef backend.StackReference, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -158,7 +160,7 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	}
 
 	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(commandContext(), b)
+		stack, err := state.CurrentStack(ctx, b)
 		if err != nil {
 			return err
 		}
@@ -206,11 +208,11 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(
+func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	stack, err := b.CreateStack(ctx, stackRef, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -222,7 +224,7 @@ func createStack(
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(b, stackRef, secretsProvider,
+	if err := createSecretsManager(ctx, b, stackRef, secretsProvider,
 		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}
@@ -239,13 +241,13 @@ func createStack(
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(
+func requireStack(ctx context.Context,
 	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew, opts, setCurrent)
+		return requireCurrentStack(ctx, offerNew, opts, setCurrent)
 	}
 
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +257,7 @@ func requireStack(
 		return nil, err
 	}
 
-	stack, err := b.GetStack(commandContext(), stackRef)
+	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -273,19 +275,21 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(
+	ctx context.Context, offerNew bool,
+	opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(commandContext(), b)
+	stack, err := state.CurrentStack(ctx, b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -293,14 +297,13 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew, opts, setCurrent)
+	return chooseStack(ctx, b, offerNew, opts, setCurrent)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(
+func chooseStack(ctx context.Context,
 	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
-	ctx := commandContext()
 
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
@@ -402,7 +405,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.

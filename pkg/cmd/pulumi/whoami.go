@@ -34,11 +34,12 @@ func newWhoAmICmd() *cobra.Command {
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(opts)
+			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}

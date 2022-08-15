@@ -48,11 +48,12 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -62,7 +63,7 @@ func newStackCmd() *cobra.Command {
 				return nil
 			}
 
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return err
 			}
@@ -143,7 +144,7 @@ func newStackCmd() *cobra.Command {
 				}
 
 				if showSecrets {
-					log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack")
+					log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
 				}
 			}
 

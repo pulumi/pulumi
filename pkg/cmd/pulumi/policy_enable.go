@@ -41,8 +41,9 @@ func newPolicyEnableCmd() *cobra.Command {
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			policyPack, err := requirePolicyPack(cliArgs[0])
+			policyPack, err := requirePolicyPack(ctx, cliArgs[0])
 			if err != nil {
 				return err
 			}
@@ -63,7 +64,7 @@ func newPolicyEnableCmd() *cobra.Command {
 			}
 
 			// Attempt to enable the Policy Pack.
-			return policyPack.Enable(commandContext(), args.policyGroup,
+			return policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     cancellationScopes,
