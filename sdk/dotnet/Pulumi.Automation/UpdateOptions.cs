@@ -41,5 +41,30 @@ namespace Pulumi.Automation
         /// Colorize output. Choices are: always, never, raw, auto (default "auto")
         /// </summary>
         public string? Color { get; set; }
+
+        /// <summary>
+        /// Flow log settings to child processes (like plugins)
+        /// </summary>
+        public bool? LogFlow { get; set; }
+
+        /// <summary>
+        /// Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        /// </summary>
+        public int? LogVerbosity { get; set; }
+
+        /// <summary>
+        /// Log to stderr instead of to files
+        /// </summary>
+        public bool? LogToStdErr { get; set; }
+
+        /// <summary>
+        /// Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        /// </summary>
+        public string? Tracing { get; set; }
+
+        /// <summary>
+        /// Print detailed debugging output during resource operations
+        /// </summary>
+        public bool? Debug { get; set; }
     }
 }

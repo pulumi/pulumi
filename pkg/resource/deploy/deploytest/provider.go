@@ -124,8 +124,7 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 
 func (prov *Provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	// TODO: When adding random seeds we should assert they are non-nil, but for now we expect them to always be nil
-	contract.Assert(randomSeed == nil)
+	contract.Assert(randomSeed != nil)
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}

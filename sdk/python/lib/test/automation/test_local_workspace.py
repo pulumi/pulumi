@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import unittest
 from random import random
 from semver import VersionInfo
 from typing import List, Optional
+
+import pytest
 
 from pulumi import Config, export
 from pulumi.automation import (
@@ -734,3 +737,19 @@ def pulumi_program():
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
+
+@pytest.mark.parametrize("key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)])
+def test_config_get_with_defaults(key, default, mock_config, config_settings):
+    assert mock_config.get(key, default) == config_settings.get(f"test-config:{key}", default)
+
+def test_config_get_int(mock_config, config_settings):
+    assert mock_config.get_int("int") == int(config_settings.get("test-config:int"))
+
+def test_config_get_bool(mock_config):
+    assert mock_config.get_bool("bool") is False
+
+def test_config_get_object(mock_config, config_settings):
+    assert mock_config.get_object("object") == json.loads(config_settings.get("test-config:object"))
+
+def test_config_get_float(mock_config, config_settings):
+    assert mock_config.get_float("float") == float(config_settings.get("test-config:float"))

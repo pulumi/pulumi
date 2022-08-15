@@ -5053,3 +5053,103 @@ func TestDefaultParents(t *testing.T) {
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[1].Parent)
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
 }
+
+func TestProviderDeterministicPreview(t *testing.T) {
+	t.Parallel()
+
+	var generatedName resource.PropertyValue
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(
+					urn resource.URN,
+					olds, news resource.PropertyMap,
+					randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// make a deterministic autoname
+					if _, has := news["name"]; !has {
+						if name, has := olds["name"]; has {
+							news["name"] = name
+						} else {
+							name, err := resource.NewUniqueName(randomSeed, urn.Name().String(), -1, -1, nil)
+							assert.Nil(t, err)
+							generatedName = resource.NewStringProperty(name)
+							news["name"] = generatedName
+						}
+					}
+
+					return news, nil, nil
+				},
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we get a new name
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview, this should want to create resA with a given name
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.True(t, generatedName.IsString())
+	assert.NotEqual(t, "", generatedName.StringValue())
+	expectedName := generatedName
+
+	// Run an update, we should get the same name as we saw in preview
+	p.Options.Plan = plan
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+
+	// Run a new update which will cause a replace and check we get a new name
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	p.Options.Plan = nil
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
+}

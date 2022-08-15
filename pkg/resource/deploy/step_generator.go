@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
 	"strings"
 
@@ -413,6 +414,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
 
+	// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+	var randomSeed []byte
+	if sg.deployment.plan != nil {
+		if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+			randomSeed = resourcePlan.Seed
+		}
+	}
+	// If the above didn't set the seed, generate a new random one. If we're running with plans but this
+	// resource was missing a seed then if the seed is used later checks will fail.
+	if randomSeed == nil {
+		randomSeed = make([]byte, 32)
+		n, err := cryptorand.Read(randomSeed)
+		contract.AssertNoError(err)
+		contract.Assert(n == len(randomSeed))
+	}
+
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
 	var oldImportID resource.ID
@@ -435,17 +452,19 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
 		if sg.opts.ExperimentalPlans {
-			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, nil, goal)}
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(nil, nil, goal)}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
 			}, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges)}, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -466,9 +485,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 			}
 
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, nil)
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, nil)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
@@ -489,7 +508,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// Generate the output goal plan
 		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 		// application. However, it is necessary in the face of computed inputs.
-		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputs, inputDiff, goal)}
+		newResourcePlan := &ResourcePlan{
+			Seed: randomSeed,
+			Goal: NewGoalPlan(inputs, inputDiff, goal)}
 		sg.deployment.newPlans.set(urn, newResourcePlan)
 	}
 
@@ -637,7 +658,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
 
 			if res != nil {
 				return nil, res
@@ -696,7 +717,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
+	prov plugin.Provider, goal *resource.Goal, randomSeed []byte) ([]Step, result.Result) {
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
@@ -761,7 +782,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, nil)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
