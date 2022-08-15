@@ -7,7 +7,7 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 // Working around https://github.com/sergi/go-diff/issues/123
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
-replace github.com/xanzy/ssh-agent => github.com/aaronfriel/ssh-agent v0.5.0
+replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
 
 require (
 	cloud.google.com/go/logging v1.0.0
@@ -36,7 +36,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.37.2
+	github.com/pulumi/pulumi/sdk/v3 v3.37.3-0.20220809202049-8441ea2eeefd
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.2.0
@@ -52,7 +52,7 @@ require (
 	github.com/zclconf/go-cty v1.10.0
 	gocloud.dev v0.24.0
 	gocloud.dev/secrets/hashivault v0.24.0
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -152,8 +152,8 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/natefinch/atomic v1.0.1
-	github.com/pulumi/pulumi-java/pkg v0.5.0
-	github.com/pulumi/pulumi-yaml v0.5.3
+	github.com/pulumi/pulumi-java/pkg v0.5.3
+	github.com/pulumi/pulumi-yaml v0.5.4
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 )

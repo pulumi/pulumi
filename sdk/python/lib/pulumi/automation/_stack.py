@@ -213,6 +213,11 @@ class Stack:
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
         show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -233,7 +238,12 @@ class Stack:
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param plan: Plan specifies the path to an update plan to use for the update.
-        :param show_secrets: Inclode config secrets in the UpResult summary.
+        :param show_secrets: Include config secrets in the UpResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -317,6 +327,11 @@ class Stack:
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
         plan: Optional[str] = None,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -337,6 +352,11 @@ class Stack:
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :param plan: Plan specifies the path where the update plan should be saved.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -418,6 +438,11 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -431,7 +456,12 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param show_secrets: Inclode config secrets in the RefreshResult summary.
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -474,6 +504,11 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -486,7 +521,12 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param show_secrets: Inclode config secrets in the DestroyResult summary.
+        :param show_secrets: Include config secrets in the DestroyResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -698,6 +738,11 @@ def _parse_extra_args(**kwargs) -> List[str]:
     target_dependents = kwargs.get("target_dependents")
     parallel = kwargs.get("parallel")
     color = kwargs.get("color")
+    log_flow = kwargs.get("log_flow")
+    log_verbosity = kwargs.get("log_verbosity")
+    log_to_std_err = kwargs.get("log_to_std_err")
+    tracing = kwargs.get("tracing")
+    debug = kwargs.get("debug")
 
     if message:
         extra_args.extend(["--message", message])
@@ -723,6 +768,16 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--parallel", str(parallel)])
     if color:
         extra_args.extend(["--color", color])
+    if log_flow:
+        extra_args.extend(["--logflow"])
+    if log_verbosity:
+        extra_args.extend(["--verbose", log_verbosity])
+    if log_to_std_err:
+        extra_args.extend(["--logtostderr"])
+    if tracing:
+        extra_args.extend(["--tracing", tracing])
+    if debug:
+        extra_args.extend(["--debug"])
     return extra_args
 
 

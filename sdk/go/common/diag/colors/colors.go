@@ -172,13 +172,15 @@ func colorizeText(s string, c Colorization, maxLen int) string {
 		textLen += len(text)
 
 		// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
-		// output.
-		nextDirectiveEnd := strings.Index(input, colorRight)
+		// output. Make sure we look for the for end delimiter _after_ the start delimiter.
+		nextDirectiveEnd := strings.Index(input[nextDirectiveStart:], colorRight)
 		if nextDirectiveEnd == -1 {
 			break
 		}
+		// Correct the index given we searched starting from nextDirectiveStart
+		nextDirectiveEnd += nextDirectiveStart
 
-		directive := command(input[nextDirectiveStart+len(colorLeft) : nextDirectiveEnd])
+		directive := input[nextDirectiveStart : nextDirectiveEnd+len(colorRight)]
 		writeDirective(&buf, c, directive)
 		input = input[nextDirectiveEnd+len(colorRight):]
 
