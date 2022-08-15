@@ -21,6 +21,9 @@
 
 - [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
 
+- [cli] `pulumi about` now queries language plugins for information, rather than having hardcoded language logic.
+  [#10392](https://github.com/pulumi/pulumi/pull/10392)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
