@@ -31,6 +31,9 @@
 - [sdk/nodejs] Deprecate PULUMI_TEST_MODE
   [#10400](https://github.com/pulumi/pulumi/pull/10400)
 
+- [cli] Make `pulumi stack rm` more tolerant of surrounding `"`
+  [#10413](https://github.com/pulumi/pulumi/pull/10413)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
