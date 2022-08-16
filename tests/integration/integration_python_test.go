@@ -530,52 +530,52 @@ func TestPythonResourceArgs(t *testing.T) {
 
 // Test to ensure that internal stacks are hidden
 func TestPythonStackTruncate(t *testing.T) {
-	validateStackTraceOutput := func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-		// Ensure that we have a non-empty list of events.
-		assert.NotEmpty(t, stackInfo.Events)
-
-		const stacktraceLinePrefix = "  File "
-
-		// get last DiagnosticEvent containing python stack trace
-		stackTraceMessage := ""
-		for _, e := range stackInfo.Events {
-			if e.DiagnosticEvent == nil {
-				continue
-			}
-			msg := e.DiagnosticEvent.Message
-			if !strings.Contains(msg, "Traceback") {
-				continue
-			}
-			if !strings.Contains(msg, stacktraceLinePrefix) {
-				continue
-			}
-			stackTraceMessage = msg
-		}
-		assert.NotEqual(t, "", stackTraceMessage)
-
-		// make sure that the stack trace contains 2 frames
-		numStackTraces := strings.Count(stackTraceMessage, stacktraceLinePrefix)
-		assert.Equal(t, 2, numStackTraces)
-	}
-
 	cases := []string{
 		"normal",
 		"main_specified",
 		"main_dir_specified",
 	}
 
-	for _, c := range cases {
+	for _, name := range cases {
 		// Test the program.
-		t.Run(c, func(t *testing.T) {
+		t.Run(name, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir: filepath.Join("python", "stack_truncate", c),
+				Dir: filepath.Join("python", "stack_truncate", name),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
 				Quick: true,
 				// This test should fail because it raises an exception
-				ExpectFailure:          true,
-				ExtraRuntimeValidation: validateStackTraceOutput,
+				ExpectFailure: true,
+				// We need to validate that the failure has a truncated stack trace
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Ensure that we have a non-empty list of events.
+					assert.NotEmpty(t, stackInfo.Events)
+
+					const stacktraceLinePrefix = "  File "
+
+					// get last DiagnosticEvent containing python stack trace
+					stackTraceMessage := ""
+					for _, e := range stackInfo.Events {
+						if e.DiagnosticEvent == nil {
+							continue
+						}
+						msg := e.DiagnosticEvent.Message
+						if !strings.Contains(msg, "Traceback") {
+							continue
+						}
+						if !strings.Contains(msg, stacktraceLinePrefix) {
+							continue
+						}
+						stackTraceMessage = msg
+					}
+					assert.NotEqual(t, "", stackTraceMessage)
+
+					// make sure that the stack trace contains 2 frames as per the
+					// program we're running
+					numStackTraces := strings.Count(stackTraceMessage, stacktraceLinePrefix)
+					assert.Equal(t, 2, numStackTraces)
+				},
 			})
 		})
 	}
