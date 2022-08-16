@@ -270,6 +270,16 @@ ${defaultMessage}`);
         });
     }
 
+    const containsTSAndJSModules = async (programPath: string) => {
+        const programStats = await fs.promises.lstat(programPath);
+        if (programStats.isDirectory()) {
+            const programDirFiles = await fs.promises.readdir(programPath);
+            return programDirFiles.includes("index.js") && programDirFiles.includes("index.ts");
+        } else {
+            return false;
+        }
+    };
+
     const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
         //
@@ -313,6 +323,10 @@ ${defaultMessage}`);
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
                 programExport = require(program);
             }
+
+            if (await containsTSAndJSModules(program)) {
+                log.warn("Found a TypeScript project containing an index.js file and no explicit entrypoint in Pulumi.yaml - Pulumi will use index.js");
+            };
 
             // Check compatible engines before running the program:
             const npmRc = npmRcFromProjectRoot(projectRoot);
