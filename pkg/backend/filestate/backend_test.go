@@ -402,3 +402,15 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, b)
 }
+
+// TestParseEmptyStackFails demonstrates that ParseStackReference returns
+// an error when the stack name is the empty string.TestParseEmptyStackFails
+func TestParseEmptyStackFails(t *testing.T) {
+	t.Parallel()
+	// ParseStackReference does use the method receiver
+	// (it is a total function disguisted as a method.)
+	var b *localBackend = nil
+	var stackName = ""
+	var _, err = b.ParseStackReference(stackName)
+	assert.Error(t, err)
+}
