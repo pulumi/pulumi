@@ -649,5 +649,6 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
-	return strings.TrimSpace(line) == name
+	input := strings.TrimSpace(line)
+	return strings.Trim(input, "\"") == name
 }
