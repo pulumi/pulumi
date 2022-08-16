@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## Unreleased
+
+### Bug Fixes
+
+- [cli] Fix VCS detection for domains other than .com and .org.
+  [#10415](https://github.com/pulumi/pulumi/pull/10415)
+
 ## 3.37.2 (2022-07-29)
 
 ### Bug Fixes
