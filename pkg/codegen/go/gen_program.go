@@ -354,9 +354,14 @@ func (g *generator) collectImports(
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
-			if pkg == "pulumi" && mod == "providers" {
-				pkg = name
-				mod = ""
+			if pkg == "pulumi" {
+				if mod == "providers" {
+					pkg = name
+					mod = ""
+				} else if mod == "pulumi" {
+					mod = ""
+				}
+
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -602,6 +607,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
+		mod = ""
+		typ = "Provider"
+	} else if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
 		typ = "Provider"
 	}
