@@ -36,13 +36,11 @@ class MyParentResource extends ComponentResource {
 
 describe("createUrn", () => {
     before(() => {
-        runtime._setTestModeEnabled(true);
         runtime._setProject("myproject");
         runtime._setStack("mystack");
     });
 
     after(() => {
-        runtime._setTestModeEnabled(false);
         runtime._setProject(undefined);
         runtime._setStack(undefined);
     });
@@ -73,13 +71,11 @@ class TestResource extends ComponentResource {
 
 describe("allAliases", () => {
     before(() => {
-        runtime._setTestModeEnabled(true);
         runtime._setProject("project");
         runtime._setStack("stack");
     });
 
     after(() => {
-        runtime._setTestModeEnabled(false);
         runtime._setProject(undefined);
         runtime._setStack(undefined);
     });

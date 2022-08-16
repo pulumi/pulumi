@@ -42,7 +42,6 @@ class Settings:
     stack: Optional[str]
     parallel: Optional[int]
     dry_run: Optional[bool]
-    test_mode_enabled: Optional[bool]
     legacy_apply_enabled: Optional[bool]
     feature_support: dict
 
@@ -58,7 +57,6 @@ class Settings:
         stack: Optional[str] = None,
         parallel: Optional[int] = None,
         dry_run: Optional[bool] = None,
-        test_mode_enabled: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
     ):
         # Save the metadata information.
@@ -66,12 +64,8 @@ class Settings:
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
-        self.test_mode_enabled = test_mode_enabled
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
-
-        if self.test_mode_enabled is None:
-            self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -117,36 +111,10 @@ def is_dry_run() -> bool:
     """
     Returns whether or not we are currently doing a preview.
 
-    When writing unit tests, you can set this flag via `set_mocks` by supplying a value
+    When writing unit tests, you can set this flag via `pulumi.runtime.set_mocks` by supplying a value
     for the argument `preview`.
     """
     return bool(SETTINGS.dry_run)
-
-
-def is_test_mode_enabled() -> bool:
-    """
-    Returns true if test mode is enabled (PULUMI_TEST_MODE).
-
-    NB: this test mode has nothing to do with preview/dry_run modality, and it is not
-    automatically enabled by calling `set_mocks`. It is a vestigial mechanism related to
-    testing the runtime itself, and is not relevant to writing or running unit tests for
-    a Pulumi project.
-    """
-    return bool(SETTINGS.test_mode_enabled)
-
-
-def _set_test_mode_enabled(v: Optional[bool]):
-    """
-    Enable or disable testing mode programmatically -- meant for testing only.
-    """
-    SETTINGS.test_mode_enabled = v
-
-
-def require_test_mode_enabled():
-    if not is_test_mode_enabled():
-        raise RunError(
-            "Program run without the Pulumi engine available; re-run using the `pulumi` CLI"
-        )
 
 
 def is_legacy_apply_enabled():
@@ -159,7 +127,6 @@ def get_project() -> str:
     """
     project = SETTINGS.project
     if not project:
-        require_test_mode_enabled()
         raise RunError(
             "Missing project name; for test mode, please call `pulumi.runtime.set_mocks`"
         )
@@ -179,9 +146,9 @@ def get_stack() -> str:
     """
     stack = SETTINGS.stack
     if not stack:
-        require_test_mode_enabled()
         raise RunError(
-            "Missing stack name; for test mode, please set PULUMI_NODEJS_STACK"
+            "Missing stack name; for test mode, please call `pulumi.runtime.set_mocks`"
+            + " and provide a value for the `stack` argument"
         )
     return stack
 
@@ -197,10 +164,7 @@ def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     """
     Returns the current resource monitoring service client for RPC communications.
     """
-    monitor = SETTINGS.monitor
-    if not monitor:
-        require_test_mode_enabled()
-    return monitor
+    return SETTINGS.monitor
 
 
 def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:

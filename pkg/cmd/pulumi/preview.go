@@ -81,6 +81,7 @@ func newPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			var displayType = display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
@@ -122,7 +123,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(stack, true, displayOpts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, true, displayOpts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -147,7 +148,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
@@ -190,7 +191,7 @@ func newPreviewCmd() *cobra.Command {
 				Display: displayOpts,
 			}
 
-			plan, changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

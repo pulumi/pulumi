@@ -51,7 +51,7 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

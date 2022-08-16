@@ -88,7 +88,6 @@
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
         "tests/provider.spec.ts",
-        "tests/testmode.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",

@@ -65,6 +65,7 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -114,7 +115,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -134,7 +135,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
@@ -154,7 +155,7 @@ func newRefreshCmd() *cobra.Command {
 				RefreshTargets:            targetUrns,
 			}
 
-			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
+			changes, res := s.Refresh(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

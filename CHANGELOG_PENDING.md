@@ -25,6 +25,12 @@
 - [sdk/nodejs] Adds warning message when entrypoint resolution is ambiguous
   [#3582](https://github.com/pulumi/pulumi/issues/3582)
 
+- [sdk/python] Deprecate PULUMI_TEST_MODE
+  [#10400](https://github.com/pulumi/pulumi/pull/10400)
+
+- [sdk/nodejs] Deprecate PULUMI_TEST_MODE
+  [#10400](https://github.com/pulumi/pulumi/pull/10400)
+
 ### Bug Fixes
 
 - [cli] Paginate template options
