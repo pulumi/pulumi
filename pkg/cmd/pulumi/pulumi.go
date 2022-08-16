@@ -644,11 +644,10 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 
 	fmt.Print(
 		opts.Color.Colorize(
-			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
 				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
 
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
-	input := strings.TrimSpace(line)
-	return strings.Trim(input, "\"") == name
+	return strings.TrimSpace(line) == name
 }
