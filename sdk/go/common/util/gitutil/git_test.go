@@ -303,6 +303,7 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		{"", nil},
 		{"asdf", nil},
 		{"svn:something.com/owner/repo", nil},
+		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
 	}
 
 	for _, test := range gitTests {
