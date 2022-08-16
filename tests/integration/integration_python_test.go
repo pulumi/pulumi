@@ -528,6 +528,49 @@ func TestPythonResourceArgs(t *testing.T) {
 	})
 }
 
+// Test to ensure that internal stacks are hidden
+func TestPythonStackTruncate(t *testing.T) {
+	testdir := filepath.Join("python", "stack_truncate")
+
+	// Test the program.
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: testdir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		// This test should fail because it raises an exception
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure that we have a non-empty list of events.
+			assert.NotEmpty(t, stackInfo.Events)
+
+			const stacktraceLinePrefix = "  File "
+
+			// get last DiagnosticEvent containing python stack trace
+			stackTraceMessage := ""
+			for _, e := range stackInfo.Events {
+				if e.DiagnosticEvent == nil {
+					continue
+				}
+				msg := e.DiagnosticEvent.Message
+				if !strings.Contains(msg, "Traceback") {
+					continue
+				}
+				if !strings.Contains(msg, stacktraceLinePrefix) {
+					continue
+				}
+				stackTraceMessage = msg
+			}
+			assert.NotEqual(t, "", stackTraceMessage)
+
+			// make sure that the stack trace contains 2 frames
+			numStackTraces := strings.Count(stackTraceMessage, stacktraceLinePrefix)
+			assert.Equal(t, 2, numStackTraces)
+		},
+	})
+}
+
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
 	t.Parallel()
