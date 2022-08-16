@@ -87,6 +87,7 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -140,7 +141,7 @@ func newLoginCmd() *cobra.Command {
 					return fmt.Errorf("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
 					cloudURL, err := workspace.GetCurrentCloudURL()

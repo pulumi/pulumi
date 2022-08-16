@@ -285,7 +285,6 @@ def set_mocks(
         project=project if project is not None else "project",
         stack=stack if stack is not None else "stack",
         dry_run=preview,
-        test_mode_enabled=True,
     )
     configure(settings)
 
