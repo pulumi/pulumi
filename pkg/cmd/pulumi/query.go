@@ -46,6 +46,7 @@ func newQueryCmd() *cobra.Command {
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			interactive := cmdutil.Interactive()
 
 			opts := backend.UpdateOptions{}
@@ -55,7 +56,7 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			b, err := currentBackend(opts.Display)
+			b, err := currentBackend(ctx, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -67,7 +68,7 @@ func newQueryCmd() *cobra.Command {
 
 			opts.Engine = engine.UpdateOptions{}
 
-			res := b.Query(commandContext(), backend.QueryOperation{
+			res := b.Query(ctx, backend.QueryOperation{
 				Proj:   proj,
 				Root:   root,
 				Opts:   opts,

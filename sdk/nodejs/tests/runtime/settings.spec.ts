@@ -26,8 +26,6 @@ describe("settings", () => {
         runtime.setAllConfig({});
     });
     it("runtime options and config are read from and updated via the environment", () => {
-        runtime._setTestModeEnabled(false);
-
         const testProject = "TestProject";
         runtime._setProject(testProject);
         const testStack = "TestStack";

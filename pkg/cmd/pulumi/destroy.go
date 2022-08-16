@@ -72,6 +72,7 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -123,7 +124,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -138,7 +139,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -149,7 +150,7 @@ func newDestroyCmd() *cobra.Command {
 				sm = snap.SecretsManager
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 
@@ -177,7 +178,7 @@ func newDestroyCmd() *cobra.Command {
 			var protectedCount int
 			if excludeProtected {
 				contract.Assert(len(targetUrns) == 0)
-				targetUrns, protectedCount, err = handleExcludeProtected(s)
+				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
@@ -204,7 +205,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableOutputValues:       disableOutputValues(),
 			}
 
-			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
+			_, res := s.Destroy(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -339,9 +340,9 @@ func seperateProtected(resources []*resource.State) (
 }
 
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(s backend.Stack) ([]resource.URN, int, error) {
+func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]resource.URN, int, error) {
 	// Get snapshot
-	snapshot, err := s.Snapshot(commandContext())
+	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
 		return nil, 0, err
 	} else if snapshot == nil {

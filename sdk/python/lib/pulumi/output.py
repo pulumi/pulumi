@@ -502,7 +502,7 @@ class Output(Generic[T_co]):
         return """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi."""

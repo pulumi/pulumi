@@ -63,7 +63,7 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				ctx := context.Background()
+				ctx := commandContext()
 				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 				if jsonOut {
 					return printJSON(summary)
@@ -174,12 +174,12 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	}
 
 	var backend backend.Backend
-	backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+	backend, err = currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -343,19 +343,18 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStackAbout, error) {
-	context := commandContext()
+func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
 	var stack backend.Stack
 	var err error
 	if selectedStack == "" {
-		stack, err = state.CurrentStack(context, b)
+		stack, err = state.CurrentStack(ctx, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
 		if err != nil {
 			return currentStackAbout{}, err
 		}
-		stack, err = b.GetStack(context, ref)
+		stack, err = b.GetStack(ctx, ref)
 	}
 	if err != nil {
 		return currentStackAbout{}, err
@@ -366,7 +365,7 @@ func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStack
 
 	name := stack.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = stack.Snapshot(context)
+	snapshot, err = stack.Snapshot(ctx)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {

@@ -220,8 +220,9 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 //nolint:paralleltest // mutates environment variables
 func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
+	ctx := context.Background()
 
-	b, err := currentBackend(display.Options{})
+	b, err := currentBackend(ctx, display.Options{})
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
@@ -255,7 +256,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	_, err = os.Stat(filepath.Join(fileStateDir, workspace.BookkeepingDir, workspace.StackDir, stackName+".json"))
 	assert.NoError(t, err)
 
-	b, err = currentBackend(display.Options{})
+	b, err = currentBackend(ctx, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
 }
@@ -872,7 +873,8 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 }
 
 func currentUser(t *testing.T) string {
-	b, err := currentBackend(display.Options{})
+	ctx := context.Background()
+	b, err := currentBackend(ctx, display.Options{})
 	assert.NoError(t, err)
 	currentUser, _, err := b.CurrentUser()
 	assert.NoError(t, err)
@@ -886,7 +888,8 @@ func loadStackName(t *testing.T) string {
 }
 
 func removeStack(t *testing.T, name string) {
-	b, err := currentBackend(display.Options{})
+	ctx := context.Background()
+	b, err := currentBackend(ctx, display.Options{})
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)

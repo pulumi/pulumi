@@ -75,6 +75,7 @@ func newRefreshCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -124,7 +125,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -144,7 +145,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
@@ -160,7 +161,7 @@ func newRefreshCmd() *cobra.Command {
 				if stderr == nil {
 					stderr = os.Stderr
 				}
-				if unused, result := pendingCreatesToImports(s, yes, opts.Display, *importPendingCreates); result != nil {
+				if unused, result := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); result != nil {
 					return result
 				} else if len(unused) > 1 {
 					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
@@ -174,14 +175,14 @@ func newRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
-				if result := filterMapPendingCreates(s, opts.Display, yes, interactiveFixPendingCreate); result != nil {
+				if result := filterMapPendingCreates(ctx, s, opts.Display, yes, interactiveFixPendingCreate); result != nil {
 					return result
 				}
 			}
@@ -192,7 +193,7 @@ func newRefreshCmd() *cobra.Command {
 				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
 					return nil, nil
 				}
-				result := filterMapPendingCreates(s, opts.Display, yes, removePendingCreates)
+				result := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
 				if result != nil {
 					return result
 				}
@@ -213,7 +214,7 @@ func newRefreshCmd() *cobra.Command {
 				RefreshTargets:            targetUrns,
 			}
 
-			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
+			changes, res := s.Refresh(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -319,8 +320,10 @@ type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
 
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
 // is deleted. Otherwise is is replaced by the returned op.
-func filterMapPendingCreates(s backend.Stack, opts display.Options, yes bool, f editPendingOp) result.Result {
-	return totalStateEdit(s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+func filterMapPendingCreates(
+	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
+) result.Result {
+	return totalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []resource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
@@ -346,7 +349,7 @@ func filterMapPendingCreates(s backend.Stack, opts display.Options, yes bool, f 
 // Apply the CLI args from --import-pending-creates [[URN ID]...]. If an error was found,
 // it is returned. The list of URNs that were not mapped to a pending create is also
 // returned.
-func pendingCreatesToImports(s backend.Stack, yes bool, opts display.Options,
+func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opts display.Options,
 	importToCreates []string) ([]string, result.Result) {
 	// A map from URN to ID
 	if len(importToCreates)%2 != 0 {
@@ -356,7 +359,7 @@ func pendingCreatesToImports(s backend.Stack, yes bool, opts display.Options,
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	result := filterMapPendingCreates(s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+	result := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
 			op.Type = resource.OperationTypeImporting

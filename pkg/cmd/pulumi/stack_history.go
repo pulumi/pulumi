@@ -37,15 +37,16 @@ func newStackHistoryCmd() *cobra.Command {
 
 This command displays data about previous updates for a stack.`,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(stack, false /*offerNew */, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false /*offerNew */, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
+			updates, err := b.GetHistory(ctx, s.Ref(), pageSize, page)
 			if err != nil {
 				return fmt.Errorf("getting history: %w", err)
 			}
@@ -59,7 +60,7 @@ This command displays data about previous updates for a stack.`,
 			}
 
 			if showSecrets {
-				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack history")
+				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
 			if jsonOut {

@@ -491,21 +491,23 @@ func determinePluginDependency(
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.
 //
 // Supported versions:
-//   PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
-//   determinePluginVersion only supports a subset of that. Translations are provided for
-//   `N(.N)*[{a|b|rc}N][.postN][.devN]`.
+//
+//	PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
+//	determinePluginVersion only supports a subset of that. Translations are provided for
+//	`N(.N)*[{a|b|rc}N][.postN][.devN]`.
 //
 // Translations:
-//   We ensure that there are at least 3 version segments. Missing segments are `0`
-//   padded.
-//   Example: 1.0 => 1.0.0
 //
-//   We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
-//   Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//	We ensure that there are at least 3 version segments. Missing segments are `0`
+//	padded.
+//	Example: 1.0 => 1.0.0
 //
-//   We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
-//   and `.dev` are present, only one separator is used.
-//   Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
+//	We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
+//	Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//
+//	We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
+//	and `.dev` are present, only one separator is used.
+//	Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
 //
 // Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
