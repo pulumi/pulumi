@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -266,17 +267,34 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
+		proj.Name = tokens.PackageName(args.name)
 		err = yamlutil.Insert(&workspaceDocument, "name", args.name)
 		if err != nil {
 			return err
 		}
+		proj.Description = &args.description
 		err = yamlutil.Insert(&workspaceDocument, "description", args.description)
 		if err != nil {
 			return err
 		}
+		proj.Template = nil
 		err = yamlutil.Delete(&workspaceDocument, "template")
 		if err != nil {
 			return err
+		}
+		if proj.Runtime.Name() == "python" {
+			// If the template does give virtualenv use it, else default to "venv"
+			if len(proj.Runtime.Options()) == 0 {
+				proj.Runtime.SetOption("virtualenv", "venv")
+				err = yamlutil.Insert(&workspaceDocument, "runtime", strings.TrimSpace(`
+name: python
+options:
+  virtualenv: venv
+`))
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		contract.Assert(len(workspaceDocument.Content) == 1)
