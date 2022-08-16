@@ -94,8 +94,10 @@ func Test(t *testing.T, opts TestOptions) {
 		for _, cmd := range plugin.Build {
 			std, err := cmd.CombinedOutput()
 			assert.NoError(t, err)
-			if err != nil {
+			if std != nil {
 				fmt.Printf("%s\n", std)
+			}
+			if err != nil {
 				fmt.Printf("%s\n", err)
 			}
 		}
@@ -139,11 +141,11 @@ func Test(t *testing.T, opts TestOptions) {
 
 		switch plugin.Kind {
 		case workspace.AnalyzerPlugin:
-			plugins.Analyzers = append(proj.Plugins.Analyzers, p)
+			plugins.Analyzers = append(plugins.Analyzers, p)
 		case workspace.LanguagePlugin:
-			plugins.Languages = append(proj.Plugins.Languages, p)
+			plugins.Languages = append(plugins.Languages, p)
 		case workspace.ResourcePlugin:
-			plugins.Providers = append(proj.Plugins.Providers, p)
+			plugins.Providers = append(plugins.Providers, p)
 		}
 	}
 
@@ -376,12 +378,7 @@ func Test(t *testing.T, opts TestOptions) {
 		t.Run(langOpt.Language, func(t *testing.T) {
 			i.ProgramTest(t, &langPtOpts)
 		})
-		//clean up subdir
 
-		//Including this seems to cause all tests to fail.
-		t.Cleanup(func() {
-			os.RemoveAll(subdir)
-		})
 	}
 }
 

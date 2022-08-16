@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -31,8 +32,15 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	//get ~ path
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pulumiDir := fmt.Sprintf("%s/.pulumi/", home)
 	opts := []TestOptions{
-		{
+		/*{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/empty",
 			},
@@ -49,7 +57,7 @@ func TestAll(t *testing.T) {
 				Dir: "tests/structured",
 			},
 			Languages: allLanguages(),
-		},
+		},*/
 		/*{
 			Program: &i.ProgramTestOptions{
 				Dir: "tests/reference",
@@ -64,8 +72,8 @@ func TestAll(t *testing.T) {
 		},*/
 		{
 			Program: &i.ProgramTestOptions{
-				Dir: "tests/provider",
-				//PulumiBin:        "~/.pulumi-dev/bin/pulumi",
+				Dir:              "tests/provider",
+				PulumiBin:        filepath.Join(home, ".pulumi-dev", "bin", "pulumi"),
 				SkipRefresh:      true,
 				SkipPreview:      true,
 				SkipExportImport: true,
@@ -77,7 +85,7 @@ func TestAll(t *testing.T) {
 					Kind: workspace.ResourcePlugin,
 					Build: []exec.Cmd{
 						*exec.Command("pulumi", "plugin", "install", "resource", "command", "0.4.1"),
-						*exec.Command("cp", "~/.pulumi/plugins/resource-command-v0.4.1/pulumi-resource-command", fmt.Sprintf("%s/tests/provider/bin", pwd)),
+						*exec.Command("cp", filepath.Join(pulumiDir, "plugins", "resource-command-v0.4.1/pulumi-resource-command"), fmt.Sprintf("%s/tests/provider/bin", pwd)),
 					},
 					Bin:     "./bin",
 					Version: semver.MustParse("0.4.1"),
@@ -87,7 +95,7 @@ func TestAll(t *testing.T) {
 					Kind: workspace.LanguagePlugin,
 					Build: []exec.Cmd{
 						*exec.Command("pulumi", "plugin", "install", "language", "yaml", "0.5.4"),
-						*exec.Command("cp", "~/.pulumi/plugins/language-yaml-v0.5.4/pulumi-language-yaml", fmt.Sprintf("%s/tests/provider/bin", pwd)),
+						*exec.Command("cp", filepath.Join(pulumiDir, "plugins", "language-yaml-v0.5.4/pulumi-language-yaml"), filepath.Join(pwd, "tests/provider/bin")),
 					},
 					Bin:     "./bin",
 					Version: semver.MustParse("0.5.4"),
