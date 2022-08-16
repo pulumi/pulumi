@@ -28,6 +28,11 @@
 - [sdk/nodejs] Deprecate PULUMI_TEST_MODE
   [#10400](https://github.com/pulumi/pulumi/pull/10400)
 
+- [testing] Implement matrix testing [#10231](https://github.com/pulumi/pulumi/pull/10231)
+
+- [codegen] Minor modifications to nodejs, dotnet, go, typescript to allow generating test packages not intended for release [#10231](https://github.com/pulumi/pulumi/pull/10231)
+
+- [testing] Add PulumiBin and AuxiliaryStack options to integration testing [#10231](https://github.com/pulumi/pulumi/pull/10231)
 ### Bug Fixes
 
 - [cli] Paginate template options
