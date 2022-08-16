@@ -115,14 +115,14 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	if !args.generateOnly {
-		if _, err = currentBackend(opts); err != nil {
+		if _, err = currentBackend(ctx, opts); err != nil {
 			return err
 		}
 	}
 
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
-		if err := validateProjectName(args.name, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -174,7 +174,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(stackName, opts)
+		existingStack, existingName, existingDesc, err := getStack(ctx, stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -205,7 +205,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, defaultValue, args.generateOnly, opts); err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
@@ -216,7 +216,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(s, args.generateOnly, opts) }
+		validate := func(s string) error { return validateProjectName(ctx, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -291,7 +291,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(args.prompt,
+		if s, err = promptAndCreateStack(ctx, args.prompt,
 			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -520,19 +520,19 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
-func validateProjectName(projectName string, generateOnly bool, opts display.Options) error {
+func validateProjectName(ctx context.Context, projectName string, generateOnly bool, opts display.Options) error {
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
 
 	if !generateOnly {
-		b, err := currentBackend(opts)
+		b, err := currentBackend(ctx, opts)
 		if err != nil {
 			return err
 		}
 
-		exists, err := b.DoesProjectExist(commandContext(), projectName)
+		exists, err := b.DoesProjectExist(ctx, projectName)
 		if err != nil {
 			return err
 		}
@@ -546,8 +546,8 @@ func validateProjectName(projectName string, generateOnly bool, opts display.Opt
 }
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
-func getStack(stack string, opts display.Options) (backend.Stack, string, string, error) {
-	b, err := currentBackend(opts)
+func getStack(ctx context.Context, stack string, opts display.Options) (backend.Stack, string, string, error) {
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -557,7 +557,7 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 		return nil, "", "", err
 	}
 
-	s, err := b.GetStack(commandContext(), stackRef)
+	s, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -575,11 +575,11 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(prompt promptForValueFunc,
+func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
 
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +589,7 @@ func promptAndCreateStack(prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, b, stackName, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +614,7 @@ func promptAndCreateStack(prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, formattedStackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, b, formattedStackName, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -628,12 +628,14 @@ func promptAndCreateStack(prompt promptForValueFunc,
 }
 
 // stackInit creates the stack.
-func stackInit(b backend.Backend, stackName string, setCurrent bool, secretsProvider string) (backend.Stack, error) {
+func stackInit(
+	ctx context.Context, b backend.Backend, stackName string,
+	setCurrent bool, secretsProvider string) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil, setCurrent, secretsProvider)
+	return createStack(ctx, b, stackRef, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
