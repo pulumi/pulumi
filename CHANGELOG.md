@@ -8,8 +8,7 @@ CHANGELOG
 - [cli] Updated to the latest version of go-git.
   [#10330](https://github.com/pulumi/pulumi/pull/10330)
 
-- [sdk]
-   - merge python error message and traceback into single error message.
+- [sdk] Merge python error message and traceback into single error message.
    [#10348](https://github.com/pulumi/pulumi/pull/10348)
 
 - [sdk/python] Support optional default parameters in pulumi.Config
