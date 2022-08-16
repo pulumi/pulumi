@@ -182,6 +182,7 @@ func Test(t *testing.T, opts TestOptions) {
 
 	localProjects["pulumi"] = opts.PulumiSDKs
 
+	assert.Nil(t, proj.Plugins, "Plugins should not be specified in YAML but in test options")
 	proj.Plugins = plugins
 
 	//Replace relative paths with absolute paths
