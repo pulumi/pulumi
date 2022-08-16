@@ -3,6 +3,7 @@ package display
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -17,6 +18,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
 
 // ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
@@ -49,10 +52,14 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
+
+		// Clean up ANSI control codes.
+		cleanedMsg := matchAnsiControlCodes.ReplaceAllString(p.Message, "")
+
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{
 			URN:       string(p.URN),
 			Prefix:    p.Prefix,
-			Message:   p.Message,
+			Message:   cleanedMsg,
 			Color:     string(p.Color),
 			Severity:  string(p.Severity),
 			Ephemeral: p.Ephemeral,
