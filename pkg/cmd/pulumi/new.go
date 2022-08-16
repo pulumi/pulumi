@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -287,6 +288,13 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	appendFileName := "Pulumi.yaml.append"
+	appendFile := filepath.Join(root, appendFileName)
+	os.Remove(appendFile)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
 	}
 
 	// Create the stack, if needed.
