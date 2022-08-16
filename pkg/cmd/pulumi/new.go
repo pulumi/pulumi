@@ -279,6 +279,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 
+		contract.Assert(len(workspaceDocument.Content) == 1)
 		projFile, err := yaml.Marshal(workspaceDocument.Content[0])
 		if err != nil {
 			return err
