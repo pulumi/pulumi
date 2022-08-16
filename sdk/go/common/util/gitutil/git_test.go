@@ -272,8 +272,12 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			"git@github.foo-acme.org:owner-name/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.org"},
 		},
+		{
+			"git@git.foo-acme.net:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "git.foo-acme.net"},
+		},
 
-		//HTTPS remotes
+		// HTTPS remotes
 		{
 			"https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
@@ -295,7 +299,7 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			&VCSInfo{Owner: "owner-name", Repo: "project/_git/repo-name", Kind: AzureDevOpsHostName},
 		},
 
-		//Unknown or bad remotes
+		// Unknown or bad remotes
 		{"", nil},
 		{"asdf", nil},
 		{"svn:something.com/owner/repo", nil},
