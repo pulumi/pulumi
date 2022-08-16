@@ -76,6 +76,7 @@ type TestOptions struct {
 	Program    *i.ProgramTestOptions
 	PulumiSDKs map[string]string
 	Plugins    []PluginOptions
+	Build      []exec.Cmd
 }
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program,
