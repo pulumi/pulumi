@@ -1409,7 +1409,8 @@ func getPluginInfoAndPath(
 		}
 		/*if plugin.Version != nil && version != nil {
 			if !plugin.Version.Equals(*version) {
-				return nil, "", fmt.Errorf("plugin %s version %s was requested but found version %s in plugin link", name, version, plugin.Version)
+				return nil, "", fmt.Errorf("plugin %s version %s was requested but found version %s in plugin link",
+				name, version, plugin.Version)
 			}
 		}*/
 
