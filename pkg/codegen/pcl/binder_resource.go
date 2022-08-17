@@ -59,13 +59,15 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		pkg, isProvider = name, true
 	}
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
-	if !ok {
-		if pkg != "pulumi" && module != "pulumi" {
+	var pkgSchema *packageSchema
+	if pkg != "pulumi" && module != "pulumi" {
+		var ok bool
+		pkgSchema, ok = b.options.packageCache.entries[pkg]
+		if !ok {
 			return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
-		} else {
-			isProvider = true
 		}
+	} else {
+		isProvider = true
 	}
 
 	var res *schema.Resource
@@ -93,13 +95,6 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
-	// if pkg == "pulumi" && module == "pulumi" {
-	// 	inputProperties = append(inputProperties, &schema.Property{
-	// 		Name: "name",
-	// 		Type: schema.StringType,
-	// 	})
-
-	// }
 
 	// Create input and output types for the schema.
 	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})

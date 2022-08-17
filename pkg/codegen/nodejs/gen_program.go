@@ -362,6 +362,9 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
+	if pkg == "pulumi" && module == "pulumi" {
+		module = ""
+	}
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.Package)

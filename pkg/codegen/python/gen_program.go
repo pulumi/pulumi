@@ -201,6 +201,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
+			if pkg == "pulumi" {
+				continue
+			}
 			packageName := "pulumi_" + makeValidIdentifier(pkg)
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["python"].(PackageInfo); ok && info.PackageName != "" {
@@ -293,6 +296,9 @@ func tokenToQualifiedName(pkg, module, member string) string {
 func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
+	if pkg == "pulumi" && module == "pulumi" {
+		module = ""
+	}
 
 	// Normalize module.
 	if r.Schema != nil {
