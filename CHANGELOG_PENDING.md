@@ -59,3 +59,7 @@
 
 - [cli/display] Fix a panic in the color logic.
   [#10354](https://github.com/pulumi/pulumi/pull/10354
+
+- [codegen/go] Fix StackReference codegen.
+  [#10260](https://github.com/pulumi/pulumi/pull/10260
+
