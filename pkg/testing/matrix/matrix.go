@@ -71,37 +71,254 @@ type PluginOptions struct {
 	Bin string
 }
 
-type TestOptions struct {
-	Languages  []LangTestOption
-	Program    *i.ProgramTestOptions
-	PulumiSDKs map[string]string
-	Plugins    []PluginOptions
-	Build      []exec.Cmd
+type Tester struct {
+	Plugins       workspace.Plugins
+	Languages     []LangTestOption
+	LocalProjects map[string]map[string]string
 }
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program,
 	localProjects map[string]map[string]string) error
 
-func Test(t *testing.T, opts TestOptions) {
+func NewTester(PluginList []PluginOptions, Languages []LangTestOption, PulumiSDKs map[string]string) (Tester, error) {
+	plugins := workspace.Plugins{}
+	localProjects := map[string]map[string]string{}
 
-	dir := opts.Program.Dir
+	root, err := os.Getwd()
+	if err != nil {
+		return Tester{}, err
+	}
+
+	for _, plugin := range PluginList {
+		for _, cmd := range plugin.Build {
+			std, err := cmd.CombinedOutput()
+			if err != nil {
+				return Tester{}, fmt.Errorf("error building plugin %s: %s\n%s", plugin.Name, err, std)
+			}
+		}
+	}
+
+	for _, plugin := range PluginList {
+		root := fmt.Sprintf("%s/%s-sdk", root, plugin.Name)
+		localProjects[plugin.Name] = map[string]string{
+			NODEJS: filepath.Join(root, "nodejs", "bin"),
+			PYTHON: filepath.Join(root, "python"),
+			GO:     filepath.Join(root, "go"),
+			DOTNET: filepath.Join(root, "dotnet"),
+		}
+
+		p := workspace.PluginOptions{
+			Name:    plugin.Name,
+			Path:    plugin.Bin,
+			Version: plugin.Version.String(),
+		}
+
+		switch plugin.Kind {
+		case workspace.AnalyzerPlugin:
+			plugins.Analyzers = append(plugins.Analyzers, p)
+		case workspace.LanguagePlugin:
+			plugins.Languages = append(plugins.Languages, p)
+		case workspace.ResourcePlugin:
+			plugins.Providers = append(plugins.Providers, p)
+		}
+	}
+	//Replace relative paths with absolute paths
+
+	for i, provider := range plugins.Providers {
+		if !filepath.IsAbs(provider.Path) {
+			plugins.Providers[i].Path = filepath.Join(root, provider.Path)
+		}
+	}
+	for i, language := range plugins.Languages {
+		if !filepath.IsAbs(language.Path) {
+			plugins.Languages[i].Path = filepath.Join(root, language.Path)
+		}
+	}
+
+	for i, analyzer := range plugins.Analyzers {
+		if !filepath.IsAbs(analyzer.Path) {
+			plugins.Analyzers[i].Path = filepath.Join(root, analyzer.Path)
+		}
+	}
+
+	//Generate SDKs
+	pluginctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, root, root,
+		nil, false, nil, &plugins)
+	if err != nil {
+		return Tester{}, err
+	}
+	for _, plugin := range PluginList {
+		if plugin.Kind != workspace.ResourcePlugin {
+			continue
+		}
+
+		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, &plugin.Version)
+		if err != nil {
+			return Tester{}, err
+		}
+
+		provider, err := pluginctx.Host.Provider(tokens.Package(info.Name), &plugin.Version)
+		if err != nil {
+			return Tester{}, err
+		}
+
+		max := plugin.Version.Major
+		if max > 1 {
+			max = 1
+		}
+
+		schemaBytes, err := provider.GetSchema(int(max))
+		if err != nil {
+			return Tester{}, err
+		}
+
+		var spec schema.PackageSpec
+		err = json.Unmarshal(schemaBytes, &spec)
+		if err != nil {
+			return Tester{}, err
+		}
+
+		pkg, _, err := schema.BindSpec(spec, nil)
+		if err != nil {
+			return Tester{}, err
+		}
+
+		pkg.Test = true
+
+		pkgName := pkg.Name
+
+		for _, langOpt := range Languages {
+			lang := langOpt.Language
+
+			var files map[string][]byte
+			var err error
+			switch lang {
+			case GO:
+				files, err = gogen.GeneratePackage(pkgName, pkg)
+				if err != nil {
+					return Tester{}, err
+				}
+			case PYTHON:
+				err = PythonConfigurePkg(pkg)
+				if err != nil {
+					return Tester{}, err
+				}
+				files, err = pygen.GeneratePackage(pkgName, pkg, files)
+				if err != nil {
+					return Tester{}, err
+				}
+			case NODEJS:
+				err = NodeConfigurePkg(pkg)
+				if err != nil {
+					return Tester{}, err
+				}
+				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
+				if err != nil {
+					return Tester{}, err
+				}
+			case DOTNET:
+				err = DotnetConfigurePkg(pkg)
+				if err != nil {
+					return Tester{}, err
+				}
+				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
+				if err != nil {
+					return Tester{}, err
+				}
+			//In the future we should support java but I hava no idea where to even start with that.
+			case YAML:
+				continue
+			default:
+				fmt.Printf("Unknown language: '%s'", lang)
+				continue
+			}
+
+			sdkDir := filepath.Join(root, fmt.Sprintf("%s-sdk", pkgName), lang)
+			for p, file := range files {
+				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
+				if err != nil {
+					return Tester{}, err
+				}
+				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
+				if err != nil {
+					return Tester{}, err
+				}
+			}
+			if lang == NODEJS {
+				//yarn install
+				cmd := exec.Command("yarn", "install")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				if err != nil {
+					return Tester{}, err
+				}
+
+				//yarn run tsc
+				cmd = exec.Command("yarn", "run", "tsc")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				if err != nil {
+					return Tester{}, err
+				}
+
+				//cp ../../README.md ../../LICENSE package.json yarn.lock ./bin/
+				cmd = exec.Command("cp", "package.json", "yarn.lock", "./bin/")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				if err != nil {
+					return Tester{}, err
+				}
+
+				//sed -i.bak -e "s/\$${VERSION}/$(VERSION)/g" ./bin/package.json
+				replace := fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version)
+				cmd = exec.Command("sed", "-i.bak", "-e", replace, "./bin/package.json")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				if err != nil {
+					return Tester{}, err
+				}
+			}
+			if lang == GO {
+				//check if go.mod exists inside sdkdir
+				_, err := os.Stat(filepath.Join(sdkDir, "go.mod"))
+				//check if err is notExistError
+				if os.IsNotExist(err) {
+					//if not, create it
+					cmd := exec.Command("go", "mod", "init")
+					cmd.Dir = sdkDir
+					std, err := cmd.CombinedOutput()
+					if err != nil {
+						fmt.Printf("%s\n", std)
+						return Tester{}, err
+					}
+				}
+
+				cmd := exec.Command("go", "mod", "tidy")
+				cmd.Dir = sdkDir
+				std, err := cmd.CombinedOutput()
+				if err != nil {
+					fmt.Printf("%s\n", std)
+					return Tester{}, err
+				}
+			}
+		}
+	}
+
+	localProjects["pulumi"] = PulumiSDKs
+
+	return Tester{
+		Plugins:       plugins,
+		Languages:     Languages,
+		LocalProjects: localProjects,
+	}, nil
+}
+
+func (mTester Tester) TestLang(t *testing.T, opts *i.ProgramTestOptions, language string) {
+	dir := opts.Dir
 	if !filepath.IsAbs(dir) {
 		pwd, err := os.Getwd()
 		assert.NoError(t, err)
 		dir = filepath.Join(pwd, dir)
-	}
-
-	for _, plugin := range opts.Plugins {
-		for _, cmd := range plugin.Build {
-			std, err := cmd.CombinedOutput()
-			assert.NoError(t, err)
-			if std != nil {
-				fmt.Printf("%s\n", std)
-			}
-			if err != nil {
-				fmt.Printf("%s\n", err)
-			}
-		}
 	}
 
 	projfile := filepath.Join(dir, workspace.ProjectFile+".yaml")
@@ -119,38 +336,7 @@ func Test(t *testing.T, opts TestOptions) {
 
 	var pclProgram *pcl.Program
 
-	localProjects := map[string]map[string]string{}
-
-	plugins := &workspace.Plugins{}
-
-	for _, plugin := range opts.Plugins {
-		root := fmt.Sprintf("%s/%s-sdk", dir, plugin.Name)
-		localProjects[plugin.Name] = map[string]string{
-			NODEJS: filepath.Join(root, "nodejs", "bin"),
-			PYTHON: filepath.Join(root, "python"),
-			GO:     filepath.Join(root, "go"),
-			DOTNET: filepath.Join(root, "dotnet"),
-		}
-
-		assert.NotNil(t, plugin.Version)
-
-		p := workspace.PluginOptions{
-			Name:    plugin.Name,
-			Path:    plugin.Bin,
-			Version: plugin.Version.String(),
-		}
-
-		switch plugin.Kind {
-		case workspace.AnalyzerPlugin:
-			plugins.Analyzers = append(plugins.Analyzers, p)
-		case workspace.LanguagePlugin:
-			plugins.Languages = append(plugins.Languages, p)
-		case workspace.ResourcePlugin:
-			plugins.Providers = append(plugins.Providers, p)
-		}
-	}
-
-	host, err := plugin.NewDefaultHost(ctx, nil, false, plugins)
+	host, err := plugin.NewDefaultHost(ctx, nil, false, &mTester.Plugins)
 	assert.NoError(t, err)
 
 	//check if *.pp file exists in dir
@@ -180,224 +366,78 @@ func Test(t *testing.T, opts TestOptions) {
 	assert.NotNil(t, proj)
 	assert.NotNil(t, pclProgram)
 
-	localProjects["pulumi"] = opts.PulumiSDKs
-
-	assert.Nil(t, proj.Plugins, "Plugins should not be specified in YAML but in test options")
-	proj.Plugins = plugins
-
-	//Replace relative paths with absolute paths
-
-	if proj.Plugins != nil {
-		for i, provider := range proj.Plugins.Providers {
-			if !filepath.IsAbs(provider.Path) {
-				proj.Plugins.Providers[i].Path = filepath.Join(dir, provider.Path)
-			}
-		}
-		for i, language := range proj.Plugins.Languages {
-			if !filepath.IsAbs(language.Path) {
-				proj.Plugins.Languages[i].Path = filepath.Join(dir, language.Path)
-			}
-		}
-
-		for i, analyzer := range proj.Plugins.Analyzers {
-			if !filepath.IsAbs(analyzer.Path) {
-				proj.Plugins.Analyzers[i].Path = filepath.Join(dir, analyzer.Path)
-			}
-		}
-	}
-
-	//Generate SDKs
-	pluginctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, proj.Plugins)
-	assert.NoError(t, err)
-	assert.NotNil(t, pluginctx)
-	for _, plugin := range opts.Plugins {
-		assert.NotNil(t, plugin.Version)
-
-		if plugin.Kind != workspace.ResourcePlugin {
-			continue
-		}
-
-		info, err := pluginctx.Host.ResolvePlugin(plugin.Kind, plugin.Name, &plugin.Version)
-		assert.NoError(t, err)
-		assert.NotNil(t, info)
-
-		provider, err := pluginctx.Host.Provider(tokens.Package(info.Name), &plugin.Version)
-		assert.NoError(t, err)
-		assert.NotNil(t, provider)
-
-		max := plugin.Version.Major
-		if max > 1 {
-			max = 1
-		}
-
-		schemaBytes, err := provider.GetSchema(int(max))
-		assert.NoError(t, err)
-		assert.NotNil(t, schemaBytes)
-
-		var spec schema.PackageSpec
-		err = json.Unmarshal(schemaBytes, &spec)
-		assert.NoError(t, err)
-
-		pkg, diags, err := schema.BindSpec(spec, nil)
-		assert.NoError(t, err)
-		assert.Empty(t, diags)
-		assert.NotNil(t, pkg)
-
-		pkg.Test = true
-
-		pkgName := pkg.Name
-
-		for _, langOpt := range opts.Languages {
-			lang := langOpt.Language
-
-			var files map[string][]byte
-			var err error
-			switch lang {
-			case GO:
-				files, err = gogen.GeneratePackage(pkgName, pkg)
-				assert.NoError(t, err)
-			case PYTHON:
-				err = PythonConfigurePkg(pkg)
-				assert.NoError(t, err)
-				files, err = pygen.GeneratePackage(pkgName, pkg, files)
-				assert.NoError(t, err)
-			case NODEJS:
-				err = NodeConfigurePkg(pkg)
-				assert.NoError(t, err)
-				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
-				assert.NoError(t, err)
-			case DOTNET:
-				err = DotnetConfigurePkg(pkg)
-				assert.NoError(t, err)
-				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
-				assert.NoError(t, err)
-			//In the future we should support java but I hava no idea where to even start with that.
-			case YAML:
-				continue
-			default:
-				fmt.Printf("Unknown language: '%s'", lang)
-				continue
-			}
-
-			sdkDir := filepath.Join(dir, fmt.Sprintf("%s-sdk", pkgName), lang)
-			for p, file := range files {
-				err = os.MkdirAll(filepath.Join(sdkDir, path.Dir(p)), 0700)
-				assert.NoError(t, err)
-				err = os.WriteFile(filepath.Join(sdkDir, p), file, 0600)
-				assert.NoError(t, err)
-			}
-			if lang == NODEJS {
-				//yarn install
-				cmd := exec.Command("yarn", "install")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-
-				//yarn run tsc
-				cmd = exec.Command("yarn", "run", "tsc")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-
-				//cp ../../README.md ../../LICENSE package.json yarn.lock ./bin/
-				cmd = exec.Command("cp", "package.json", "yarn.lock", "./bin/")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-
-				//sed -i.bak -e "s/\$${VERSION}/$(VERSION)/g" ./bin/package.json
-				replace := fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version)
-				cmd = exec.Command("sed", "-i.bak", "-e", replace, "./bin/package.json")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-			}
-			if lang == GO {
-				cmd := exec.Command("go", "mod", "init")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-
-				cmd = exec.Command("go", "mod", "tidy")
-				cmd.Dir = sdkDir
-				err = cmd.Run()
-				assert.NoError(t, err)
-			}
-		}
-	}
+	proj.Plugins = &mTester.Plugins
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
-	for _, langOpt := range opts.Languages {
-		var projectGenerator projectGeneratorFunc
-		switch langOpt.Language {
-		case DOTNET:
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
+	for _, langOpt := range mTester.Languages {
+		if langOpt.Language == language {
+			var projectGenerator projectGeneratorFunc
+			switch langOpt.Language {
+			case DOTNET:
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
 
-				return dotnetgen.GenerateProject(directory, project, p, getLanguage(localProjects, "dotnet"))
+					return dotnetgen.GenerateProject(directory, project, p, getLanguage(localProjects, "dotnet"))
+				}
+			case GO:
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
+
+					return gogen.GenerateProject(directory, project, p, getLanguage(localProjects, "go"))
+				}
+			case NODEJS:
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
+
+					return jsgen.GenerateProject(directory, project, p, getLanguage(localProjects, "nodejs"))
+				}
+			case PYTHON:
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
+
+					return pygen.GenerateProject(directory, project, p, getLanguage(localProjects, "python"))
+				}
+			case JAVA:
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
+					return javagen.GenerateProject(directory, project, p)
+				}
+			case YAML: // nolint: goconst
+				projectGenerator = func(directory string, project workspace.Project,
+					p *pcl.Program, localProjects map[string]map[string]string) error {
+					return yamlgen.GenerateProject(directory, project, p)
+				}
+			default:
+				assert.FailNow(t, "Unsupported language: "+langOpt.Language)
 			}
-		case GO:
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
 
-				return gogen.GenerateProject(directory, project, p, getLanguage(localProjects, "go"))
+			subdir := filepath.Join(dir, langOpt.Language)
+			//check if subdir exists
+			if _, err := os.Stat(subdir); !os.IsNotExist(err) {
+				assert.NoError(t, os.RemoveAll(subdir))
 			}
-		case NODEJS:
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
 
-				return jsgen.GenerateProject(directory, project, p, getLanguage(localProjects, "nodejs"))
+			//create subdir
+			err = os.MkdirAll(subdir, 0755)
+			assert.NoError(t, err)
+
+			//generate project
+			err = projectGenerator(subdir, *proj, pclProgram, mTester.LocalProjects)
+			assert.NoError(t, err)
+
+			//Configure opts
+			langPtOpts := i.ProgramTestOptions{}
+			if opts != nil {
+				langPtOpts = *opts
 			}
-		case PYTHON:
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
-
-				return pygen.GenerateProject(directory, project, p, getLanguage(localProjects, "python"))
+			if langOpt.Opts != nil {
+				langPtOpts = langPtOpts.With(*langOpt.Opts)
 			}
-		case JAVA:
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
-				return javagen.GenerateProject(directory, project, p)
-			}
-		case YAML: // nolint: goconst
-			projectGenerator = func(directory string, project workspace.Project,
-				p *pcl.Program, localProjects map[string]map[string]string) error {
-				return yamlgen.GenerateProject(directory, project, p)
-			}
-		default:
-			assert.FailNow(t, "Unsupported language: "+langOpt.Language)
-		}
-
-		subdir := filepath.Join(dir, langOpt.Language)
-		//check if subdir exists
-		if _, err := os.Stat(subdir); !os.IsNotExist(err) {
-			assert.NoError(t, os.RemoveAll(subdir))
-		}
-
-		//create subdir
-		err = os.MkdirAll(subdir, 0755)
-		assert.NoError(t, err)
-
-		//generate project
-		err = projectGenerator(subdir, *proj, pclProgram, localProjects)
-		assert.NoError(t, err)
-
-		//Configure opts
-		langPtOpts := i.ProgramTestOptions{}
-		if opts.Program != nil {
-			langPtOpts = *opts.Program
-		}
-		if langOpt.Opts != nil {
-			langPtOpts = langPtOpts.With(*langOpt.Opts)
-		}
-		langPtOpts = langPtOpts.With(i.ProgramTestOptions{
-			Dir: subdir,
-		})
-		t.Run(langOpt.Language, func(t *testing.T) {
+			langPtOpts = langPtOpts.With(i.ProgramTestOptions{
+				Dir: subdir,
+			})
 			i.ProgramTest(t, &langPtOpts)
-		})
-
+		}
 	}
 }
 
