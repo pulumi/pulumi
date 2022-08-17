@@ -61,17 +61,25 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 
 	pkgSchema, ok := b.options.packageCache.entries[pkg]
 	if !ok {
-		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
+		if pkg != "pulumi" && module != "pulumi" {
+			return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
+		} else {
+			isProvider = true
+		}
 	}
 
 	var res *schema.Resource
 	var inputProperties, properties []*schema.Property
 	if isProvider {
-		r, err := pkgSchema.schema.Provider()
-		if err != nil {
-			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		if pkg == "pulumi" && module == "pulumi" {
+			res = schema.DefaultPulumiPackage.Provider
+		} else {
+			r, err := pkgSchema.schema.Provider()
+			if err != nil {
+				return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+			}
+			res = r
 		}
-		res = r
 	} else {
 		r, tk, ok, err := pkgSchema.LookupResource(token)
 		if err != nil {
@@ -85,6 +93,13 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
+	if pkg == "pulumi" && module == "pulumi" {
+		inputProperties = append(inputProperties, &schema.Property{
+			Name: "name",
+			Type: schema.StringType,
+		})
+
+	}
 
 	// Create input and output types for the schema.
 	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
