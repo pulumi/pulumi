@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -218,7 +219,8 @@ func NewPulumiCmd() *cobra.Command {
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					updateCheckResult <- checkForUpdate()
+					ctx := commandContext()
+					updateCheckResult <- checkForUpdate(ctx)
 					close(updateCheckResult)
 				}()
 			}
@@ -366,7 +368,7 @@ func NewPulumiCmd() *cobra.Command {
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate() *diag.Diag {
+func checkForUpdate(ctx context.Context) *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -377,7 +379,7 @@ func checkForUpdate() *diag.Diag {
 		return nil
 	}
 
-	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
+	latestVer, oldestAllowedVer, err := getCLIVersionInfo(ctx)
 	if err != nil {
 		logging.V(3).Infof("error fetching latest version information: %s", err)
 	}
@@ -391,14 +393,14 @@ func checkForUpdate() *diag.Diag {
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
 // allowed without warning. It caches data from the server for a day.
-func getCLIVersionInfo() (semver.Version, semver.Version, error) {
+func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
 	latest, oldest, err := getCachedVersionInfo()
 	if err == nil {
 		return latest, oldest, err
 	}
 
 	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
-	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
+	latest, oldest, err = client.GetCLIVersionInfo(ctx)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}

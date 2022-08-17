@@ -15,13 +15,9 @@
 package main
 
 import (
-	"context"
 	"runtime"
-	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,28 +28,6 @@ func TestCLI(t *testing.T) {
 	cli := getCLIAbout()
 	assert.Equal(t, cli.GoVersion, runtime.Version())
 	assert.Equal(t, cli.GoCompiler, runtime.Compiler)
-}
-
-func TestProjectRuntime(t *testing.T) {
-	t.Parallel()
-
-	cmd, err := python.Command(context.Background(), "--version")
-	var out []byte
-	if err != nil {
-		t.Skip("Python needs to be in path for this func Test")
-	}
-	out, err = cmd.Output()
-	assert.NoError(t, err, "This should not fail")
-	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
-
-	var runtime projectRuntimeAbout
-	runtime, err = getProjectRuntimeAbout(context.Background(), &workspace.Project{
-		Name:    "TestProject",
-		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, runtime.Language, "python")
-	assert.Equal(t, runtime.Version, version)
 }
 
 func TestBackend(t *testing.T) {

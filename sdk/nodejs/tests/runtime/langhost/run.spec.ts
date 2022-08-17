@@ -1220,6 +1220,21 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "ambiguous_entrypoints": {
+            program: path.join(base, "069.ambiguous_entrypoints"),
+            expectResourceCount: 1,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                assert.strictEqual(
+                    message,
+                    "Found a TypeScript project containing an index.js file and no explicit entrypoint" +
+                    " in Pulumi.yaml - Pulumi will use index.js"
+                );
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {

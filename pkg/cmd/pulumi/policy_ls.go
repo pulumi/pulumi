@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -36,8 +35,9 @@ func newPolicyLsCmd() *cobra.Command {
 		Short: "List all Policy Packs for a Pulumi organization",
 		Long:  "List all Policy Packs for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := commandContext()
 			// Get backend.
-			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
 			}
@@ -54,7 +54,6 @@ func newPolicyLsCmd() *cobra.Command {
 			}
 
 			// Gather all Policy Packs for the organization.
-			ctx := context.Background()
 			var (
 				allPolicyPacks []apitype.PolicyPackWithVersions
 				inContToken    backend.ContinuationToken

@@ -53,6 +53,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -63,13 +64,13 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			// Get the current backend
-			b, err := currentBackend(opts)
+			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
 
 			// Get the current stack and its project
-			currentStack, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			currentStack, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -95,13 +96,13 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			secretsProvider := args[0]
 			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
+			if err := createSecretsManager(ctx, b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
 				return err
 			}
 
 			// Fixup the checkpoint
 			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
-			return migrateOldConfigAndCheckpointToNewSecretsProvider(commandContext(), currentStack, currentConfig, decrypter)
+			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, currentStack, currentConfig, decrypter)
 		}),
 	}
 

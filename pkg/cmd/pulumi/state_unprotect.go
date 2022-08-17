@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -41,12 +42,13 @@ func newStateUnprotectCommand() *cobra.Command {
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
 			if unprotectAll {
-				return unprotectAllResources(stack, showPrompt)
+				return unprotectAllResources(ctx, stack, showPrompt)
 			}
 
 			if len(args) != 1 {
@@ -54,7 +56,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 			}
 
 			urn := resource.URN(args[0])
-			return unprotectResource(stack, urn, showPrompt)
+			return unprotectResource(ctx, stack, urn, showPrompt)
 		}),
 	}
 
@@ -67,8 +69,8 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 	return cmd
 }
 
-func unprotectAllResources(stackName string, showPrompt bool) result.Result {
-	res := runTotalStateEdit(stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+func unprotectAllResources(ctx context.Context, stackName string, showPrompt bool) result.Result {
+	res := runTotalStateEdit(ctx, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
 		// Protects against Panic when a user tries to unprotect non-existing resources
 		if snap == nil {
 			return fmt.Errorf("no resources found to unprotect")
@@ -89,8 +91,8 @@ func unprotectAllResources(stackName string, showPrompt bool) result.Result {
 	return nil
 }
 
-func unprotectResource(stackName string, urn resource.URN, showPrompt bool) result.Result {
-	res := runStateEdit(stackName, showPrompt, urn, edit.UnprotectResource)
+func unprotectResource(ctx context.Context, stackName string, urn resource.URN, showPrompt bool) result.Result {
+	res := runStateEdit(ctx, stackName, showPrompt, urn, edit.UnprotectResource)
 	if res != nil {
 		return res
 	}
