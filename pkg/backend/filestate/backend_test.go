@@ -408,8 +408,8 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 func TestParseEmptyStackFails(t *testing.T) {
 	t.Parallel()
 	// ParseStackReference does use the method receiver
-	// (it is a total function disguisted as a method.)
-	var b *localBackend = nil
+	// (it is a total function disguised as a method.)
+	var b *localBackend
 	var stackName = ""
 	var _, err = b.ParseStackReference(stackName)
 	assert.Error(t, err)
