@@ -31,16 +31,6 @@ func newPulumiPackage() *Package {
 				},
 			},
 		},
-		// Provider: ResourceSpec{
-		// 	ObjectTypeSpec: ObjectTypeSpec{
-		// 	InputProperties: map[string]PropertySpec{
-		// 		"Name": {
-		// 			TypeSpec: TypeSpec{
-		// 				Type:      "string",
-		// 			},
-		// 		},
-		// 	},
-
 	}
 
 	pkg, err := ImportSpec(spec, nil)
