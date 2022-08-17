@@ -27,7 +27,6 @@ import (
 )
 
 func TestAll(t *testing.T) {
-	t.Parallel()
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +82,6 @@ func TestAll(t *testing.T) {
 				Dir:              "tests/provider",
 				PulumiBin:        filepath.Join(home, ".pulumi-dev", "bin", "pulumi"),
 				SkipRefresh:      true,
-				SkipPreview:      true,
 				SkipExportImport: true,
 			},
 			Languages: allLanguages(),

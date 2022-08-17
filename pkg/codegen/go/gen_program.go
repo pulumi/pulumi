@@ -6,6 +6,7 @@ import (
 	gofmt "go/format"
 	"io"
 	"io/ioutil"
+	"os/exec"
 	"path"
 	"strings"
 	"sync"
@@ -136,6 +137,14 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
+func goPkgName(p *schema.Package) string {
+	if p.Version.Major > 1 {
+		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/v%d/go", p.Name, p.Version.Major)
+	} else {
+		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go", p.Name)
+	}
+}
+
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,
 	localProjects map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
@@ -159,18 +168,21 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 
+	replaced := []string{}
+
 	// Build a go.mod based on the packages used by program
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
 	gomod.WriteString("go 1.17\n")
 	for name, sdk := range localProjects {
-		if name == "go" {
+		if name == "pulumi" {
 			gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi/sdk/v3/go => %s\n", sdk))
 
 		} else {
 			for _, p := range packages {
 				if p.Name == name {
-					gomod.WriteString(fmt.Sprintf("replace github.com/pulumi/pulumi-%s/sdk/go => %s\n", name, sdk))
+					gomod.WriteString(fmt.Sprintf("replace %s => %s\n", goPkgName(p), sdk))
+					replaced = append(replaced, name)
 				}
 			}
 		}
@@ -239,7 +251,28 @@ require (
 		}
 
 		if packageName != "" {
-			gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+			wasReplaced := false
+			for _, name := range replaced {
+				if name == p.Name {
+					wasReplaced = true
+					break
+				}
+			}
+			if wasReplaced { //Version doesn't matter, so let's just fetch the newest one.
+				name := fmt.Sprintf("github.com/pulumi/pulumi-%s", p.Name)
+				cmd := exec.Command("go", "list", "-m", "-versions", name)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					return fmt.Errorf("failed to run go list: %s", err)
+				}
+				//split out by spaces and get last element
+				version := strings.Split(string(out), " ")[len(strings.Split(string(out), " "))-1]
+				//remove build tags
+				version = strings.Split(version, "+")[0]
+				gomod.WriteString(fmt.Sprintf("	%s %s\n", packageName, version))
+			} else {
+				gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+			}
 		}
 	}
 

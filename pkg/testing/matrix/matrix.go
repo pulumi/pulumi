@@ -226,7 +226,12 @@ func Test(t *testing.T, opts TestOptions) {
 		assert.NoError(t, err)
 		assert.NotNil(t, provider)
 
-		schemaBytes, err := provider.GetSchema(int(plugin.Version.Major))
+		max := plugin.Version.Major
+		if max > 1 {
+			max = 1
+		}
+
+		schemaBytes, err := provider.GetSchema(int(max))
 		assert.NoError(t, err)
 		assert.NotNil(t, schemaBytes)
 
@@ -263,6 +268,7 @@ func Test(t *testing.T, opts TestOptions) {
 				files, err = jsgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
 			case DOTNET:
+				err = DotnetConfigurePkg(pkg)
 				assert.NoError(t, err)
 				files, err = dotnetgen.GeneratePackage(pkgName, pkg, files)
 				assert.NoError(t, err)
@@ -303,6 +309,17 @@ func Test(t *testing.T, opts TestOptions) {
 				//sed -i.bak -e "s/\$${VERSION}/$(VERSION)/g" ./bin/package.json
 				replace := fmt.Sprintf("s/$${VERSION}/%s/g", pkg.Version)
 				cmd = exec.Command("sed", "-i.bak", "-e", replace, "./bin/package.json")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+			}
+			if lang == GO {
+				cmd := exec.Command("go", "mod", "init")
+				cmd.Dir = sdkDir
+				err = cmd.Run()
+				assert.NoError(t, err)
+
+				cmd = exec.Command("go", "mod", "tidy")
 				cmd.Dir = sdkDir
 				err = cmd.Run()
 				assert.NoError(t, err)
@@ -433,6 +450,29 @@ func NodeConfigurePkg(pkg *schema.Package) error {
 	}
 	nodePkg.RespectSchemaVersion = true
 	pkg.Language["nodejs"] = nodePkg
+	return nil
+}
+
+func DotnetConfigurePkg(pkg *schema.Package) error {
+	raw, notnil := pkg.Language["csharp"]
+	message, ismessage := raw.(json.RawMessage)
+	var csPkg dotnetgen.CSharpPackageInfo
+	if notnil && ismessage {
+		err := json.Unmarshal(message, &csPkg)
+		if err != nil {
+			return err
+		}
+	} else if notnil && !ismessage {
+		info, ok := raw.(dotnetgen.CSharpPackageInfo)
+		if !ok {
+			return fmt.Errorf("invalid csharp package info")
+		}
+		csPkg = info
+	} else if !notnil {
+		csPkg = dotnetgen.CSharpPackageInfo{}
+	}
+	csPkg.RespectSchemaVersion = true
+	pkg.Language["csharp"] = csPkg
 	return nil
 }
 
