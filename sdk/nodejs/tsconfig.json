@@ -98,6 +98,7 @@
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
+        "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
 
         "tests/automation/localWorkspace.spec.ts",
 

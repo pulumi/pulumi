@@ -357,7 +357,7 @@ func (b *localBackend) stackPath(stack tokens.Name) string {
 	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
-	plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+	plainPath := filepath.ToSlash(filepath.Join(path, fsutil.NamePath(stack)) + ".json")
 	gzipedPath := plainPath + ".gz"
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
