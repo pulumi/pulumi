@@ -88,10 +88,6 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
-	if localProjects == nil {
-		localProjects = map[string]string{}
-	}
-
 	// Build a requirements.txt based on the packages used by program
 	var requirementsTxt bytes.Buffer
 	localPulumi, ok := localProjects["pulumi"]

@@ -157,10 +157,6 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
-	if localProjects == nil {
-		localProjects = map[string]string{}
-	}
-
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
 	pulumi := `@pulumi/pulumi": "^3.0.0`

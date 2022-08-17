@@ -192,10 +192,6 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
 	projectTemplate := "		<ProjectReference Include=\"%s\" />\n"
 
-	if localProjects == nil {
-		localProjects = map[string]string{}
-	}
-
 	if localPulumi, ok := localProjects["pulumi"]; ok {
 		csproj.WriteString(fmt.Sprintf(projectTemplate, filepath.Join(localPulumi, "Pulumi.csproj")))
 	} else {
