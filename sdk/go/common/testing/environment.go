@@ -157,11 +157,10 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
-		e.Errorf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
 		e.Logf("Run Error: %v", err)
 		e.Logf("STDOUT: %v", stdout)
 		e.Logf("STDERR: %v", stderr)
-		e.FailNow()
+		e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
 	}
 	return stdout, stderr
 }
