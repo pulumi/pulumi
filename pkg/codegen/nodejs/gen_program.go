@@ -159,7 +159,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
-	pulumi := `@pulumi/pulumi": "^3.0.0`
+	pulumi := `"@pulumi/pulumi": "^3.0.0"`
 	if localPulumi, ok := localProjects["pulumi"]; ok {
 		pulumi = fmt.Sprintf("\"@pulumi/pulumi\": \"file:%s\"", localPulumi)
 	}
