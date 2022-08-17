@@ -76,9 +76,9 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	}()
 
 	// Provided paths can be both relative and absolute.
-	events, stop, result := watchPaths(op.Root, paths)
-	if result != nil {
-		return result
+	events, stop, err := watchPaths(op.Root, paths)
+	if err != nil {
+		return result.FromError(err)
 	}
 	defer stop()
 
@@ -107,7 +107,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	return nil
 }
 
-func watchPaths(root string, paths []string) (chan string, func(), result.Result) {
+func watchPaths(root string, paths []string) (chan string, func(), error) {
 	args := []string{"--origin", root}
 	for _, p := range paths {
 
@@ -123,7 +123,7 @@ func watchPaths(root string, paths []string) (chan string, func(), result.Result
 
 	watchCmd, err := getWatchUtil()
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
 	cmd := exec.Command(watchCmd, args...)
@@ -135,7 +135,7 @@ func watchPaths(root string, paths []string) (chan string, func(), result.Result
 	go stdoutToChannel(scanner, events)
 	err = cmd.Start()
 	if err != nil {
-		return nil, nil, result.FromError(fmt.Errorf("error starting pulumi-watch: %w", err))
+		return nil, nil, fmt.Errorf("error starting pulumi-watch: %w", err)
 	}
 
 	stop := func() {
@@ -167,9 +167,11 @@ func getWatchUtil() (string, error) {
 
 			// Let's see if the file is executable. On Windows, os.Stat() returns a mode of "-rw-rw-rw" so on
 			// on windows we just trust the fact that the .exe can actually be launched.
-			if stat, err := os.Stat(candidate); err == nil &&
-				(stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS) {
-				return candidate, nil
+			if stat, err := os.Stat(candidate); err == nil {
+				if stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS {
+					return candidate, nil
+				}
+				return "", fmt.Errorf("Could not locate an executable pulumi-watch, found %v without execute bit", fullPath)
 			}
 		}
 	}
