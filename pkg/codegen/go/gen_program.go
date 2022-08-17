@@ -359,7 +359,7 @@ func (g *generator) collectImports(
 					pkg = name
 					mod = ""
 				} else if mod == "pulumi" {
-					mod = ""
+					continue
 				}
 
 			}
@@ -607,9 +607,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
-		mod = ""
-		typ = "Provider"
-	} else if pkg == "pulumi" && mod == "pulumi" {
 		mod = ""
 		typ = "Provider"
 	}
