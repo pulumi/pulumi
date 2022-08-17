@@ -491,8 +491,6 @@ github.com/hashicorp/go-uuid v1.0.0/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/b
 github.com/hashicorp/go-uuid v1.0.2/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
 github.com/hashicorp/go-version v1.1.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go-version v1.2.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
-github.com/hashicorp/go-version v1.4.0 h1:aAQzgqIrRKRa7w75CKpbBxYsmUoPjzVm1W59ca1L0J4=
-github.com/hashicorp/go-version v1.4.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.3/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
@@ -683,8 +681,8 @@ github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
-github.com/pulumi/pulumi-java/pkg v0.5.3 h1:wqiP6TnKZm+ocTRLVwjzmd3fApCKQkvwba0qoh7zMV4=
-github.com/pulumi/pulumi-java/pkg v0.5.3/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
+github.com/pulumi/pulumi-java/pkg v0.5.4 h1:hQH7BrEMWvwq/uzsi0XsULoQ8WPpBpqK/rosnggsdDI=
+github.com/pulumi/pulumi-java/pkg v0.5.4/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
 github.com/pulumi/pulumi-yaml v0.5.4 h1:O4H0PD0hiJjpci0GJFSkihS+yC8rWACKxuLyjYVt5wo=
 github.com/pulumi/pulumi-yaml v0.5.4/go.mod h1:e8BcP30yunk/u3mLXDykhtEQf8tTItYgQzPHDmRvJcg=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=

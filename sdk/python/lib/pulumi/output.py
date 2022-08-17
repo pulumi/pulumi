@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import contextlib
 from functools import reduce
 from inspect import isawaitable
 from typing import (
@@ -219,16 +220,14 @@ class Output(Generic[T_co]):
                 result_is_secret.set_result(is_secret)
                 return cast(U, transformed)
             finally:
-                # Always resolve the future if it hasn't been done already.
-                if not result_is_known.done():
-                    # Try and set the result. This might fail if we're shutting down,
-                    # so swallow that error if that occurs.
-                    try:
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(False)
-                    except RuntimeError:
-                        pass
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_resources.set_result(resources)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_known.set_result(False)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_secret.set_result(False)
 
         run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
@@ -503,7 +502,7 @@ class Output(Generic[T_co]):
         return """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi."""

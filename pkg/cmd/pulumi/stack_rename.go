@@ -45,12 +45,13 @@ func newStackRenameCmd() *cobra.Command {
 			"'robot-co/new-project-name/production'. However in order to update the stack again, you would also need\n" +
 			"to update the name field of Pulumi.yaml, so the project names match.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Look up the stack to be moved, and find the path to the project file's location.
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -61,7 +62,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
 			newStackName := args[0]
-			newStackRef, err := s.Rename(commandContext(), tokens.QName(newStackName))
+			newStackRef, err := s.Rename(ctx, tokens.QName(newStackName))
 			if err != nil {
 				return err
 			}

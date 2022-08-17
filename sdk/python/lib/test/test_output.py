@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
@@ -227,7 +228,31 @@ class OutputStrTests(unittest.TestCase):
         self.assertEqual(str(o), """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi.""")
+
+
+class OutputApplyTests(unittest.TestCase):
+
+    @pulumi_test
+    async def test_apply_always_sets_is_secret_and_is_known(self):
+        """Regressing a convoluted situation where apply created an Output
+        with incomplete is_secret, is_known future, manifesting in
+        program hangs when those futures were awaited.
+
+        To reproduce this, a synthetic output is needed with is_known
+        set to a Future completing exceptionally. Perhaps it would one
+        day be possible to make it invalid for is_known to enter this
+        state.
+
+        """
+        bad = asyncio.Future()
+        bad.set_exception(Exception('!'))
+        ok = asyncio.Future()
+        ok.set_result('ok')
+        bad_output = Output(resources=set(), future=ok, is_known=bad)
+        test_output = Output.from_input('anything').apply(lambda _: bad_output)
+        self.assertEqual(await test_output.is_secret(), False)
+        self.assertEqual(await test_output.is_known(), False)

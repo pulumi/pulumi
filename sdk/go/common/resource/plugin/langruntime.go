@@ -17,6 +17,7 @@ package plugin
 import (
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -41,6 +42,23 @@ type LanguageRuntime interface {
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(directory string) error
+
+	// About returns information about the language runtime.
+	About() (AboutInfo, error)
+
+	// GetProgramDependencies returns information about the dependencies for the given program.
+	GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+}
+
+type DependencyInfo struct {
+	Name    string
+	Version semver.Version
+}
+
+type AboutInfo struct {
+	Executable string
+	Version    string
+	Metadata   map[string]string
 }
 
 // ProgInfo contains minimal information about the program to be run.

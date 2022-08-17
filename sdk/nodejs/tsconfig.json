@@ -88,7 +88,6 @@
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
         "tests/provider.spec.ts",
-        "tests/testmode.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
@@ -99,6 +98,7 @@
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
+        "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
 
         "tests/automation/localWorkspace.spec.ts",
 

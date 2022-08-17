@@ -46,13 +46,12 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -332,9 +331,12 @@ func getPluginsFromDir(
 
 // packageJSON is the minimal amount of package.json information we care about.
 type packageJSON struct {
-	Name    string                  `json:"name"`
-	Version string                  `json:"version"`
-	Pulumi  plugin.PulumiPluginJSON `json:"pulumi"`
+	Name            string                  `json:"name"`
+	Version         string                  `json:"version"`
+	Pulumi          plugin.PulumiPluginJSON `json:"pulumi"`
+	Main            string                  `json:"main"`
+	Dependencies    map[string]string       `json:"dependencies"`
+	DevDependencies map[string]string       `json:"devDependencies"`
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
@@ -727,10 +729,223 @@ func (host *nodeLanguageHost) InstallDependencies(
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+	getResponse := func(execString string, args ...string) (string, string, error) {
+		ex, err := executable.FindExecutable(execString)
+		if err != nil {
+			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return ex, strings.TrimSpace(string(out)), nil
+	}
+
+	node, version, err := getResponse("node", "--version")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.AboutResponse{
+		Executable: node,
+		Version:    version,
+	}, nil
+}
+
+// The shape of a `yarn list --json`'s output.
+type yarnLock struct {
+	Type string       `json:"type"`
+	Data yarnLockData `json:"data"`
+}
+
+type yarnLockData struct {
+	Type  string         `json:"type"`
+	Trees []yarnLockTree `json:"trees"`
+}
+
+type yarnLockTree struct {
+	Name     string         `json:"name"`
+	Children []yarnLockTree `json:"children"`
+}
+
+func parseYarnLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+	ex, err := executable.FindExecutable("yarn")
+	if err != nil {
+		return nil, fmt.Errorf("Found %s but no yarn executable: %w", path, err)
+	}
+	cmdArgs := []string{"list", "--json"}
+	cmd := exec.Command(ex, cmdArgs...)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
+	}
+
+	var lock yarnLock
+	if err = json.Unmarshal(out, &lock); err != nil {
+		return nil, fmt.Errorf("Failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
+	}
+	leafs := lock.Data.Trees
+
+	result := make([]*pulumirpc.DependencyInfo, len(leafs))
+
+	// Has the form name@version
+	splitName := func(index int, nameVersion string) (string, string, error) {
+		if nameVersion == "" {
+			return "", "", fmt.Errorf("Expected \"name\" in dependency %d", index)
+		}
+		split := strings.LastIndex(nameVersion, "@")
+		if split == -1 {
+			return "", "", fmt.Errorf("Failed to parse name and version from %s", nameVersion)
+		}
+		return nameVersion[:split], nameVersion[split+1:], nil
+	}
+
+	for i, v := range leafs {
+		name, version, err := splitName(i, v.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		result[i] = &pulumirpc.DependencyInfo{
+			Name:    name,
+			Version: version,
+		}
+	}
+	return result, nil
+}
+
+// Describes the shape of `npm ls --json --depth=0`'s output.
+type npmFile struct {
+	Name            string                `json:"name"`
+	LockFileVersion int                   `json:"lockfileVersion"`
+	Requires        bool                  `json:"requires"`
+	Dependencies    map[string]npmPackage `json:"dependencies"`
+}
+
+// A package in npmFile.
+type npmPackage struct {
+	Version  string `json:"version"`
+	Resolved string `json:"resolved"`
+}
+
+func parseNpmLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
+	ex, err := executable.FindExecutable("npm")
+	if err != nil {
+		return nil, fmt.Errorf("Found %s but not npm: %w", path, err)
+	}
+	cmdArgs := []string{"ls", "--json", "--depth=0"}
+	cmd := exec.Command(ex, cmdArgs...)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf(`Failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
+	}
+	file := npmFile{}
+	if err = json.Unmarshal(out, &file); err != nil {
+		return nil, fmt.Errorf(`Failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
+	}
+	result := make([]*pulumirpc.DependencyInfo, len(file.Dependencies))
+	var i int
+	for k, v := range file.Dependencies {
+		result[i] = &pulumirpc.DependencyInfo{
+			Name:    k,
+			Version: v.Version,
+		}
+		i++
+	}
+	return result, nil
+}
+
+// Intersect a list of packages with the contents of `package.json`. Returns
+// only packages that appear in both sets. `path` is used only for error handling.
+func crossCheckPackageJSONFile(path string, file []byte,
+	packages []*pulumirpc.DependencyInfo) ([]*pulumirpc.DependencyInfo, error) {
+
+	var body packageJSON
+	if err := json.Unmarshal(file, &body); err != nil {
+		return nil, fmt.Errorf("Could not parse %s: %w", path, err)
+	}
+	dependencies := make(map[string]string)
+	for k, v := range body.Dependencies {
+		dependencies[k] = v
+	}
+	for k, v := range body.DevDependencies {
+		dependencies[k] = v
+	}
+
+	// There should be 1 (& only 1) instantiated dependency for each
+	// dependency in package.json. We do this because we want to get the
+	// actual version (not the range) that exists in lock files.
+	result := make([]*pulumirpc.DependencyInfo, len(dependencies))
+	i := 0
+	for _, v := range packages {
+		if _, exists := dependencies[v.Name]; exists {
+			result[i] = v
+			// Some direct dependencies are also transitive dependencies. We
+			// only want to grab them once.
+			delete(dependencies, v.Name)
+			i++
+		}
+	}
+	return result, nil
 }
 
 func (host *nodeLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
+	// We get the node dependencies. This requires either a yarn.lock file and the
+	// yarn executable, a package-lock.json file and the npm executable. If
+	// transitive is false, we also need the package.json file.
+	//
+	// If we find a yarn.lock file, we assume that yarn is used.
+	// Only then do we look for a package-lock.json file.
+
+	// Neither "yarn list" or "npm ls" can describe what packages are required
+	//
+	// (direct dependencies). Only what packages they have installed (transitive
+	// dependencies). This means that to accurately report only direct
+	// dependencies, we need to also parse "package.json" and intersect it with
+	// reported dependencies.
+	var err error
+	yarnFile := filepath.Join(req.Pwd, "yarn.lock")
+	npmFile := filepath.Join(req.Pwd, "package-lock.json")
+	packageFile := filepath.Join(req.Pwd, "package.json")
+	var result []*pulumirpc.DependencyInfo
+
+	if _, err = os.Stat(yarnFile); err == nil {
+		result, err = parseYarnLockFile(yarnFile)
+		if err != nil {
+			return nil, err
+		}
+	} else if _, err = os.Stat(npmFile); err == nil {
+		result, err = parseNpmLockFile(npmFile)
+		if err != nil {
+			return nil, err
+		}
+	} else if os.IsNotExist(err) {
+		return nil, fmt.Errorf("Could not find either %s or %s", yarnFile, npmFile)
+	} else {
+		return nil, fmt.Errorf("Could not get node dependency data: %w", err)
+	}
+	if !req.TransitiveDependencies {
+		file, err := ioutil.ReadFile(packageFile)
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("Could not find %s. "+
+				"Please include this in your report and run "+
+				`pulumi about --transitive" to get a list of used packages`,
+				packageFile)
+		} else if err != nil {
+			return nil, fmt.Errorf("Could not read %s: %w", packageFile, err)
+		}
+		result, err = crossCheckPackageJSONFile(packageFile, file, result)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: result,
+	}, nil
 }
