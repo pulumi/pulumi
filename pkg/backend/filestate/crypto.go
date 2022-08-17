@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package filestate
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPassphraseSecretsManager(stackName tokens.Name, configFile string,
+func NewPassphraseSecretsManager(stackName tokens.Name, configFile string,
 	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 

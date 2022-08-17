@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package httpstate
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -23,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newServiceSecretsManager(s httpstate.Stack, stackName tokens.Name, configFile string) (secrets.Manager, error) {
+func NewServiceSecretsManager(s Stack, stackName tokens.Name, configFile string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -39,7 +38,7 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.Name, configFi
 		return nil, err
 	}
 
-	client := s.Backend().(httpstate.Backend).Client()
+	client := s.Backend().(Backend).Client()
 	id := s.StackIdentifier()
 
 	// We should only save the ProjectStack at this point IF we have changed the
