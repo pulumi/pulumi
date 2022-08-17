@@ -93,13 +93,13 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
-	if pkg == "pulumi" && module == "pulumi" {
-		inputProperties = append(inputProperties, &schema.Property{
-			Name: "name",
-			Type: schema.StringType,
-		})
+	// if pkg == "pulumi" && module == "pulumi" {
+	// 	inputProperties = append(inputProperties, &schema.Property{
+	// 		Name: "name",
+	// 		Type: schema.StringType,
+	// 	})
 
-	}
+	// }
 
 	// Create input and output types for the schema.
 	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})

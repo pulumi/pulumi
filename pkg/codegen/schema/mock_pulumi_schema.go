@@ -4,7 +4,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newPulumiPackageReference() *Package {
+func newPulumiPackage() *Package {
 	spec := PackageSpec{
 		Name:        "pulumi",
 		DisplayName: "Pulumi",
@@ -22,6 +22,25 @@ func newPulumiPackageReference() *Package {
 				},
 			},
 		},
+		Provider: ResourceSpec{
+			InputProperties: map[string]PropertySpec{
+				"name": {
+					TypeSpec: TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
+		// Provider: ResourceSpec{
+		// 	ObjectTypeSpec: ObjectTypeSpec{
+		// 	InputProperties: map[string]PropertySpec{
+		// 		"Name": {
+		// 			TypeSpec: TypeSpec{
+		// 				Type:      "string",
+		// 			},
+		// 		},
+		// 	},
+
 	}
 
 	pkg, err := ImportSpec(spec, nil)
@@ -29,4 +48,4 @@ func newPulumiPackageReference() *Package {
 	return pkg
 }
 
-var DefaultPulumiPackage = newPulumiPackageReference()
+var DefaultPulumiPackage = newPulumiPackage()
