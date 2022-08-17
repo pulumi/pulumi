@@ -170,7 +170,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		},
 		"dependencies": {
 			"typescript": "^4.0.0",
-			"%s"`, project.Name.String(), pulumi))
+			%s`, project.Name.String(), pulumi))
 	// For each package add a dependency line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
