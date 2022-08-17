@@ -161,6 +161,7 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 		e.Logf("Run Error: %v", err)
 		e.Logf("STDOUT: %v", stdout)
 		e.Logf("STDERR: %v", stderr)
+		e.FailNow()
 	}
 	return stdout, stderr
 }
