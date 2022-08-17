@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const stackRefQualifiedName = "pulumi.StackReference"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -457,6 +459,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		indenter(func() {
 			for _, attr := range r.Inputs {
 				propertyName := InitParamName(attr.Name)
+				// special case: pulumi.StackReference requires `stack_name` instead of `name`
+				if qualifiedMemberName == stackRefQualifiedName && propertyName == "name" {
+					propertyName = "stack_name"
+				}
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
