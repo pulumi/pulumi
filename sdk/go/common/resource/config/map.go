@@ -130,7 +130,7 @@ func (m Map) Get(k Key, path bool) (Value, bool, error) {
 	}
 
 	// Otherwise, return it as an object value.
-	json, err := encoding.JSON.Marshal(v)
+	json, err := encoding.RawJSON.Marshal(v)
 	if err != nil {
 		return Value{}, false, err
 	}
@@ -216,7 +216,7 @@ func (m Map) Remove(k Key, path bool) error {
 
 	// Now, marshal then unmarshal the value, which will handle detecting
 	// whether it's a secure object or not.
-	jsonBytes, err := encoding.JSON.Marshal(root[configKey.Name()])
+	jsonBytes, err := encoding.RawJSON.Marshal(root[configKey.Name()])
 	if err != nil {
 		return err
 	}
@@ -336,7 +336,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Serialize the updated object as JSON, and save it in the config map.
-	json, err := encoding.JSON.Marshal(root[configKey.Name()])
+	json, err := encoding.RawJSON.Marshal(root[configKey.Name()])
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func (m Map) MarshalJSON() ([]byte, error) {
 		rawMap[k.String()] = v
 	}
 
-	return encoding.JSON.Marshal(rawMap)
+	return encoding.RawJSON.Marshal(rawMap)
 }
 
 func (m *Map) UnmarshalJSON(b []byte) error {

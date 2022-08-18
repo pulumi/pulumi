@@ -254,10 +254,10 @@ func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
 
 func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 	if info.options == nil || len(info.options) == 0 {
-		return encoding.JSON.Marshal(info.name)
+		return encoding.RawJSON.Marshal(info.name)
 	}
 
-	return encoding.JSON.Marshal(map[string]interface{}{
+	return encoding.RawJSON.Marshal(map[string]interface{}{
 		"name":    info.name,
 		"options": info.options,
 	})

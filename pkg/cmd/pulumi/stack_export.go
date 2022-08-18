@@ -101,7 +101,7 @@ func newStackExportCmd() *cobra.Command {
 					return err
 				}
 
-				data, err := encoding.JSON.Marshal(serializedDeployment)
+				data, err := encoding.RawJSON.Marshal(serializedDeployment)
 				if err != nil {
 					return err
 				}

@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -136,7 +137,7 @@ func (pw *projectWorkspace) Save() error {
 		return err
 	}
 
-	b, err := json.MarshalIndent(pw.settings, "", "    ")
+	b, err := encoding.RawJSON.MarshalIndent(pw.settings, "", "    ")
 	if err != nil {
 		return err
 	}

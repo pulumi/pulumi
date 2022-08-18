@@ -727,7 +727,7 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 	}
 	properties := map[string]*json.RawMessage{}
 	for k, v := range schema.Properties {
-		bytes, err := encoding.JSON.Marshal(v)
+		bytes, err := encoding.RawJSON.Marshal(v)
 		if err != nil {
 			return nil, err
 		}
@@ -907,7 +907,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
-	rawDeployment, err := encoding.JSON.Marshal(deployment)
+	rawDeployment, err := encoding.RawJSON.Marshal(deployment)
 	if err != nil {
 		return err
 	}

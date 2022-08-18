@@ -113,7 +113,7 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		return err
 	}
-	content, err := encoding.JSON.Marshal(lockContent)
+	content, err := encoding.RawJSON.Marshal(lockContent)
 	if err != nil {
 		return err
 	}

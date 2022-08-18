@@ -57,7 +57,7 @@ func NewS3Reporter(region string, bucket string, keyPrefix string) *S3Reporter {
 
 // ReportCommand uploads the results of running a command to S3
 func (r *S3Reporter) ReportCommand(stats TestCommandStats) {
-	byts, err := encoding.JSON.Marshal(stats)
+	byts, err := encoding.RawJSON.Marshal(stats)
 	if err != nil {
 		fmt.Printf("Failed to serialize report for upload to S3: %v: %v\n", stats, err)
 		return

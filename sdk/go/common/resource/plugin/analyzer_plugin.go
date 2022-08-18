@@ -689,7 +689,7 @@ func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
 		config[k.String()] = v
 	}
 
-	configJSON, err := encoding.JSON.Marshal(config)
+	configJSON, err := encoding.RawJSON.Marshal(config)
 	if err != nil {
 		return "", err
 	}

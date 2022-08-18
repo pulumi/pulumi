@@ -58,7 +58,7 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 
 	v := NewValue("value")
 
-	b, err := encoding.JSON.Marshal(v)
+	b, err := encoding.RawJSON.Marshal(v)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("\"value\""), b)
 
@@ -72,7 +72,7 @@ func TestMarshallSecureValueJSON(t *testing.T) {
 
 	v := NewSecureValue("value")
 
-	b, err := encoding.JSON.Marshal(v)
+	b, err := encoding.RawJSON.Marshal(v)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("{\"secure\":\"value\"}"), b)
 
@@ -142,7 +142,7 @@ func TestHasSecureValue(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
 			t.Parallel()
 
-			jsonBytes, err := encoding.JSON.Marshal(test.Value)
+			jsonBytes, err := encoding.RawJSON.Marshal(test.Value)
 			assert.NoError(t, err)
 
 			var val interface{}
@@ -327,7 +327,7 @@ func roundtripValueYAML(v Value) (Value, error) {
 }
 
 func roundtripValueJSON(v Value) (Value, error) {
-	return roundtripValue(v, encoding.JSON.Marshal, json.Unmarshal)
+	return roundtripValue(v, encoding.RawJSON.Marshal, json.Unmarshal)
 }
 
 func roundtripValue(v Value, marshal func(v interface{}) ([]byte, error),

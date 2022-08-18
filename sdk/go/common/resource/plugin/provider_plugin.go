@@ -510,7 +510,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 
 		mapped := removeSecrets(v)
 		if _, isString := mapped.(string); !isString {
-			marshalled, err := encoding.JSON.Marshal(mapped)
+			marshalled, err := encoding.RawJSON.Marshal(mapped)
 			if err != nil {
 				p.cfgerr = errors.Wrapf(err, "marshaling configuration property '%v'", k)
 				close(p.cfgdone)

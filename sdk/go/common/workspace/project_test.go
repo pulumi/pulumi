@@ -37,5 +37,5 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	}
 
 	doTest(yaml.Marshal, yaml.Unmarshal)
-	doTest(encoding.JSON.Marshal, json.Unmarshal)
+	doTest(encoding.RawJSON.Marshal, json.Unmarshal)
 }

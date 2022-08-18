@@ -772,7 +772,7 @@ func (host *pythonLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 		return "", nil
 	}
 
-	configJSON, err := encoding.JSON.Marshal(configMap)
+	configJSON, err := encoding.RawJSON.Marshal(configMap)
 	if err != nil {
 		return "", err
 	}
@@ -788,7 +788,7 @@ func (host *pythonLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequ
 		return "[]", nil
 	}
 
-	configSecretKeysJSON, err := encoding.JSON.Marshal(configSecretKeys)
+	configSecretKeysJSON, err := encoding.RawJSON.Marshal(configSecretKeys)
 	if err != nil {
 		return "", err
 	}

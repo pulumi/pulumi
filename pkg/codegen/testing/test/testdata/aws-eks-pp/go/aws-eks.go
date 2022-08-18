@@ -116,7 +116,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON0, err := encoding.JSON.Marshal(map[string]interface{}{
+		tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
@@ -153,7 +153,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON1, err := encoding.JSON.Marshal(map[string]interface{}{
+		tmpJSON1, err := encoding.RawJSON.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
@@ -238,7 +238,7 @@ func main() {
 			certificateAuthority := _args[1].(eks.ClusterCertificateAuthority)
 			name := _args[2].(string)
 			var _zero string
-			tmpJSON2, err := encoding.JSON.Marshal(map[string]interface{}{
+			tmpJSON2, err := encoding.RawJSON.Marshal(map[string]interface{}{
 				"apiVersion": "v1",
 				"clusters": []map[string]interface{}{
 					map[string]interface{}{

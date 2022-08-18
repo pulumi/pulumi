@@ -95,7 +95,7 @@ func TestMarshalMap(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, test.Value, newYAMLMap)
 
-			jsonBytes, err := encoding.JSON.Marshal(test.Value)
+			jsonBytes, err := encoding.RawJSON.Marshal(test.Value)
 			assert.NoError(t, err)
 			assert.Equal(t, test.ExpectedJSON, string(jsonBytes))
 			newJSONMap, err := roundtripMapJSON(test.Value)
@@ -233,7 +233,7 @@ func TestMarshalling(t *testing.T) {
 			assert.Equal(t, m, newM)
 		})
 
-		jsonBytes, err := encoding.JSON.Marshal(test.Value)
+		jsonBytes, err := encoding.RawJSON.Marshal(test.Value)
 		assert.NoError(t, err)
 		t.Run(fmt.Sprintf("JSON: %s", jsonBytes), func(t *testing.T) {
 			t.Parallel()
@@ -1379,7 +1379,7 @@ func roundtripMapYAML(m Map) (Map, error) {
 }
 
 func roundtripMapJSON(m Map) (Map, error) {
-	return roundtripMap(m, encoding.JSON.Marshal, json.Unmarshal)
+	return roundtripMap(m, encoding.RawJSON.Marshal, json.Unmarshal)
 }
 
 func roundtripMap(m Map, marshal func(v interface{}) ([]byte, error),

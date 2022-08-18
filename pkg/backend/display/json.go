@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -214,7 +215,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		}
 	}
 	// Finally, go ahead and render the JSON to stdout.
-	out, err := json.MarshalIndent(&digest, "", "    ")
+	out, err := encoding.RawJSON.MarshalIndent(&digest, "", "    ")
 	contract.Assertf(err == nil, "unexpected JSON error: %v", err)
 	fmt.Println(string(out))
 }

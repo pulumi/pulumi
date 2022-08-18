@@ -144,7 +144,7 @@ func getLogEntryMessage(e *loggingpb.LogEntry) (string, error) {
 		return payload.TextPayload, nil
 
 	case *loggingpb.LogEntry_JsonPayload:
-		byts, err := encoding.JSON.Marshal(payload.JsonPayload)
+		byts, err := encoding.RawJSON.Marshal(payload.JsonPayload)
 		if err != nil {
 			return "", fmt.Errorf("encoding to JSON: %w", err)
 		}

@@ -1,7 +1,6 @@
 package nodejs
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 )
 
 func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
@@ -43,13 +43,13 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	for pkg, v := range pkgs {
 		pkgInfo.Dependencies[pkg] = v
 	}
-	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
+	pkgJSON, err := encoding.RawJSON.MarshalIndent(pkgInfo, "", "    ")
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0600)
 	require.NoError(t, err)
 
 	tsConfig := map[string]string{}
-	tsConfigJSON, err := json.MarshalIndent(tsConfig, "", "    ")
+	tsConfigJSON, err := encoding.RawJSON.MarshalIndent(tsConfig, "", "    ")
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
 	require.NoError(t, err)

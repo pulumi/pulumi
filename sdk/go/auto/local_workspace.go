@@ -445,7 +445,7 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	}
 	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
 
-	bytes, err := encoding.JSON.Marshal(state)
+	bytes, err := encoding.RawJSON.Marshal(state)
 	if err != nil {
 		return errors.Wrap(err, "could not import stack, failed to marshal stack state")
 	}
@@ -492,7 +492,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 
 	res := make(OutputMap)
 	for k, v := range secrets {
-		raw, err := encoding.JSON.Marshal(outputs[k])
+		raw, err := encoding.RawJSON.Marshal(outputs[k])
 		if err != nil {
 			return nil, errors.Wrapf(err, "error determining secretness: %s", secretStderr)
 		}

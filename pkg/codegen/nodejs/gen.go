@@ -20,7 +20,6 @@ package nodejs
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -37,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/tstypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2221,7 +2221,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	}
 
 	// Now write out the serialized form.
-	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
+	npmjson, err := encoding.RawJSON.MarshalIndent(npminfo, "", "    ")
 	contract.Assert(err == nil)
 	return string(npmjson) + "\n"
 }

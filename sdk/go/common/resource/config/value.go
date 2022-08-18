@@ -66,7 +66,7 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		json, err := encoding.JSON.Marshal(decryptedObj)
+		json, err := encoding.RawJSON.Marshal(decryptedObj)
 		if err != nil {
 			return "", err
 		}
@@ -92,7 +92,7 @@ func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
 			if err != nil {
 				return Value{}, err
 			}
-			json, err := encoding.JSON.Marshal(encryptedObj)
+			json, err := encoding.RawJSON.Marshal(encryptedObj)
 			if err != nil {
 				return Value{}, err
 			}
@@ -145,7 +145,7 @@ func (c Value) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encoding.JSON.Marshal(v)
+	return encoding.RawJSON.Marshal(v)
 }
 
 func (c *Value) UnmarshalJSON(b []byte) error {
@@ -193,7 +193,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 		return nil
 	}
 
-	json, err := encoding.JSON.Marshal(obj)
+	json, err := encoding.RawJSON.Marshal(obj)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling obj")
 	}

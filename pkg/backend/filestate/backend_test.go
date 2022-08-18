@@ -130,7 +130,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 		return nil, err
 	}
 
-	data, err := encoding.JSON.Marshal(sdep)
+	data, err := encoding.RawJSON.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}

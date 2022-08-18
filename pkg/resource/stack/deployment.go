@@ -86,7 +86,7 @@ func init() {
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
 func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
-	bytes, err := encoding.JSON.Marshal(deployment)
+	bytes, err := encoding.RawJSON.Marshal(deployment)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 			Type: sm.Type(),
 		}
 		if state := sm.State(); state != nil {
-			rm, err := encoding.JSON.Marshal(state)
+			rm, err := encoding.RawJSON.Marshal(state)
 			if err != nil {
 				return nil, err
 			}
@@ -429,7 +429,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if err != nil {
 			return nil, err
 		}
-		bytes, err := encoding.JSON.Marshal(value)
+		bytes, err := encoding.RawJSON.Marshal(value)
 		if err != nil {
 			return nil, fmt.Errorf("encoding serialized property value: %w", err)
 		}

@@ -166,7 +166,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 		return err
 	}
 
-	bytes, err := encoding.JSON.Marshal(reserializedDeployment)
+	bytes, err := encoding.RawJSON.Marshal(reserializedDeployment)
 	if err != nil {
 		return err
 	}

@@ -53,7 +53,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON0, err := encoding.JSON.Marshal(map[string]interface{}{
+		tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
 			"Version": "2008-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
@@ -114,7 +114,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON1, err := encoding.JSON.Marshal([]map[string]interface{}{
+		tmpJSON1, err := encoding.RawJSON.Marshal([]map[string]interface{}{
 			map[string]interface{}{
 				"name":  "my-app",
 				"image": "nginx",

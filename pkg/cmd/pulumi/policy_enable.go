@@ -113,7 +113,7 @@ func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessag
 	if c.EnforcementLevel != "" {
 		m["enforcementLevel"] = c.EnforcementLevel
 	}
-	bytes, err := encoding.JSON.Marshal(m)
+	bytes, err := encoding.RawJSON.Marshal(m)
 	if err != nil {
 		return nil, err
 	}

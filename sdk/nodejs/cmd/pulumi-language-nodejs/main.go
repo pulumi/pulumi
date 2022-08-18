@@ -673,7 +673,7 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 		transformedConfig[pk.Namespace()+":config:"+pk.Name()] = v
 	}
 
-	configJSON, err := encoding.JSON.Marshal(transformedConfig)
+	configJSON, err := encoding.RawJSON.Marshal(transformedConfig)
 	if err != nil {
 		return "", err
 	}
@@ -689,7 +689,7 @@ func (host *nodeLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunReques
 		return "[]", nil
 	}
 
-	configSecretKeysJSON, err := encoding.JSON.Marshal(configSecretKeys)
+	configSecretKeysJSON, err := encoding.RawJSON.Marshal(configSecretKeys)
 	if err != nil {
 		return "", err
 	}

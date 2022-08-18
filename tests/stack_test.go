@@ -225,7 +225,7 @@ func TestStackCommands(t *testing.T) {
 				}
 
 				deployment.Version = deploymentVersion
-				bytes, err := encoding.JSON.Marshal(deployment)
+				bytes, err := encoding.RawJSON.Marshal(deployment)
 				assert.NoError(t, err)
 				err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 				if !assert.NoError(t, err) {
@@ -290,12 +290,12 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		data, err := encoding.JSON.Marshal(&v3deployment)
+		data, err := encoding.RawJSON.Marshal(&v3deployment)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
 		deployment.Deployment = data
-		bytes, err := encoding.JSON.Marshal(&deployment)
+		bytes, err := encoding.RawJSON.Marshal(&deployment)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

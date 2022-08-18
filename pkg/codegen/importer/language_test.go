@@ -15,7 +15,6 @@
 package importer
 
 import (
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -24,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -76,10 +76,10 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
-				sb, err := json.MarshalIndent(s, "", "    ")
+				sb, err := encoding.RawJSON.MarshalIndent(s, "", "    ")
 				contract.IgnoreError(err)
 
-				ab, err := json.MarshalIndent(actual, "", "    ")
+				ab, err := encoding.RawJSON.MarshalIndent(actual, "", "    ")
 				contract.IgnoreError(err)
 
 				t.Logf("%v\n\n%v\n", string(sb), string(ab))

@@ -225,7 +225,7 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	b, err := encoding.JSON.Marshal(v)
+	b, err := encoding.RawJSON.Marshal(v)
 	if err != nil {
 		return "error: could not format value"
 	}

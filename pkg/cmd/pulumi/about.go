@@ -525,7 +525,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 	assignIf("language", runtime.Language)
 	assignIf("executable", runtime.Executable)
 	assignIf("version", runtime.Version)
-	return encoding.JSON.Marshal(m)
+	return encoding.RawJSON.Marshal(m)
 }
 
 func (runtime projectRuntimeAbout) String() string {

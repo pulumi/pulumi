@@ -136,7 +136,7 @@ func disableDefaultProviders(runInfo *EvalRunInfo, pkgs ...string) {
 	} else if ok {
 		panic("disableDefaultProviders cannot be called twice")
 	}
-	b, err := encoding.JSON.Marshal(pkgs)
+	b, err := encoding.RawJSON.Marshal(pkgs)
 	if err != nil {
 		panic(err)
 	}

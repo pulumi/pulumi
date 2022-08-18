@@ -247,7 +247,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	// in order to convert the ID property value into a plain map[string]interface{}.
 	serialize := func(v resource.PropertyValue) interface{} {
 		ref := v.ResourceReferenceValue()
-		bytes, err := encoding.JSON.Marshal(map[string]interface{}{
+		bytes, err := encoding.RawJSON.Marshal(map[string]interface{}{
 			resource.SigKey:  resource.ResourceReferenceSig,
 			"urn":            ref.URN,
 			"id":             ref.ID,
@@ -328,7 +328,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeToJSON", func(t *testing.T) {
 		t.Parallel()
 
-		b, err := encoding.JSON.Marshal(propMap)
+		b, err := encoding.RawJSON.Marshal(propMap)
 		if err != nil {
 			t.Fatalf("Marshalling PropertyMap: %v", err)
 		}
@@ -380,7 +380,7 @@ func TestCustomSerialization(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Now JSON encode the results?
-		b, err := encoding.JSON.Marshal(serializedPropMap)
+		b, err := encoding.RawJSON.Marshal(serializedPropMap)
 		if err != nil {
 			t.Fatalf("Marshalling PropertyMap: %v", err)
 		}
@@ -513,7 +513,7 @@ func wireValue(v resource.PropertyValue) (interface{}, error) {
 		return nil, err
 	}
 
-	wire, err := encoding.JSON.Marshal(object)
+	wire, err := encoding.RawJSON.Marshal(object)
 	if err != nil {
 		return nil, err
 	}
@@ -685,7 +685,7 @@ func MapObjectGenerator(maxDepth int) *rapid.Generator {
 func SecretObjectGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) interface{} {
 		value := ObjectValueGenerator(maxDepth-1).Draw(t, "secret element")
-		bytes, err := encoding.JSON.Marshal(value)
+		bytes, err := encoding.RawJSON.Marshal(value)
 		require.NoError(t, err)
 
 		return map[string]interface{}{

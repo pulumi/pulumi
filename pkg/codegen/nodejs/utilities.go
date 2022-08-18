@@ -132,7 +132,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 // escape returns the string escaped for a JS string literal
 func escape(s string) string {
 	// Seems the most fool-proof way of doing this is by using the JSON marshaler and then stripping the surrounding quotes
-	escaped, err := encoding.JSON.Marshal(s)
+	escaped, err := encoding.RawJSON.Marshal(s)
 	contract.AssertNoError(err)
 	contract.Assertf(len(escaped) >= 2, "JSON(%s) expected a quoted string but returned %s", s, escaped)
 	contract.Assertf(

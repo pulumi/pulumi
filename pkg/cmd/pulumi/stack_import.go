@@ -128,7 +128,7 @@ func newStackImportCmd() *cobra.Command {
 				return fmt.Errorf("constructing deployment for upload: %w", err)
 			}
 
-			bytes, err := encoding.JSON.Marshal(sdp)
+			bytes, err := encoding.RawJSON.Marshal(sdp)
 			if err != nil {
 				return err
 			}

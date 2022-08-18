@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rogpeppe/go-internal/lockedfile"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -227,7 +228,7 @@ func StoreCredentials(creds Credentials) error {
 		return nil
 	}
 
-	raw, err := json.MarshalIndent(creds, "", "    ")
+	raw, err := encoding.RawJSON.MarshalIndent(creds, "", "    ")
 	if err != nil {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
@@ -294,7 +295,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 		return err
 	}
 
-	raw, err := json.MarshalIndent(config, "", "    ")
+	raw, err := encoding.RawJSON.MarshalIndent(config, "", "    ")
 	if err != nil {
 		return errors.Wrapf(err, "marshalling config object")
 	}

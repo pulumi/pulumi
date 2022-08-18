@@ -48,7 +48,7 @@ func TestMarshalKeyJSON(t *testing.T) {
 
 	k := Key{namespace: "test", name: "key"}
 
-	b, err := encoding.JSON.Marshal(k)
+	b, err := encoding.RawJSON.Marshal(k)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("\"test:key\""), b)
 
@@ -76,7 +76,7 @@ func roundtripKeyYAML(k Key) (Key, error) {
 }
 
 func roundtripKeyJSON(k Key) (Key, error) {
-	return roundtripKey(k, encoding.JSON.Marshal, json.Unmarshal)
+	return roundtripKey(k, encoding.RawJSON.Marshal, json.Unmarshal)
 }
 
 func roundtripKey(m Key, marshal func(v interface{}) ([]byte, error),

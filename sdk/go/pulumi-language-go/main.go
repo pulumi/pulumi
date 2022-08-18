@@ -405,7 +405,7 @@ func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, 
 		return "", nil
 	}
 
-	configJSON, err := encoding.JSON.Marshal(configMap)
+	configJSON, err := encoding.RawJSON.Marshal(configMap)
 	if err != nil {
 		return "", err
 	}
@@ -421,7 +421,7 @@ func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest)
 		return "[]", nil
 	}
 
-	configSecretKeysJSON, err := encoding.JSON.Marshal(configSecretKeys)
+	configSecretKeysJSON, err := encoding.RawJSON.Marshal(configSecretKeys)
 	if err != nil {
 		return "", err
 	}

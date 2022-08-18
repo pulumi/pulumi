@@ -326,7 +326,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
-		reqBody, err = encoding.JSON.Marshal(reqObj)
+		reqBody, err = encoding.RawJSON.Marshal(reqObj)
 		if err != nil {
 			return fmt.Errorf("marshalling request object as JSON: %w", err)
 		}

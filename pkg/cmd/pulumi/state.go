@@ -187,7 +187,7 @@ func runTotalStateEdit(
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := encoding.JSON.Marshal(sdep)
+	bytes, err := encoding.RawJSON.Marshal(sdep)
 	if err != nil {
 		return result.FromError(err)
 	}

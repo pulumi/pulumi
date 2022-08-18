@@ -15,10 +15,11 @@
 package python
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -52,7 +53,7 @@ func genResourceMappings(root *modContext, w io.Writer) error {
 }
 
 func jsonPythonLiteral(thing interface{}) (string, error) {
-	bytes, err := json.MarshalIndent(thing, "", " ")
+	bytes, err := encoding.RawJSON.MarshalIndent(thing, "", " ")
 	if err != nil {
 		return "", err
 	}

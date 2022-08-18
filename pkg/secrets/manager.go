@@ -47,11 +47,11 @@ func AreCompatible(a, b Manager) bool {
 		return false
 	}
 
-	as, err := encoding.JSON.Marshal(a.State())
+	as, err := encoding.RawJSON.Marshal(a.State())
 	if err != nil {
 		return false
 	}
-	bs, err := encoding.JSON.Marshal(b.State())
+	bs, err := encoding.RawJSON.Marshal(b.State())
 	if err != nil {
 		return false
 	}

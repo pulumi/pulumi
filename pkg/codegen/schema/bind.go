@@ -81,7 +81,7 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 }
 
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
-	bytes, err := encoding.JSON.Marshal(spec)
+	bytes, err := encoding.RawJSON.Marshal(spec)
 	if err != nil {
 		return nil, err
 	}

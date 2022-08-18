@@ -72,7 +72,7 @@ func (k Key) Name() string {
 }
 
 func (k Key) MarshalJSON() ([]byte, error) {
-	return encoding.JSON.Marshal(k.String())
+	return encoding.RawJSON.Marshal(k.String())
 }
 
 func (k *Key) UnmarshalJSON(b []byte) error {

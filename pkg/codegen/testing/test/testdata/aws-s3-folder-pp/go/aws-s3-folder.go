@@ -45,7 +45,7 @@ func main() {
 			Bucket: siteBucket.ID(),
 			Policy: siteBucket.ID().ApplyT(func(id string) (pulumi.String, error) {
 				var _zero pulumi.String
-				tmpJSON0, err := encoding.JSON.Marshal(map[string]interface{}{
+				tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
 						map[string]interface{}{

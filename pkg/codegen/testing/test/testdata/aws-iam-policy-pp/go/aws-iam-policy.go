@@ -8,7 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		tmpJSON0, err := encoding.JSON.Marshal(map[string]interface{}{
+		tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
