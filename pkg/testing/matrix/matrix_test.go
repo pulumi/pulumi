@@ -39,12 +39,6 @@ func TestAll(t *testing.T) {
 
 	pulumiDir := fmt.Sprintf("%s/.pulumi/", home)
 
-	install := exec.Command("make", "install")
-	install.Dir = filepath.Join(pwd, "..", "..", "..")
-	if err := install.Run(); err != nil {
-		t.Fatal(err)
-	}
-
 	tester, err := NewTester([]PluginOptions{
 		//nolint:gosec // Complains about filepath join
 		{
