@@ -145,8 +145,7 @@ func commandContext() context.Context {
 }
 
 func createSecretsManager(
-	ctx context.Context, b backend.Backend,
-	stackRef backend.StackReference, secretsProvider string,
+	ctx context.Context, stack backend.Stack, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -154,34 +153,17 @@ func createSecretsManager(
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
-	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
-		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = passphrase.Type
-	}
-
-	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(ctx, b)
-		if err != nil {
-			return err
-		}
-		if stack == nil {
-			// This means this is the first time we are initiating a stack
-			// there is no way a stack will exist here so we need to just return nil
-			// this will mean the "old" default behaviour will work for us
-			return nil
-		}
-		if _, serviceSecretsErr := httpstate.NewServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
-			return serviceSecretsErr
-		}
+	if isDefaultSecretsProvider {
+		_, err := stack.DefaultSecretManager(stackConfigFile)
+		return err
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := filestate.NewPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), stackConfigFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
-	} else if !isDefaultSecretsProvider {
+	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
 
@@ -199,7 +181,7 @@ func createSecretsManager(
 			}
 		}
 
-		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
@@ -224,7 +206,7 @@ func createStack(ctx context.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(ctx, b, stackRef, secretsProvider,
+	if err := createSecretsManager(ctx, stack, secretsProvider,
 		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}

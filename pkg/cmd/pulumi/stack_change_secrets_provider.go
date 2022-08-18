@@ -63,12 +63,6 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				return err
 			}
 
-			// Get the current backend
-			b, err := currentBackend(ctx, opts)
-			if err != nil {
-				return err
-			}
-
 			// Get the current stack and its project
 			currentStack, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
@@ -96,7 +90,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			secretsProvider := args[0]
 			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(ctx, b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
+			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotatePassphraseProvider); err != nil {
 				return err
 			}
 
