@@ -25,6 +25,7 @@ func newPulumiPackage() *Package {
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"name": {
+					Description: "fully qualified name of stack, i.e. <organization>/<project>/<stack>",
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},

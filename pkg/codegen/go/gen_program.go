@@ -169,6 +169,9 @@ require (
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err
 		}
