@@ -61,7 +61,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		_, _, unauthorizedErr := unauthorizedClient.GetCLIVersionInfo(context.Background())
 
 		assert.Error(t, unauthorizedErr)
-		assert.Equal(t, unauthorizedErr.Error(), "this command requires logging in; try running 'pulumi login' first")
+		assert.Equal(t, unauthorizedErr.Error(), "this command requires logging in; try running `pulumi login` first")
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
 		t.Parallel()
