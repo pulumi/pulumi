@@ -75,7 +75,7 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 
 	if len(lockKeys) > 0 {
 		errorString := fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
-			"process(es) to end or manually delete the lock file(s).", len(lockKeys))
+			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
 
 		for _, lock := range lockKeys {
 			content, err := b.bucket.ReadAll(ctx, lock)

@@ -1,7 +1,8 @@
 name: Partial tests for CLI and SDK binaries PR verification
 
-# This should be kept identical to test.yml except for matrix section
-# that skips some combinations.
+# This should be kept identical to test.yml except for matrix section that skips some combinations.
+#
+# This minimal test suite is used for MacOS, Windows jobs on acceptance tests.
 
 defaults:
   run:
@@ -31,7 +32,7 @@ on:
         type: string
       dotnet-version:
         description: 'Version of the .NET toolchain for the build'
-        default: '6.0.x'
+        default: '3.1.x'
         required: false
         type: string
       enable-coverage:
@@ -50,7 +51,6 @@ env:
   PYTHON: python
   TESTPARALLELISM: 4
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
-  DOTNET_ROLL_FORWARD: "Major"
 
 jobs:
   test:
@@ -60,46 +60,10 @@ jobs:
       fail-fast: false
       matrix:
         test-suite:
-          - run: |
-              cd sdk/python
-              make test_fast
-              make test_auto
-              make test_go
-
-          - run: |
-              cd sdk/dotnet
-              make dotnet_test
-              make test_auto
-              make test_go
-
-          - run: |
-              cd sdk/nodejs
-              make sxs_tests
-              make unit_tests
-              make test_auto
-              make test_go
-            test-parallelism: 2
-
-          - run: |
-              cd sdk/go
-              make test_fast
-              make test_auto
-
-          - run: make test_pkg_nodejs
+          - run: make test_integration_subpkgs
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
-
-          - run: make test_pkg_python
-            require-build: true
-            test-parallelism: 4
-            test-parallelism-windows: 2
-
-          - run: make test_pkg_rest
-            require-build: true
-            test-parallelism: 2
-
-          # test_integration skipped
+            test-parallelism-windows: 1
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
