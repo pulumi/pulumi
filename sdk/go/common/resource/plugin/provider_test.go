@@ -112,46 +112,6 @@ func TestNewDetailedDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "arrays no-op",
-			diff: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"a": []interface{}{
-					map[string]interface{}{
-						"a": 1,
-						"b": map[string]string{"c": "2"},
-						"d": map[string]bool{"e": true},
-					},
-					map[string]interface{}{
-						"a": 2,
-						"b": map[string]string{"c": "2"},
-						"d": map[string]bool{"e": true},
-						"e": "f",
-						"g": map[string]interface{}{
-							"h": true,
-						},
-					},
-				},
-			}).Diff(resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"a": []interface{}{
-						map[string]interface{}{
-							"a": 1,
-							"b": map[string]string{"c": "2"},
-							"d": map[string]bool{"e": true},
-						},
-						map[string]interface{}{
-							"a": 2,
-							"b": map[string]string{"c": "2"},
-							"d": map[string]bool{"e": true},
-							"e": "f",
-							"g": map[string]interface{}{
-								"h": true,
-							},
-						},
-					},
-				})),
-			expected: map[string]PropertyDiff{},
-		},
-		{
 			name:     "nil diff",
 			diff:     nil,
 			expected: map[string]PropertyDiff{},
