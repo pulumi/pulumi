@@ -1,0 +1,6 @@
+*.pyc
+/.pulumi/
+/dist/
+/*.egg-info
+venv/
+lib/

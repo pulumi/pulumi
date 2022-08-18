@@ -130,7 +130,7 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 		fmt.Println("Flags:")
 		fmt.Println(cmd.Flags().FlagUsages())
 
-		fmt.Println(`Use "pulumi [command] --help" for more information about a command.`)
+		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
 	})
 }
 

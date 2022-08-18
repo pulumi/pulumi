@@ -220,7 +220,7 @@ func newDestroyCmd() *cobra.Command {
 			} else if res == nil && len(*targets) == 0 && !jsonDisplay {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
-					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
+					"completely, run `pulumi stack rm %s`.\n", s.Ref())
 			} else if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}

@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -181,6 +182,10 @@ func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDepl
 
 func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(ctx, s, deployment)
+}
+
+func (s *cloudStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
+	return NewServiceSecretsManager(s, s.Ref().Name(), configFile)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
