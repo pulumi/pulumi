@@ -77,7 +77,7 @@ type Host interface {
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
-	GetProjectPlugins() []*workspace.PluginInfo
+	GetProjectPlugins() []workspace.ProjectPlugin
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -94,7 +94,7 @@ type Host interface {
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
 	// Create plugin info from providers
-	projectPlugins := make([]*workspace.PluginInfo, 0)
+	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
 		for _, providerOpts := range plugins.Providers {
 			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin, ctx.Pwd)
@@ -159,13 +159,12 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
-func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind,
-	dir string) (*workspace.PluginInfo, error) {
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind, dir string) (workspace.ProjectPlugin, error) {
 	var v *semver.Version
 	if providerOpts.Version != "" {
 		ver, err := semver.Parse(providerOpts.Version)
 		if err != nil {
-			return nil, err
+			return workspace.ProjectPlugin{}, err
 		}
 		v = &ver
 	}
@@ -176,10 +175,10 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 
 	_, err := os.Stat(path)
 	if err != nil {
-		return nil, fmt.Errorf("could not find provider folder at path %s", path)
+		return workspace.ProjectPlugin{}, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
 	}
 
-	pluginInfo := &workspace.PluginInfo{
+	pluginInfo := workspace.ProjectPlugin{
 		Name:    providerOpts.Name,
 		Path:    path,
 		Kind:    k,
@@ -214,7 +213,7 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 
 	closer         *sync.Once
-	projectPlugins []*workspace.PluginInfo
+	projectPlugins []workspace.ProjectPlugin
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -442,7 +441,7 @@ func (host *defaultHost) ResolvePlugin(
 	return workspace.GetPluginInfo(kind, name, version, host.GetProjectPlugins())
 }
 
-func (host *defaultHost) GetProjectPlugins() []*workspace.PluginInfo {
+func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 	return host.projectPlugins
 }
 
