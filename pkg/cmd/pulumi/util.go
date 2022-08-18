@@ -475,6 +475,10 @@ func readProject() (*workspace.Project, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	// Handle failure to find current project.
+	if path == "" {
+		return proj, "", nil
+	}
 
 	return proj, filepath.Dir(path), nil
 }
