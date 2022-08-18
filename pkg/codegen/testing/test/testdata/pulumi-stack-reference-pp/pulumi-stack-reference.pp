@@ -1,3 +1,3 @@
 resource stackRef "pulumi:pulumi:StackReference" {
-    name = "foo:bar:dev"
+    name = "foo/bar/dev"
 }
