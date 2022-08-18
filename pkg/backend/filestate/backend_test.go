@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -414,4 +415,61 @@ func TestParseEmptyStackFails(t *testing.T) {
 	var stackName = ""
 	var _, err = b.ParseStackReference(stackName)
 	assert.Error(t, err)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/10439
+func TestHtmlEscaping(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+	resources := []*resource.State{
+		{
+			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
+			Type: "a:b:c",
+			Inputs: resource.PropertyMap{
+				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+			},
+		},
+	}
+
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	assert.NoError(t, err)
+
+	data, err := encoding.JSON.Marshal(sdep)
+	assert.NoError(t, err)
+
+	udep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(data),
+	}
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Create stack "a" and import a checkpoint with a secret
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.ImportDeployment(ctx, aStack, udep)
+	assert.NoError(t, err)
+
+	// Ensure the file has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
+
+	// Grab the bucket interface to read the file with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	chkpath := lb.stackPath("a")
+	bytes, err := lb.bucket.ReadAll(context.TODO(), chkpath)
+	state := string(bytes)
+	assert.Contains(t, state, "<html@tags>")
 }
