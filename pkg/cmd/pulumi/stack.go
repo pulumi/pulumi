@@ -188,6 +188,7 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
 	cmd.AddCommand(newStackUnselectCmd())
+	cmd.AddCommand(newStackMigrateCmd())
 
 	return cmd
 }

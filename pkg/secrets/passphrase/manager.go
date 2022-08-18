@@ -163,6 +163,33 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 	return sm, nil
 }
 
+func NewPassphaseSecretsManagerFromPhrase(phrase string) (string, secrets.Manager, error) {
+	// Produce a new salt.
+	salt := make([]byte, 8)
+	_, err := cryptorand.Read(salt)
+	contract.AssertNoErrorf(err, "could not read from system random")
+
+	// Encrypt a message and store it with the salt so we can test if the password is correct later.
+	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
+
+	// symmetricCrypter does not use ctx, safe to use context.Background()
+	ignoredCtx := context.Background()
+	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
+	contract.AssertNoError(err)
+
+	// Encode the salt as the passphrase secrets manager state.
+	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+
+	// Create the secrets manager using the state.
+	sm, err := NewPassphaseSecretsManager(phrase, state)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Return both the state and the secrets manager.
+	return state, sm, nil
+}
+
 // NewPromptingPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
@@ -250,30 +277,7 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 		cmdutil.Diag().Errorf(diag.Message("", "passphrases do not match"))
 	}
 
-	// Produce a new salt.
-	salt := make([]byte, 8)
-	_, err := cryptorand.Read(salt)
-	contract.AssertNoErrorf(err, "could not read from system random")
-
-	// Encrypt a message and store it with the salt so we can test if the password is correct later.
-	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-
-	// symmetricCrypter does not use ctx, safe to use context.Background()
-	ignoredCtx := context.Background()
-	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
-	contract.AssertNoError(err)
-
-	// Encode the salt as the passphrase secrets manager state.
-	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-
-	// Create the secrets manager using the state.
-	sm, err := NewPassphaseSecretsManager(phrase, state)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// Return both the state and the secrets manager.
-	return state, sm, nil
+	return NewPassphaseSecretsManagerFromPhrase(phrase)
 }
 
 func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool, err error) {

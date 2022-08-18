@@ -108,6 +108,13 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
+func getBackend(ctx context.Context, opts display.Options, url string) (backend.Backend, error) {
+	if filestate.IsFileStateBackendURL(url) {
+		return filestate.New(cmdutil.Diag(), url)
+	}
+	return httpstate.Login(ctx, cmdutil.Diag(), url, opts)
+}
+
 func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
@@ -118,10 +125,7 @@ func currentBackend(ctx context.Context, opts display.Options) (backend.Backend,
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
-	}
-	return httpstate.Login(ctx, cmdutil.Diag(), url, opts)
+	return getBackend(ctx, opts, url)
 }
 
 // This is used to control the contents of the tracing header.
