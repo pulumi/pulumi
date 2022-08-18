@@ -63,30 +63,27 @@ func DefaultExt() string {
 
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
-	IsJSONLike() bool
-	IsYAMLLike() bool
 	Marshal(v interface{}) ([]byte, error)
 	Unmarshal(data []byte, v interface{}) error
 }
 
-var JSON Marshaler = &jsonMarshaler{}
+// JSON is a Marshaler that marshal and unmarshal JSON with indented printing.
+var JSON Marshaler = &jsonMarshaler{indent: true}
+
+// RawJSON is a Marshaler that marshal and unmarshal JSON in a single line.
+var RawJSON Marshaler = &jsonMarshaler{indent: false}
 
 type jsonMarshaler struct {
-}
-
-func (m *jsonMarshaler) IsJSONLike() bool {
-	return true
-}
-
-func (m *jsonMarshaler) IsYAMLLike() bool {
-	return false
+	indent bool
 }
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "    ")
+	if m.indent {
+		enc.SetIndent("", "    ")
+	}
 	err := enc.Encode(v)
 	if err != nil {
 		return nil, err
@@ -103,14 +100,6 @@ func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
 var YAML Marshaler = &yamlMarshaler{}
 
 type yamlMarshaler struct {
-}
-
-func (m *yamlMarshaler) IsJSONLike() bool {
-	return false
-}
-
-func (m *yamlMarshaler) IsYAMLLike() bool {
-	return true
 }
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
@@ -135,14 +124,6 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 
 type gzipMarshaller struct {
 	inner Marshaler
-}
-
-func (m *gzipMarshaller) IsJSONLike() bool {
-	return m.inner.IsJSONLike()
-}
-
-func (m *gzipMarshaller) IsYAMLLike() bool {
-	return m.inner.IsYAMLLike()
 }
 
 func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
