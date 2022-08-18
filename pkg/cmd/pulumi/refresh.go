@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -182,7 +183,8 @@ func newRefreshCmd() *cobra.Command {
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
-				if result := filterMapPendingCreates(ctx, s, opts.Display, yes, interactiveFixPendingCreate); result != nil {
+				if result := filterMapPendingCreates(ctx, s, opts.Display,
+					yes, interactiveFixPendingCreate); result != nil {
 					return result
 				}
 			}
@@ -385,49 +387,49 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 }
 
 func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
-	option := "none"
-	if err := survey.AskOne(&survey.Select{
-		Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
-		Options: []string{"import", "clear", "skip"},
-		Description: func(value string, index int) string {
-			switch value {
-			case "import": //nolint:goconst
-				return "the CREATE succeed; provide a resource ID and complete the CREATE operation"
-			case "clear":
-				return "the CREATE failed; remove the pending CREATE"
-			case "skip":
-				return "do nothing"
-			default:
-				return ""
-			}
-		},
-	}, &option, nil); err != nil {
-		return nil, fmt.Errorf("no option selected")
-	}
-
-	switch option {
-	case "import":
-		var help string
-		var id string
-		for id == "" {
-			if err := survey.AskOne(&survey.Input{
-				Message: "ID: ",
-				Help:    help,
-			}, &id); err != nil {
-				return nil, err
-			}
-			if id == "" {
-				help = "ID cannot be an empty string"
-			}
+	for {
+		option := ""
+		if err := survey.AskOne(&survey.Select{
+			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
+			Options: []string{"import", "clear", "skip"},
+			Description: func(value string, index int) string {
+				switch value {
+				case "import": //nolint:goconst
+					return "the CREATE succeed; provide a resource ID and complete the CREATE operation"
+				case "clear":
+					return "the CREATE failed; remove the pending CREATE"
+				case "skip":
+					return "do nothing"
+				default:
+					return ""
+				}
+			},
+		}, &option, survey.WithValidator(survey.Required)); err != nil {
+			return nil, fmt.Errorf("no option selected: %w", err)
 		}
-		op.Resource.ID = resource.ID(id)
-		op.Type = resource.OperationTypeImporting
-		return &op, nil
-	case "clear":
-		return nil, nil
-	case "skip":
-		return &op, nil
-	default:
-		return nil, fmt.Errorf("unknown option: %q", option)
+
+		var err error
+		switch option {
+		case "import":
+			var id string
+			err = survey.AskOne(&survey.Input{
+				Message: "ID: ",
+			}, &id, survey.WithValidator(survey.Required))
+			if err != nil {
+				op.Resource.ID = resource.ID(id)
+				op.Type = resource.OperationTypeImporting
+				return &op, nil
+			}
+		case "clear":
+			return nil, nil
+		case "skip":
+			return &op, nil
+		default:
+			return nil, fmt.Errorf("unknown option: %q", option)
+		}
+		if errors.Is(err, terminal.InterruptErr) {
+			continue
+		}
+		return nil, err
 	}
 }
