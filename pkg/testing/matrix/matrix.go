@@ -319,6 +319,7 @@ func (mTester Tester) TestLang(t *testing.T, opts *i.ProgramTestOptions, languag
 	proj, err := workspace.LoadProject(projfile)
 	assert.NoError(t, err)
 	projinfo := &engine.Projinfo{Proj: proj, Root: dir}
+	proj.Plugins = &mTester.Plugins
 
 	assert.NoError(t, err)
 
@@ -359,8 +360,6 @@ func (mTester Tester) TestLang(t *testing.T, opts *i.ProgramTestOptions, languag
 	}
 	assert.NotNil(t, proj)
 	assert.NotNil(t, pclProgram)
-
-	proj.Plugins = &mTester.Plugins
 
 	//Instantiate new directories and run pulumi convert on each language with new directories as output.
 	for _, langOpt := range mTester.Languages {

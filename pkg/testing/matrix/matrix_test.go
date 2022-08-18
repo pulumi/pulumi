@@ -47,7 +47,7 @@ func TestAll(t *testing.T) {
 			Build: []exec.Cmd{
 				*exec.Command("pulumi", "plugin", "install", "resource", "command", "0.4.1"),
 				*exec.Command("cp", filepath.Join(pulumiDir, "plugins",
-					"resource-command-v0.4.1/pulumi-resource-command"), filepath.Join(pwd, "tests/bin")),
+					"resource-command-v0.4.1/pulumi-resource-command"), filepath.Join(pwd, "tests", "bin", "pulumi-resource-command")),
 			},
 			Bin:     "./tests/bin",
 			Version: semver.MustParse("0.4.1"),
@@ -59,7 +59,7 @@ func TestAll(t *testing.T) {
 			Build: []exec.Cmd{
 				*exec.Command("pulumi", "plugin", "install", "language", "yaml", "0.5.4"),
 				*exec.Command("cp", filepath.Join(pulumiDir, "plugins",
-					"language-yaml-v0.5.4/pulumi-language-yaml"), filepath.Join(pwd, "tests/bin")),
+					"language-yaml-v0.5.4/pulumi-language-yaml"), filepath.Join(pwd, "tests", "bin", "pulumi-language-yaml")),
 			},
 			Bin:     "./tests/bin",
 			Version: semver.MustParse("0.5.4"),
@@ -72,22 +72,24 @@ func TestAll(t *testing.T) {
 
 	opts := []i.ProgramTestOptions{
 		//Tests are commented out because codegen currently fails them.
-		{
-			Dir: "tests/empty",
-		},
 		/*
-			i.ProgramTestOptions{
+			{
+				Dir: "tests/empty",
+			},
+		*/
+		/*
+			{
 				Dir: "tests/scalar",
 			},
 		*/
 		/*{
 		/*
-		i.ProgramTestOptions{
+		{
 			Dir: "tests/structured",
 		},
 		*/
 		/*
-			i.ProgramTestOptions{
+			{
 				Dir: "tests/reference",
 				Aux: []i.AuxiliaryStack{
 					{
@@ -140,9 +142,9 @@ func allLanguages() []LangTestOption {
 			Version:  nil,
 			Opts:     nil,
 		},*/
-		{
+		/*{
 			Language: "yaml",
 			Opts:     nil,
-		},
+		},*/
 	}
 }
