@@ -663,7 +663,7 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 
 	if err = lang.InstallDependencies(directory); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment: %w", err)
+			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
 
 	return nil
@@ -705,7 +705,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 
 	if len(commands) == 0 { // No additional commands need to be run.
-		deployMsg := "To perform an initial deployment, run 'pulumi up'"
+		deployMsg := "To perform an initial deployment, run `pulumi up`"
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Color.Colorize(deployMsg))
 		fmt.Println()
@@ -713,7 +713,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 
 	if len(commands) == 1 { // Only one additional command need to be run.
-		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run 'pulumi up'", commands[0])
+		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run `pulumi up`", commands[0])
 		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Color.Colorize(deployMsg))
@@ -730,7 +730,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 	fmt.Println()
 
-	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
+	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
 }
