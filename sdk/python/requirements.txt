@@ -5,7 +5,7 @@ grpcio==1.47
 dill~=0.3
 six~=1.12
 semver~=2.8
-pyyaml~=5.3
+pyyaml~=6.0
 
 # Dev packages only needed during development.
 pylint

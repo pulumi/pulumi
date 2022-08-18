@@ -40,8 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -713,10 +711,87 @@ func (host *dotnetLanguageHost) InstallDependencies(
 }
 
 func (host *dotnetLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+	getResponse := func(execString string, args ...string) (string, string, error) {
+		ex, err := executable.FindExecutable(execString)
+		if err != nil {
+			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return ex, strings.TrimSpace(string(out)), nil
+	}
+
+	dotnet, version, err := getResponse("dotnet", "--version")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.AboutResponse{
+		Executable: dotnet,
+		Version:    version,
+	}, nil
 }
 
 func (host *dotnetLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
+	// dotnet list package
+
+	var err error
+	if host.binary != "" {
+		return nil, errors.New("Could not get dependencies because pulumi specifies a binary")
+	}
+	var ex string
+	var out []byte
+	ex, err = executable.FindExecutable("dotnet")
+	if err != nil {
+		return nil, err
+	}
+	cmdArgs := []string{"list", "package"}
+	if req.TransitiveDependencies {
+		cmdArgs = append(cmdArgs, "--include-transitive")
+	}
+	cmd := exec.Command(ex, cmdArgs...)
+	if out, err = cmd.Output(); err != nil {
+		return nil, fmt.Errorf("Failed to call \"%s\": %w", ex, err)
+	}
+	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
+	var packages []*pulumirpc.DependencyInfo
+
+	for _, p := range lines {
+		p := strings.TrimSpace(p)
+		if strings.HasPrefix(p, ">") {
+			p = strings.TrimPrefix(p, "> ")
+			segments := strings.Split(p, " ")
+			var nameRequiredVersion []string
+			for _, s := range segments {
+				if s != "" {
+					nameRequiredVersion = append(nameRequiredVersion, s)
+				}
+			}
+			var version int
+			if len(nameRequiredVersion) == 3 {
+				// Top level package => name required version
+				version = 2
+			} else if len(nameRequiredVersion) == 2 {
+				// Transitive package => name version
+				version = 1
+			} else {
+				return nil, fmt.Errorf("Failed to parse \"%s\"", p)
+			}
+			packages = append(packages, &pulumirpc.DependencyInfo{
+				Name:    nameRequiredVersion[0],
+				Version: nameRequiredVersion[version],
+			})
+		}
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: packages,
+	}, nil
 }

@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -55,6 +54,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -167,7 +167,7 @@ func newPluginInstallCmd() *cobra.Command {
 					}
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.InstallWithContext(context.Background(), payload, reinstall); err != nil {
+				if err = install.InstallWithContext(ctx, payload, reinstall); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}

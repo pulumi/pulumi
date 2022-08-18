@@ -16,12 +16,10 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -58,19 +56,11 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		}
 
 		if ps.EncryptionSalt != "" {
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
+			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
 				false /* rotatePassphraseSecretsProvider */)
 		}
 
-		switch s.(type) {
-		case filestate.Stack:
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
-		case httpstate.Stack:
-			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
-		}
-
-		return nil, fmt.Errorf("unknown stack type %s", reflect.TypeOf(s))
+		return s.DefaultSecretManager(stackConfigFile)
 	}()
 	if err != nil {
 		return nil, err

@@ -162,6 +162,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "typed-enum",
 		Description: "Supply strongly typed enums",
+		Skip:        codegen.NewStringSet(golang),
 	},
 	{
 		Directory:   "python-resource-names",
