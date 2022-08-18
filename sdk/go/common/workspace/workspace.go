@@ -137,7 +137,7 @@ func (pw *projectWorkspace) Save() error {
 		return err
 	}
 
-	b, err := encoding.RawJSON.MarshalIndent(pw.settings, "", "    ")
+	b, err := encoding.JSON.Marshal(pw.settings)
 	if err != nil {
 		return err
 	}

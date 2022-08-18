@@ -284,10 +284,10 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
-				sb, err := encoding.RawJSON.MarshalIndent(s, "", "    ")
+				sb, err := encoding.JSON.Marshal(s)
 				contract.IgnoreError(err)
 
-				ab, err := encoding.RawJSON.MarshalIndent(actual, "", "    ")
+				ab, err := encoding.JSON.Marshal(actual)
 				contract.IgnoreError(err)
 
 				t.Logf("%v", text)

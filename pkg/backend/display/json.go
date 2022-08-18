@@ -215,7 +215,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 		}
 	}
 	// Finally, go ahead and render the JSON to stdout.
-	out, err := encoding.RawJSON.MarshalIndent(&digest, "", "    ")
+	out, err := encoding.JSON.Marshal(&digest)
 	contract.Assertf(err == nil, "unexpected JSON error: %v", err)
 	fmt.Println(string(out))
 }

@@ -43,13 +43,13 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	for pkg, v := range pkgs {
 		pkgInfo.Dependencies[pkg] = v
 	}
-	pkgJSON, err := encoding.RawJSON.MarshalIndent(pkgInfo, "", "    ")
+	pkgJSON, err := encoding.JSON.Marshal(pkgInfo)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0600)
 	require.NoError(t, err)
 
 	tsConfig := map[string]string{}
-	tsConfigJSON, err := encoding.RawJSON.MarshalIndent(tsConfig, "", "    ")
+	tsConfigJSON, err := encoding.JSON.Marshal(tsConfig)
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
 	require.NoError(t, err)

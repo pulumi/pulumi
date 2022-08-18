@@ -228,7 +228,7 @@ func StoreCredentials(creds Credentials) error {
 		return nil
 	}
 
-	raw, err := encoding.RawJSON.MarshalIndent(creds, "", "    ")
+	raw, err := encoding.JSON.Marshal(creds)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
@@ -295,7 +295,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 		return err
 	}
 
-	raw, err := encoding.RawJSON.MarshalIndent(config, "", "    ")
+	raw, err := encoding.JSON.Marshal(config)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling config object")
 	}

@@ -2221,7 +2221,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	}
 
 	// Now write out the serialized form.
-	npmjson, err := encoding.RawJSON.MarshalIndent(npminfo, "", "    ")
+	npmjson, err := encoding.JSON.Marshal(npminfo)
 	contract.Assert(err == nil)
 	return string(npmjson) + "\n"
 }

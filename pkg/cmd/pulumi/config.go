@@ -868,7 +868,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 				value.ObjectValue = obj
 			}
 
-			out, err := encoding.RawJSON.MarshalIndent(value, "", "  ")
+			out, err := encoding.JSON.Marshal(value)
 			if err != nil {
 				return err
 			}

@@ -53,7 +53,7 @@ func genResourceMappings(root *modContext, w io.Writer) error {
 }
 
 func jsonPythonLiteral(thing interface{}) (string, error) {
-	bytes, err := encoding.RawJSON.MarshalIndent(thing, "", " ")
+	bytes, err := encoding.JSON.Marshal(thing)
 	if err != nil {
 		return "", err
 	}

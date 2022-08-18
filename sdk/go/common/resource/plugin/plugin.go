@@ -61,7 +61,7 @@ type PulumiPluginJSON struct {
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
-	json, err := encoding.RawJSON.MarshalIndent(plugin, "", "  ")
+	json, err := encoding.JSON.Marshal(plugin)
 	if err != nil {
 		return nil, err
 	}
