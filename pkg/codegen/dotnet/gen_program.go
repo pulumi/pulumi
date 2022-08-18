@@ -312,6 +312,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			if r.IsModule {
+				// Terraform Child Module conversion isn't supported for CSharp yet
+				continue
+			}
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
@@ -412,6 +416,10 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
 	case *pcl.Resource:
+		if n.IsModule {
+			// Terraform Child Module conversion isn't supported for CSharp yet
+			return
+		}
 		g.genResource(w, n)
 	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)

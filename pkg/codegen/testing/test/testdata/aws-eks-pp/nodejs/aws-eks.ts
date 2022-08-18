@@ -30,7 +30,7 @@ export = async () => {
     });
     // Subnets, one for each AZ in a region
     const zones = await aws.getAvailabilityZones({});
-    const vpcSubnet: aws.ec2.Subnet[];
+    const vpcSubnet: aws.ec2.Subnet[] = [];
     for (const range of zones.names.map((k, v) => {key: k, value: v})) {
         vpcSubnet.push(new aws.ec2.Subnet(`vpcSubnet-${range.key}`, {
             assignIpv6AddressOnCreation: false,
@@ -43,7 +43,7 @@ export = async () => {
             },
         }));
     }
-    const rta: aws.ec2.RouteTableAssociation[];
+    const rta: aws.ec2.RouteTableAssociation[] = [];
     for (const range of zones.names.map((k, v) => {key: k, value: v})) {
         rta.push(new aws.ec2.RouteTableAssociation(`rta-${range.key}`, {
             routeTableId: eksRouteTable.id,

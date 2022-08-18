@@ -81,7 +81,7 @@ func (g *generator) GetPrecedence(expr model.Expression) int {
 		*model.TemplateJoinExpression:
 		return 20
 	case *model.AnonymousFunctionExpression, *model.LiteralValueExpression, *model.ObjectConsExpression,
-		*model.ScopeTraversalExpression, *model.TemplateExpression, *model.TupleConsExpression:
+		*model.ScopeTraversalExpression, *model.TemplateExpression, *model.TupleConsExpression, *model.CodeReferenceExpression:
 		return 22
 	default:
 		contract.Failf("unexpected expression %v of type %T", expr, expr)
@@ -623,7 +623,14 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		rootName = "__item"
 	}
 
-	g.Fgen(w, rootName)
+	if g.generatingComponentResource {
+		// We are generating a Component Resource; parameters must have `this.`if they reference
+		// other resources & local variables, or `args.` if they reference config variables
+		g.genRootNameWithPrefix(w, rootName, expr)
+	} else {
+		g.Fgen(w, rootName)
+	}
+	
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
 }
 
@@ -680,4 +687,8 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 		opstr = "-"
 	}
 	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
+}
+
+func (g *generator) GenCodeReferenceExpression(w io.Writer, expr *model.CodeReferenceExpression) {
+	g.Fgen(w, expr.Value)
 }

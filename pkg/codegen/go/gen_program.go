@@ -353,6 +353,10 @@ func (g *generator) collectImports(
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			if r.IsModule {
+				// Terraform Child Module conversion isn't supported for CSharp yet
+				continue
+			}
 			pkg, mod, name, _ := r.DecomposeToken()
 			if pkg == "pulumi" && mod == "providers" {
 				pkg = name
@@ -529,6 +533,10 @@ func (g *generator) genHelpers(w io.Writer) {
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
 	case *pcl.Resource:
+		if n.IsModule {
+			// Terraform Child Module conversion isn't supported for Go yet
+			return
+		}
 		g.genResource(w, n)
 	case *pcl.OutputVariable:
 		g.genOutputAssignment(w, n)

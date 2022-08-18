@@ -1,5 +1,18 @@
 package nodejs
 
+import (
+	"fmt"
+	"io"
+
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/zclconf/go-cty/cty"
+)
+
 // Provides code for a method which will be placed in the program preamble if deemed
 // necessary. Because many tasks in Go such as reading a file require extensive error
 // handling, it is much prettier to encapsulate that error handling boilerplate as its
@@ -14,4 +27,128 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func linearizeAndSetupGenerator(program *pcl.Program) ([]pcl.Node, *generator, error) {
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := pcl.Linearize(program)
+
+	// Setup generator for procedural code generation
+	g := &generator{
+		program:                     program,
+		asyncMain:                   needAsyncMain(&nodes),
+		generatingComponentResource: true,
+	}
+
+	g.Formatter = format.NewFormatter(g)
+
+	// Verify packages
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return nodes, g, nil
+}
+
+func needAsyncMain(nodes *[]pcl.Node) bool {
+	for _, n := range *nodes {
+		switch x := n.(type) {
+		case *pcl.Resource:
+			if resourceRequiresAsyncMain(x) {
+				return true
+			}
+		case *pcl.OutputVariable:
+			if outputRequiresAsyncMain(x) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *generator) getResourceTypeName(r *pcl.Resource) string {
+	pkg, module, memberName, diagnostics := resourceTypeName(r)
+	g.diagnostics = append(g.diagnostics, diagnostics...)
+
+	if module != "" {
+		module = "." + module
+	}
+
+	return fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+}
+
+func (g *generator) getModelDestType(r *pcl.Resource, attr *model.Attribute) model.Traversable {
+	var destType model.Traversable
+	var diagnostics hcl.Diagnostics
+	if r.IsModule {
+		// Attribute belonged to a Module with custom types not listed in any offcial schema. Defaulting to DynamicType
+		destType = model.DynamicType
+	} else {
+		// Attribute belings to a typical resource, which has all its possible types coneniently listed
+		destType, diagnostics = r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+	}
+	return destType
+}
+
+// Checks whether the resource has a `count` attribute, which indicates that a loop is required
+// to fully initialize it.
+func hasCountAttribute(r *pcl.Resource) bool {
+	return r.Options != nil && r.Options.Range != nil
+}
+
+// Takes in an attribute of a resource, and returns the very first traversable part of the value.
+// Example:  `AAA:  BBB.CCC.DDD`  >  BBB is returned
+func getFirstTraversablePart(attr *model.Attribute) (*model.Traversable, error) {
+	scopeTraversalExpression, ok := attr.Value.(*model.ScopeTraversalExpression)
+	if !ok {
+		return nil, fmt.Errorf("Attribute value is not a model.ScopeTraversalExpression")
+	}
+
+	firstPart := &scopeTraversalExpression.Parts[0]
+	return firstPart, nil
+}
+
+// Certain literal types returned by .Type().String() have different spellings in Typescript.
+func getTypescriptTypeName(typeName string) string {
+	switch typeName {
+	case "bool":
+		return "boolean"
+	default:
+		return typeName
+	}
+}
+
+// Appends resource options to an ObjectConsExpression
+func appendOption(optionsList *model.ObjectConsExpression, name string, value model.Expression) *model.ObjectConsExpression {
+	if optionsList == nil {
+		optionsList = &model.ObjectConsExpression{}
+	}
+	optionsList.Items = append(optionsList.Items, model.ObjectConsItem{
+		Key: &model.LiteralValueExpression{
+			Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
+			Value:  cty.StringVal(name),
+		},
+		Value: value,
+	})
+	return optionsList
+}
+
+// Prints the given rootname with a special prefix when a component resource is being generated, allowing it
+// to reference component resource members or input arguments
+func (g *generator) genRootNameWithPrefix(w io.Writer, rootName string, expr *model.ScopeTraversalExpression) {
+	fmtString := "%s"
+	switch expr.Parts[0].(type) {
+	case *pcl.Resource, *pcl.LocalVariable:
+		fmtString = "this.%s"
+	case *pcl.ConfigVariable:
+		fmtString = "args.%s"
+	}
+	g.Fgenf(w, fmtString, rootName)
 }

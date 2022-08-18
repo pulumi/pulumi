@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -216,7 +217,8 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				}
 
 				resource := &Resource{
-					syntax: item,
+					syntax:   item,
+					IsModule: false,
 				}
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
@@ -224,6 +226,37 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
+			case "module":
+				if len(item.Labels) != 1 {
+					// Basic check to ensure nothing seems off. The first label should come directly from the user's .tf file and correspond to the
+					// name (e.g: `module "MODULE_NAME" { ...`). The second label, typically being a resource's token or pacakge, should have been
+					// retroactively added by tf2pulumi beforehand, and be equal to the source path.
+					diagnostics = append(diagnostics, labelsErrorf(item, "child module variables must have exactly one label"))
+				}
+
+				// The "source" attribute serves the same package role that ordinary resource tokens do.
+				// Obtaining and storing source path as a label for easy access in the future.
+				firstSourceExpression := item.Body.Attributes["source"].Expr.(*hclsyntax.TemplateExpr)
+				secondSourceExpression := firstSourceExpression.Parts[0].(*hclsyntax.LiteralValueExpr)
+				sourcePath := secondSourceExpression.Val.AsString()
+				item.Labels = append(item.Labels, sourcePath)
+
+				if strings.Index(item.Labels[1], "./") != 0 {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagWarning,
+						Summary:  fmt.Sprintf("Module '%s' has source path '%s' that does not start with './' and therefore does not point to a local folder", item.Labels[0], item.Labels[1]),
+					})
+				}
+
+				// Ignoring the source attribute so that it doesn't get printed during code generation
+				delete(item.Body.Attributes, "source")
+
+				componentResource := &Resource{
+					syntax:   item,
+					IsModule: true,
+				}
+				declareDiags := b.declareNode(item.Labels[0], componentResource)
+				diagnostics = append(diagnostics, declareDiags...)
 			case "output":
 				name, typ := "<unnamed>", model.Type(model.DynamicType)
 				switch len(item.Labels) {
