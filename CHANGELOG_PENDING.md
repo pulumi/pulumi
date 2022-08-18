@@ -1,5 +1,8 @@
 ### Improvements
 
+- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
+  [#10336](https://github.com/pulumi/pulumi/pull/10336)
+
 - [sdk/python] Update PyYAML to 6.0
 
 - [cli/watch] `pulumi watch` now uses relies on a program built on [`watchexec`](https://github.com/watchexec/watchexec)
