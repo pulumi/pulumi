@@ -13,7 +13,7 @@ CHANGELOG
 
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
-
+  
 - [sdk/nodejs] Adds warning message when entrypoint resolution is ambiguous
   [#3582](https://github.com/pulumi/pulumi/issues/3582)
 
@@ -32,7 +32,7 @@ CHANGELOG
 - [sdk/python] Deprecate PULUMI_TEST_MODE
   [#10400](https://github.com/pulumi/pulumi/pull/10400)
 
-
+ 
 ### Bug Fixes
 
 - [cli] Paginate template options
