@@ -148,12 +148,6 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		} else {
 			packageNames.Add(packageName)
 		}
-
-		// if packageName != pulumiPackage {
-		// 	packageNames.Add(packageName)
-		// } else if mod == "providers" || mod == "pulumi" {
-		// 	packageNames.Add(name)
-		// }
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {

@@ -90,6 +90,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
+
 	// Create input and output types for the schema.
 	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
 
