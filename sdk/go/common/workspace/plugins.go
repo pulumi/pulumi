@@ -506,6 +506,14 @@ func (source *fallbackSource) Download(
 	return pulumi.Download(version, opSy, arch, getHTTPResponse)
 }
 
+// Information about a locally installed plugin specified by the project.
+type ProjectPlugin struct {
+	Name    string          // the simple name of the plugin.
+	Kind    PluginKind      // the kind of the plugin (language, resource, etc).
+	Version *semver.Version // the plugin's semantic version, if present.
+	Path    string          // the path that a plugin is to be loaded from (this will always be a directory)
+}
+
 // PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
@@ -1345,7 +1353,7 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []*PluginInfo) (string, error) {
+	projectPlugins []ProjectPlugin) (string, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
@@ -1359,7 +1367,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 }
 
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []*PluginInfo) (*PluginInfo, error) {
+	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
@@ -1385,7 +1393,7 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 //  * an error in all other cases.
 func getPluginInfoAndPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
-	projectPlugins []*PluginInfo) (*PluginInfo, string, error) {
+	projectPlugins []ProjectPlugin) (*PluginInfo, string, error) {
 	var filename string
 
 	for i, p1 := range projectPlugins {
@@ -1418,8 +1426,13 @@ func getPluginInfoAndPath(
 			}
 		}
 
-		path := filepath.Join(plugin.Path, plugin.File())
-		return plugin, path, nil
+		info := &PluginInfo{
+			Name:    plugin.Name,
+			Kind:    plugin.Kind,
+			Version: plugin.Version,
+			Path:    plugin.Path,
+		}
+		return info, filepath.Join(plugin.Path, info.File()), nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
