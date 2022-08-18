@@ -65,8 +65,10 @@ func compileProgram(outfile string) (string, error) {
 	}
 
 	buildCmd := exec.Command(program, "build", "-o", outfile, cwd)
+	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
+
 	if err := buildCmd.Run(); err != nil {
-		return "", fmt.Errorf("%v %v %v", err, outfile, cwd)
+		return "", err
 	}
 
 	return outfile, nil
