@@ -171,6 +171,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return err
 		}
@@ -282,6 +285,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
+			if pkg == "pulumi" {
+				continue
+			}
 			pkgName := "@pulumi/" + pkg
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
