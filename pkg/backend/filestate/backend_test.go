@@ -469,7 +469,8 @@ func TestHtmlEscaping(t *testing.T) {
 	assert.NotNil(t, lb)
 
 	chkpath := lb.stackPath("a")
-	bytes, err := lb.bucket.ReadAll(context.TODO(), chkpath)
+	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
+	assert.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
 }
