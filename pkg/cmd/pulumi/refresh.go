@@ -21,8 +21,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
-	"gopkg.in/AlecAivazis/survey.v1"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -387,24 +387,38 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
 	option := "none"
 	if err := survey.AskOne(&survey.Select{
-		Message: fmt.Sprintf("Options for pending create of %s", op.Resource.URN),
+		Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
 		Options: []string{"import", "clear", "skip"},
+		Description: func(value string, index int) string {
+			switch value {
+			case "import": //nolint:goconst
+				return "the CREATE succeed; provide a resource ID and complete the CREATE operation"
+			case "clear":
+				return "the CREATE failed; remove the pending CREATE"
+			case "skip":
+				return "do nothing"
+			default:
+				return ""
+			}
+		},
 	}, &option, nil); err != nil {
 		return nil, fmt.Errorf("no option selected")
 	}
 
 	switch option {
 	case "import":
+		var help string
 		var id string
-		if err := survey.AskOne(&survey.Input{
-			Message: "ID: ",
-		}, &id, func(ans interface{}) error {
-			if ans, ok := ans.(string); ok && ans == "" {
-				return fmt.Errorf("ID cannot be empty")
+		for id == "" {
+			if err := survey.AskOne(&survey.Input{
+				Message: "ID: ",
+				Help:    help,
+			}, &id); err != nil {
+				return nil, err
 			}
-			return nil
-		}); err != nil {
-			return nil, err
+			if id == "" {
+				help = "ID cannot be an empty string"
+			}
 		}
 		op.Resource.ID = resource.ID(id)
 		op.Type = resource.OperationTypeImporting

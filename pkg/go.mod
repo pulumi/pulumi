@@ -149,6 +149,7 @@ require (
 )
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/natefinch/atomic v1.0.1
@@ -185,7 +186,6 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/go-type-adapters v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/kr/pty v1.1.8 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
