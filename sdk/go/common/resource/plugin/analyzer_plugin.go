@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +29,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -689,7 +689,7 @@ func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
 		config[k.String()] = v
 	}
 
-	configJSON, err := json.Marshal(config)
+	configJSON, err := encoding.JSON.Marshal(config)
 	if err != nil {
 		return "", err
 	}

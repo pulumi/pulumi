@@ -29,6 +29,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -80,7 +81,7 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 }
 
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
-	bytes, err := json.Marshal(spec)
+	bytes, err := encoding.JSON.Marshal(spec)
 	if err != nil {
 		return nil, err
 	}

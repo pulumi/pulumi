@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -444,7 +445,7 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	}
 	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
 
-	bytes, err := json.Marshal(state)
+	bytes, err := encoding.JSON.Marshal(state)
 	if err != nil {
 		return errors.Wrap(err, "could not import stack, failed to marshal stack state")
 	}
@@ -491,7 +492,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 
 	res := make(OutputMap)
 	for k, v := range secrets {
-		raw, err := json.Marshal(outputs[k])
+		raw, err := encoding.JSON.Marshal(outputs[k])
 		if err != nil {
 			return nil, errors.Wrapf(err, "error determining secretness: %s", secretStderr)
 		}

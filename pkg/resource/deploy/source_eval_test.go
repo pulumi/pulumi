@@ -16,7 +16,6 @@ package deploy
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -136,7 +136,7 @@ func disableDefaultProviders(runInfo *EvalRunInfo, pkgs ...string) {
 	} else if ok {
 		panic("disableDefaultProviders cannot be called twice")
 	}
-	b, err := json.Marshal(pkgs)
+	b, err := encoding.JSON.Marshal(pkgs)
 	if err != nil {
 		panic(err)
 	}

@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -112,7 +113,7 @@ func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessag
 	if c.EnforcementLevel != "" {
 		m["enforcementLevel"] = c.EnforcementLevel
 	}
-	bytes, err := json.Marshal(m)
+	bytes, err := encoding.JSON.Marshal(m)
 	if err != nil {
 		return nil, err
 	}

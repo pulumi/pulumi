@@ -83,7 +83,15 @@ func (m *jsonMarshaler) IsYAMLLike() bool {
 }
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return json.MarshalIndent(v, "", "    ")
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	err := enc.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {

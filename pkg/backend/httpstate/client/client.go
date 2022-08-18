@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -726,7 +727,7 @@ func convertPolicyConfigSchema(schema *plugin.AnalyzerPolicyConfigSchema) (*apit
 	}
 	properties := map[string]*json.RawMessage{}
 	for k, v := range schema.Properties {
-		bytes, err := json.Marshal(v)
+		bytes, err := encoding.JSON.Marshal(v)
 		if err != nil {
 			return nil, err
 		}
@@ -906,7 +907,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
-	rawDeployment, err := json.Marshal(deployment)
+	rawDeployment, err := encoding.JSON.Marshal(deployment)
 	if err != nil {
 		return err
 	}

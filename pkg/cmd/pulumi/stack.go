@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -26,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -225,7 +225,7 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	b, err := json.Marshal(v)
+	b, err := encoding.JSON.Marshal(v)
 	if err != nil {
 		return "error: could not format value"
 	}

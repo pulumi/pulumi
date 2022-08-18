@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -1127,7 +1128,7 @@ func ExampleStack_Export() {
 	// ... perform edits on the state ...
 
 	// marshal out updated deployment state
-	bytes, _ := json.Marshal(state)
+	bytes, _ := encoding.JSON.Marshal(state)
 	dep.Deployment = bytes
 	// import our edited deployment state back to our stack
 	_ = stack.Import(ctx, dep)
@@ -1148,7 +1149,7 @@ func ExampleStack_Import() {
 	// ... perform edits on the state ...
 
 	// marshal out updated deployment state
-	bytes, _ := json.Marshal(state)
+	bytes, _ := encoding.JSON.Marshal(state)
 	dep.Deployment = bytes
 	// import our edited deployment state back to our stack
 	_ = stack.Import(ctx, dep)
@@ -1170,7 +1171,7 @@ func ExampleLocalWorkspace_ExportStack() {
 	// ... perform edits on the state ...
 
 	// marshal out updated deployment state
-	bytes, _ := json.Marshal(state)
+	bytes, _ := encoding.JSON.Marshal(state)
 	dep.Deployment = bytes
 	// import our edited deployment state back to our stack
 	_ = w.ImportStack(ctx, stackName, dep)
@@ -1192,7 +1193,7 @@ func ExampleLocalWorkspace_ImportStack() {
 	// ... perform edits on the state ...
 
 	// marshal out updated deployment state
-	bytes, _ := json.Marshal(state)
+	bytes, _ := encoding.JSON.Marshal(state)
 	dep.Deployment = bytes
 	// import our edited deployment state back to our stack
 	_ = w.ImportStack(ctx, stackName, dep)

@@ -41,6 +41,7 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -771,7 +772,7 @@ func (host *pythonLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 		return "", nil
 	}
 
-	configJSON, err := json.Marshal(configMap)
+	configJSON, err := encoding.JSON.Marshal(configMap)
 	if err != nil {
 		return "", err
 	}
@@ -787,7 +788,7 @@ func (host *pythonLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequ
 		return "[]", nil
 	}
 
-	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	configSecretKeysJSON, err := encoding.JSON.Marshal(configSecretKeys)
 	if err != nil {
 		return "", err
 	}

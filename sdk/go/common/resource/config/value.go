@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -65,7 +66,7 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		json, err := json.Marshal(decryptedObj)
+		json, err := encoding.JSON.Marshal(decryptedObj)
 		if err != nil {
 			return "", err
 		}
@@ -91,7 +92,7 @@ func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
 			if err != nil {
 				return Value{}, err
 			}
-			json, err := json.Marshal(encryptedObj)
+			json, err := encoding.JSON.Marshal(encryptedObj)
 			if err != nil {
 				return Value{}, err
 			}
@@ -144,7 +145,7 @@ func (c Value) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(v)
+	return encoding.JSON.Marshal(v)
 }
 
 func (c *Value) UnmarshalJSON(b []byte) error {
@@ -192,7 +193,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 		return nil
 	}
 
-	json, err := json.Marshal(obj)
+	json, err := encoding.JSON.Marshal(obj)
 	if err != nil {
 		return errors.Wrapf(err, "marshalling obj")
 	}

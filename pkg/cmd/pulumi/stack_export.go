@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -100,7 +101,7 @@ func newStackExportCmd() *cobra.Command {
 					return err
 				}
 
-				data, err := json.Marshal(serializedDeployment)
+				data, err := encoding.JSON.Marshal(serializedDeployment)
 				if err != nil {
 					return err
 				}
@@ -115,6 +116,7 @@ func newStackExportCmd() *cobra.Command {
 
 			// Write the deployment.
 			enc := json.NewEncoder(writer)
+			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "    ")
 
 			if err = enc.Encode(deployment); err != nil {

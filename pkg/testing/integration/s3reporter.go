@@ -16,7 +16,6 @@ package integration
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"path"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -57,7 +57,7 @@ func NewS3Reporter(region string, bucket string, keyPrefix string) *S3Reporter {
 
 // ReportCommand uploads the results of running a command to S3
 func (r *S3Reporter) ReportCommand(stats TestCommandStats) {
-	byts, err := json.Marshal(stats)
+	byts, err := encoding.JSON.Marshal(stats)
 	if err != nil {
 		fmt.Printf("Failed to serialize report for upload to S3: %v: %v\n", stats, err)
 		return

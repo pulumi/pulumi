@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -325,7 +326,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
-		reqBody, err = json.Marshal(reqObj)
+		reqBody, err = encoding.JSON.Marshal(reqObj)
 		if err != nil {
 			return fmt.Errorf("marshalling request object as JSON: %w", err)
 		}

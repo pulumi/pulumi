@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -128,7 +129,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 		return nil, err
 	}
 
-	data, err := json.Marshal(sdep)
+	data, err := encoding.JSON.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}

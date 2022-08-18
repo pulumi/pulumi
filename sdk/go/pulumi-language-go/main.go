@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -404,7 +405,7 @@ func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, 
 		return "", nil
 	}
 
-	configJSON, err := json.Marshal(configMap)
+	configJSON, err := encoding.JSON.Marshal(configMap)
 	if err != nil {
 		return "", err
 	}
@@ -420,7 +421,7 @@ func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest)
 		return "[]", nil
 	}
 
-	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	configSecretKeysJSON, err := encoding.JSON.Marshal(configSecretKeys)
 	if err != nil {
 		return "", err
 	}

@@ -56,7 +56,7 @@ func (t *testSecretsManager) BulkDecrypt(
 }
 
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
-	b, err := json.Marshal(v)
+	b, err := encoding.JSON.Marshal(v)
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}

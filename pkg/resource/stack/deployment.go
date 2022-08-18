@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -85,7 +86,7 @@ func init() {
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
 func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
-	bytes, err := json.Marshal(deployment)
+	bytes, err := encoding.JSON.Marshal(deployment)
 	if err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 			Type: sm.Type(),
 		}
 		if state := sm.State(); state != nil {
-			rm, err := json.Marshal(state)
+			rm, err := encoding.JSON.Marshal(state)
 			if err != nil {
 				return nil, err
 			}
@@ -428,7 +429,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		if err != nil {
 			return nil, err
 		}
-		bytes, err := json.Marshal(value)
+		bytes, err := encoding.JSON.Marshal(value)
 		if err != nil {
 			return nil, fmt.Errorf("encoding serialized property value: %w", err)
 		}

@@ -21,6 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -129,7 +130,7 @@ func (m Map) Get(k Key, path bool) (Value, bool, error) {
 	}
 
 	// Otherwise, return it as an object value.
-	json, err := json.Marshal(v)
+	json, err := encoding.JSON.Marshal(v)
 	if err != nil {
 		return Value{}, false, err
 	}
@@ -215,7 +216,7 @@ func (m Map) Remove(k Key, path bool) error {
 
 	// Now, marshal then unmarshal the value, which will handle detecting
 	// whether it's a secure object or not.
-	jsonBytes, err := json.Marshal(root[configKey.Name()])
+	jsonBytes, err := encoding.JSON.Marshal(root[configKey.Name()])
 	if err != nil {
 		return err
 	}
@@ -335,7 +336,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Serialize the updated object as JSON, and save it in the config map.
-	json, err := json.Marshal(root[configKey.Name()])
+	json, err := encoding.JSON.Marshal(root[configKey.Name()])
 	if err != nil {
 		return err
 	}
@@ -354,7 +355,7 @@ func (m Map) MarshalJSON() ([]byte, error) {
 		rawMap[k.String()] = v
 	}
 
-	return json.Marshal(rawMap)
+	return encoding.JSON.Marshal(rawMap)
 }
 
 func (m *Map) UnmarshalJSON(b []byte) error {

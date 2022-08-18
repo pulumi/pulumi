@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -36,5 +37,5 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	}
 
 	doTest(yaml.Marshal, yaml.Unmarshal)
-	doTest(json.Marshal, json.Unmarshal)
+	doTest(encoding.JSON.Marshal, json.Unmarshal)
 }
