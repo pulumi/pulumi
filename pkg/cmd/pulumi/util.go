@@ -170,14 +170,14 @@ func createSecretsManager(
 			// this will mean the "old" default behaviour will work for us
 			return nil
 		}
-		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
+		if _, serviceSecretsErr := httpstate.NewServiceSecretsManager(stack.(httpstate.Stack),
 			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
 			return serviceSecretsErr
 		}
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}

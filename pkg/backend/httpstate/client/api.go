@@ -262,7 +262,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
-		return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
+		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)

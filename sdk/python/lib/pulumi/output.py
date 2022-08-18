@@ -146,8 +146,8 @@ class Output(Generic[T_co]):
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
 
-        This function will be called during execution of a 'pulumi up' request.  It may not run
-        during 'pulumi preview' (as the values of resources are of course may not be known then).
+        This function will be called during execution of a `pulumi up` request.  It may not run
+        during `pulumi preview` (as the values of resources are of course may not be known then).
 
         :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
