@@ -161,13 +161,7 @@ func NewTester(PluginList []PluginOptions, Languages []LangTestOption, PulumiSDK
 		if err != nil {
 			return Tester{}, err
 		}
-
-		max := plugin.Version.Major
-		if max > 1 {
-			max = 1
-		}
-
-		schemaBytes, err := provider.GetSchema(int(max))
+		schemaBytes, err := provider.GetSchema(0)
 		if err != nil {
 			return Tester{}, err
 		}
