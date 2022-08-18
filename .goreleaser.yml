@@ -63,7 +63,12 @@ archives:
   replacements:
     amd64: x64
   files:
+      # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
+      dst: '.'
+      strip_parent: true
+      # binaries
+    - src: bin/{{ .Os }}-{{ .Arch }}/*
       dst: '.'
       strip_parent: true
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"

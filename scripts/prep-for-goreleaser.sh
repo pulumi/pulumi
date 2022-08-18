@@ -51,3 +51,6 @@ install_file sdk/python/dist/pulumi-python-shim.cmd                         wind
 install_file sdk/python/dist/pulumi-python3-shim.cmd                        windows
 
 install_file sdk/python/cmd/pulumi-language-python-exec          linux darwin windows
+
+# Get pulumi-watch binaries
+./scripts/get-pulumi-watch.sh
