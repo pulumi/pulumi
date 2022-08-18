@@ -1,6 +1,6 @@
 ### Improvements
 
-- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
+- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
 - [sdk/python] Update PyYAML to 6.0
@@ -15,3 +15,6 @@
 
 - [engine/backends]: Fix bug where File state backend failed to apply validation to stack names, resulting in a panic.
   [#10417](https://github.com/pulumi/pulumi/pull/10417)
+
+- [engine]: HTML characters are no longer escaped in JSON output.
+  [#10440](https://github.com/pulumi/pulumi/pull/10440)
