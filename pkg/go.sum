@@ -770,7 +770,6 @@ github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
-<<<<<<< HEAD
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/pulumi/pulumi-java/pkg v0.1.0/go.mod h1:Dw5klQSJCD6hHaHN4BcCoOW+KjC6NafdBtDsy6sY6uc=
 github.com/pulumi/pulumi-java/pkg v0.2.0/go.mod h1:LUz8JGS7Lxn2EnPkxFhB6Rap0CwZyHTHmwLQ16NFIhc=
@@ -778,15 +777,11 @@ github.com/pulumi/pulumi-java/pkg v0.4.0/go.mod h1:j3qzYXomeNTibPcInXJVdsaBuHYwv
 github.com/pulumi/pulumi-java/pkg v0.4.1/go.mod h1:j3qzYXomeNTibPcInXJVdsaBuHYwv0ISmwTgR6q0hU0=
 github.com/pulumi/pulumi-java/pkg v0.4.2-0.20220706212453-8046ed6407d4/go.mod h1:kvPN1g2gzkGPsXp16/3C4a/OKo+NmPtBolK2DXd0I5Q=
 github.com/pulumi/pulumi-java/pkg v0.5.0/go.mod h1:NQafG/kIAAm2zGkIi2Dc5tcMTUikDOSp22NynwehBbM=
-github.com/pulumi/pulumi-java/pkg v0.5.3 h1:wqiP6TnKZm+ocTRLVwjzmd3fApCKQkvwba0qoh7zMV4=
-github.com/pulumi/pulumi-java/pkg v0.5.3/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
+github.com/pulumi/pulumi-java/pkg v0.5.4 h1:hQH7BrEMWvwq/uzsi0XsULoQ8WPpBpqK/rosnggsdDI=
+github.com/pulumi/pulumi-java/pkg v0.5.4/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
 github.com/pulumi/pulumi-yaml v0.3.0/go.mod h1:6pQ0QcQqLYbq+i5vYjir/gDnpCvTkKcHqB5+mt0d3So=
 github.com/pulumi/pulumi-yaml v0.5.2/go.mod h1:VTgGg3z1WFYDeiwnq9rS3Y4qAysHiQS3M4X67wqo0RM=
 github.com/pulumi/pulumi-yaml v0.5.3/go.mod h1:DVllQAk4eYy9rtDqykGyV/6WiFjzpg/j/k87GZRwV7g=
-=======
-github.com/pulumi/pulumi-java/pkg v0.5.4 h1:hQH7BrEMWvwq/uzsi0XsULoQ8WPpBpqK/rosnggsdDI=
-github.com/pulumi/pulumi-java/pkg v0.5.4/go.mod h1:leMQvQ5IR3APhejwcWSfwZnkHosKHygKRaWkIyhsvtw=
->>>>>>> master
 github.com/pulumi/pulumi-yaml v0.5.4 h1:O4H0PD0hiJjpci0GJFSkihS+yC8rWACKxuLyjYVt5wo=
 github.com/pulumi/pulumi-yaml v0.5.4/go.mod h1:e8BcP30yunk/u3mLXDykhtEQf8tTItYgQzPHDmRvJcg=
 github.com/pulumi/pulumi/pkg/v3 v3.26.0/go.mod h1:L9E+MXe05AbrSmX1GjX3jIrVNpE2RrauKEjME+BNzi4=
@@ -803,12 +798,8 @@ github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlR
 github.com/pulumi/ssh-agent v0.5.1/go.mod h1:e6cyz/FUcE3PcJZ0tiuygkRsnHnCZcSQoQU+APbnrVA=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
-<<<<<<< HEAD
-github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=
 github.com/rjeczalik/notify v0.9.2/go.mod h1:aErll2f0sUX9PXZnVNyeiObbmTlk5jnMoCa4QEjJeqM=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
-=======
->>>>>>> master
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.6.2/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
@@ -1130,11 +1121,8 @@ golang.org/x/sys v0.0.0-20180823144017-11551d06cbcc/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
-<<<<<<< HEAD
 golang.org/x/sys v0.0.0-20180926160741-c2ed4eda69e7/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20181107165924-66b7b1311ac8/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
-=======
->>>>>>> master
 golang.org/x/sys v0.0.0-20181116152217-5ac8a444bdc5/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190129075346-302c3dd5f1cc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
