@@ -1,5 +1,8 @@
 ### Improvements
 
+- [cli] Clarify highlighting of confirmation text in `confirmPrompt`.
+  [#10413](https://github.com/pulumi/pulumi/pull/10413)
+
 - [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
@@ -10,8 +13,7 @@
   This `pulumi-watch` program is now included in releases.
   [#10213](https://github.com/pulumi/pulumi/issues/10213)
 
-
-- [sdk/go] enable direct compilation via go build 
+- [sdk/go] enable direct compilation via go build(set `PULUMI_USE_GO_RUN=true` to opt out)
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
 ### Bug Fixes
