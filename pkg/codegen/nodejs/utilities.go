@@ -99,6 +99,9 @@ func makeValidIdentifier(name string) string {
 		}
 	}
 	name = builder.String()
+	if strings.HasPrefix(name, "pulumi_") {
+		name = strings.TrimPrefix(name, "pulumi_")
+	}
 	if isReservedWord(name) {
 		return "_" + name
 	}
