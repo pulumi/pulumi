@@ -118,7 +118,7 @@ func newStackMigrateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "migrate <target backend url> [target secret provider]",
-		Args:  cmdutil.MaximumNArgs(2),
+		Args:  cmdutil.RangeArgs(1, 2),
 		Short: "Migrate a stack to a different backend",
 		Long: "Migrate a stack to a different backend.\n" +
 			"\n" +
@@ -145,7 +145,7 @@ func newStackMigrateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "target", "t", "", "The name of the new stack to create. Defaults to the name of source stack")
+		&target, "target", "t", "", "The name of the new stack to create. Defaults to the name of source stack")
 	cmd.PersistentFlags().StringVarP(
 		&version, "version", "", "", "Previous stack version to migrate. (If unset, will export the latest.)")
 	return cmd
