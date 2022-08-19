@@ -356,12 +356,13 @@ func (g *generator) collectImports(
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, mod, name, _ := r.DecomposeToken()
 			if pkg == "pulumi" {
 				if mod == "providers" {
 					pkg = name
 					mod = ""
-				} else if mod == "pulumi" {
+				} else if mod == "" {
 					continue
 				}
 

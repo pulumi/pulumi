@@ -99,6 +99,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
 		}
@@ -202,6 +205,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	importSet := map[string]Import{}
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg == "pulumi" {
 				continue
@@ -298,9 +302,7 @@ func tokenToQualifiedName(pkg, module, member string) string {
 func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	if pkg == "pulumi" && module == "pulumi" {
-		module = ""
-	}
+	pcl.FixupPulumiPackageTokens(r)
 
 	// Normalize module.
 	if r.Schema != nil {
