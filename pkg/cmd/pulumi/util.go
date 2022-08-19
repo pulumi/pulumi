@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -166,21 +165,6 @@ func createSecretsManager(
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-
-		// Azure KeyVault never used to require an algorithm and there's no real reason to require it,
-		// but if someone specifies one, don't clobber it.
-		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
-			parsed, err := url.Parse(secretsProvider)
-			if err != nil {
-				return fmt.Errorf("failed to parse secrets provider URL: %w", err)
-			}
-
-			if parsed.Query().Get("algorithm") == "" {
-				parsed.Query().Set("algorithm", "RSA-OAEP-256")
-				secretsProvider = parsed.String()
-			}
-		}
-
 		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
@@ -453,6 +437,22 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
+	proj, path, err := readProjectWithPath()
+	if err != nil {
+		return nil, "", err
+	}
+	// Handle failure to find current project.
+	if path == "" {
+		return proj, "", nil
+	}
+
+	return proj, filepath.Dir(path), nil
+}
+
+// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to the project
+// file, which will be used as the root of the project's Pulumi program.
+func readProjectWithPath() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -471,7 +471,7 @@ func readProject() (*workspace.Project, string, error) {
 		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
