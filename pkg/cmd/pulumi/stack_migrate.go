@@ -122,7 +122,8 @@ func newStackMigrateCmd() *cobra.Command {
 		Short: "Migrate a stack to a different backend",
 		Long: "Migrate a stack to a different backend.\n" +
 			"\n" +
-			"blah blah blah",
+			"This will export the current (or selected stack) from the backend currently logged into, and then " +
+			"import that stack into the new target backend. This will also ",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{
@@ -144,8 +145,8 @@ func newStackMigrateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "target", "t", "", "The name of the stack to operate on. Defaults to the current stack")
+		&stackName, "target", "t", "", "The name of the new stack to create. Defaults to the name of source stack")
 	cmd.PersistentFlags().StringVarP(
-		&version, "version", "", "", "Previous stack version to export. (If unset, will export the latest.)")
+		&version, "version", "", "", "Previous stack version to migrate. (If unset, will export the latest.)")
 	return cmd
 }

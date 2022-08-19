@@ -13,6 +13,9 @@
   This `pulumi-watch` program is now included in releases.
   [#10213](https://github.com/pulumi/pulumi/issues/10213)
 
+- [cli] Added a new `stack migrate` command to move stack state and config from one backend to another.
+  [#10455](https://github.com/pulumi/pulumi/pull/10455)
+
 ### Bug Fixes
 
 - [engine/backends]: Fix bug where File state backend failed to apply validation to stack names, resulting in a panic.
