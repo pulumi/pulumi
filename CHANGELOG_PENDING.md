@@ -3,7 +3,7 @@
 - [cli] Clarify highlighting of confirmation text in `confirmPrompt`.
   [#10413](https://github.com/pulumi/pulumi/pull/10413)
 
-- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
+- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
 - [sdk/python] Update PyYAML to 6.0
@@ -12,6 +12,9 @@
   to implement recursive file watching, improving performance and cross-platform compatibility.
   This `pulumi-watch` program is now included in releases.
   [#10213](https://github.com/pulumi/pulumi/issues/10213)
+
+- [codegen] Reduce time to execute `pulumi convert` and some YAML programs, depending on providers used, by up to 3 seconds.
+  [#10444](https://github.com/pulumi/pulumi/pull/10444)
 
 - [cli] Added a new `stack migrate` command to move stack state and config from one backend to another.
   [#10455](https://github.com/pulumi/pulumi/pull/10455)
