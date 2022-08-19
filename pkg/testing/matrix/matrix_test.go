@@ -72,11 +72,11 @@ func TestAll(t *testing.T) {
 
 	opts := []i.ProgramTestOptions{
 		//Tests are commented out because codegen currently fails them.
-		/*
-			{
-				Dir: "tests/empty",
-			},
-		*/
+
+		{
+			Dir: "tests/empty",
+		},
+
 		/*
 			{
 				Dir: "tests/scalar",
@@ -106,7 +106,6 @@ func TestAll(t *testing.T) {
 			SkipExportImport: true,
 		},
 	}
-	t.Parallel()
 	for _, opt := range opts { //nolint:paralleltest
 		//"Range statement for test TestAll does not reinitialise the variable opt"
 		t.Run(opt.Dir, func(t *testing.T) {
@@ -142,9 +141,9 @@ func allLanguages() []LangTestOption {
 			Version:  nil,
 			Opts:     nil,
 		},*/
-		/*{
+		{
 			Language: "yaml",
 			Opts:     nil,
-		},*/
+		},
 	}
 }
