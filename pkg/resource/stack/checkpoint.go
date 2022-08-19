@@ -92,7 +92,7 @@ func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 		latest = dep
 	}
 
-	b, err := json.Marshal(apitype.CheckpointV3{
+	b, err := encoding.JSON.Marshal(apitype.CheckpointV3{
 		Stack:  stack.Q(),
 		Latest: latest,
 	})

@@ -115,6 +115,7 @@ func newStackExportCmd() *cobra.Command {
 
 			// Write the deployment.
 			enc := json.NewEncoder(writer)
+			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "    ")
 
 			if err = enc.Encode(deployment); err != nil {

@@ -909,7 +909,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		case model.StringType:
 			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.Name())
 		case model.NumberType:
-			g.Fgenf(w, "if param := cfg.GetFloat(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetFloat64(\"%s\"); param != 0 {\n", v.Name())
 		case model.IntType:
 			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.Name())
 		case model.BoolType:

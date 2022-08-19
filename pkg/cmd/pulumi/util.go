@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -145,8 +144,7 @@ func commandContext() context.Context {
 }
 
 func createSecretsManager(
-	ctx context.Context, b backend.Backend,
-	stackRef backend.StackReference, secretsProvider string,
+	ctx context.Context, stack backend.Stack, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -154,52 +152,20 @@ func createSecretsManager(
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
-	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
-		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = passphrase.Type
-	}
-
-	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(ctx, b)
-		if err != nil {
-			return err
-		}
-		if stack == nil {
-			// This means this is the first time we are initiating a stack
-			// there is no way a stack will exist here so we need to just return nil
-			// this will mean the "old" default behaviour will work for us
-			return nil
-		}
-		if _, serviceSecretsErr := httpstate.NewServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
-			return serviceSecretsErr
-		}
+	if isDefaultSecretsProvider {
+		_, err := stack.DefaultSecretManager(stackConfigFile)
+		return err
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := filestate.NewPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), stackConfigFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
-	} else if !isDefaultSecretsProvider {
+	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-
-		// Azure KeyVault never used to require an algorithm and there's no real reason to require it,
-		// but if someone specifies one, don't clobber it.
-		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
-			parsed, err := url.Parse(secretsProvider)
-			if err != nil {
-				return fmt.Errorf("failed to parse secrets provider URL: %w", err)
-			}
-
-			if parsed.Query().Get("algorithm") == "" {
-				parsed.Query().Set("algorithm", "RSA-OAEP-256")
-				secretsProvider = parsed.String()
-			}
-		}
-
-		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
@@ -224,7 +190,7 @@ func createStack(ctx context.Context,
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(ctx, b, stackRef, secretsProvider,
+	if err := createSecretsManager(ctx, stack, secretsProvider,
 		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}
@@ -471,6 +437,22 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
+	proj, path, err := readProjectWithPath()
+	if err != nil {
+		return nil, "", err
+	}
+	// Handle failure to find current project.
+	if path == "" {
+		return proj, "", nil
+	}
+
+	return proj, filepath.Dir(path), nil
+}
+
+// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to the project
+// file, which will be used as the root of the project's Pulumi program.
+func readProjectWithPath() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -489,7 +471,7 @@ func readProject() (*workspace.Project, string, error) {
 		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
@@ -881,6 +863,7 @@ func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets
 		return err
 	}
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "    ")
 	return encoder.Encode(deploymentPlan)
 }

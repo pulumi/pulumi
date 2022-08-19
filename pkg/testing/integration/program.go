@@ -1924,6 +1924,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	defer contract.IgnoreClose(f)
 
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 
 	return fmt.Errorf("writing package.json: %w", encoder.Encode(metadata))
