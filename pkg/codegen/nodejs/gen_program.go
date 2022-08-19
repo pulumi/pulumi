@@ -36,6 +36,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const PulumiToken = "pulumi"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -171,7 +173,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
-		if p.Name == "pulumi" {
+		if p.Name == PulumiToken {
 			continue
 		}
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
@@ -285,7 +287,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			if pkg == "pulumi" {
+			if pkg == PulumiToken {
 				continue
 			}
 			pkgName := "@pulumi/" + pkg
@@ -368,7 +370,7 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	if pkg == "pulumi" && module == "pulumi" {
+	if pkg == PulumiToken && module == PulumiToken {
 		module = ""
 	}
 
