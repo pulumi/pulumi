@@ -55,11 +55,16 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	}
 
 	isProvider := false
-	if pkg == "pulumi" && module == "providers" {
-		pkg, isProvider = name, true
+	if pkg == "pulumi" {
+		if module == "providers" {
+			pkg = name
+		}
+		isProvider = true
 	}
+	var pkgSchema *packageSchema
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
+	var ok bool
+	pkgSchema, ok = b.options.packageCache.entries[pkg]
 	if !ok {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}

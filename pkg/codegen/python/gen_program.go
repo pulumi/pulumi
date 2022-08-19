@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const stackRefQualifiedName = "pulumi.StackReference"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -104,6 +106,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return err
 		}
@@ -214,7 +219,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	importSet := map[string]Import{}
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
+			if pkg == "pulumi" {
+				continue
+			}
 			packageName := "pulumi_" + makeValidIdentifier(pkg)
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["python"].(PackageInfo); ok && info.PackageName != "" {
@@ -307,6 +316,7 @@ func tokenToQualifiedName(pkg, module, member string) string {
 func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
+	pcl.FixupPulumiPackageTokens(r)
 
 	// Normalize module.
 	if r.Schema != nil {
@@ -465,6 +475,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		indenter(func() {
 			for _, attr := range r.Inputs {
 				propertyName := InitParamName(attr.Name)
+				// special case: pulumi.StackReference requires `stack_name` instead of `name`
+				if qualifiedMemberName == stackRefQualifiedName && propertyName == "name" {
+					propertyName = "stack_name"
+				}
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
