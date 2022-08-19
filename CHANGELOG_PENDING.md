@@ -20,3 +20,6 @@
 
 - [codegen/go] Fix incorrect method call for reading floating point values from configuration.
   [#10445](https://github.com/pulumi/pulumi/pull/10445)
+
+- [engine]: HTML characters are no longer escaped in JSON output.
+  [#10440](https://github.com/pulumi/pulumi/pull/10440)

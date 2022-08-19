@@ -881,6 +881,7 @@ func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets
 		return err
 	}
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "    ")
 	return encoder.Encode(deploymentPlan)
 }
