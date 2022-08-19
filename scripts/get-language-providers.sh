@@ -11,6 +11,20 @@ get_version() {
   )
 }
 
+# This curl wrapper follows redirects, re-uses the download
+# name as the filename, silences errors, and retries on
+# transient network errors.
+try_curl() {
+  local -r TARGET_URL="$1"
+  curl \
+    --remote-name \
+    --location \
+    --fail \
+    --retry 3 \
+    --retry-delay 10 \
+    "${TARGET_URL}"
+}
+
 # shellcheck disable=SC2043
 for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yaml"; do
   set -- $i # treat strings in loop as args
@@ -45,9 +59,8 @@ for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yam
 
         # No consistency on whether Windows archives use .zip or
         # .tar.gz, try both.
-
-        curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.tar.gz" \
-          || curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.zip"
+        try_curl("https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.tar.gz") \
+        || try_curl("https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.zip")
 
         OUTDIR="$DIST_OS-$RENAMED_ARCH"
 
