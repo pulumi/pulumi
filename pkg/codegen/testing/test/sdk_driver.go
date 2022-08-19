@@ -167,6 +167,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
+		Skip:        codegen.NewStringSet("go/any"),
 	},
 	{
 		Directory:   "output-funcs",
@@ -227,6 +228,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
+		Skip:        codegen.NewStringSet("go/any"),
 	},
 	{
 		Directory:   "regress-go-8664",

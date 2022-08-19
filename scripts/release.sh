@@ -68,16 +68,16 @@ case "$1" in
     tag)
         git fetch origin master
 
-        SDK_COMMENT=$(git log --format=%B -n 1 origin/master~2)
         REL_COMMENT=$(git log --format=%B -n 1 origin/master~1)
-
+        SDK_COMMENT=$(git log --format=%B -n 1 origin/master~2)
+        
         if [ "$REL_COMMENT" != "Release ${VERSION}" ]; then
-            echo "Aborting, expected origin/master~2 comment to be 'Release ${VERSION}' but got '${REL_COMMENT}'"
+            echo "Aborting, expected origin/master~1 comment to be 'Release ${VERSION}' but got '${REL_COMMENT}'"
             exit 1
         fi
 
         if [ "$SDK_COMMENT" != "Prepare for ${VERSION} release" ]; then
-            echo "Aborting, expected origin/master~1 comment to be 'Prepare for ${VERSION} release' but got '${SDK_COMMENT}'"
+            echo "Aborting, expected origin/master~2 comment to be 'Prepare for ${VERSION} release' but got '${SDK_COMMENT}'"
             exit 1
         fi
 

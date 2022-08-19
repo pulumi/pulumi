@@ -276,6 +276,9 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+	if err := b.ValidateStackName(stackRefName); err != nil {
+		return nil, err
+	}
 	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
@@ -786,7 +789,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		return nil, fmt.Errorf("serializing deployment: %w", err)
 	}
 
-	data, err := json.Marshal(sdep)
+	data, err := encoding.JSON.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}

@@ -23,6 +23,33 @@ It looks like the Pulumi SDK has not been installed. Have you run pip install?
 If you are running in a virtualenv, you must run pip install -r requirements.txt from inside the virtualenv.""", file=sys.stderr)
     sys.exit(1)
 
+# use exit code 32 to signal to the language host that an error message was displayed to the user
+PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE = 32
+
+def _get_user_stacktrace(user_program_abspath: str) -> str:
+    '''grabs the current stacktrace and truncates it to show the only stacks pertaining to a user's program'''
+    def get_abs_module_path(mod_path):
+        path, ext = os.path.splitext(mod_path)
+        if not ext:
+            path = os.path.join(path, '__main__')
+        return os.path.abspath(path)
+
+    tb = traceback.extract_tb(sys.exc_info()[2])
+
+    for frame_index, frame in enumerate(tb):
+        # loop over stack frames until we reach the main program
+        # then return the traceback truncated to the user's code
+        cur_module = frame[0]
+        if get_abs_module_path(user_program_abspath) == get_abs_module_path(cur_module):
+            # we have detected the start of a user's stack trace
+            remaining_frames = len(tb)-frame_index
+
+            # include remaining frames from the bottom by negating
+            return traceback.format_exc(limit=-remaining_frames)
+
+    # we did not detect a __main__ program, return normal traceback
+    return traceback.format_exc()
+
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
     ap = argparse.ArgumentParser(description='Execute a Pulumi Python program')
@@ -102,19 +129,23 @@ if __name__ == "__main__":
     # In order to paper over this for our users, we simply turn off the logger for asyncio. Users won't see any asyncio
     # error messages, but if they stick to the Pulumi programming model, they wouldn't be seeing any anyway.
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+    exit_code = 1
     try:
+        # record the location of the user's program to return user tracebacks
+        user_program_abspath = os.path.abspath(args.PROGRAM)
+
         coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
         loop.run_until_complete(coro)
-        successful = True
+        exit_code = 0
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
     except Exception:
-        pulumi.log.error("Program failed with an unhandled exception:")
-        pulumi.log.error(traceback.format_exc())
+        error_msg = "Program failed with an unhandled exception:\n" + _get_user_stacktrace(user_program_abspath)
+        pulumi.log.error(error_msg)
+        exit_code = PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE
     finally:
         loop.close()
         sys.stdout.flush()
         sys.stderr.flush()
 
-    exit_code = 0 if successful else 1
     sys.exit(exit_code)

@@ -132,6 +132,7 @@ func (cm *codegenManifest) save(dir string) error {
 	sort.Strings(cm.EmittedFiles)
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(cm)
 	if err != nil {

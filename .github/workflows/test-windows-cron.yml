@@ -19,7 +19,6 @@ jobs:
     name: Test Windows
     needs: build
     uses: ./.github/workflows/test.yml
-    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     with:
       enable-coverage: true
       platform: windows-latest
