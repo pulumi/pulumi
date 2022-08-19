@@ -257,6 +257,8 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 		}
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
+		// Support ConfigureErrorMissingKeys from CheckConfig
+		err = createConfigureError(rpcError)
 		return nil, nil, err
 	}
 
@@ -1547,7 +1549,7 @@ func (p *provider) Close() error {
 }
 
 // createConfigureError creates a nice error message from an RPC error that
-// originated from `Configure`.
+// originated from `Configure` or `CheckConfig`.
 //
 // If we requested that a resource configure itself but omitted required configuration
 // variables, resource providers will respond with a list of missing variables and their descriptions.
