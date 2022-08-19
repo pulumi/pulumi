@@ -159,7 +159,8 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 	return host, nil
 }
 
-func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind, dir string) (workspace.ProjectPlugin, error) {
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind,
+	dir string) (workspace.ProjectPlugin, error) {
 	var v *semver.Version
 	if providerOpts.Version != "" {
 		ver, err := semver.Parse(providerOpts.Version)
