@@ -165,6 +165,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(golang),
 	},
 	{
+		Directory:   "pulumi-stack-reference",
+		Description: "StackReference as resource",
+	},
+	{
 		Directory:   "python-resource-names",
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
