@@ -140,9 +140,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 func goPkgName(p *schema.Package) string {
 	if p.Version.Major > 1 {
 		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/v%d/go", p.Name, p.Version.Major)
-	} else {
-		return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go", p.Name)
 	}
+	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk/go", p.Name)
 }
 
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program,

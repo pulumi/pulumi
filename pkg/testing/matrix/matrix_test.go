@@ -27,6 +27,7 @@ import (
 )
 
 func TestAll(t *testing.T) {
+	t.Parallel()
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -108,10 +109,11 @@ func TestAll(t *testing.T) {
 	}
 	for _, opt := range opts { //nolint:paralleltest
 		//"Range statement for test TestAll does not reinitialise the variable opt"
+		o := opt
 		t.Run(opt.Dir, func(t *testing.T) {
 			for _, lang := range allLanguages() { //nolint:paralleltest
 				t.Run(lang.Language, func(t *testing.T) {
-					tester.TestLang(t, &opt, lang.Language)
+					tester.TestLang(t, &o, lang.Language)
 				})
 			}
 		})
