@@ -29,3 +29,6 @@
 
 - [engine]: HTML characters are no longer escaped in JSON output.
   [#10440](https://github.com/pulumi/pulumi/pull/10440)
+
+- [codegen/go] Ensure consistency between go docs information and package name
+  [#10452](https://github.com/pulumi/pulumi/pull/10452)
