@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -525,7 +525,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 	assignIf("language", runtime.Language)
 	assignIf("executable", runtime.Executable)
 	assignIf("version", runtime.Version)
-	return encoding.RawJSON.Marshal(m)
+	return json.Marshal(m)
 }
 
 func (runtime projectRuntimeAbout) String() string {

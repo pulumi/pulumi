@@ -789,7 +789,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		return nil, fmt.Errorf("serializing deployment: %w", err)
 	}
 
-	data, err := encoding.RawJSON.Marshal(sdep)
+	data, err := json.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}

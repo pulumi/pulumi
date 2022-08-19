@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -48,7 +47,7 @@ func TestMarshalKeyJSON(t *testing.T) {
 
 	k := Key{namespace: "test", name: "key"}
 
-	b, err := encoding.RawJSON.Marshal(k)
+	b, err := json.Marshal(k)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("\"test:key\""), b)
 
@@ -76,7 +75,7 @@ func roundtripKeyYAML(k Key) (Key, error) {
 }
 
 func roundtripKeyJSON(k Key) (Key, error) {
-	return roundtripKey(k, encoding.RawJSON.Marshal, json.Unmarshal)
+	return roundtripKey(k, json.Marshal, json.Unmarshal)
 }
 
 func roundtripKey(m Key, marshal func(v interface{}) ([]byte, error),

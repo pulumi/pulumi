@@ -1,11 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -45,7 +46,7 @@ func main() {
 			Bucket: siteBucket.ID(),
 			Policy: siteBucket.ID().ApplyT(func(id string) (pulumi.String, error) {
 				var _zero pulumi.String
-				tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
+				tmpJSON0, err := json.Marshal(map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{
 						map[string]interface{}{

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -25,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -187,7 +187,7 @@ func runTotalStateEdit(
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := encoding.RawJSON.Marshal(sdep)
+	bytes, err := json.Marshal(sdep)
 	if err != nil {
 		return result.FromError(err)
 	}

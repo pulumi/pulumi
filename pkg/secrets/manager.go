@@ -16,7 +16,8 @@
 package secrets
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -47,11 +48,11 @@ func AreCompatible(a, b Manager) bool {
 		return false
 	}
 
-	as, err := encoding.RawJSON.Marshal(a.State())
+	as, err := json.Marshal(a.State())
 	if err != nil {
 		return false
 	}
-	bs, err := encoding.RawJSON.Marshal(b.State())
+	bs, err := json.Marshal(b.State())
 	if err != nil {
 		return false
 	}

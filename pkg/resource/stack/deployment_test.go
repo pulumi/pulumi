@@ -28,7 +28,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
@@ -247,7 +246,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	// in order to convert the ID property value into a plain map[string]interface{}.
 	serialize := func(v resource.PropertyValue) interface{} {
 		ref := v.ResourceReferenceValue()
-		bytes, err := encoding.RawJSON.Marshal(map[string]interface{}{
+		bytes, err := json.Marshal(map[string]interface{}{
 			resource.SigKey:  resource.ResourceReferenceSig,
 			"urn":            ref.URN,
 			"id":             ref.ID,
@@ -328,7 +327,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeToJSON", func(t *testing.T) {
 		t.Parallel()
 
-		b, err := encoding.RawJSON.Marshal(propMap)
+		b, err := json.Marshal(propMap)
 		if err != nil {
 			t.Fatalf("Marshalling PropertyMap: %v", err)
 		}
@@ -380,7 +379,7 @@ func TestCustomSerialization(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Now JSON encode the results?
-		b, err := encoding.RawJSON.Marshal(serializedPropMap)
+		b, err := json.Marshal(serializedPropMap)
 		if err != nil {
 			t.Fatalf("Marshalling PropertyMap: %v", err)
 		}
@@ -513,7 +512,7 @@ func wireValue(v resource.PropertyValue) (interface{}, error) {
 		return nil, err
 	}
 
-	wire, err := encoding.RawJSON.Marshal(object)
+	wire, err := json.Marshal(object)
 	if err != nil {
 		return nil, err
 	}
@@ -685,7 +684,7 @@ func MapObjectGenerator(maxDepth int) *rapid.Generator {
 func SecretObjectGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) interface{} {
 		value := ObjectValueGenerator(maxDepth-1).Draw(t, "secret element")
-		bytes, err := encoding.RawJSON.Marshal(value)
+		bytes, err := json.Marshal(value)
 		require.NoError(t, err)
 
 		return map[string]interface{}{

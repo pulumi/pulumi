@@ -16,6 +16,7 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -26,7 +27,6 @@ import (
 	"google.golang.org/api/option"
 	loggingpb "google.golang.org/genproto/googleapis/logging/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -144,7 +144,7 @@ func getLogEntryMessage(e *loggingpb.LogEntry) (string, error) {
 		return payload.TextPayload, nil
 
 	case *loggingpb.LogEntry_JsonPayload:
-		byts, err := encoding.RawJSON.Marshal(payload.JsonPayload)
+		byts, err := json.Marshal(payload.JsonPayload)
 		if err != nil {
 			return "", fmt.Errorf("encoding to JSON: %w", err)
 		}

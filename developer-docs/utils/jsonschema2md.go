@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -31,7 +31,7 @@ func fprintf(w io.Writer, f string, args ...interface{}) {
 }
 
 func toJSON(v interface{}) string {
-	bytes, err := encoding.RawJSON.Marshal(v)
+	bytes, err := json.Marshal(v)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -67,23 +67,17 @@ type Marshaler interface {
 	Unmarshal(data []byte, v interface{}) error
 }
 
-// JSON is a Marshaler that marshal and unmarshal JSON with indented printing.
-var JSON Marshaler = &jsonMarshaler{indent: true}
-
-// RawJSON is a Marshaler that marshal and unmarshal JSON in a single line.
-var RawJSON Marshaler = &jsonMarshaler{indent: false}
+// JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
+var JSON Marshaler = &jsonMarshaler{}
 
 type jsonMarshaler struct {
-	indent bool
 }
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
-	if m.indent {
-		enc.SetIndent("", "    ")
-	}
+	enc.SetIndent("", "    ")
 	err := enc.Encode(v)
 	if err != nil {
 		return nil, err

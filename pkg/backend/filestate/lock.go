@@ -26,7 +26,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -113,7 +112,7 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		return err
 	}
-	content, err := encoding.RawJSON.Marshal(lockContent)
+	content, err := json.Marshal(lockContent)
 	if err != nil {
 		return err
 	}

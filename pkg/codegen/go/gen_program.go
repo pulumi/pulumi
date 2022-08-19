@@ -730,7 +730,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "}\n")
 		case *spillTemp:
 			bytesVar := fmt.Sprintf("tmp%s", strings.ToUpper(t.Variable.Name))
-			g.Fgenf(w, "%s, err := encoding.RawJSON.Marshal(", bytesVar)
+			g.Fgenf(w, "%s, err := json.Marshal(", bytesVar)
 			args := t.Value.(*model.FunctionCallExpression).Args[0]
 			g.Fgenf(w, "%.v)\n", args)
 			g.Fgenf(w, "if err != nil {\n")

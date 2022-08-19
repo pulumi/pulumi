@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -868,7 +867,7 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 				value.ObjectValue = obj
 			}
 
-			out, err := encoding.JSON.Marshal(value)
+			out, err := json.MarshalIndent(value, "", "  ")
 			if err != nil {
 				return err
 			}

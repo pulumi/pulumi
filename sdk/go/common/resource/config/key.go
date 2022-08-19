@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -72,7 +71,7 @@ func (k Key) Name() string {
 }
 
 func (k Key) MarshalJSON() ([]byte, error) {
-	return encoding.RawJSON.Marshal(k.String())
+	return json.Marshal(k.String())
 }
 
 func (k *Key) UnmarshalJSON(b []byte) error {

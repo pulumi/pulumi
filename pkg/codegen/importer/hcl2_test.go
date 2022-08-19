@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -284,10 +283,10 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				actual, err := stack.SerializeResource(actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
-				sb, err := encoding.JSON.Marshal(s)
+				sb, err := json.MarshalIndent(s, "", "    ")
 				contract.IgnoreError(err)
 
-				ab, err := encoding.JSON.Marshal(actual)
+				ab, err := json.MarshalIndent(actual, "", "    ")
 				contract.IgnoreError(err)
 
 				t.Logf("%v", text)

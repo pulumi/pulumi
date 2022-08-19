@@ -1,11 +1,12 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ecs"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/elasticloadbalancingv2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -53,7 +54,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON0, err := encoding.RawJSON.Marshal(map[string]interface{}{
+		tmpJSON0, err := json.Marshal(map[string]interface{}{
 			"Version": "2008-10-17",
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
@@ -114,7 +115,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tmpJSON1, err := encoding.RawJSON.Marshal([]map[string]interface{}{
+		tmpJSON1, err := json.Marshal([]map[string]interface{}{
 			map[string]interface{}{
 				"name":  "my-app",
 				"image": "nginx",

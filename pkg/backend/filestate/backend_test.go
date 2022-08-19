@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -130,7 +129,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 		return nil, err
 	}
 
-	data, err := encoding.RawJSON.Marshal(sdep)
+	data, err := json.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +436,7 @@ func TestHtmlEscaping(t *testing.T) {
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
 	assert.NoError(t, err)
 
-	data, err := encoding.JSON.Marshal(sdep)
+	data, err := json.Marshal(sdep)
 	assert.NoError(t, err)
 
 	udep := &apitype.UntypedDeployment{

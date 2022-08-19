@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -61,7 +60,7 @@ type PulumiPluginJSON struct {
 }
 
 func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
-	json, err := encoding.JSON.Marshal(plugin)
+	json, err := json.MarshalIndent(plugin, "", "  ")
 	if err != nil {
 		return nil, err
 	}

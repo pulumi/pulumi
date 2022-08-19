@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -225,7 +224,7 @@ func TestStackCommands(t *testing.T) {
 				}
 
 				deployment.Version = deploymentVersion
-				bytes, err := encoding.RawJSON.Marshal(deployment)
+				bytes, err := json.Marshal(deployment)
 				assert.NoError(t, err)
 				err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 				if !assert.NoError(t, err) {
@@ -290,12 +289,12 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		data, err := encoding.RawJSON.Marshal(&v3deployment)
+		data, err := json.Marshal(&v3deployment)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
 		deployment.Deployment = data
-		bytes, err := encoding.RawJSON.Marshal(&deployment)
+		bytes, err := json.Marshal(&deployment)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

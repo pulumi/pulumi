@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -30,7 +31,6 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -510,7 +510,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 
 		mapped := removeSecrets(v)
 		if _, isString := mapped.(string); !isString {
-			marshalled, err := encoding.RawJSON.Marshal(mapped)
+			marshalled, err := json.Marshal(mapped)
 			if err != nil {
 				p.cfgerr = errors.Wrapf(err, "marshaling configuration property '%v'", k)
 				close(p.cfgdone)

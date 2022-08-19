@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -128,7 +127,7 @@ func newStackImportCmd() *cobra.Command {
 				return fmt.Errorf("constructing deployment for upload: %w", err)
 			}
 
-			bytes, err := encoding.RawJSON.Marshal(sdp)
+			bytes, err := json.Marshal(sdp)
 			if err != nil {
 				return err
 			}
