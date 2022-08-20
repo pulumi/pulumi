@@ -123,7 +123,14 @@ func newStackMigrateCmd() *cobra.Command {
 		Long: "Migrate a stack to a different backend.\n" +
 			"\n" +
 			"This will export the current (or selected stack) from the backend currently logged into, and then " +
-			"import that stack into the new target backend. This will also ",
+			"import that stack into the new target backend. This will correctly re-encrypt secrets for the new stack, " +
+			"and also handle any secrets in stack config.\n" +
+			"\n" +
+			"examples:\n" +
+			"\n" +
+			" - Moving the current stack into the pulumi service:\n" +
+			"   `pulumi migrate https://app.pulumi.com`\n" +
+			"",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			opts := display.Options{
