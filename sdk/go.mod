@@ -4,8 +4,10 @@ go 1.17
 
 replace golang.org/x/text => golang.org/x/text v0.3.6
 
+replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
+
 require (
-	github.com/Microsoft/go-winio v0.4.16
+	github.com/Microsoft/go-winio v0.5.2
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.18
 	github.com/djherbis/times v1.2.0
@@ -28,10 +30,10 @@ require (
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/mod v0.3.0
-	golang.org/x/net v0.0.0-20210326060303-6b1517762897
-	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	google.golang.org/grpc v1.29.1
 	gopkg.in/yaml.v2 v2.4.0
 	pgregory.net/rapid v0.4.7
@@ -78,7 +80,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	go.uber.org/atomic v1.6.0 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20200608115520-7c474a2e3482 // indirect
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
