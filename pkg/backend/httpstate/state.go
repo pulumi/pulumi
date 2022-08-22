@@ -63,35 +63,58 @@ func (ts *tokenSource) handleRequests(
 	update client.UpdateIdentifier,
 	duration time.Duration) {
 
-	// We will renew the lease after 50% of the duration has elapsed to allow time for retries.
-	renewTicker := time.NewTicker(duration / 2)
+	renewTicker := time.NewTicker(duration / 8)
 	defer renewTicker.Stop()
 
 	state := struct {
-		token string // most recently renewed token
-		error error  // non-nil indicates a terminal error state
+		token   string    // most recently renewed token
+		error   error     // non-nil indicates a terminal error state
+		expires time.Time // assumed expiry of the token
 	}{
-		token: initialToken,
+		token:   initialToken,
+		expires: time.Now().Add(duration),
+	}
+
+	renewUpdateLeaseIfStale := func() {
+		if state.error != nil {
+			return
+		}
+
+		now := time.Now()
+
+		// We will renew the lease after 50% of the duration
+		// has elapsed to allow time for retries.
+		stale := now.Add(duration / 2).After(state.expires)
+		if !stale {
+			return
+		}
+
+		newToken, err := client.RenewUpdateLease(ctx, update, state.token, duration)
+		// If renew failed, all further GetToken requests will return this error.
+		if err != nil {
+			logging.V(3).Infof("error renewing lease: %v", err)
+			state.error = fmt.Errorf("renewing lease: %w", err)
+			renewTicker.Stop()
+		} else {
+			state.token = newToken
+			state.expires = now.Add(duration)
+		}
 	}
 
 	for {
 		select {
 		case <-renewTicker.C:
-			newToken, err := client.RenewUpdateLease(ctx, update, state.token, duration)
-			// If renew failed, all further GetToken requests will return this error.
-			if err != nil {
-				logging.V(3).Infof("error renewing lease: %v", err)
-				state.error = fmt.Errorf("renewing lease: %w", err)
-				renewTicker.Stop()
-			} else {
-				state.token = newToken
-			}
+			renewUpdateLeaseIfStale()
 		case c, ok := <-ts.requests:
 			if !ok {
 				close(ts.done)
 				return
 			}
-			if state.error == nil {
+			// If ticker has not kept up, block on
+			// renewing rather than risking returning a
+			// stale token.
+			renewUpdateLeaseIfStale()
+			if state.error != nil {
 				c <- tokenResponse{token: state.token}
 			} else {
 				c <- tokenResponse{err: state.error}
