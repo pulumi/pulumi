@@ -125,6 +125,16 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, nil
 	}
 
+	if kind == apitype.UpdateUpdate &&
+		countResources(events, op.Opts.Display) == 0 {
+
+		emptyStackWarningMessage := "\b" + op.Opts.Display.Color.Colorize(
+			fmt.Sprintf("%sinfo:%s it appears that there are no resources in this update\n",
+				colors.SpecInfo,
+				colors.Reset))
+		fmt.Printf(emptyStackWarningMessage)
+	}
+
 	// Otherwise, ensure the user wants to proceed.
 	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
@@ -162,14 +172,6 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 				opts.Display.Color.Colorize(colors.SpecImportant+
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
-		}
-		if kind == apitype.UpdateUpdate &&
-			countResources(events, opts.Display) == 0 {
-
-			prompt = "\b" + opts.Display.Color.Colorize(
-				fmt.Sprintf("%sinfo:%s it appears that there are no resources in this update\n",
-					colors.SpecInfo,
-					colors.Reset)) + prompt
 		}
 
 		cmdutil.EndKeypadTransmitMode()
