@@ -32,3 +32,6 @@
 
 - [codegen/go] Ensure consistency between go docs information and package name
   [#10452](https://github.com/pulumi/pulumi/pull/10452)
+
+- [auto/go] Clone non-default branches (and tags).
+  [#10285](https://github.com/pulumi/pulumi/pull/10285)
