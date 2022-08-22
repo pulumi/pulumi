@@ -17,10 +17,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -48,12 +52,27 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func compileProgramCwd(buildID string) (string, error) {
-	program, err := executable.FindExecutable("go")
-	if err != nil {
-		return "", errors.Wrap(err, "problem executing program (could not run language executor)")
-	}
+func hashDir(path string) string {
+	contentHash := crypto.SHA256.New()
+	filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+		if info.IsDir() {
+			// directories do not affect the hash of the program.
+			return nil
+		}
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			// unreadable files do not affect the hash of the program.
+			return nil
+		}
+		contentHash.Write([]byte(path))
+		contentHash.Write(data)
+		return nil
+	})
 
+	return hex.EncodeToString(contentHash.Sum([]byte{}))
+}
+
+func compileProgramCwd(buildID string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", errors.Wrap(err, "unable to get current working directory")
@@ -68,22 +87,22 @@ func compileProgramCwd(buildID string) (string, error) {
 		return "", errors.Wrap(err, "failed to compile")
 	}
 
-	// ensure build directory exists
-	buildDir, err := os.MkdirTemp("", "pulumi-go-compiler-*")
-	if err != nil {
-		return "", errors.Wrap(err, "failed to create temporary dir for Go program")
+	hash := hashDir(cwd)
+	filename := fmt.Sprintf("pulumi-go.%s.%s", buildID, hash)
+	if runtime.GOOS == "windows" && !strings.HasSuffix(filename, ".exe") {
+		filename = fmt.Sprintf("%s.exe", filename)
 	}
 
 	outfile := path.Join(
-		buildDir,
-		buildID,
+		os.TempDir(),
+		filename,
 	)
 
-	if runtime.GOOS == "windows" && !strings.HasSuffix(outfile, ".exe") {
-		outfile = fmt.Sprintf("%s.exe", program)
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return "", errors.Wrap(err, "problem executing program (could not run language executor)")
 	}
-
-	buildCmd := exec.Command(program, "build", "-o", outfile, cwd)
+	buildCmd := exec.Command(gobin, "build", "-o", outfile, cwd)
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
 	if err := buildCmd.Run(); err != nil {
@@ -412,6 +431,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, errors.Wrap(err, "error in compiling Go")
 		}
+		//defer os.RemoveAll(program)
 	}
 
 	bin, err := executable.FindExecutable(program)
