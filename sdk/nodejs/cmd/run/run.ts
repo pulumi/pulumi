@@ -16,6 +16,7 @@ import * as fs from "fs";
 import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as util from "util";
 import * as tsnode from "ts-node";
 import * as ini from "ini";
 import * as semver from "semver";
@@ -235,9 +236,20 @@ export function run(
         const defaultMessage = err.stack || err.message || ("" + err);
 
         // First, log the error.
-        if (RunError.isInstance(err) || typeof err ==  typeof tsnode.TSError) {
+        if (RunError.isInstance(err)
+           || err.name == tsnode.TSError.name
+           || err.name == SyntaxError.name) {
             // Always hide the stack for RunErrors.
-            log.error(err.message);
+            const errOut = err.stack?.toString() || ""
+
+            let errMsg = err.message;
+            const errParts = errOut.split(err.message);
+            if (errParts.length == 2) {
+                errMsg = errParts[0]+err.message;
+            }
+            log.error(
+                `Running program '${program}' failed with an unhandled exception:
+${errMsg}`);
         }
         else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
