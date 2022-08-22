@@ -163,6 +163,14 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 					"No resources will be modified as part of this refresh; just your stack's state will be."+
 					colors.Reset)
 		}
+		if kind == apitype.UpdateUpdate &&
+			countResources(events, opts.Display) == 0 {
+
+			prompt = "\b" + opts.Display.Color.Colorize(
+				fmt.Sprintf("%sinfo:%s it appears that there are no resources in this update\n",
+					colors.SpecInfo,
+					colors.Reset)) + prompt
+		}
 
 		cmdutil.EndKeypadTransmitMode()
 
@@ -228,6 +236,28 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	}
 	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
 	return changes, res
+}
+
+func countResources(events []engine.Event, displayOpts display.Options) int {
+	count := 0
+	seen := make(map[resource.URN]engine.StepEventMetadata)
+
+	displayOpts.SummaryDiff = true
+
+	for _, e := range events {
+		if e.Type == engine.SummaryEvent {
+			continue
+		}
+		msg := display.RenderDiffEvent(e, seen, displayOpts)
+		if msg == "" {
+			continue
+		}
+		if strings.Contains(msg, "::pulumi:pulumi:Stack::") {
+			continue
+		}
+		count += 1
+	}
+	return count
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
