@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -54,7 +55,7 @@ import (
 
 func hashDir(path string) string {
 	contentHash := crypto.SHA256.New()
-	filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
 			// directories do not affect the hash of the program.
 			return nil
@@ -68,6 +69,7 @@ func hashDir(path string) string {
 		contentHash.Write(data)
 		return nil
 	})
+	contract.IgnoreError(err)
 
 	return hex.EncodeToString(contentHash.Sum([]byte{}))
 }
