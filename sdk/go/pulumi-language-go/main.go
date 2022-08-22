@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -83,6 +84,10 @@ func compileProgramCwd(buildID string) (string, error) {
 		buildDir,
 		buildID,
 	)
+
+	if runtime.GOOS == "windows" && !strings.HasSuffix(outfile, ".exe") {
+		outfile = fmt.Sprintf("%s.exe", program)
+	}
 
 	buildCmd := exec.Command(program, "build", "-o", outfile, cwd)
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
