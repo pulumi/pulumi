@@ -114,7 +114,7 @@ func (ts *tokenSource) handleRequests(
 			// renewing rather than risking returning a
 			// stale token.
 			renewUpdateLeaseIfStale()
-			if state.error != nil {
+			if state.error == nil {
 				c <- tokenResponse{token: state.token}
 			} else {
 				c <- tokenResponse{err: state.error}
