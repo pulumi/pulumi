@@ -44,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -65,19 +64,14 @@ func compileProgramCwd(buildID string) (string, error) {
 		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
 
-	pulumiHomeDir, err := workspace.GetPulumiHomeDir()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to compile")
 	}
 
-	buildDir := path.Join(
-		pulumiHomeDir,
-		goCompilerCacheDir,
-	)
-
 	// ensure build directory exists
-	if err := os.MkdirAll(buildDir, 0744); err != nil {
-		return "", errors.Wrap(err, "failed to compile")
+	buildDir, err := os.MkdirTemp("", "pulumi-go-compiler-*")
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create temporary dir for Go program")
 	}
 
 	outfile := path.Join(
@@ -362,9 +356,7 @@ func execProgramCmd(cmd *exec.Cmd, env []string) error {
 	// error handling
 	exiterr, ok := err.(*exec.ExitError)
 	if !ok {
-		// We didn't even get to run the program.  This ought to never happen unless there's
-		// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-		return errors.Wrapf(err, "problem executing program (could not run language executor)")
+		return errors.Wrapf(exiterr, "command errored unexpectedly")
 	}
 
 	// retrieve the status code
@@ -377,10 +369,6 @@ func execProgramCmd(cmd *exec.Cmd, env []string) error {
 	// errors will trigger this.  So, the error message should look as nice as possible.
 	return errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
 }
-
-const (
-	goCompilerCacheDir = "go-compiler-cache"
-)
 
 // RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
