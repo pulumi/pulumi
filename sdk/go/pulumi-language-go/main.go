@@ -423,7 +423,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	bin, err := executable.FindExecutable(program)
 	if err != nil {
-		return nil, errors.Wrap(err, "expected to find prebuilt executable")
+		bin = program
 	}
 
 	cmd := exec.Command(bin)
