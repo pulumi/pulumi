@@ -48,53 +48,56 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(ctx context.Context, initialToken string, backend *cloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
+	requests, done := make(chan tokenRequest), make(chan bool)
+	ts := &tokenSource{requests: requests, done: done}
+	go ts.handleRequests(ctx, initialToken, backend.client, update, duration)
+	return ts, nil
+}
 
-	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
-	if err != nil {
-		return nil, err
+func (ts *tokenSource) handleRequests(
+	ctx context.Context,
+	initialToken string,
+	client *client.Client,
+	update client.UpdateIdentifier,
+	duration time.Duration) {
+
+	// We will renew the lease after 50% of the duration has elapsed to allow time for retries.
+	renewTicker := time.NewTicker(duration / 2)
+	defer renewTicker.Stop()
+
+	state := struct {
+		token string // most recently renewed token
+		error error  // non-nil indicates a terminal error state
+	}{
+		token: initialToken,
 	}
 
-	requests, done := make(chan tokenRequest), make(chan bool)
-	go func() {
-		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
-		ticker := time.NewTicker(duration / 2)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
-				// If we get an error from the backend, leave `err` set and surface it during
-				// the next request for a lease token.
-				if err != nil {
-					logging.V(3).Infof("error renewing lease: %v", err)
-					err = fmt.Errorf("renewing lease: %w", err)
-
-					ticker.Stop()
-				} else {
-					token = newToken
-				}
-
-			case c, ok := <-requests:
-				if !ok {
-					close(done)
-					return
-				}
-
-				// err will be non-nil if the last call to RenewUpdateLease failed.
-				resp := tokenResponse{err: err}
-				if err == nil {
-					resp.token = token
-				}
-				c <- resp
+	for {
+		select {
+		case <-renewTicker.C:
+			newToken, err := client.RenewUpdateLease(ctx, update, state.token, duration)
+			// If renew failed, all further GetToken requests will return this error.
+			if err != nil {
+				logging.V(3).Infof("error renewing lease: %v", err)
+				state.error = fmt.Errorf("renewing lease: %w", err)
+				renewTicker.Stop()
+			} else {
+				state.token = newToken
+			}
+		case c, ok := <-ts.requests:
+			if !ok {
+				close(ts.done)
+				return
+			}
+			if state.error == nil {
+				c <- tokenResponse{token: state.token}
+			} else {
+				c <- tokenResponse{err: state.error}
 			}
 		}
-	}()
-
-	return &tokenSource{requests: requests, done: done}, nil
+	}
 }
 
 func (ts *tokenSource) Close() {
