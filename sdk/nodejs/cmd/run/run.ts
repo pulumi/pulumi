@@ -236,17 +236,22 @@ export function run(
         const defaultMessage = err.stack || err.message || ("" + err);
 
         // First, log the error.
-        if (RunError.isInstance(err)
-           || err.name === tsnode.TSError.name
-           || err.name === SyntaxError.name) {
+        if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
-            const errOut = err.stack?.toString() || ""
+            log.error(err.message);
+        }
+        else if (err.name === tsnode.TSError.name
+            || err.name === SyntaxError.name) {
 
+            // Hide stack frames for SyntaxErrors
+            const errOut = err.stack?.toString() || ""
             let errMsg = err.message;
+
             const errParts = errOut.split(err.message);
             if (errParts.length === 2) {
                 errMsg = errParts[0]+err.message;
             }
+
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
 ${errMsg}`);
