@@ -21,9 +21,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	terminal "gopkg.in/AlecAivazis/survey.v1/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -389,40 +389,33 @@ func hasPendingCreates(snap *deploy.Snapshot) bool {
 func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
 	for {
 		option := ""
+		options := []string{
+			"import (the CREATE succeed; provide a resource ID and complete the CREATE operation)",
+			"clear (the CREATE failed; remove the pending CREATE)",
+			"skip (do nothing)",
+		}
 		if err := survey.AskOne(&survey.Select{
 			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
-			Options: []string{"import", "clear", "skip"},
-			Description: func(value string, index int) string {
-				switch value {
-				case "import": //nolint:goconst
-					return "the CREATE succeed; provide a resource ID and complete the CREATE operation"
-				case "clear":
-					return "the CREATE failed; remove the pending CREATE"
-				case "skip":
-					return "do nothing"
-				default:
-					return ""
-				}
-			},
-		}, &option, survey.WithValidator(survey.Required)); err != nil {
+			Options: options,
+		}, &option, nil); err != nil {
 			return nil, fmt.Errorf("no option selected: %w", err)
 		}
 
 		var err error
 		switch option {
-		case "import":
+		case options[0]:
 			var id string
 			err = survey.AskOne(&survey.Input{
 				Message: "ID: ",
-			}, &id, survey.WithValidator(survey.Required))
+			}, &id, nil)
 			if err != nil {
 				op.Resource.ID = resource.ID(id)
 				op.Type = resource.OperationTypeImporting
 				return &op, nil
 			}
-		case "clear":
+		case options[1]:
 			return nil, nil
-		case "skip":
+		case options[2]:
 			return &op, nil
 		default:
 			return nil, fmt.Errorf("unknown option: %q", option)
