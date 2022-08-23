@@ -3,7 +3,7 @@
 - [cli] Clarify highlighting of confirmation text in `confirmPrompt`.
   [#10413](https://github.com/pulumi/pulumi/pull/10413)
 
-- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
+- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
 - [sdk/python] Update PyYAML to 6.0
@@ -15,6 +15,9 @@
 
 - [codegen] Reduce time to execute `pulumi convert` and some YAML programs, depending on providers used, by up to 3 seconds.
   [#10444](https://github.com/pulumi/pulumi/pull/10444)
+
+- [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
+  [#10467](https://github.com/pulumi/pulumi/pull/10467)
 
 ### Bug Fixes
 
