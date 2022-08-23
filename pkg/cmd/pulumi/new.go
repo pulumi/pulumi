@@ -31,7 +31,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
@@ -808,20 +807,10 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	var selectedOption workspace.Template
 
 	for {
-
-		const buffer = 5
-		_, height, err := terminal.GetSize(0)
-		if err != nil {
-			height = 15
-		}
-
 		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
-		if height > len(options) {
-			height = len(options)
-		}
-
-		height = height - buffer
-		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", height, len(options))
+		nopts := len(options)
+		pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
 		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 		cmdutil.EndKeypadTransmitMode()
@@ -830,7 +819,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
-			PageSize: height,
+			PageSize: pageSize,
 		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
