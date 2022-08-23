@@ -16,7 +16,7 @@
 - [codegen] Reduce time to execute `pulumi convert` and some YAML programs, depending on providers used, by up to 3 seconds.
   [#10444](https://github.com/pulumi/pulumi/pull/10444)
 
-- [sdk/go] enable direct compilation via go build(set `PULUMI_USE_GO_RUN=true` to opt out)
+- [sdk/go] enable direct compilation via go build(set `PULUMI_GO_USE_RUN=true` to opt out)
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
 ### Bug Fixes

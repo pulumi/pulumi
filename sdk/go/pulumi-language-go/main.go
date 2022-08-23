@@ -17,17 +17,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -43,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -52,27 +46,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
-
-func hashDir(path string) string {
-	contentHash := crypto.SHA256.New()
-	err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
-		if info.IsDir() {
-			// directories do not affect the hash of the program.
-			return nil
-		}
-		data, err := ioutil.ReadFile(path)
-		if err != nil {
-			// unreadable files do not affect the hash of the program.
-			return nil
-		}
-		contentHash.Write([]byte(path))
-		contentHash.Write(data)
-		return nil
-	})
-	contract.IgnoreError(err)
-
-	return hex.EncodeToString(contentHash.Sum([]byte{}))
-}
 
 func compileProgramCwd(buildID string) (string, error) {
 	cwd, err := os.Getwd()
@@ -89,16 +62,19 @@ func compileProgramCwd(buildID string) (string, error) {
 		return "", errors.Wrap(err, "failed to compile")
 	}
 
-	hash := hashDir(cwd)
-	filename := fmt.Sprintf("pulumi-go.%s.%s", buildID, hash)
-	if runtime.GOOS == "windows" && !strings.HasSuffix(filename, ".exe") {
-		filename = fmt.Sprintf("%s.exe", filename)
+	filePrefix := fmt.Sprintf("pulumi-go.%s", buildID)
+	if runtime.GOOS == "windows" {
+		filePrefix = fmt.Sprintf("pulumi-go.%s.exe", buildID)
 	}
 
-	outfile := path.Join(
-		os.TempDir(),
-		filename,
-	)
+	f, err := os.CreateTemp("", filePrefix+".*")
+	if err != nil {
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		return "", err
+	}
+	outfile := f.Name()
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
@@ -433,7 +409,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, errors.Wrap(err, "error in compiling Go")
 		}
-		//defer os.RemoveAll(program)
+		defer os.RemoveAll(program)
 	}
 
 	bin, err := executable.FindExecutable(program)
