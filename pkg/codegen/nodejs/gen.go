@@ -1939,18 +1939,19 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		sorted := directChildren.SortedValues()
 
+		var importType = `import "./%[1]s" as %[1]sModuleType;` + "\n"
+		var importRequire = `const %[1]s: typeof %[1]sModuleType = require("./%[1]s")`+ "\n"
 		for _, mod := range sorted {
 			// Here, we want to lazy-load modules.
 			// Anton provided an approach that leans on TSC
 			// to intelligently elide module loading.
 			// I'm noticing the generated code is very different
 			// than the code after compilation.
-			fmt.Fprintf(w, "import \"./%[1]s\" as %[1]sModuleType;\n", mod)
-			fmt.Fprintf(w, "const %[1]s: typeof %[1]sModuleType = require(\"./%[1]s\")", mod);
-			// import "./utilities" as utilitiesModuleType;
-			// const utilities: typeof utilitiesModuleType = lazyLoad("./utilities");
-			// fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			fmt.Fprintf(w, importType, mod)
+			fmt.Fprintf(w, importRequire, mod)
 		}
+		fmt.Fprintf(w, genImportList(sorted))
+		fmt.Fprintf(w, "utilities.lazy_load_all(imports)\n")
 
 		printExports(w, sorted)
 	}
@@ -1961,6 +1962,25 @@ func (mod *modContext) genIndex(exports []string) string {
 	}
 
 	return w.String()
+}
+
+// wrapInQuotes adds quotes to either side of the string.
+func wrapInQuotes(s string) string {
+	return "\"" + s + "\""
+}
+
+// mapQuoted will add quotes to either side of all strings in the slice.
+func mapQuoted(s []string) []string {
+	var result = make([]string, 0, len(s))
+	for _, elem := range s {
+		result = append(result, wrapInQuotes(s))
+	}
+}
+
+func genImportList(mods []string) string {
+	var quoted = mapQuoted(mods)
+	var quotedImports = strings.Join(mods, ", ")
+	return fmt.Sprintf("const imports = [%s];\n", quotedImports)
 }
 
 // genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
@@ -2568,7 +2588,21 @@ export function getVersion(): string {
 export function resourceOptsDefaults(): any {
     return { version: getVersion()%s };
 }
-`
+
+/** @internal */
+function lazy_load(exports: any, module_name: string) {
+	Object.defineProperty(exports, module_name, {
+		enumerable: true,
+		get: function() {
+			return require(`./${module_name}`);
+		},
+	});
+}
+
+/** @internal */
+function lazy_load_all(exprots: any, args: Array<string>) {
+	args.forEach(arg => lazy_load(exports, arg))
+}`
 	var pluginDownloadURL string
 	if url := mod.pkg.PluginDownloadURL; url != "" {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
