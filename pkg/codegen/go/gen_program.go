@@ -169,6 +169,9 @@ require (
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err
 		}
@@ -353,10 +356,16 @@ func (g *generator) collectImports(
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, mod, name, _ := r.DecomposeToken()
-			if pkg == "pulumi" && mod == "providers" {
-				pkg = name
-				mod = ""
+			if pkg == "pulumi" {
+				if mod == "providers" {
+					pkg = name
+					mod = ""
+				} else if mod == "" {
+					continue
+				}
+
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -861,7 +870,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		case model.StringType:
 			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.Name())
 		case model.NumberType:
-			g.Fgenf(w, "if param := cfg.GetFloat(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetFloat64(\"%s\"); param != 0 {\n", v.Name())
 		case model.IntType:
 			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.Name())
 		case model.BoolType:

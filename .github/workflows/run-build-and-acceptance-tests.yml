@@ -192,6 +192,7 @@ jobs:
     with:
       enable-coverage: true
       goreleaser-flags: -p 3 --skip-validate
+      macos-build-platform: ubuntu-latest
 
   test-linux:
     name: Test Linux

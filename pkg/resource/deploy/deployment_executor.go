@@ -104,15 +104,17 @@ func (ex *deploymentExecutor) printPendingOperationsWarning() {
 		pendingOperations = pendingOperations + fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
-	resolutionMessage := `These resources are in an unknown state because the Pulumi CLI was interrupted while
-waiting for changes to these resources to complete. You should confirm whether or not the
-operations listed completed successfully by checking the state of the appropriate provider.
-For example, if you are using AWS, you can confirm using the AWS Console.
-	
-Once you have confirmed the status of the interrupted operations, you can repair your stack
-using 'pulumi refresh' which will refresh the state from the provider you are using and 
-clear the pending operations if there are any. For pending CREATE operations 'pulumi refresh'
-will ask you what to do for each operation.`
+	resolutionMessage := "" +
+		"These resources are in an unknown state because the Pulumi CLI was interrupted while " +
+		"waiting for changes to these resources to complete. You should confirm whether or not the " +
+		"operations listed completed successfully by checking the state of the appropriate provider. " +
+		"For example, if you are using AWS, you can confirm using the AWS Console.\n" +
+		"\n" +
+		"Once you have confirmed the status of the interrupted operations, you can repair your stack " +
+		"using `pulumi refresh` which will refresh the state from the provider you are using and " +
+		"clear the pending operations if there are any.\n" +
+		"\n" +
+		"Note that `pulumi refresh` will need to be run interactively to clear pending CREATE operations."
 
 	warning := "Attempting to deploy or update resources " +
 		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +

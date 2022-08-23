@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -61,6 +62,9 @@ type Stack interface {
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
 	// import the given deployment into this stack.
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
+
+	// Return the default secrets manager to use for this stack.
+	DefaultSecretManager(configFile string) (secrets.Manager, error)
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.

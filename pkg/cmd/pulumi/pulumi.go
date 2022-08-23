@@ -130,7 +130,7 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 		fmt.Println("Flags:")
 		fmt.Println(cmd.Flags().FlagUsages())
 
-		fmt.Println(`Use "pulumi [command] --help" for more information about a command.`)
+		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
 	})
 }
 
@@ -644,7 +644,7 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 
 	fmt.Print(
 		opts.Color.Colorize(
-			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
 				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
 
 	reader := bufio.NewReader(os.Stdin)

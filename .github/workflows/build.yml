@@ -32,6 +32,11 @@ on:
         default: false
         required: false
         type: boolean
+      macos-build-platform:
+        description: 'Platform to use when building macOS binaries'
+        default: macos-latest
+        required: false
+        type: string
     secrets: {}
 
 env:
@@ -43,11 +48,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: macos-latest
+          - platform: ${{ inputs.macos-build-platform }}
             os: darwin
             arch: amd64
             artifactName: pulumi-macOS-X64
-          - platform: macos-latest
+          - platform: ${{ inputs.macos-build-platform }}
             os: darwin
             arch: arm64
             artifactName: pulumi-macOS-ARM64
