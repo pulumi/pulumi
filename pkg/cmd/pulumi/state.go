@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
@@ -101,19 +100,11 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	cmdutil.EndKeypadTransmitMode()
 
-	_, height, err := terminal.GetSize(0)
-	if err != nil {
-		height = 15
-	}
-	if height > len(options) {
-		height = len(options)
-	}
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: height - 5,
+		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
 	}, &option, nil); err != nil {
 		return nil, errors.New("no resource selected")
 	}
