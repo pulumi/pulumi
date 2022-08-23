@@ -24,7 +24,7 @@ import pulumi
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
     def wrapper(*args, **kwargs):
-        settings.configure(settings.Settings())
+        settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
         rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()

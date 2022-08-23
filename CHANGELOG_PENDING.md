@@ -19,6 +19,9 @@
 - [cli] provide info message to user if pulumi program update is empty
   [#10461](https://github.com/pulumi/pulumi/issues/10461)
 
+- [sdk/python] Makes global SETTINGS values context-aware to not leak state between Pulumi programs running in parallel
+  [#10402](https://github.com/pulumi/pulumi/pull/10402)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.

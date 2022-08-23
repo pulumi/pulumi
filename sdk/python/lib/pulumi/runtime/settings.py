@@ -15,6 +15,8 @@
 """
 Runtime settings and configuration.
 """
+from __future__ import annotations
+
 import asyncio
 import os
 from typing import Optional, Union, Any, TYPE_CHECKING
@@ -22,6 +24,7 @@ from typing import Optional, Union, Any, TYPE_CHECKING
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
+from .._utils import contextproperty
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -36,25 +39,16 @@ excessive_debug_output = False
 
 
 class Settings:
-    monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
-    engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
-    project: Optional[str]
-    stack: Optional[str]
-    parallel: Optional[int]
-    dry_run: Optional[bool]
-    legacy_apply_enabled: Optional[bool]
-    feature_support: dict
-
     """
     A bag of properties for configuring the Pulumi Python language runtime.
     """
 
     def __init__(
         self,
+        project: Optional[str],
+        stack: Optional[str],
         monitor: Optional[Union[str, Any]] = None,
         engine: Optional[Union[str, Any]] = None,
-        project: Optional[str] = None,
-        stack: Optional[str] = None,
         parallel: Optional[int] = None,
         dry_run: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
@@ -92,9 +86,44 @@ class Settings:
         else:
             self.engine = None
 
+    @contextproperty
+    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
+        ...
+
+    @contextproperty
+    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]:
+        ...
+
+    @contextproperty
+    def project(self) -> Optional[str]:
+        ...
+
+    @contextproperty
+    def stack(self) -> Optional[str]:
+        ...
+
+    @contextproperty
+    def parallel(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def dry_run(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def legacy_apply_enabled(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def feature_support(self) -> Optional[dict]:
+        ...
+
+    def __repr__(self):
+        return f"<class Settings[engine={self.engine.__repr__()} monitor={self.monitor.__repr__()} project={self.project.__repr__()} stack={self.stack.__repr__()}>"
+
 
 # default to "empty" settings.
-SETTINGS = Settings()
+SETTINGS = Settings(stack="stack", project="project")
 
 
 def configure(settings: Settings):
@@ -125,12 +154,7 @@ def get_project() -> str:
     """
     Returns the current project name.
     """
-    project = SETTINGS.project
-    if not project:
-        raise RunError(
-            "Missing project name; for test mode, please call `pulumi.runtime.set_mocks`"
-        )
-    return project
+    return SETTINGS.project
 
 
 def _set_project(v: Optional[str]):
@@ -144,13 +168,7 @@ def get_stack() -> str:
     """
     Returns the current stack name.
     """
-    stack = SETTINGS.stack
-    if not stack:
-        raise RunError(
-            "Missing stack name; for test mode, please call `pulumi.runtime.set_mocks`"
-            + " and provide a value for the `stack` argument"
-        )
-    return stack
+    return SETTINGS.stack
 
 
 def _set_stack(v: Optional[str]):
