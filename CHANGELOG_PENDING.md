@@ -3,7 +3,7 @@
 - [cli] Clarify highlighting of confirmation text in `confirmPrompt`.
   [#10413](https://github.com/pulumi/pulumi/pull/10413)
 
-- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.  
+- [provider/python]: Improved exception display. The traceback is now shorter and it always starts with user code.
   [#10336](https://github.com/pulumi/pulumi/pull/10336)
 
 - [sdk/python] Update PyYAML to 6.0
@@ -35,3 +35,7 @@
 
 - [auto/go] Clone non-default branches (and tags).
   [#10285](https://github.com/pulumi/pulumi/pull/10285)
+
+- [cli] Fixes `survey.v1` panics in Terminal UI introduced in
+  [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
+  [#10475](https://github.com/pulumi/pulumi/pull/10475)
