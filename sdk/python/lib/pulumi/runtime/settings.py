@@ -18,6 +18,7 @@ Runtime settings and configuration.
 from __future__ import annotations
 
 import asyncio
+from contextvars import ContextVar
 import os
 from typing import Optional, Union, Any, TYPE_CHECKING
 
@@ -192,23 +193,21 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
-ROOT: Optional["Resource"] = None
+ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
 
 
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
-    global ROOT  # pylint: disable=global-variable-not-assigned
-    return ROOT
+    return ROOT.get()
 
 
 def set_root_resource(root: "Resource"):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
-    global ROOT
-    ROOT = root
+    ROOT.set(root)
 
 
 async def monitor_supports_feature(feature: str) -> bool:
@@ -280,8 +279,7 @@ def reset_options(
 ):
     """Resets globals to the values provided."""
 
-    global ROOT
-    ROOT = None
+    ROOT.set(None)
 
     configure(
         Settings(

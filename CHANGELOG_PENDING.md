@@ -19,6 +19,9 @@
 - [sdk/python] Makes global SETTINGS values context-aware to not leak state between Pulumi programs running in parallel
   [#10402](https://github.com/pulumi/pulumi/pull/10402)
 
+- [sdk/python] Makes global ROOT, CONFIG, _SECRET_KEYS ContextVars to not leak state between parallel inline Pulumi programs
+  [#10472](https://github.com/pulumi/pulumi/pull/10472)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
