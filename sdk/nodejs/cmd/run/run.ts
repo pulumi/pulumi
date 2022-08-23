@@ -237,14 +237,14 @@ export function run(
 
         // First, log the error.
         if (RunError.isInstance(err)
-           || err.name == tsnode.TSError.name
-           || err.name == SyntaxError.name) {
+           || err.name === tsnode.TSError.name
+           || err.name === SyntaxError.name) {
             // Always hide the stack for RunErrors.
             const errOut = err.stack?.toString() || ""
 
             let errMsg = err.message;
             const errParts = errOut.split(err.message);
-            if (errParts.length == 2) {
+            if (errParts.length === 2) {
                 errMsg = errParts[0]+err.message;
             }
             log.error(
