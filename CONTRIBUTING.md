@@ -107,7 +107,7 @@ When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for 
 
 ### Pulumi employees
 
-Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Test can run directly without approval for PRs based on branches rather than forks.
+Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Tests can run directly without approval for PRs based on branches rather than forks.
 
 Please ensure that you nest your branches under a unique identifier such as your name (e.g. `refs/heads/pulumipus/cool_feature`).
 

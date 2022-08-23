@@ -112,7 +112,7 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
 				}
 			} else {
-				fmt.Printf("    No updates yet; run 'pulumi up'\n")
+				fmt.Printf("    No updates yet; run `pulumi up`\n")
 			}
 
 			// Now show the resources.

@@ -55,11 +55,16 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	}
 
 	isProvider := false
-	if pkg == "pulumi" && module == "providers" {
-		pkg, isProvider = name, true
+	if pkg == "pulumi" {
+		if module == "providers" {
+			pkg = name
+		}
+		isProvider = true
 	}
+	var pkgSchema *packageSchema
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
+	var ok bool
+	pkgSchema, ok = b.options.packageCache.entries[pkg]
 	if !ok {
 		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
@@ -325,6 +330,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value
+				case "version":
+					t = model.StringType
+					resourceOptions.Version = item.Value
+				case "pluginDownloadURL":
+					t = model.StringType
+					resourceOptions.PluginDownloadURL = item.Value
 				default:
 					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 					continue

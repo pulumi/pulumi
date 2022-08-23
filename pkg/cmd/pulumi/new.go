@@ -31,7 +31,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
@@ -690,7 +689,7 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 
 	if err = lang.InstallDependencies(directory); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment: %w", err)
+			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
 
 	return nil
@@ -732,7 +731,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 
 	if len(commands) == 0 { // No additional commands need to be run.
-		deployMsg := "To perform an initial deployment, run 'pulumi up'"
+		deployMsg := "To perform an initial deployment, run `pulumi up`"
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Color.Colorize(deployMsg))
 		fmt.Println()
@@ -740,7 +739,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 
 	if len(commands) == 1 { // Only one additional command need to be run.
-		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run 'pulumi up'", commands[0])
+		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run `pulumi up`", commands[0])
 		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
 		fmt.Println(opts.Color.Colorize(deployMsg))
@@ -757,7 +756,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	}
 	fmt.Println()
 
-	upMsg := colors.Highlight("Then, run 'pulumi up'", "pulumi up", colors.BrightBlue+colors.Bold)
+	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
 }
@@ -808,20 +807,10 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	var selectedOption workspace.Template
 
 	for {
-
-		const buffer = 5
-		_, height, err := terminal.GetSize(0)
-		if err != nil {
-			height = 15
-		}
-
 		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
-		if height > len(options) {
-			height = len(options)
-		}
-
-		height = height - buffer
-		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", height, len(options))
+		nopts := len(options)
+		pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
 		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 		cmdutil.EndKeypadTransmitMode()
@@ -830,7 +819,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
-			PageSize: height,
+			PageSize: pageSize,
 		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
