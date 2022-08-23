@@ -19,6 +19,9 @@
 - [sdk/nodejs] Added stack truncation to `SyntaxError` in nodejs.
   [#10465](https://github.com/pulumi/pulumi/pull/10465)
 
+- [sdk/python] Makes global SETTINGS values context-aware to not leak state between Pulumi programs running in parallel
+  [#10402](https://github.com/pulumi/pulumi/pull/10402)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.

@@ -15,4 +15,9 @@
 
     "omnisharp.defaultLaunchSolution": "sdk/dotnet/dotnet.sln",
     "dotnet-test-explorer.testProjectPath": "sdk/dotnet",
+    "python.testing.pytestArgs": [
+        "sdk/python/lib/test"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
 }
