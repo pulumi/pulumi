@@ -257,7 +257,7 @@ func countResources(events []engine.Event, displayOpts display.Options) int {
 		if strings.Contains(msg, "::pulumi:pulumi:Stack::") {
 			continue
 		}
-		count += 1
+		count++
 	}
 	return count
 }
