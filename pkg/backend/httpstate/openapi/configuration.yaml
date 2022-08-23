@@ -1,0 +1,3 @@
+disallowAdditionalPropertiesIfNotPresent: false
+generateInterfaces: true
+isGoSubmodule: true

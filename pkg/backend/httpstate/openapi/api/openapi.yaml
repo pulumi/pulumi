@@ -1,0 +1,661 @@
+openapi: 3.0.2
+info:
+  description: The Pulumi Service API
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Pulumi Service API
+  version: 1.0.0
+servers:
+- description: Main production server for Pulumi.
+  url: https://api.pulumi.com/api
+- description: Staging server for Pulumi development.
+  url: https://api.pulumi-staging.io/api
+tags:
+- description: Operations for stacks
+  name: stack
+- description: Operations for users
+  name: user
+paths:
+  /cli/version:
+    get:
+      operationId: getCLIVersionInfo
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/getCLIVersionInfo_200_response'
+          description: The response from the server with information about CLI versions.
+      summary: getCLIVersionInfo asks the service for information about versions of
+        the CLI (the newest version as well as the oldest version before the CLI should
+        warn about an upgrade).
+  /user:
+    get:
+      operationId: getCurrentUser
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/serviceUser'
+          description: ""
+      security:
+      - {}
+      summary: Returns the current user.
+      tags:
+      - user
+  /user/stacks:
+    get:
+      operationId: listStacks
+      parameters:
+      - explode: true
+        in: query
+        name: project
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: organization
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: tagName
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: tagValue
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: continuationToken
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/listStacks_200_response'
+          description: Returns a set of stack summaries. This call is designed to
+            be inexpensive.
+      security: []
+      summary: "Lists all stacks the current user has access to, optionally filtered\
+        \ by project."
+      tags:
+      - user
+  /{organization}/{project}:
+    post:
+      operationId: CreateStack
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStack_request'
+        description: CreateStackRequest defines the request body for creating a new
+          Stack
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/stack'
+          description: ""
+      security: []
+      summary: CreateStack creates a stack with the given cloud and stack name in
+        the scope of the indicated project.
+      tags:
+      - stack
+  /{organization}/{project}/{stack}:
+    delete:
+      operationId: deleteStack
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: stack
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: force
+        required: false
+        schema:
+          default: false
+          type: boolean
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: ""
+      security: []
+      summary: "DeleteStack deletes the indicated stack. If force is true, the stack\
+        \ is deleted even if it contains resources."
+      tags:
+      - stack
+    get:
+      operationId: getStack
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: stack
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/stack'
+          description: ""
+      security: []
+      summary: GetStack retrieves the stack with the given name.
+      tags:
+      - stack
+  /{organization}/{project}/{stack}/tags:
+    patch:
+      operationId: updateStackTags
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: stack
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tags'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: ""
+      security: []
+      summary: "UpdateStackTags updates the stacks's tags, replacing all existing\
+        \ tags."
+      tags:
+      - stack
+  /{organization}/{project}/{stack}/encrypt:
+    post:
+      operationId: encryptValue
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: stack
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptValueRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncryptValueResponse'
+          description: ""
+      security: []
+      summary: EncryptValue encrypts a plaintext value in the context of the indicated
+        stack.
+      tags:
+      - stack
+  /{organization}/{project}/{stack}/decrypt:
+    post:
+      operationId: decryptValue
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: stack
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecryptValueRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecryptValueResponse'
+          description: ""
+      security: []
+      summary: DecryptValue decrypts a ciphertext value in the context of the indicated
+        stack.
+      tags:
+      - stack
+  /stacks/{organization}/{project}:
+    head:
+      operationId: doesProjectExist
+      parameters:
+      - explode: false
+        in: path
+        name: organization
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: project
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: The project exists
+      security: []
+      summary: "Returns true if a project with the given name exists, or false otherwise."
+      tags:
+      - stack
+components:
+  parameters:
+    organization:
+      explode: false
+      in: path
+      name: organization
+      required: true
+      schema:
+        type: string
+      style: simple
+    project:
+      explode: false
+      in: path
+      name: project
+      required: true
+      schema:
+        type: string
+      style: simple
+    stack:
+      explode: false
+      in: path
+      name: stack
+      required: true
+      schema:
+        type: string
+      style: simple
+  schemas:
+    stack:
+      description: Stack describes a Stack running on a Pulumi Cloud.
+      example:
+        activeUpdate: activeUpdate
+        currentOperation:
+          kind: null
+          author: author
+          started: 6
+        orgName: orgName
+        stackName: stackName
+        projectName: projectName
+        version: 0
+        tags:
+          key: tags
+      properties:
+        orgName:
+          type: string
+        projectName:
+          type: string
+        stackName:
+          type: string
+        activeUpdate:
+          type: string
+        tags:
+          additionalProperties:
+            maxLength: 256
+            type: string
+          description: Tags are a set of key values applied to stacks.
+          title: Tags
+          type: object
+        version:
+          type: integer
+        currentOperation:
+          $ref: '#/components/schemas/operationStatus'
+      title: Stack
+      type: object
+    operationStatus:
+      description: OperationStatus describes the state of an operation being performed
+        on a Pulumi stack.
+      example:
+        kind: null
+        author: author
+        started: 6
+      properties:
+        kind:
+          $ref: '#/components/schemas/updateKind'
+        author:
+          type: string
+        started:
+          format: int64
+          type: integer
+      title: OperationStatus
+      type: object
+    stackSummary:
+      example:
+        orgName: orgName
+        lastUpdate: 0
+        resourceCount: 6
+        stackName: stackName
+        projectName: projectName
+      properties:
+        orgName:
+          type: string
+        projectName:
+          type: string
+        stackName:
+          type: string
+        lastUpdate:
+          format: int64
+          type: integer
+        resourceCount:
+          type: integer
+      type: object
+    serviceUserInfo:
+      example:
+        githubLogin: githubLogin
+        avatarUrl: avatarUrl
+        name: name
+        email: email
+      properties:
+        name:
+          type: string
+        githubLogin:
+          type: string
+        avatarUrl:
+          type: string
+        email:
+          type: string
+      type: object
+    serviceUser:
+      example:
+        githubLogin: githubLogin
+        siteAdmin: false
+        identities:
+        - identities
+        - identities
+        avatarUrl: avatarUrl
+        name: name
+        organizations:
+        - githubLogin: githubLogin
+          avatarUrl: avatarUrl
+          name: name
+          email: email
+        - githubLogin: githubLogin
+          avatarUrl: avatarUrl
+          name: name
+          email: email
+        id: id
+        email: email
+      properties:
+        id:
+          type: string
+        githubLogin:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+        organizations:
+          items:
+            $ref: '#/components/schemas/serviceUserInfo'
+          type: array
+        identities:
+          items:
+            type: string
+          type: array
+        siteAdmin:
+          default: false
+          type: boolean
+      type: object
+    updateKind:
+      description: "UpdateKind is an enum for the type of update performed.\n* `update`\
+        \ - update is the prototypical Pulumi program update. * `preview` - preview\
+        \ is a preview of an update, without impacting resources. * `refresh` - refresh\
+        \ is an update that came from a refresh operation. * `rename` - rename is\
+        \ an update that changes the stack name or project name of a Pulumi program.\
+        \ * `destroy` - destroy is an update which removes all resources. * `import`\
+        \ - import is an update that entails importing a raw checkpoint file. * `resource-import`\
+        \ - resource-import is an update that entails importing one or more resources.\n"
+      enum:
+      - update
+      - preview
+      - refresh
+      - rename
+      - destroy
+      - import
+      - resource-import
+      title: UpdateKind
+      type: string
+    tags:
+      additionalProperties:
+        maxLength: 256
+        type: string
+      description: Tags are a set of key values applied to stacks.
+      title: Tags
+      type: object
+    getCLIVersionInfo_200_response:
+      example:
+        latestVersion: latestVersion
+        oldestWithoutWarning: oldestWithoutWarning
+      properties:
+        latestVersion:
+          type: string
+        oldestWithoutWarning:
+          type: string
+      type: object
+    listStacks_200_response:
+      example:
+        stacks:
+        - orgName: orgName
+          lastUpdate: 0
+          resourceCount: 6
+          stackName: stackName
+          projectName: projectName
+        - orgName: orgName
+          lastUpdate: 0
+          resourceCount: 6
+          stackName: stackName
+          projectName: projectName
+        continuationToken: continuationToken
+      properties:
+        stacks:
+          items:
+            $ref: '#/components/schemas/stackSummary'
+          type: array
+        continuationToken:
+          description: "ContinuationToken is an opaque value used to mark the end\
+            \ of the all stacks. If non-nil, pass it into a subsequent call in order\
+            \ to get the next batch of results.\nA value of nil means that all stacks\
+            \ have been returned.\n"
+          type: string
+      type: object
+    CreateStack_request:
+      properties:
+        stackName:
+          description: "The rest of the StackIdentifier (e.g. organization, project)\
+            \ is in the URL."
+          type: string
+        tags:
+          additionalProperties:
+            type: string
+          description: An optional set of tags to apply to the stack.
+          type: object
+      required:
+      - stackName
+      type: object
+    EncryptValueRequest:
+      example:
+        plaintext: plaintext
+      properties:
+        plaintext:
+          format: byte
+          type: string
+      required:
+      - plaintext
+      title: EncryptValueRequest
+      type: object
+    EncryptValueResponse:
+      example:
+        ciphertext: ciphertext
+      properties:
+        ciphertext:
+          format: byte
+          type: string
+      required:
+      - ciphertext
+      title: EncryptValueResponse
+      type: object
+    DecryptValueRequest:
+      example:
+        ciphertext: ciphertext
+      properties:
+        ciphertext:
+          format: byte
+          type: string
+      required:
+      - ciphertext
+      title: DecryptValueRequest
+      type: object
+    DecryptValueResponse:
+      example:
+        plaintext: plaintext
+      properties:
+        plaintext:
+          format: byte
+          type: string
+      required:
+      - plaintext
+      title: DecryptValueResponse
+      type: object
+  securitySchemes:
+    token:
+      description: Pulumi API token
+      in: header
+      name: Authorization
+      scheme: Bearer
+      type: apiKey

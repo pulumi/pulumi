@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/openapi"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,8 +35,9 @@ func newMockServer(statusCode int, message string) *httptest.Server {
 }
 
 func newMockClient(server *httptest.Server) *Client {
+	cfg := openapi.NewConfiguration()
+	cfg.Host = server.URL
 	return &Client{
-		apiURL:   server.URL,
 		apiToken: "",
 		apiUser:  "",
 		diag:     nil,
@@ -44,6 +46,7 @@ func newMockClient(server *httptest.Server) *Client {
 				client: http.DefaultClient,
 			},
 		},
+		openApi: *openapi.NewAPIClient(cfg),
 	}
 }
 

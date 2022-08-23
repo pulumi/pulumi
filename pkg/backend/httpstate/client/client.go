@@ -21,13 +21,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/segmentio/asm/base64"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/openapi"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -48,20 +51,37 @@ type Client struct {
 	apiOrgs  []string
 	diag     diag.Sink
 	client   restClient
+	openApi  openapi.APIClient
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
 // function so it can be set to a different implementation at runtime, if necessary.
 var newClient = func(apiURL, apiToken string, d diag.Sink) *Client {
+	cfg := openapi.NewConfiguration()
+	url, err := url.Parse(apiToken)
+	if err != nil {
+		cfg.Scheme = url.Scheme
+		cfg.Host = url.Host
+	}
+
+	token := apiAccessToken(apiToken)
+	// Apply credentials if provided.
+	if token.String() != "" {
+		cfg.AddDefaultHeader("Authorization", fmt.Sprintf("%s %s", token.Kind(), token))
+	}
+	// Specify the specific API version we accept.
+	cfg.AddDefaultHeader("Accept", "application/vnd.pulumi+8")
+
 	return &Client{
 		apiURL:   apiURL,
-		apiToken: apiAccessToken(apiToken),
+		apiToken: token,
 		diag:     d,
 		client: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: http.DefaultClient,
 			},
 		},
+		openApi: *openapi.NewAPIClient(cfg),
 	}
 }
 
@@ -96,12 +116,6 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 	token updateAccessToken, httpOptions httpCallOptions) error {
 
 	return pc.client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
-}
-
-// getProjectPath returns the API path for the given owner and the given project name joined with path separators
-// and appended to the stack root.
-func getProjectPath(owner string, projectName string) string {
-	return fmt.Sprintf("/api/stacks/%s/%s", owner, projectName)
 }
 
 // getStackPath returns the API path to for the given stack with the given components joined with path separators
@@ -169,46 +183,26 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
-// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
-type serviceUserInfo struct {
-	Name        string `json:"name"`
-	GitHubLogin string `json:"githubLogin"`
-	AvatarURL   string `json:"avatarUrl"`
-	Email       string `json:"email,omitempty"`
-}
-
-// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
-type serviceUser struct {
-	ID            string            `json:"id"`
-	GitHubLogin   string            `json:"githubLogin"`
-	Name          string            `json:"name"`
-	Email         string            `json:"email"`
-	AvatarURL     string            `json:"avatarUrl"`
-	Organizations []serviceUserInfo `json:"organizations"`
-	Identities    []string          `json:"identities"`
-	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
-}
-
-// GetPulumiAccountName returns the user implied by the API token associated with this client.
+// GetPulumiAccountDetails returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
 	if pc.apiUser == "" {
-		resp := serviceUser{}
-		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
+		resp, _, err := pc.openApi.UserApi.GetCurrentUser(ctx).Execute()
+		if err != nil {
 			return "", nil, err
 		}
 
-		if resp.GitHubLogin == "" {
+		if resp.GetGithubLogin() == "" {
 			return "", nil, errors.New("unexpected response from server")
 		}
 
-		pc.apiUser = resp.GitHubLogin
+		pc.apiUser = resp.GetGithubLogin()
 		pc.apiOrgs = make([]string, len(resp.Organizations))
 		for i, org := range resp.Organizations {
-			if org.GitHubLogin == "" {
+			if org.GetGithubLogin() == "" {
 				return "", nil, errors.New("unexpected response from server")
 			}
 
-			pc.apiOrgs[i] = org.GitHubLogin
+			pc.apiOrgs[i] = org.GetGithubLogin()
 		}
 	}
 
@@ -218,18 +212,17 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
 // oldest version before the CLI should warn about an upgrade).
 func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
-	var versionInfo apitype.CLIVersionResponse
-
-	if err := pc.restCall(ctx, "GET", "/api/cli/version", nil, nil, &versionInfo); err != nil {
-		return semver.Version{}, semver.Version{}, err
-	}
-
-	latestSem, err := semver.ParseTolerant(versionInfo.LatestVersion)
+	resp, _, err := pc.openApi.DefaultApi.GetCLIVersionInfo(ctx).Execute()
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
 
-	oldestSem, err := semver.ParseTolerant(versionInfo.OldestWithoutWarning)
+	latestSem, err := semver.ParseTolerant(resp.GetLatestVersion())
+	if err != nil {
+		return semver.Version{}, semver.Version{}, err
+	}
+
+	oldestSem, err := semver.ParseTolerant(resp.GetOldestWithoutWarning())
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
@@ -248,26 +241,53 @@ type ListStacksFilter struct {
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
 func (pc *Client) ListStacks(
 	ctx context.Context, filter ListStacksFilter, inContToken *string) ([]apitype.StackSummary, *string, error) {
-	queryFilter := struct {
-		Project           *string `url:"project,omitempty"`
-		Organization      *string `url:"organization,omitempty"`
-		TagName           *string `url:"tagName,omitempty"`
-		TagValue          *string `url:"tagValue,omitempty"`
-		ContinuationToken *string `url:"continuationToken,omitempty"`
-	}{
-		Project:           filter.Project,
-		Organization:      filter.Organization,
-		TagName:           filter.TagName,
-		TagValue:          filter.TagValue,
-		ContinuationToken: inContToken,
+	req := pc.openApi.UserApi.ListStacks(ctx)
+	if filter.Project != nil {
+		req.Project(*filter.Project)
+	}
+	if filter.Organization != nil {
+		req.Organization(*filter.Organization)
+	}
+	if filter.TagName != nil {
+		req.TagName(*filter.TagName)
+	}
+	if filter.TagValue != nil {
+		req.TagValue(*filter.TagValue)
+	}
+	if inContToken != nil {
+		req.ContinuationToken(*inContToken)
 	}
 
-	var resp apitype.ListStacksResponse
-	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
+	resp, _, err := req.Execute()
+	if err != nil {
 		return nil, nil, err
 	}
 
-	return resp.Stacks, resp.ContinuationToken, nil
+	result := make([]apitype.StackSummary, len(resp.Stacks))
+	for i, summary := range resp.Stacks {
+
+		var resourceCount *int
+		if summary.ResourceCount != nil {
+			rc := int(*summary.ResourceCount)
+			resourceCount = &rc
+		}
+
+		var lastUpdate *int64
+		if summary.LastUpdate != nil {
+			lu := int64(*summary.LastUpdate)
+			lastUpdate = &lu
+		}
+
+		result[i] = apitype.StackSummary{
+			OrgName:       summary.GetOrgName(),
+			ProjectName:   summary.GetProjectName(),
+			StackName:     summary.GetStackName(),
+			LastUpdate:    lastUpdate,
+			ResourceCount: resourceCount,
+		}
+	}
+
+	return result, resp.ContinuationToken, nil
 }
 
 var (
@@ -318,7 +338,8 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 
 // DoesProjectExist returns true if a project with the given name exists, or false otherwise.
 func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectName string) (bool, error) {
-	if err := pc.restCall(ctx, "HEAD", getProjectPath(owner, projectName), nil, nil, nil); err != nil {
+	_, resp, err := pc.openApi.StackApi.DoesProjectExist(ctx, owner, projectName).Execute()
+	if err != nil {
 		// If this was a 404, return false - project not found.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
 			return false, nil
@@ -331,11 +352,29 @@ func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectNam
 
 // GetStack retrieves the stack with the given name.
 func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
-	var stack apitype.Stack
-	if err := pc.restCall(ctx, "GET", getStackPath(stackID), nil, nil, &stack); err != nil {
+	resp, _, err := pc.openApi.StackApi.GetStack(ctx, stackID.Owner, stackID.Project, stackID.Stack).Execute()
+	if err != nil {
 		return apitype.Stack{}, err
 	}
-	return stack, nil
+
+	var currentOperation *apitype.OperationStatus
+	if resp.CurrentOperation != nil {
+		currentOperation = &apitype.OperationStatus{
+			Kind:    apitype.UpdateKind(resp.CurrentOperation.GetKind()),
+			Author:  resp.CurrentOperation.GetAuthor(),
+			Started: int64(resp.CurrentOperation.GetStarted()),
+		}
+	}
+
+	return apitype.Stack{
+		OrgName:          resp.GetOrgName(),
+		ProjectName:      resp.GetProjectName(),
+		StackName:        tokens.QName(resp.GetStackName()),
+		CurrentOperation: currentOperation,
+		ActiveUpdate:     resp.GetActiveUpdate(),
+		Tags:             resp.GetTags(),
+		Version:          int(resp.GetVersion()),
+	}, nil
 }
 
 // CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
@@ -352,14 +391,12 @@ func (pc *Client) CreateStack(
 		OrgName:     stackID.Owner,
 		Tags:        tags,
 	}
-	createStackReq := apitype.CreateStackRequest{
-		StackName: stackID.Stack,
-		Tags:      tags,
-	}
 
-	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
-	if err := pc.restCall(
-		ctx, "POST", endpoint, nil, &createStackReq, nil); err != nil {
+	req := openapi.NewCreateStackRequest(stackID.Stack)
+	req.SetTags(tags)
+
+	_, _, err := pc.openApi.StackApi.CreateStack(ctx, stackID.Owner, stackID.Project).CreateStackRequest(*req).Execute()
+	if err != nil {
 		return apitype.Stack{}, err
 	}
 
@@ -368,14 +405,15 @@ func (pc *Client) CreateStack(
 
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
 func (pc *Client) DeleteStack(ctx context.Context, stack StackIdentifier, force bool) (bool, error) {
-	path := getStackPath(stack)
-	queryObj := struct {
-		Force bool `url:"force"`
-	}{
-		Force: force,
+	req := pc.openApi.StackApi.DeleteStack(ctx, stack.Owner, stack.Project, stack.Stack)
+	req.Force(force)
+	_, resp, err := req.Execute()
+	if err == nil {
+		return false, nil
 	}
 
-	err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil)
+	if resp.StatusCode == 400 && resp.
+
 	return isStackHasResourcesError(err), err
 }
 
@@ -394,22 +432,26 @@ func isStackHasResourcesError(err error) bool {
 
 // EncryptValue encrypts a plaintext value in the context of the indicated stack.
 func (pc *Client) EncryptValue(ctx context.Context, stack StackIdentifier, plaintext []byte) ([]byte, error) {
-	req := apitype.EncryptValueRequest{Plaintext: plaintext}
-	var resp apitype.EncryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "encrypt"), nil, &req, &resp); err != nil {
+	req := pc.openApi.StackApi.EncryptValue(ctx, stack.Owner, stack.Project, stack.Stack)
+	body := openapi.NewEncryptValueRequest(base64.StdEncoding.EncodeToString(plaintext))
+	req.EncryptValueRequest(*body)
+	resp, _, err := req.Execute()
+	if err != nil {
 		return nil, err
 	}
-	return resp.Ciphertext, nil
+	return base64.StdEncoding.DecodeString(resp.Ciphertext)
 }
 
 // DecryptValue decrypts a ciphertext value in the context of the indicated stack.
 func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphertext []byte) ([]byte, error) {
-	req := apitype.DecryptValueRequest{Ciphertext: ciphertext}
-	var resp apitype.DecryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "decrypt"), nil, &req, &resp); err != nil {
+	req := pc.openApi.StackApi.DecryptValue(ctx, stack.Owner, stack.Project, stack.Stack)
+	body := openapi.NewDecryptValueRequest(base64.StdEncoding.EncodeToString(ciphertext))
+	req.DecryptValueRequest(*body)
+	resp, _, err := req.Execute()
+	if err != nil {
 		return nil, err
 	}
-	return resp.Plaintext, nil
+	return base64.StdEncoding.DecodeString(resp.Plaintext)
 }
 
 func (pc *Client) Log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
@@ -965,5 +1007,8 @@ func (pc *Client) UpdateStackTags(
 		return err
 	}
 
-	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+	req := pc.openApi.StackApi.UpdateStackTags(ctx, stack.Owner, stack.Project, stack.Stack)
+	req.RequestBody(tags)
+	_, _, err := req.Execute()
+	return err
 }

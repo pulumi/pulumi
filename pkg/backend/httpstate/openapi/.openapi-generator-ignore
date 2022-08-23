@@ -1,0 +1,5 @@
+# Prevent generator from creating these files:
+.travis.yml
+git_push.sh
+go.mod
+go.sum
