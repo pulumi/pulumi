@@ -1940,7 +1940,16 @@ func (mod *modContext) genIndex(exports []string) string {
 		sorted := directChildren.SortedValues()
 
 		for _, mod := range sorted {
-			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			// Here, we want to lazy-load modules.
+			// Anton provided an approach that leans on TSC
+			// to intelligently elide module loading.
+			// I'm noticing the generated code is very different
+			// than the code after compilation.
+			fmt.Fprintf(w, "import \"./%[1]s\" as %[1]sModuleType;\n", mod)
+			fmt.Fprintf(w, "const %[1]s: typeof %[1]sModuleType = require(\"./%[1]s\")", mod);
+			// import "./utilities" as utilitiesModuleType;
+			// const utilities: typeof utilitiesModuleType = lazyLoad("./utilities");
+			// fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
 		printExports(w, sorted)
