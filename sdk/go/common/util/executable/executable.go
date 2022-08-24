@@ -27,7 +27,7 @@ func FindExecutable(program string) (string, error) {
 	}
 
 	cwdProgram := filepath.Join(cwd, program)
-	if fileInfo, err := os.Stat(cwdProgram); err == nil && !fileInfo.Mode().IsDir() {
+	if fileInfo, err := os.Stat(cwdProgram); !os.IsNotExist(err) && !fileInfo.Mode().IsDir() {
 		logging.V(5).Infof("program %s found in CWD", program)
 		return cwdProgram, nil
 	}

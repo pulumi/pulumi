@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -58,33 +57,25 @@ func compileProgramCwd(buildID string) (string, error) {
 		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
 
+	f, err := os.CreateTemp("", fmt.Sprintf("pulumi-go.%s.*", buildID))
 	if err != nil {
-		return "", errors.Wrap(err, "failed to compile")
+		return "", errors.Wrap(err, "unable to create go program temp file")
 	}
 
-	filePrefix := fmt.Sprintf("pulumi-go.%s", buildID)
-	if runtime.GOOS == "windows" {
-		filePrefix = fmt.Sprintf("pulumi-go.%s.exe", buildID)
-	}
-
-	f, err := os.CreateTemp("", filePrefix+".*")
-	if err != nil {
-		return "", err
-	}
 	if err := f.Close(); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "unable to close go program temp file")
 	}
 	outfile := f.Name()
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return "", errors.Wrap(err, "problem executing program (could not run language executor)")
+		return "", errors.Wrap(err, "unable to find 'go' executable")
 	}
 	buildCmd := exec.Command(gobin, "build", "-o", outfile, cwd)
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
 	if err := buildCmd.Run(); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "unable to run `go build`")
 	}
 
 	return outfile, nil
@@ -380,7 +371,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		// feature flag to enable old behavior and use `go run`
 		gobin, err := executable.FindExecutable("go")
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "unable to find 'go' executable")
 		}
 
 		cwd, err := os.Getwd()
@@ -409,7 +400,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, errors.Wrap(err, "error in compiling Go")
 		}
-		defer os.RemoveAll(program)
+		defer os.Remove(program)
 	}
 
 	cmd := exec.Command(program)
