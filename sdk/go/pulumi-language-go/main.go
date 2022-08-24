@@ -367,8 +367,23 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
+	// the user can explicitly opt in to using a binary executable by specifying
+	// runtime.options.binary in the Pulumi.yaml
+	program := host.binary
+	if program != "" {
+		bin, err := executable.FindExecutable(program)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to find '%s' executable", program)
+		}
+		cmd := exec.Command(bin)
+		if err := execProgramCmd(cmd, env); err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		}
+		return &pulumirpc.RunResponse{}, nil
+	}
+
+	// feature flag to enable old behavior and use `go run`
 	if os.Getenv("PULUMI_GO_USE_RUN") != "" {
-		// feature flag to enable old behavior and use `go run`
 		gobin, err := executable.FindExecutable("go")
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to find 'go' executable")
@@ -389,19 +404,14 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return &pulumirpc.RunResponse{}, nil
 	}
 
-	// the user can explicitly opt in to using a binary executable by specifying
-	// runtime.options.binary in the Pulumi.yaml
-	program := host.binary
-	if program == "" {
-		// user did not specify a binary and we will compile and run the binary on-demand
-		logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
+	// user did not specify a binary and we will compile and run the binary on-demand
+	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-		program, err = compileProgramCwd(req.GetProject())
-		if err != nil {
-			return nil, errors.Wrap(err, "error in compiling Go")
-		}
-		defer os.Remove(program)
+	program, err = compileProgramCwd(req.GetProject())
+	if err != nil {
+		return nil, errors.Wrap(err, "error in compiling Go")
 	}
+	defer os.Remove(program)
 
 	cmd := exec.Command(program)
 	if err := execProgramCmd(cmd, env); err != nil {
