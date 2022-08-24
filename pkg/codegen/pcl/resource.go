@@ -39,6 +39,10 @@ type ResourceOptions struct {
 	Protect model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
+	// The version of the provider for this resource.
+	Version model.Expression
+	// The plugin download URL for this resource.
+	PluginDownloadURL model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.

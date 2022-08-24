@@ -53,8 +53,8 @@ const (
 // be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
-	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.com|[a-zA-Z.-]*\.org):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)      //nolint
-	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.[a-zA-Z]+):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)                       //nolint
+	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.[a-zA-Z]+):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
 	legacyAzureSourceControlRegex = regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
 )
 
@@ -322,7 +322,6 @@ func parseGistURL(u *url.URL) (string, error) {
 
 	resultURL := u.Scheme + "://" + u.Host + "/" + id
 	return resultURL, nil
-
 }
 
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
@@ -359,10 +358,10 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	// Shortcut for general case: URI Path contains '.git'
 	// Cleave URI into what comes before and what comes after.
 	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
-		var extensionOffset = loc + len(defaultGitCloudRepositorySuffix)
-		var resultURL = u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
-		var gitRepoPath = path[extensionOffset:]
-		var resultPath = strings.Trim(gitRepoPath, "/")
+		extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
+		resultURL := u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
+		gitRepoPath := path[extensionOffset:]
+		resultPath := strings.Trim(gitRepoPath, "/")
 		return resultURL, resultPath, nil
 	}
 
@@ -391,8 +390,8 @@ var gitSHARegex = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 // GetGitReferenceNameOrHashAndSubDirectory returns the reference name or hash, and sub directory path.
 // The sub directory path always uses "/" as the separator.
 func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
-	plumbing.ReferenceName, plumbing.Hash, string, error) {
-
+	plumbing.ReferenceName, plumbing.Hash, string, error,
+) {
 	// If path is empty, use HEAD.
 	if urlPath == "" {
 		return plumbing.HEAD, plumbing.ZeroHash, "", nil
