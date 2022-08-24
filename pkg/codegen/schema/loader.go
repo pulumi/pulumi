@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"sync"
 	"time"
 
@@ -134,12 +133,19 @@ func (f getSchemaNotImplemented) Error() string {
 	return fmt.Sprintf("it looks like GetSchema is not implemented")
 }
 
-var schemaIsEmptyRE = regexp.MustCompile(`\s*\{\s*\}\s*$`)
-
 func schemaIsEmpty(schemaBytes []byte) bool {
-	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
-	// returned. That is what we did in the past when we chose not to implement GetSchema.
-	return schemaIsEmptyRE.Match(schemaBytes)
+	// A non-empty schema is any that contains non-whitespace, non brace characters.
+	//
+	// Some providers implemented GetSchema initially by returning text matching the regular
+	// expression: "\s*\{\s*\}\s*". This handles those cases while not strictly checking that braces
+	// match or reading the whole document.
+	for _, v := range schemaBytes {
+		if v != ' ' && v != '\t' && v != '\r' && v != '\n' && v != '{' && v != '}' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
