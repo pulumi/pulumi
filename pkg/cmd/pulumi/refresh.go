@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	terminal "gopkg.in/AlecAivazis/survey.v1/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -50,6 +56,11 @@ func newRefreshCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
+
+	// Flags for handling pending creates
+	var skipPendingCreates bool
+	var clearPendingCreates bool
+	var importPendingCreates *[]string
 
 	var cmd = &cobra.Command{
 		Use:   "refresh",
@@ -138,6 +149,56 @@ func newRefreshCmd() *cobra.Command {
 			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			if skipPendingCreates && clearPendingCreates {
+				return result.FromError(fmt.Errorf(
+					"cannot set both --skip-pending-creates and --clear-pending-creates"))
+			}
+
+			// First we handle explicit create->imports we were given
+			if importPendingCreates != nil {
+				stderr := opts.Display.Stderr
+				if stderr == nil {
+					stderr = os.Stderr
+				}
+				if unused, result := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); result != nil {
+					return result
+				} else if len(unused) > 1 {
+					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
+						"warning: the following urns did not correspond to a pending create",
+						"warning", colors.SpecWarning)),
+						strings.Join(unused, "\"\n- \""))
+				} else if len(unused) > 0 {
+					fmt.Fprintf(stderr, "%s: \"%s\" did not correspond to a pending create\n",
+						opts.Display.Color.Colorize(colors.Highlight("warning", "warning", colors.SpecWarning)),
+						unused[0])
+				}
+			}
+
+			snap, err := s.Snapshot(ctx)
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
+			}
+
+			// We then allow the user to interactively handle remaining pending creates.
+			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
+				if result := filterMapPendingCreates(ctx, s, opts.Display,
+					yes, interactiveFixPendingCreate); result != nil {
+					return result
+				}
+			}
+
+			// We remove remaining pending creates
+			if clearPendingCreates && hasPendingCreates(snap) {
+				// Remove all pending creates.
+				removePendingCreates := func(op resource.Operation) (*resource.Operation, error) {
+					return nil, nil
+				}
+				result := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
+				if result != nil {
+					return result
+				}
 			}
 
 			targetUrns := []resource.URN{}
@@ -229,6 +290,17 @@ func newRefreshCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
 
+	// Flags for pending creates
+	cmd.PersistentFlags().BoolVar(
+		&skipPendingCreates, "skip-pending-creates", false,
+		"Skip importing pending creates in interactive mode")
+	cmd.PersistentFlags().BoolVar(
+		&clearPendingCreates, "clear-pending-creates", false,
+		"Clear all pending creates, dropping them from the state")
+	importPendingCreates = cmd.PersistentFlags().StringArray(
+		"import-pending-creates", nil,
+		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
@@ -244,4 +316,113 @@ func newRefreshCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
+}
+
+type editPendingOp = func(op resource.Operation) (*resource.Operation, error)
+
+// filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
+// is deleted. Otherwise is is replaced by the returned op.
+func filterMapPendingCreates(
+	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
+) result.Result {
+	return totalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+		var pending []resource.Operation
+		for _, op := range snap.PendingOperations {
+			if op.Resource == nil {
+				return fmt.Errorf("found operation without resource")
+			}
+			if op.Type != resource.OperationTypeCreating {
+				pending = append(pending, op)
+				continue
+			}
+			op, err := f(op)
+			if err != nil {
+				return err
+			}
+			if op != nil {
+				pending = append(pending, *op)
+			}
+		}
+		snap.PendingOperations = pending
+		return nil
+	})
+}
+
+// Apply the CLI args from --import-pending-creates [[URN ID]...]. If an error was found,
+// it is returned. The list of URNs that were not mapped to a pending create is also
+// returned.
+func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opts display.Options,
+	importToCreates []string) ([]string, result.Result) {
+	// A map from URN to ID
+	if len(importToCreates)%2 != 0 {
+		return nil, result.Errorf("each URN must be followed by an ID: found an odd number of entries")
+	}
+	alteredOps := make(map[string]string, len(importToCreates)/2)
+	for i := 0; i < len(importToCreates); i += 2 {
+		alteredOps[importToCreates[i]] = importToCreates[i+1]
+	}
+	result := filterMapPendingCreates(ctx, s, opts, yes, func(op resource.Operation) (*resource.Operation, error) {
+		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
+			op.Resource.ID = resource.ID(id)
+			op.Type = resource.OperationTypeImporting
+			delete(alteredOps, string(op.Resource.URN))
+			return &op, nil
+		}
+		return &op, nil
+	})
+	unusedKeys := make([]string, len(alteredOps))
+	for k := range alteredOps {
+		unusedKeys = append(unusedKeys, k)
+	}
+	return unusedKeys, result
+}
+
+func hasPendingCreates(snap *deploy.Snapshot) bool {
+	for _, op := range snap.PendingOperations {
+		if op.Type == resource.OperationTypeCreating {
+			return true
+		}
+	}
+	return false
+}
+
+func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, error) {
+	for {
+		option := ""
+		options := []string{
+			"import (the CREATE succeed; provide a resource ID and complete the CREATE operation)",
+			"clear (the CREATE failed; remove the pending CREATE)",
+			"skip (do nothing)",
+		}
+		if err := survey.AskOne(&survey.Select{
+			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
+			Options: options,
+		}, &option, nil); err != nil {
+			return nil, fmt.Errorf("no option selected: %w", err)
+		}
+
+		var err error
+		switch option {
+		case options[0]:
+			var id string
+			err = survey.AskOne(&survey.Input{
+				Message: "ID: ",
+			}, &id, nil)
+			if err == nil {
+				op.Resource.ID = resource.ID(id)
+				op.Type = resource.OperationTypeImporting
+				return &op, nil
+			}
+		case options[1]:
+			return nil, nil
+		case options[2]:
+			return &op, nil
+		default:
+			return nil, fmt.Errorf("unknown option: %q", option)
+		}
+		if errors.Is(err, terminal.InterruptErr) {
+			continue
+		}
+		return nil, err
+	}
 }
