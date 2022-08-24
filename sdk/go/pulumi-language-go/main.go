@@ -344,13 +344,13 @@ func execProgramCmd(cmd *exec.Cmd, env []string) error {
 	// error handling
 	exiterr, ok := err.(*exec.ExitError)
 	if !ok {
-		return errors.Wrapf(exiterr, "command errored unexpectedly")
+		return errors.Wrapf(err, "command errored unexpectedly")
 	}
 
 	// retrieve the status code
 	status, ok := exiterr.Sys().(syscall.WaitStatus)
 	if !ok {
-		return errors.Wrapf(exiterr, "program exited unexpectedly")
+		return errors.Wrapf(err, "program exited unexpectedly")
 	}
 
 	// If the program ran, but exited with a non-zero error code. This will happen often, since user
@@ -405,9 +405,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	cmd := exec.Command(program)
 	if err := execProgramCmd(cmd, env); err != nil {
-		return &pulumirpc.RunResponse{
-			Error: err.Error(),
-		}, nil
+		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
 
 	return &pulumirpc.RunResponse{}, nil
