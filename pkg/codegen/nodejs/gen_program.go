@@ -311,6 +311,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
+		fmt.Printf("package: %v\n", pkg)
 		as := makeValidIdentifier(path.Base(pkg))
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
