@@ -486,10 +486,10 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 
 func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	info, _ := g.getGoPackageInfo(pkg)
-	// do not import non-pulumi owned provider packages from pulumi URL
-	if !strings.Contains(info.ImportBasePath, "github.com/pulumi") {
-		return ""
+	if info.ImportBasePath != "" {
+		return "\"" + info.ImportBasePath + "\""
 	}
+
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
