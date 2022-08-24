@@ -125,14 +125,23 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, nil
 	}
 
-	if kind == apitype.UpdateUpdate &&
-		countResources(events, op.Opts.Display) == 0 {
-
+	if kind != apitype.UpdateUpdate {
+		// If not an update, we can continue
+	} else if countResources(events) == 0 {
+		// This is an update and there are no resources being CREATED
 		emptyStackWarningMessage := "\b" + op.Opts.Display.Color.Colorize(
-			fmt.Sprintf("%sinfo:%s it appears that there are no resources in this update\n",
+			fmt.Sprintf("%sinfo:%s There are no resources found in this update.\n",
 				colors.SpecInfo,
 				colors.Reset))
 		fmt.Printf(emptyStackWarningMessage)
+	} else if !hasChanges(events) {
+		// This is an update and there are no resources being UPDATED
+		noChangesWarningMessage := "\b" + op.Opts.Display.Color.Colorize(
+			fmt.Sprintf("%sinfo:%s There are no changes found in this update.\n",
+				colors.SpecInfo,
+				colors.Reset))
+		fmt.Printf(noChangesWarningMessage)
+
 	}
 
 	// Otherwise, ensure the user wants to proceed.
@@ -240,26 +249,46 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	return changes, res
 }
 
-func countResources(events []engine.Event, displayOpts display.Options) int {
+func countResources(events []engine.Event) int {
 	count := 0
-	seen := make(map[resource.URN]engine.StepEventMetadata)
-
-	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
-		if e.Type == engine.SummaryEvent {
+		if e.Type != engine.ResourcePreEvent {
 			continue
 		}
-		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg == "" {
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+
+		if !ok {
 			continue
 		}
-		if strings.Contains(msg, "::pulumi:pulumi:Stack::") {
+
+		if p.Metadata.Type.String() == "pulumi:pulumi:Stack" {
 			continue
 		}
 		count++
 	}
 	return count
+}
+
+func hasChanges(events []engine.Event) bool {
+	hasChanges := false
+
+	for _, e := range events {
+		p, ok := e.Payload().(engine.SummaryEventPayload)
+		if !ok {
+			continue
+		}
+		totalChanges := 0
+		for _, numChanges := range p.ResourceChanges {
+			totalChanges += numChanges
+		}
+		numChanges, ok := p.ResourceChanges[deploy.OpSame]
+		if numChanges == totalChanges {
+			continue
+		}
+		hasChanges = true
+	}
+	return hasChanges
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
