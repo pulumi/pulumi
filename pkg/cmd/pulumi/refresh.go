@@ -408,7 +408,7 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 			err = survey.AskOne(&survey.Input{
 				Message: "ID: ",
 			}, &id, nil)
-			if err != nil {
+			if err == nil {
 				op.Resource.ID = resource.ID(id)
 				op.Type = resource.OperationTypeImporting
 				return &op, nil
