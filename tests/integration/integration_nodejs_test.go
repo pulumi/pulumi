@@ -1162,6 +1162,48 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	})
 }
 
+// Test to ensure that internal stacks are hidden
+func TestNodejsStackTruncate(t *testing.T) {
+	cases := []string{
+		"syntax-error",
+		"ts-error",
+	}
+
+	for _, name := range cases {
+		// Test the program.
+		t.Run(name, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:          filepath.Join("nodejs", "omit-stacktrace", name),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				// This test should fail because it raises an exception
+				ExpectFailure: true,
+				// We need to validate that the failure has a truncated stack trace
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Ensure that we have a non-empty list of events.
+					assert.NotEmpty(t, stackInfo.Events)
+
+					const stacktraceLinePrefix = "    at "
+
+					// get last DiagnosticEvent containing python stack trace
+					stackTraceMessage := ""
+					for _, e := range stackInfo.Events {
+						if e.DiagnosticEvent == nil {
+							continue
+						}
+						msg := e.DiagnosticEvent.Message
+						if !strings.Contains(msg, stacktraceLinePrefix) {
+							continue
+						}
+						stackTraceMessage = msg
+					}
+					assert.Equal(t, "", stackTraceMessage)
+				},
+			})
+		})
+	}
+}
+
 // Test targeting `es2016` in `tsconfig.json` works.
 func TestCompilerOptionsNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
