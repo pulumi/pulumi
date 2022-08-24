@@ -54,3 +54,6 @@
 - [cli] Fixes `survey.v1` panics in Terminal UI introduced in
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
+
+- [cli] Improve Windows reliability with dependency update to ssh-agent
+  [#10486](https://github.com/pulumi/pulumi/pull/10486)
