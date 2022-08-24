@@ -1950,11 +1950,11 @@ func (mod *modContext) genIndex(exports []string) string {
 			fmt.Fprintf(w, importType, mod)
 			fmt.Fprintf(w, importRequire, mod)
 		}
-		var modules = newSubmoduleExportList(sorted...)
-		fmt.Fprintf(w, modules.exportConstDecl)
-		fmt.Fprintf(w, modules.generateExportDecl())
-		fmt.Fprintf(w, "utilities.lazy_load_all(exports, exportNames)\n")
-		fmt.Fprintf(w, "export exports;")
+		// var modules = newSubmoduleExportList(sorted...)
+		// fmt.Fprintf(w, modules.exportConstDecl())
+		// fmt.Fprintf(w, modules.generateExportDecl())
+		// fmt.Fprintf(w, "utilities.lazy_load_all(exports, exportNames)\n")
+		// fmt.Fprintf(w, "export exports;")
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -2576,7 +2576,7 @@ function lazy_load(exports: any, module_name: string) {
 	Object.defineProperty(exports, module_name, {
 		enumerable: true,
 		get: function() {
-			return require(`./${module_name}`);
+			return require(` + "`./${module_name}`"+`);
 		},
 	});
 }
