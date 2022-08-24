@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package apitype
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -95,6 +96,9 @@ type StartUpdateResponse struct {
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
+
+	// TokenExpiration is the point in time by which the token will expire.
+	TokenExpiration *time.Time `json:"tokenExpiration,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -185,6 +189,9 @@ type RenewUpdateLeaseRequest struct {
 type RenewUpdateLeaseResponse struct {
 	// The renewed token.
 	Token string `json:"token"`
+
+	// TokenExpiration is the point in time by which the token will expire.
+	TokenExpiration *time.Time `json:"tokenExpiration,omitempty"`
 }
 
 const (
