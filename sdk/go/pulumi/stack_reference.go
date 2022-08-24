@@ -56,11 +56,18 @@ func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
 	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (string, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
-			return "", fmt.Errorf("stack reference output %q does not exist on stack %q", name, s.name)
+			return "", fmt.Errorf(
+				"stack reference output %q does not exist on stack %q",
+				name,
+				s.name)
 		}
 		str, ok := out.(string)
 		if !ok {
-			return "", fmt.Errorf("getting stack reference output %q on stack %q, failed to convert %T to string", name, s.name, out)
+			return "", fmt.Errorf(
+				"getting stack reference output %q on stack %q, failed to convert %T to string",
+				name,
+				s.name,
+				out)
 		}
 		return str, nil
 	}).(StringOutput)
@@ -78,11 +85,18 @@ func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
 	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (float64, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
-			return 0.0, fmt.Errorf("stack reference output %q does not exist on stack %q", name, s.name)
+			return 0.0, fmt.Errorf(
+				"stack reference output %q does not exist on stack %q",
+				name,
+				s.name)
 		}
 		numf, ok := out.(float64)
 		if !ok {
-			return 0.0, fmt.Errorf("getting stack reference output %q on stack %q, failed to convert %T to float64", name, s.name, out)
+			return 0.0, fmt.Errorf(
+				"getting stack reference output %q on stack %q, failed to convert %T to float64",
+				name,
+				s.name,
+				out)
 		}
 		return numf, nil
 	}).(Float64Output)
@@ -93,11 +107,18 @@ func (s *StackReference) GetIntOutput(name StringInput) IntOutput {
 	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (int, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
-			return 0, fmt.Errorf("stack reference output %q does not exist on stack %q", name, s.name)
+			return 0, fmt.Errorf(
+				"stack reference output %q does not exist on stack %q",
+				name,
+				s.name)
 		}
 		numf, ok := out.(float64)
 		if !ok {
-			return 0, fmt.Errorf("getting stack reference output %q on stack %q, failed to convert %T to int", name, s.name, out)
+			return 0, fmt.Errorf(
+				"getting stack reference output %q on stack %q, failed to convert %T to int",
+				name,
+				s.name,
+				out)
 		}
 		return int(numf), nil
 	}).(IntOutput)
