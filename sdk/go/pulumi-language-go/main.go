@@ -33,8 +33,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
@@ -352,25 +350,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				switch status.ExitStatus() {
-				case 0:
-					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
-					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
-				case 1:
-					// runtime error(panic or error return value)
-					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
-				case 2:
-					// compilation error
-
-					// `go run` outputs details to stderr
-					err = errors.Errorf("problem executing program (Go compilation error)")
-				default:
-					// `go run` currently has only 3 exit codes. handle changes gracefully.
-					// - 0: success
-					// - 1: program exits with non-zero exit code(panic or pulumi.RunErr returned non-nil error)
-					// - 2: compilation error
-					err = errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
-				}
+				err = errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
 			} else {
 				err = errors.Wrapf(exiterr, "program exited unexpectedly")
 			}
@@ -495,10 +475,89 @@ func (host *goLanguageHost) InstallDependencies(
 }
 
 func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
+	getResponse := func(execString string, args ...string) (string, string, error) {
+		ex, err := executable.FindExecutable(execString)
+		if err != nil {
+			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return ex, strings.TrimSpace(string(out)), nil
+	}
+
+	goexe, version, err := getResponse("go", "version")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.AboutResponse{
+		Executable: goexe,
+		Version:    version,
+	}, nil
+}
+
+type goModule struct {
+	Path     string
+	Version  string
+	Time     string
+	Indirect bool
+	Dir      string
+	GoMod    string
+	Main     bool
 }
 
 func (host *goLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
+	// go list -m ...
+	//
+	//Go has a --json flag, but it doesn't emit a single json object (which
+	//makes it invalid json).
+	ex, err := executable.FindExecutable("go")
+	if err != nil {
+		return nil, err
+	}
+	if err := goversion.CheckMinimumGoVersion(ex); err != nil {
+		return nil, err
+	}
+	cmdArgs := []string{"list", "--json", "-m", "..."}
+	cmd := exec.Command(ex, cmdArgs...)
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return nil, fmt.Errorf("Failed to get modules: %w", err)
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(out))
+	parsed := []goModule{}
+	for {
+		var m goModule
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("Failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
+		}
+		parsed = append(parsed, m)
+
+	}
+
+	result := []*pulumirpc.DependencyInfo{}
+	for _, d := range parsed {
+		if (!d.Indirect || req.TransitiveDependencies) && !d.Main {
+			datum := pulumirpc.DependencyInfo{
+				Name:    d.Path,
+				Version: d.Version,
+			}
+			result = append(result, &datum)
+		}
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: result,
+	}, nil
 }
