@@ -412,12 +412,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		defer os.RemoveAll(program)
 	}
 
-	bin, err := executable.FindExecutable(program)
-	if err != nil {
-		bin = program
-	}
-
-	cmd := exec.Command(bin)
+	cmd := exec.Command(program)
 	if err := execProgramCmd(cmd, env); err != nil {
 		return &pulumirpc.RunResponse{
 			Error: err.Error(),
