@@ -1950,10 +1950,11 @@ func (mod *modContext) genIndex(exports []string) string {
 			fmt.Fprintf(w, importType, mod)
 			fmt.Fprintf(w, importRequire, mod)
 		}
-		fmt.Fprintf(w, genImportList(sorted))
-		fmt.Fprintf(w, "utilities.lazy_load_all(imports)\n")
-
-		printExports(w, sorted)
+		var modules = newSubmoduleExportList(sorted...)
+		fmt.Fprintf(w, modules.exportConstDecl)
+		fmt.Fprintf(w, modules.generateExportDecl())
+		fmt.Fprintf(w, "utilities.lazy_load_all(exports, exportNames)\n")
+		fmt.Fprintf(w, "export exports;")
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -1962,25 +1963,6 @@ func (mod *modContext) genIndex(exports []string) string {
 	}
 
 	return w.String()
-}
-
-// wrapInQuotes adds quotes to either side of the string.
-func wrapInQuotes(s string) string {
-	return "\"" + s + "\""
-}
-
-// mapQuoted will add quotes to either side of all strings in the slice.
-func mapQuoted(s []string) []string {
-	var result = make([]string, 0, len(s))
-	for _, elem := range s {
-		result = append(result, wrapInQuotes(s))
-	}
-}
-
-func genImportList(mods []string) string {
-	var quoted = mapQuoted(mods)
-	var quotedImports = strings.Join(mods, ", ")
-	return fmt.Sprintf("const imports = [%s];\n", quotedImports)
 }
 
 // genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
