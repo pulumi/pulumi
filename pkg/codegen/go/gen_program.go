@@ -344,7 +344,10 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, impo
 	if err != nil {
 		panic(err)
 	}
-	imports.Add(g.getPulumiImport(pkg, vPath, mod, name))
+	imp := g.getPulumiImport(pkg, vPath, mod, name)
+	if imp != "" {
+		imports.Add(imp)
+	}
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
@@ -483,6 +486,10 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 
 func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	info, _ := g.getGoPackageInfo(pkg)
+	// do not import non-pulumi owned provider packages from pulumi URL
+	if !strings.Contains(info.ImportBasePath, "github.com/pulumi") {
+		return ""
+	}
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
