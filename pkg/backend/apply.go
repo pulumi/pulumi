@@ -282,7 +282,7 @@ func hasChanges(events []engine.Event) bool {
 		for _, numChanges := range p.ResourceChanges {
 			totalChanges += numChanges
 		}
-		numChanges, ok := p.ResourceChanges[deploy.OpSame]
+		numChanges := p.ResourceChanges[deploy.OpSame]
 		if numChanges == totalChanges {
 			continue
 		}
