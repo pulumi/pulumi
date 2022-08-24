@@ -65,22 +65,34 @@ func TestStackReference(t *testing.T) {
 		assert.Equal(t, outputs["numf"], numf)
 		_, _, _, _, err = await(ref1.GetFloat64Output(String("foo")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to float64", outputs["foo"]), err)
+		assert.Equal(t, fmt.Errorf(
+			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to float64",
+			outputs["foo"]),
+			err)
 		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
 		assert.NoError(t, err)
 		assert.Equal(t, int(outputs["numi"].(float64)), numi)
 		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to int", outputs["foo"]), err)
+		assert.Equal(t, fmt.Errorf(
+			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to int",
+			outputs["foo"]),
+			err)
 		_, _, _, _, err = await(ref1.GetStringOutput(String("doesnotexist")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("stack reference output \"doesnotexist\" does not exist on stack \"stack2\""), err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
 		_, _, _, _, err = await(ref1.GetIntOutput(String("doesnotexist")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("stack reference output \"doesnotexist\" does not exist on stack \"stack2\""), err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
 		_, _, _, _, err = await(ref1.GetFloat64Output(String("doesnotexist")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("stack reference output \"doesnotexist\" does not exist on stack \"stack2\""), err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
