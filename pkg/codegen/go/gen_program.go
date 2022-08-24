@@ -486,10 +486,6 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 
 func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	info, _ := g.getGoPackageInfo(pkg)
-	if info.ImportBasePath != "" {
-		return "\"" + info.ImportBasePath + "\""
-	}
-
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
@@ -514,15 +510,25 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 		return fmt.Sprintf("%s %q", alias, imp)
 	}
 
+	fmt.Printf("root pkg name: %v, import base path: %v, mod: %v\n",
+		info.RootPackageName, info.ImportBasePath, mod)
+
 	modSplit := strings.Split(mod, "/")
 	// account for mods like "eks/ClusterVpcConfig" index...
 	if len(modSplit) > 1 {
+		fmt.Printf("modsplit         root pkg name: %v, import base path: %v, final path: %v\n",
+			info.RootPackageName, info.ImportBasePath, imp)
 		if modSplit[0] == "" || modSplit[0] == "index" {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+			if info.ImportBasePath != "" {
+				imp = info.ImportBasePath
+			}
 		} else {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
 		}
 	}
+	fmt.Printf("root pkg name: %v, import base path: %v, final path: %v\n",
+		info.RootPackageName, info.ImportBasePath, imp)
 	return fmt.Sprintf("%q", imp)
 }
 
