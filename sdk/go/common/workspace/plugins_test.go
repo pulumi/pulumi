@@ -546,6 +546,8 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 
+		chksum := "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81"
+
 		t.Run("Invalid Checksum", func(t *testing.T) {
 			spec := PluginSpec{
 				PluginDownloadURL: "",
@@ -561,13 +563,13 @@ func TestPluginDownload(t *testing.T) {
 			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 			assert.NoError(t, err)
 			readBytes, err := ioutil.ReadAll(r)
-			assert.Error(t, err, "invalid checksum, expected 00, actual 039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81")
+			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
 		})
 
 		t.Run("Valid Checksum", func(t *testing.T) {
-			checksum, err := hex.DecodeString("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81")
+			checksum, err := hex.DecodeString(chksum)
 			assert.NoError(t, err)
 
 			spec := PluginSpec{

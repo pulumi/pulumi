@@ -602,12 +602,14 @@ func (pp ProjectPlugin) Spec() PluginSpec {
 
 // PluginSpec provides basic specification for a plugin.
 type PluginSpec struct {
-	Name              string            // the simple name of the plugin.
-	Kind              PluginKind        // the kind of the plugin (language, resource, etc).
-	Version           *semver.Version   // the plugin's semantic version, if present.
-	PluginDownloadURL string            // an optional server to use when downloading this plugin.
-	PluginDir         string            // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
-	Checksums         map[string][]byte // if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
+	Name              string          // the simple name of the plugin.
+	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
+	Version           *semver.Version // the plugin's semantic version, if present.
+	PluginDownloadURL string          // an optional server to use when downloading this plugin.
+	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+
+	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
+	Checksums map[string][]byte
 }
 
 // Dir gets the expected plugin directory for this plugin.
