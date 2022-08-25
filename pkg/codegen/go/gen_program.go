@@ -513,7 +513,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 		if modSplit[0] == "" || modSplit[0] == "index" {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 			if info.ImportBasePath != "" {
-				imp = info.ImportBasePath
+				imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
 			}
 		} else {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
