@@ -189,7 +189,7 @@ type RenewUpdateLeaseResponse struct {
 	// The renewed token.
 	Token string `json:"token"`
 
-	// TokenExpiration is the point in time by which the token will expire.
+	// TokenExpiration is the UNIX timestamp by which the token will expire.
 	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
