@@ -57,9 +57,6 @@
 - [auto/go] Clone non-default branches (and tags).
   [#10285](https://github.com/pulumi/pulumi/pull/10285)
 
-- [cli/plugins] Don't retry plugin downloads that failed due to local file errors.
-  [#10341](https://github.com/pulumi/pulumi/pull/10341)
-
 - [cli] Fixes `survey.v1` panics in Terminal UI introduced in
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
