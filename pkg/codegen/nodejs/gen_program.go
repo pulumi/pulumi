@@ -284,6 +284,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	// Accumulate other imports for the various providers and packages. Don't emit them yet, as we need to sort them
 	// later on.
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
+	npmToPuPkgName := make(map[string]string)
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
@@ -295,6 +296,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
+					npmToPuPkgName[pkgName] = pkg
 				}
 			}
 			fmt.Printf("pkgName: %v\n", pkgName)
@@ -323,7 +325,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			continue
 		}
 		fmt.Printf("pkg: %v\n", pkg)
-		as := makeValidIdentifier(path.Base(pkg))
+		var as string
+		if puPkg, ok := npmToPuPkgName[pkg]; ok {
+			as = makeValidIdentifier(path.Base(puPkg))
+		} else {
+			as = makeValidIdentifier(path.Base(pkg))
+		}
 		fmt.Printf("as: %v\n", as)
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
