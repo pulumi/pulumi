@@ -1623,12 +1623,12 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
-	Config ConfigSpec `json:"config" yaml:"config"`
+	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider" yaml:"provider"`
+	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
