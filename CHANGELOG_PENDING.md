@@ -63,3 +63,9 @@
 
 - [cli] Improve Windows reliability with dependency update to ssh-agent
   [#10486](https://github.com/pulumi/pulumi/pull/10486)
+
+- [sdk/{dotnet,nodejs,python}] Dynamic providers and automation API will not trigger a firewall
+  permission prompt, will only accept network requests via loopback address.
+  [#10498](https://github.com/pulumi/pulumi/pull/10498)
+  [#10502](https://github.com/pulumi/pulumi/pull/10502)
+  [#10503](https://github.com/pulumi/pulumi/pull/10503)
