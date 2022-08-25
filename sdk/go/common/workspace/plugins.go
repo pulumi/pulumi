@@ -514,44 +514,45 @@ type ProjectPlugin struct {
 	Path    string          // the path that a plugin is to be loaded from (this will always be a directory)
 }
 
-// PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
-// location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
-// however the primary loadable executable must be named `pulumi-<kind>-<name>`.
-type PluginInfo struct {
+// Return a PluginSpec object for this project plugin.
+func (pp ProjectPlugin) Spec() PluginSpec {
+	return PluginSpec{
+		Name:    pp.Name,
+		Kind:    pp.Kind,
+		Version: pp.Version,
+	}
+}
+
+// PluginSpec provides basic specification for a plugin.
+type PluginSpec struct {
 	Name              string          // the simple name of the plugin.
-	Path              string          // the path that a plugin was loaded from (this will always be a directory)
 	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
 	Version           *semver.Version // the plugin's semantic version, if present.
-	Size              int64           // the size of the plugin, in bytes.
-	InstallTime       time.Time       // the time the plugin was installed.
-	LastUsedTime      time.Time       // the last time the plugin was used.
 	PluginDownloadURL string          // an optional server to use when downloading this plugin.
 	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
-	SchemaPath        string          // if set, used as the path for loading and caching the schema
-	SchemaTime        time.Time       // if set and newer than the file at SchemaPath, used to invalidate a cached schema
 }
 
 // Dir gets the expected plugin directory for this plugin.
-func (info PluginInfo) Dir() string {
-	dir := fmt.Sprintf("%s-%s", info.Kind, info.Name)
-	if info.Version != nil {
-		dir = fmt.Sprintf("%s-v%s", dir, info.Version.String())
+func (spec PluginSpec) Dir() string {
+	dir := fmt.Sprintf("%s-%s", spec.Kind, spec.Name)
+	if spec.Version != nil {
+		dir = fmt.Sprintf("%s-v%s", dir, spec.Version.String())
 	}
 	return dir
 }
 
 // File gets the expected filename for this plugin.
-func (info PluginInfo) File() string {
-	return info.FilePrefix() + info.FileSuffix()
+func (spec PluginSpec) File() string {
+	return spec.FilePrefix() + spec.FileSuffix()
 }
 
 // FilePrefix gets the expected default file prefix for the plugin.
-func (info PluginInfo) FilePrefix() string {
-	return fmt.Sprintf("pulumi-%s-%s", info.Kind, info.Name)
+func (spec PluginSpec) FilePrefix() string {
+	return fmt.Sprintf("pulumi-%s-%s", spec.Kind, spec.Name)
 }
 
 // FileSuffix returns the suffix for the plugin (if any).
-func (info PluginInfo) FileSuffix() string {
+func (spec PluginSpec) FileSuffix() string {
 	if runtime.GOOS == windowsGOOS {
 		return ".exe"
 	}
@@ -559,9 +560,9 @@ func (info PluginInfo) FileSuffix() string {
 }
 
 // DirPath returns the directory where this plugin should be installed.
-func (info PluginInfo) DirPath() (string, error) {
+func (spec PluginSpec) DirPath() (string, error) {
 	var err error
-	dir := info.PluginDir
+	dir := spec.PluginDir
 	if dir == "" {
 		dir, err = GetPluginDir()
 		if err != nil {
@@ -569,13 +570,13 @@ func (info PluginInfo) DirPath() (string, error) {
 		}
 	}
 
-	return filepath.Join(dir, info.Dir()), nil
+	return filepath.Join(dir, spec.Dir()), nil
 }
 
 // LockFilePath returns the full path to the plugin's lock file used during installation
 // to prevent concurrent installs.
-func (info PluginInfo) LockFilePath() (string, error) {
-	dir, err := info.DirPath()
+func (spec PluginSpec) LockFilePath() (string, error) {
+	dir, err := spec.DirPath()
 	if err != nil {
 		return "", err
 	}
@@ -584,8 +585,8 @@ func (info PluginInfo) LockFilePath() (string, error) {
 
 // PartialFilePath returns the full path to the plugin's partial file used during installation
 // to indicate installation of the plugin hasn't completed yet.
-func (info PluginInfo) PartialFilePath() (string, error) {
-	dir, err := info.DirPath()
+func (spec PluginSpec) PartialFilePath() (string, error) {
+	dir, err := spec.DirPath()
 	if err != nil {
 		return "", err
 	}
@@ -593,21 +594,59 @@ func (info PluginInfo) PartialFilePath() (string, error) {
 }
 
 // FilePath returns the full path where this plugin's primary executable should be installed.
-func (info PluginInfo) FilePath() (string, error) {
-	dir, err := info.DirPath()
+func (spec PluginSpec) FilePath() (string, error) {
+	dir, err := spec.DirPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, info.File()), nil
+	return filepath.Join(dir, spec.File()), nil
+}
+
+func (spec PluginSpec) String() string {
+	var version string
+	if v := spec.Version; v != nil {
+		version = fmt.Sprintf("-%s", v)
+	}
+	return spec.Name + version
+}
+
+// PluginInfo provides basic information about a plugin.  Each plugin gets installed into a system-wide
+// location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
+// however the primary loadable executable must be named `pulumi-<kind>-<name>`.
+type PluginInfo struct {
+	Name         string          // the simple name of the plugin.
+	Path         string          // the path that a plugin was loaded from (this will always be a directory)
+	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
+	Version      *semver.Version // the plugin's semantic version, if present.
+	Size         int64           // the size of the plugin, in bytes.
+	InstallTime  time.Time       // the time the plugin was installed.
+	LastUsedTime time.Time       // the last time the plugin was used.
+	SchemaPath   string          // if set, used as the path for loading and caching the schema
+	SchemaTime   time.Time       // if set and newer than the file at SchemaPath, used to invalidate a cached schema
+}
+
+// Spec returns the PluginSpec for this PluginInfo
+func (info PluginInfo) Spec() PluginSpec {
+	return PluginSpec{Name: info.Name, Kind: info.Kind, Version: info.Version}
+}
+
+func (info PluginInfo) String() string {
+	var version string
+	if v := info.Version; v != nil {
+		version = fmt.Sprintf("-%s", v)
+	}
+	return info.Name + version
+}
+
+// FilePath returns the full path where this plugin's primary executable should be installed.
+func (info PluginInfo) FilePath() string {
+	return filepath.Join(info.Path, info.Spec().File())
 }
 
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
 // any files that contain the same prefix as the plugin itself.
 func (info PluginInfo) Delete() error {
-	dir, err := info.DirPath()
-	if err != nil {
-		return err
-	}
+	dir := info.Path
 	if err := os.RemoveAll(dir); err != nil {
 		return err
 	}
@@ -653,21 +692,13 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 }
 
 func (info *PluginInfo) SetSchemaMetadata() {
-	binpath, err := info.FilePath()
-	if err != nil {
-		return
-	}
+	binpath := info.FilePath()
 	bintime, err := times.Stat(binpath)
 	if err != nil {
 		return
 	}
 
-	dir, err := info.DirPath()
-	if err != nil {
-		return
-	}
-
-	info.SchemaPath = filepath.Join(dir, "schema-"+info.Name+".json")
+	info.SchemaPath = filepath.Join(info.Path, "schema-"+info.Name+".json")
 	info.SchemaTime = bintime.ModTime()
 }
 
@@ -679,35 +710,35 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 	return replacer.Replace(serverURL)
 }
 
-func (info PluginInfo) GetSource() (PluginSource, error) {
+func (spec PluginSpec) GetSource() (PluginSource, error) {
 	// The plugin has a set URL use that.
-	if info.PluginDownloadURL != "" {
+	if spec.PluginDownloadURL != "" {
 		// Support schematised URLS if the URL has a "schema" part we recognize
-		url, err := url.Parse(info.PluginDownloadURL)
+		url, err := url.Parse(spec.PluginDownloadURL)
 		if err != nil {
 			return nil, err
 		}
 
 		if url.Scheme == "github" {
-			return newGithubSource(url, info.Name, info.Kind)
+			return newGithubSource(url, spec.Name, spec.Kind)
 		}
 
-		return newPluginURLSource(info.Name, info.Kind, info.PluginDownloadURL), nil
+		return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
 	}
 
 	// If the plugin name matches an override, download the plugin from the override URL.
-	if url, ok := pluginDownloadURLOverridesParsed.get(info.Name); ok {
-		return newPluginURLSource(info.Name, info.Kind, url), nil
+	if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
+		return newPluginURLSource(spec.Name, spec.Kind, url), nil
 	}
 
 	// Use our default fallback behaviour of github then get.pulumi.com
-	return newFallbackSource(info.Name, info.Kind), nil
+	return newFallbackSource(spec.Name, spec.Kind), nil
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 // plugins we can get from github releases.
-func (info PluginInfo) GetLatestVersion() (*semver.Version, error) {
-	source, err := info.GetSource()
+func (spec PluginSpec) GetLatestVersion() (*semver.Version, error) {
+	source, err := spec.GetSource()
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +746,7 @@ func (info PluginInfo) GetLatestVersion() (*semver.Version, error) {
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
+func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
 	var opSy string
 	switch runtime.GOOS {
@@ -733,15 +764,15 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	}
 
 	// The plugin version is necessary for the endpoint. If it's not present, return an error.
-	if info.Version == nil {
-		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
+	if spec.Version == nil {
+		return nil, -1, errors.Errorf("unknown version for plugin %s", spec.Name)
 	}
 
-	source, err := info.GetSource()
+	source, err := spec.GetSource()
 	if err != nil {
 		return nil, -1, err
 	}
-	return source.Download(*info.Version, opSy, arch, getHTTPResponse)
+	return source.Download(*spec.Version, opSy, arch, getHTTPResponse)
 }
 
 func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error) {
@@ -792,8 +823,8 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 }
 
 // installLock acquires a file lock used to prevent concurrent installs.
-func (info PluginInfo) installLock() (unlock func(), err error) {
-	finalDir, err := info.DirPath()
+func (spec PluginSpec) installLock() (unlock func(), err error) {
+	finalDir, err := spec.DirPath()
 	if err != nil {
 		return nil, err
 	}
@@ -813,14 +844,14 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 }
 
 // Install installs a plugin's tarball into the cache. See InstallWithContext for details.
-func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
-	return info.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
+func (spec PluginSpec) Install(tgz io.ReadCloser, reinstall bool) error {
+	return spec.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
 // DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
 // This has some retry logic to re-attempt the download if it errors for any reason.
 func DownloadToFile(
-	pkgPlugin PluginInfo,
+	pkgPlugin PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
 	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
 
@@ -948,8 +979,8 @@ type PluginContent interface {
 	writeToDir(pathToDir string) error
 }
 
-func SingleFilePlugin(f *os.File, info PluginInfo) PluginContent {
-	return singleFilePlugin{F: f, Kind: info.Kind, Name: info.Name}
+func SingleFilePlugin(f *os.File, spec PluginSpec) PluginContent {
+	return singleFilePlugin{F: f, Kind: spec.Kind, Name: spec.Name}
 }
 
 type singleFilePlugin struct {
@@ -1046,17 +1077,17 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginContent, reinstall bool) error {
+func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginContent, reinstall bool) error {
 	defer contract.IgnoreClose(content)
 
 	// Fetch the directory into which we will expand this tarball.
-	finalDir, err := info.DirPath()
+	finalDir, err := spec.DirPath()
 	if err != nil {
 		return err
 	}
 
 	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
-	unlock, err := info.installLock()
+	unlock, err := spec.installLock()
 	if err != nil {
 		return err
 	}
@@ -1070,7 +1101,7 @@ func (info PluginInfo) InstallWithContext(ctx context.Context, content PluginCon
 	}
 
 	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
-	partialFilePath, err := info.PartialFilePath()
+	partialFilePath, err := spec.PartialFilePath()
 	if err != nil {
 		return err
 	}
@@ -1171,14 +1202,6 @@ func cleanupTempDirs(finalDir string) error {
 	return nil
 }
 
-func (info PluginInfo) String() string {
-	var version string
-	if v := info.Version; v != nil {
-		version = fmt.Sprintf("-%s", v)
-	}
-	return info.Name + version
-}
-
 // PluginKind represents a kind of a plugin that may be dynamically loaded and used by Pulumi.
 type PluginKind string
 
@@ -1202,12 +1225,12 @@ func IsPluginKind(k string) bool {
 }
 
 // HasPlugin returns true if the given plugin exists.
-func HasPlugin(plug PluginInfo) bool {
-	dir, err := plug.DirPath()
+func HasPlugin(spec PluginSpec) bool {
+	dir, err := spec.DirPath()
 	if err == nil {
 		_, err := os.Stat(dir)
 		if err == nil {
-			partialFilePath, err := plug.PartialFilePath()
+			partialFilePath, err := spec.PartialFilePath()
 			if err == nil {
 				if _, err := os.Stat(partialFilePath); os.IsNotExist(err) {
 					return true
@@ -1219,9 +1242,9 @@ func HasPlugin(plug PluginInfo) bool {
 }
 
 // HasPluginGTE returns true if the given plugin exists at the given version number or greater.
-func HasPluginGTE(plug PluginInfo) (bool, error) {
+func HasPluginGTE(spec PluginSpec) (bool, error) {
 	// If an exact match, return true right away.
-	if HasPlugin(plug) {
+	if HasPlugin(spec) {
 		return true, nil
 	}
 
@@ -1234,16 +1257,16 @@ func HasPluginGTE(plug PluginInfo) (bool, error) {
 	// If we're not doing the legacy plugin behavior and we've been asked for a specific version, do the same plugin
 	// search that we'd do at runtime. This ensures that `pulumi plugin install` works the same way that the runtime
 	// loader does, to minimize confusion when a user has to install new plugins.
-	if !enableLegacyPluginBehavior && plug.Version != nil {
-		requestedVersion := semver.MustParseRange(plug.Version.String())
-		_, err := SelectCompatiblePlugin(plugs, plug.Kind, plug.Name, requestedVersion)
+	if !enableLegacyPluginBehavior && spec.Version != nil {
+		requestedVersion := semver.MustParseRange(spec.Version.String())
+		_, err := SelectCompatiblePlugin(plugs, spec.Kind, spec.Name, requestedVersion)
 		return err == nil, err
 	}
 
 	for _, p := range plugs {
-		if p.Name == plug.Name &&
-			p.Kind == plug.Kind &&
-			(p.Version != nil && plug.Version != nil && p.Version.GTE(*plug.Version)) {
+		if p.Name == spec.Name &&
+			p.Kind == spec.Kind &&
+			(p.Version != nil && spec.Version != nil && p.Version.GTE(*spec.Version)) {
 			return true, nil
 		}
 	}
@@ -1426,13 +1449,21 @@ func getPluginInfoAndPath(
 			}
 		}
 
+		spec := plugin.Spec()
+		path := filepath.Join(plugin.Path, spec.File())
 		info := &PluginInfo{
-			Name:    plugin.Name,
-			Kind:    plugin.Kind,
-			Version: plugin.Version,
+			Name:    spec.Name,
+			Kind:    spec.Kind,
+			Version: spec.Version,
 			Path:    plugin.Path,
 		}
-		return info, filepath.Join(plugin.Path, info.File()), nil
+		// computing plugin sizes can be very expensive (nested node_modules)
+		if !skipMetadata {
+			if err := info.SetFileMetadata(path); err != nil {
+				return nil, "", err
+			}
+		}
+		return info, path, nil
 	}
 
 	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
@@ -1447,7 +1478,7 @@ func getPluginInfoAndPath(
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
 	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundled
 	if includeAmbient {
-		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
+		filename = (&PluginSpec{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
 			return nil, path, nil
@@ -1534,11 +1565,7 @@ func getPluginInfoAndPath(
 	}
 
 	if match != nil {
-		matchPath, err := match.FilePath()
-		if err != nil {
-			return nil, "", err
-		}
-
+		matchPath := match.FilePath()
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
 		return match, matchPath, nil
 	}
@@ -1571,6 +1598,28 @@ func (sp SortedPluginInfo) Less(i, j int) bool {
 	}
 }
 func (sp SortedPluginInfo) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
+
+// SortedPluginSpec is a wrapper around PluginSpec that allows for sorting by version.
+type SortedPluginSpec []PluginSpec
+
+func (sp SortedPluginSpec) Len() int { return len(sp) }
+func (sp SortedPluginSpec) Less(i, j int) bool {
+	iVersion := sp[i].Version
+	jVersion := sp[j].Version
+	switch {
+	case iVersion == nil && jVersion == nil:
+		return false
+	case iVersion == nil:
+		return true
+	case jVersion == nil:
+		return false
+	case iVersion.EQ(*jVersion):
+		return iVersion.String() < jVersion.String()
+	default:
+		return iVersion.LT(*jVersion)
+	}
+}
+func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 
 // SelectCompatiblePlugin selects a plugin from the list of plugins with the given kind and name that sastisfies the
 // requested semver range. It returns the highest version plugin that satisfies the requested constraints, or an error

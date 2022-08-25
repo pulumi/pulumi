@@ -28,6 +28,9 @@
 - [sdk/python] Makes global ROOT, CONFIG, _SECRET_KEYS ContextVars to not leak state between parallel inline Pulumi programs
   [#10472](https://github.com/pulumi/pulumi/pull/10472)
 
+- [sdk/go] Improve error messages for `StackReference`s
+  [#10477](https://github.com/pulumi/pulumi/pull/10477)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
@@ -57,3 +60,9 @@
   
 - [codegen/ts] Fix non-pulumi owned provider import alias.
   [#10447](https://github.com/pulumi/pulumi/pull/10447)
+
+- [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
+  [#10489](https://github.com/pulumi/pulumi/pull/10489)
+
+- [cli] Improve Windows reliability with dependency update to ssh-agent
+  [#10486](https://github.com/pulumi/pulumi/pull/10486)
