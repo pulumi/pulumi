@@ -790,7 +790,7 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 
 func (spec PluginSpec) GetSource() (PluginSource, error) {
 	baseSource, err := func() (PluginSource, error) {
-		// The plugin has a seat URL use that.
+		// The plugin has a set URL use that.
 		if spec.PluginDownloadURL != "" {
 			// Support schematised URLS if the URL has a "schema" part we recognize
 			url, err := url.Parse(spec.PluginDownloadURL)
