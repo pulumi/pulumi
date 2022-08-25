@@ -17,13 +17,13 @@
         }
       }
     },
-	"other:module:Provider": {
-		"inputProperties": {
-			"answer": {
-				"type": "number"
-			}
-		}
-	}
+    "pulumi:providers:other": {
+      "inputProperties": {
+        "username": {
+          "type": "string"
+        }
+      }
+    }
   },
   "language": {
     "nodejs": {
