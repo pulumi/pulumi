@@ -116,6 +116,9 @@ type Project struct {
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 
 	Plugins *Plugins `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+
+	// Handle additional keys, albeit in a way that will remove comments and trivia.
+	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
 func (proj *Project) Validate() error {
