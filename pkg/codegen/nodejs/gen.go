@@ -1938,23 +1938,8 @@ func (mod *modContext) genIndex(exports []string) string {
 			directChildren.Add(path.Base(child))
 		}
 		sorted := directChildren.SortedValues()
-
-		var importType = `import "./%[1]s" as %[1]sModuleType;` + "\n"
-		var importRequire = `const %[1]s: typeof %[1]sModuleType = require("./%[1]s")`+ "\n"
-		for _, mod := range sorted {
-			// Here, we want to lazy-load modules.
-			// Anton provided an approach that leans on TSC
-			// to intelligently elide module loading.
-			// I'm noticing the generated code is very different
-			// than the code after compilation.
-			fmt.Fprintf(w, importType, mod)
-			fmt.Fprintf(w, importRequire, mod)
-		}
-		// var modules = newSubmoduleExportList(sorted...)
-		// fmt.Fprintf(w, modules.exportConstDecl())
-		// fmt.Fprintf(w, modules.generateExportDecl())
-		// fmt.Fprintf(w, "utilities.lazy_load_all(exports, exportNames)\n")
-		// fmt.Fprintf(w, "export exports;")
+		newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
+		printExports(sorted)
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -2086,10 +2071,7 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 				directChildren.Add(path.Base(child))
 			}
 			sorted := directChildren.SortedValues()
-
-			for _, mod := range sorted {
-				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
-			}
+			newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
 			printExports(buffer, sorted)
 		}
 	}
@@ -2576,7 +2558,7 @@ function lazy_load(exports: any, module_name: string) {
 	Object.defineProperty(exports, module_name, {
 		enumerable: true,
 		get: function() {
-			return require(` + "`./${module_name}`"+`);
+			return require(` + "`./${module_name}`" + `);
 		},
 	});
 }
