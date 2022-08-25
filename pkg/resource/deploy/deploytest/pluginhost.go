@@ -393,7 +393,7 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 	delete(host.plugins, provider)
 	return nil
 }
-func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
 }
 func (host *pluginHost) ResolvePlugin(
@@ -416,7 +416,7 @@ func (host *pluginHost) ResolvePlugin(
 	return nil, nil
 }
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
-	kinds plugin.Flags) ([]workspace.PluginSpec, error) {
+	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return host.languageRuntime.GetRequiredPlugins(info)
 }
 

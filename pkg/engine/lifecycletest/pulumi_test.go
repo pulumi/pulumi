@@ -4823,7 +4823,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 		return nil
-	}, workspace.PluginSpec{Name: "pkgA"}, workspace.PluginSpec{Name: "pkgB", Version: &semver10})
+	}, workspace.PluginInfo{Name: "pkgA"}, workspace.PluginInfo{Name: "pkgB", Version: &semver10})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{

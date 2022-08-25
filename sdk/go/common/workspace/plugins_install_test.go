@@ -79,14 +79,14 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	return ioutil.NopCloser(bytes.NewReader(tgz))
 }
 
-func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginSpec) {
+func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginInfo) {
 	tarball := prepareTestPluginTGZ(t, files)
 
 	dir, err := ioutil.TempDir("", "plugins-test-dir")
 	require.NoError(t, err)
 
 	v1 := semver.MustParse("0.1.0")
-	plugin := PluginSpec{
+	plugin := PluginInfo{
 		Name:      "test",
 		Kind:      ResourcePlugin,
 		Version:   &v1,
@@ -96,7 +96,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	return dir, tarball, plugin
 }
 
-func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginInfo {
+func assertPluginInstalled(t *testing.T, dir string, plugin PluginInfo) {
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir()))
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
@@ -122,7 +122,6 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.Equal(t, plugin.Name, plugins[0].Name)
 	assert.Equal(t, plugin.Kind, plugins[0].Kind)
 	assert.Equal(t, *plugin.Version, *plugins[0].Version)
-	return plugins[0]
 }
 
 func testDeletePlugin(t *testing.T, dir string, plugin PluginInfo) {
@@ -130,9 +129,9 @@ func testDeletePlugin(t *testing.T, dir string, plugin PluginInfo) {
 	assert.NoError(t, err)
 
 	paths := []string{
-		filepath.Join(dir, plugin.Path),
-		filepath.Join(dir, plugin.Path+".partial"),
-		filepath.Join(dir, plugin.Path+".lock"),
+		filepath.Join(dir, plugin.Dir()),
+		filepath.Join(dir, plugin.Dir()+".partial"),
+		filepath.Join(dir, plugin.Dir()+".lock"),
 	}
 	for _, path := range paths {
 		_, err := os.Stat(path)
@@ -153,13 +152,13 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	info, err := os.Stat(filepath.Join(dir, plugin.Dir(), expectedDir))
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, dir, plugin)
 }
 
 func TestInstallNoDeps(t *testing.T) {
@@ -176,13 +175,13 @@ func TestInstallNoDeps(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, dir, plugin)
 }
 
 func TestReinstall(t *testing.T) {
@@ -199,7 +198,7 @@ func TestReinstall(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
@@ -210,13 +209,13 @@ func TestReinstall(t *testing.T) {
 
 	err = plugin.Install(tarball, true)
 
-	pluginInfo = assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	b, err = ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, dir, plugin)
 }
 
 func TestConcurrentInstalls(t *testing.T) {
@@ -230,14 +229,12 @@ func TestConcurrentInstalls(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 	defer os.RemoveAll(dir)
 
-	assertSuccess := func() PluginInfo {
-		pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertSuccess := func() {
+		assertPluginInstalled(t, dir, plugin)
 
 		b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 		assert.NoError(t, err)
 		assert.Equal(t, content, b)
-
-		return pluginInfo
 	}
 
 	// Run several installs concurrently.
@@ -256,9 +253,9 @@ func TestConcurrentInstalls(t *testing.T) {
 	}
 	wg.Wait()
 
-	pluginInfo := assertSuccess()
+	assertSuccess()
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, dir, plugin)
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
@@ -281,7 +278,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
-	pluginInfo := assertPluginInstalled(t, dir, plugin)
+	assertPluginInstalled(t, dir, plugin)
 
 	// Verify leftover files were removed.
 	for _, path := range []string{tempDir1, tempDir2, tempDir3, partialPath} {
@@ -290,7 +287,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 	}
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, dir, plugin)
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {

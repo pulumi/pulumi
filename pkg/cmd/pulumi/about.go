@@ -223,13 +223,15 @@ type pluginAbout struct {
 }
 
 func getPluginsAbout() ([]pluginAbout, error) {
-	pluginSpec, err := getProjectPluginsSilently()
+	var pluginInfo []workspace.PluginInfo
+	var err error
+	pluginInfo, err = getProjectPluginsSilently()
 
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(pluginSpec, func(i, j int) bool {
-		pi, pj := pluginSpec[i], pluginSpec[j]
+	sort.Slice(pluginInfo, func(i, j int) bool {
+		pi, pj := pluginInfo[i], pluginInfo[j]
 		if pi.Name < pj.Name {
 			return true
 		} else if pi.Name == pj.Name && pi.Kind == pj.Kind &&
@@ -239,8 +241,8 @@ func getPluginsAbout() ([]pluginAbout, error) {
 		return false
 	})
 
-	var plugins = make([]pluginAbout, len(pluginSpec))
-	for i, p := range pluginSpec {
+	var plugins = make([]pluginAbout, len(pluginInfo))
+	for i, p := range pluginInfo {
 		plugins[i] = pluginAbout{
 			Name:    p.Name,
 			Version: p.Version,
@@ -548,7 +550,7 @@ func (runtime projectRuntimeAbout) String() string {
 
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
-func getProjectPluginsSilently() ([]workspace.PluginSpec, error) {
+func getProjectPluginsSilently() ([]workspace.PluginInfo, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err

@@ -34,12 +34,12 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	t.Parallel()
 
 	languagePlugins := newPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
 		Kind:    workspace.ResourcePlugin,
 	})
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:              "kubernetes",
 		Version:           mustMakeVersion("0.22.0"),
 		Kind:              workspace.ResourcePlugin,
@@ -68,12 +68,12 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 	t.Parallel()
 
 	languagePlugins := newPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
 		Kind:    workspace.ResourcePlugin,
 	})
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: nil,
 		Kind:    workspace.ResourcePlugin,
@@ -92,17 +92,17 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 	t.Parallel()
 
 	languagePlugins := newPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
 		Kind:    workspace.ResourcePlugin,
 	})
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.1"),
 		Kind:    workspace.ResourcePlugin,
 	})
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.2-dev.1553126336"),
 		Kind:    workspace.ResourcePlugin,
@@ -121,12 +121,12 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 	t.Parallel()
 
 	languagePlugins := newPluginSet()
-	languagePlugins.Add(workspace.PluginSpec{
+	languagePlugins.Add(workspace.PluginInfo{
 		Name: "python",
 		Kind: workspace.LanguagePlugin,
 	})
 	snapshotPlugins := newPluginSet()
-	snapshotPlugins.Add(workspace.PluginSpec{
+	snapshotPlugins.Add(workspace.PluginInfo{
 		Name:    "aws",
 		Version: mustMakeVersion("0.17.0"),
 		Kind:    workspace.ResourcePlugin,
@@ -147,41 +147,41 @@ func TestPluginSetDeduplicate(t *testing.T) {
 		input    pluginSet
 		expected pluginSet
 	}{{
-		input: newPluginSet(workspace.PluginSpec{
+		input: newPluginSet(workspace.PluginInfo{
 			Name:    "foo",
 			Version: &semver.Version{Major: 1},
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name: "foo",
 		}),
-		expected: newPluginSet(workspace.PluginSpec{
+		expected: newPluginSet(workspace.PluginInfo{
 			Name:    "foo",
 			Version: &semver.Version{Major: 1},
 		}),
 	}, {
-		input: newPluginSet(workspace.PluginSpec{
+		input: newPluginSet(workspace.PluginInfo{
 			Name:    "bar",
 			Version: &semver.Version{Minor: 3},
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name:              "bar",
 			PluginDownloadURL: "example.com/bar",
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name:              "bar",
 			Version:           &semver.Version{Patch: 3},
 			PluginDownloadURL: "example.com",
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name: "foo",
 		}),
-		expected: newPluginSet(workspace.PluginSpec{
+		expected: newPluginSet(workspace.PluginInfo{
 			Name:    "bar",
 			Version: &semver.Version{Minor: 3},
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name:              "bar",
 			PluginDownloadURL: "example.com/bar",
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name:              "bar",
 			Version:           &semver.Version{Patch: 3},
 			PluginDownloadURL: "example.com",
-		}, workspace.PluginSpec{
+		}, workspace.PluginInfo{
 			Name: "foo",
 		}),
 	}}
@@ -198,20 +198,20 @@ func TestPluginSetDeduplicate(t *testing.T) {
 func TestDefaultProviderPluginsSorting(t *testing.T) {
 	t.Parallel()
 	v1 := semver.MustParse("0.0.1-alpha.10")
-	p1 := workspace.PluginSpec{
+	p1 := workspace.PluginInfo{
 		Name:    "foo",
 		Version: &v1,
 		Kind:    workspace.ResourcePlugin,
 	}
 	v2 := semver.MustParse("0.0.1-alpha.10+dirty")
-	p2 := workspace.PluginSpec{
+	p2 := workspace.PluginInfo{
 		Name:    "foo",
 		Version: &v2,
 		Kind:    workspace.ResourcePlugin,
 	}
 	plugins := newPluginSet(p1, p2)
 	result := computeDefaultProviderPlugins(plugins, plugins)
-	assert.Equal(t, map[tokens.Package]workspace.PluginSpec{
+	assert.Equal(t, map[tokens.Package]workspace.PluginInfo{
 		"foo": p2,
 	}, result)
 }

@@ -24,7 +24,7 @@ import (
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
-func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) plugin.LanguageRuntime {
+func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginInfo) plugin.LanguageRuntime {
 	return &languageRuntime{
 		requiredPlugins: requiredPlugins,
 		program:         program,
@@ -32,7 +32,7 @@ func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.Plugin
 }
 
 type languageRuntime struct {
-	requiredPlugins []workspace.PluginSpec
+	requiredPlugins []workspace.PluginInfo
 	program         ProgramFunc
 }
 
@@ -40,7 +40,7 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
 	return p.requiredPlugins, nil
 }
 

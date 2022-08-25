@@ -73,7 +73,7 @@ type Host interface {
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
+	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
@@ -398,7 +398,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
@@ -518,8 +518,8 @@ const (
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginSpec, error) {
-	var plugins []workspace.PluginSpec
+func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error) {
+	var plugins []workspace.PluginInfo
 
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
@@ -528,7 +528,7 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}
-		plugins = append(plugins, workspace.PluginSpec{
+		plugins = append(plugins, workspace.PluginInfo{
 			Name: info.Proj.Runtime.Name(),
 			Kind: workspace.LanguagePlugin,
 		})
