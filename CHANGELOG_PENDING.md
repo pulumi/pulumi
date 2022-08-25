@@ -31,6 +31,9 @@
 - [sdk/go] Improve error messages for `StackReference`s
   [#10477](https://github.com/pulumi/pulumi/pull/10477)
 
+- [sdk/{nodejs/python}] Added `getOrganization()` to return the current organization if available.
+  [#10504](https://github.com/pulumi/pulumi/pull/10504)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
