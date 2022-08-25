@@ -7,6 +7,7 @@ import (
 )
 
 func TestTrySendEvent(t *testing.T) {
+	t.Parallel()
 	e := Event{}
 	c := make(chan Event, 100)
 	assert.Equal(t, true, trySendEvent(c, e))
@@ -15,6 +16,7 @@ func TestTrySendEvent(t *testing.T) {
 }
 
 func TestTryCloseEventChan(t *testing.T) {
+	t.Parallel()
 	c := make(chan Event, 100)
 	assert.Equal(t, true, tryCloseEventChan(c))
 	assert.Equal(t, false, tryCloseEventChan(c))
