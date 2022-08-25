@@ -46,6 +46,7 @@ export interface Options {
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
+    readonly organization?: string // the name of the current organization (if available).
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -64,6 +65,7 @@ const nodeEnvKeys = {
     syncDir: "PULUMI_NODEJS_SYNC",
     // this value is not set by the CLI and is controlled via a user set env var unlike the values above
     cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
+    organization: "PULUMI_NODEJS_ORGANIZATION",
 };
 
 const pulumiEnvKeys = {
@@ -74,7 +76,7 @@ const pulumiEnvKeys = {
 // and sets nodejs runtime option env vars to the specified values.
 export function resetOptions(
     project: string, stack: string, parallel: number, engineAddr: string,
-    monitorAddr: string, preview: boolean) {
+    monitorAddr: string, preview: boolean, organization: string) {
 
     monitor = undefined;
     engine = undefined;
@@ -89,9 +91,10 @@ export function resetOptions(
     process.env[nodeEnvKeys.parallel] = parallel.toString();
     process.env[nodeEnvKeys.monitorAddr] = monitorAddr;
     process.env[nodeEnvKeys.engineAddr] = engineAddr;
+    process.env[nodeEnvKeys.organization] = organization;
 }
 
-export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean) {
+export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean, organization?: string) {
     const opts = options();
     resetOptions(
         project || opts.project || "project",
@@ -100,6 +103,7 @@ export function setMockOptions(mockMonitor: any, project?: string, stack?: strin
         opts.engineAddr || "",
         opts.monitorAddr || "",
         preview || false,
+        organization || "",
     );
 
     monitor = mockMonitor;
@@ -121,7 +125,7 @@ export function isDryRun(): boolean {
 
 /** @internal Used only for testing purposes */
 export function _reset() {
-    resetOptions("", "", -1, "", "", false);
+    resetOptions("", "", -1, "", "", false, "");
 }
 
 /** @internal Used only for testing purposes */
@@ -153,6 +157,25 @@ export function isLegacyApplyEnabled(): boolean {
  */
 export function cacheDynamicProviders(): boolean {
     return options().cacheDynamicProviders === true;
+}
+
+/**
+ * Get the organization being run by the current update.
+ */
+ export function getOrganization(): string {
+    const organization = options().organization;
+    if (organization) {
+        return organization;
+    }
+
+    // If the organization is missing, specialize the error.
+    // Throw an error if test mode is enabled, instructing how to manually configure the project:
+    throw new Error("Missing organization name; for test mode, please call `pulumi.runtime.setMocks`");
+}
+
+/** @internal Used only for testing purposes. */
+export function _setOrganization(val: string | undefined) {
+    process.env[nodeEnvKeys.organization] = val;
 }
 
 /**

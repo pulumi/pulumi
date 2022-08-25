@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
@@ -282,6 +283,10 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
+	stackId, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
 
 	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
@@ -298,10 +303,11 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	return &deploy.Target{
-		Name:      stackRef.Name(),
-		Config:    cfg,
-		Decrypter: dec,
-		Snapshot:  snapshot,
+		Name:         tokens.Name(stackId.Stack),
+		Organization: tokens.Name(stackId.Owner),
+		Config:       cfg,
+		Decrypter:    dec,
+		Snapshot:     snapshot,
 	}, nil
 }
 

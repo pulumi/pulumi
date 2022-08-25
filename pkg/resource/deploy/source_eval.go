@@ -220,6 +220,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 				ConfigSecretKeys: configSecretKeys,
 				DryRun:           iter.src.dryRun,
 				Parallel:         opts.Parallel,
+				Organization:     string(iter.src.runinfo.Target.Organization),
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that

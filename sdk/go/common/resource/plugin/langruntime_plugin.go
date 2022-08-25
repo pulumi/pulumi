@@ -182,6 +182,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		DryRun:           info.DryRun,
 		QueryMode:        info.QueryMode,
 		Parallel:         int32(info.Parallel),
+		Organization:     info.Organization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
