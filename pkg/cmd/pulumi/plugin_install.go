@@ -60,7 +60,7 @@ func newPluginInstallCmd() *cobra.Command {
 			}
 
 			// Parse the kind, name, and version, if specified.
-			var installs []workspace.PluginSpec
+			var installs []workspace.PluginInfo
 			if len(args) > 0 {
 				if !workspace.IsPluginKind(args[0]) {
 					return fmt.Errorf("unrecognized plugin kind: %s", args[0])
@@ -80,7 +80,7 @@ func newPluginInstallCmd() *cobra.Command {
 					return errors.New("missing plugin version argument, this is required if installing from a file")
 				}
 
-				pluginSpec := workspace.PluginSpec{
+				pluginInfo := workspace.PluginInfo{
 					Kind:              workspace.PluginKind(args[0]),
 					Name:              args[1],
 					Version:           version,
@@ -89,14 +89,14 @@ func newPluginInstallCmd() *cobra.Command {
 
 				// If we don't have a version try to look one up
 				if version == nil {
-					latestVersion, err := pluginSpec.GetLatestVersion()
+					latestVersion, err := pluginInfo.GetLatestVersion()
 					if err != nil {
 						return err
 					}
-					pluginSpec.Version = latestVersion
+					pluginInfo.Version = latestVersion
 				}
 
-				installs = append(installs, pluginSpec)
+				installs = append(installs, pluginInfo)
 			} else {
 				if file != "" {
 					return errors.New("--file (-f) is only valid if a specific package is being installed")
@@ -188,7 +188,7 @@ func newPluginInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginContent, error) {
+func getFilePayload(file string, info workspace.PluginInfo) (workspace.PluginContent, error) {
 	source := file
 	stat, err := os.Stat(file)
 	if err != nil {
@@ -216,7 +216,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		if (stat.Mode() & 0100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
-		return workspace.SingleFilePlugin(f, spec), nil
+		return workspace.SingleFilePlugin(f, info), nil
 	}
 	return workspace.TarPlugin(f), nil
 }

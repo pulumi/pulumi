@@ -71,7 +71,7 @@ func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
 	return nil
 }
 func (host *testPluginHost) ResolvePlugin(

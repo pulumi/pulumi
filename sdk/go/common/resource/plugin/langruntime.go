@@ -28,7 +28,7 @@ type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error)
+	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error)
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real
