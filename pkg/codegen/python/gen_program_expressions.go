@@ -544,7 +544,14 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		rootName = "__item"
 	}
 
-	g.Fgen(w, rootName)
+	if g.generatingComponentResource {
+		// We are generating a Component Resource; parameters must have `this.`if they reference
+		// other resources & local variables, or `args.` if they reference config variables
+		g.genRootNameWithPrefix(w, rootName, expr)
+	} else {
+		g.Fgen(w, rootName)
+	}
+
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
 }
 
