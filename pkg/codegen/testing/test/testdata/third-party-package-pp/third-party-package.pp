@@ -7,5 +7,4 @@ resource Question "other:module:Object" {
 }
 
 resource Provider "pulumi:providers:other" {
-	name = "foo"
 }

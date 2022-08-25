@@ -19,9 +19,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err := other.NewProvider(ctx, "Provider", &other.ProviderArgs{
-			Name: pulumi.String("foo"),
-		})
+		_, err := other.NewProvider(ctx, "Provider", &other.ProviderArgs{})
 		if err != nil {
 			return err
 		}
