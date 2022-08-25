@@ -6,29 +6,6 @@ import (
 	"strings"
 )
 
-// Desired Behavior:
-// Given a submodule "foo"…
-// …these are the given syntax forms:
-//
-// import * as fooModule from "./foo";
-// export const foo: typeof fooModule = {} as typeof fooModule;
-//
-// These are the methods we need to produce those forms:
-// foo
-// "./foo"
-// fooModule
-// typeof fooModule
-//
-// The functions to test:
-// name => foo
-// moduleFileName() => "./foo"
-// moduleTypeName => fooModule
-// qualifiedTypeName => typeof fooModule
-//
-// genModuleImport => import * as fooModule from "./foo";
-// genConstLocal => export const foo: typeof fooModule = {} as typeof fooModule;
-// TODO: Does this last statement impact Intellisense?
-
 // submoduleExport represents a package exposed from inside another package.
 // In NodeJS, this takes the form of a "submodule export", wherein the child
 // package is exported from the parent package. The types `submoduleExport`
@@ -49,6 +26,7 @@ func (exp submoduleExport) fileName() string {
 	return `"./` + string(exp) + `"`
 }
 
+// quoted returns the name of the module surrounded in quotes.
 func (exp submoduleExport) quoted() string {
 	return `"` + string(exp) + `"`
 }
@@ -109,26 +87,10 @@ func (exp submoduleExport) WriteSrc(w io.Writer) {
 	fmt.Fprintf(w, "\n")
 }
 
-// USAGE:
-// First, we must create an import/export pair for each item in the list.
-// • import * as fooModule from "./foo";
-// • export const foo: typeof fooModule = {} as typeof fooModule;
-// No need to declare a variable, this could conflict with the package name.
-// Instead use an array literal.
-// SKIP: Then, we create declare variable with their names:
-// SKIP: • const __module_exports = ["foo", "bar"];
-// Finally, we write the lazy-loading module loader.
-// • utilities.lazy_load_all(
-//     exports,
-//     ["foo", "bar"],
-//   );
-
-// This means we have a few functions:
-// JoinMods() => ["foo", "bar"]
-// utilities.lazy_load_all()
-
+// submoduleExportList is a collection of submodule exports.
 type submoduleExportList []submoduleExport
 
+// newSubmoduleExportList is the constructor for a submoduleExportList.
 func newSubmoduleExportList(vals ...string) submoduleExportList {
 	var result = make(submoduleExportList, 0, len(vals))
 	for _, val := range vals {
