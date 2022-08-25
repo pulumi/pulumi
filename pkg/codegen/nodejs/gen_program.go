@@ -290,12 +290,14 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if pkg == PulumiToken {
 				continue
 			}
+			fmt.Printf("pkg: %v\n", pkg)
 			pkgName := "@pulumi/" + pkg
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
 				}
 			}
+			fmt.Printf("pkgName: %v\n", pkgName)
 			importSet.Add(pkgName)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -315,11 +317,14 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
+	fmt.Println("import set loop:")
 	for _, pkg := range importSet.SortedValues() {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
+		fmt.Printf("pkg: %v\n", pkg)
 		as := makeValidIdentifier(path.Base(pkg))
+		fmt.Printf("as: %v\n", as)
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
 	sort.Strings(imports)
