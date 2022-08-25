@@ -196,7 +196,7 @@ def main():
         options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
-    port = server.add_insecure_port(address="0.0.0.0:0")
+    port = server.add_insecure_port(address="127.0.0.1:0")
     server.start()
     sys.stdout.buffer.write(f"{port}\n".encode())
     try:
