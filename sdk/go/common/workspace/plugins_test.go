@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -320,9 +321,9 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -347,9 +348,9 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -371,9 +372,9 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -421,9 +422,9 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -464,9 +465,9 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
@@ -512,11 +513,81 @@ func TestPluginDownload(t *testing.T) {
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		readBytes, err := ioutil.ReadAll(r)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
+	})
+	t.Run("Test Downloading From Pulumi GitHub Releases With Checksum", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "")
+		version := semver.MustParse("4.30.0")
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"assets": [
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/654321",
+						"name": "pulumi-mockdl_4.30.0_checksums.txt"
+					  },
+					  {
+						"url": "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456",
+						"name": "pulumi-resource-mockdl-v4.30.0-darwin-amd64.tar.gz"
+					  }
+					]
+				  }
+				`)
+			}
+
+			assert.Equal(t, "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/123456", req.URL.String())
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
+			return newMockReadCloser(expectedBytes)
+		}
+
+		t.Run("Invalid Checksum", func(t *testing.T) {
+			spec := PluginSpec{
+				PluginDownloadURL: "",
+				Name:              "mockdl",
+				Version:           &version,
+				Kind:              PluginKind("resource"),
+				Checksums: map[string][]byte{
+					"darwin-amd64": {0},
+				},
+			}
+			source, err := spec.GetSource()
+			assert.NoError(t, err)
+			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			assert.NoError(t, err)
+			readBytes, err := ioutil.ReadAll(r)
+			assert.Error(t, err, "invalid checksum, expected 00, actual 039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81")
+			assert.Equal(t, int(l), len(readBytes))
+			assert.Equal(t, expectedBytes, readBytes)
+		})
+
+		t.Run("Valid Checksum", func(t *testing.T) {
+			checksum, err := hex.DecodeString("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81")
+			assert.NoError(t, err)
+
+			spec := PluginSpec{
+				PluginDownloadURL: "",
+				Name:              "mockdl",
+				Version:           &version,
+				Kind:              PluginKind("resource"),
+				Checksums: map[string][]byte{
+					"darwin-amd64": checksum,
+				},
+			}
+			source, err := spec.GetSource()
+			assert.NoError(t, err)
+			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			assert.NoError(t, err)
+			readBytes, err := ioutil.ReadAll(r)
+			assert.NoError(t, err)
+			assert.Equal(t, int(l), len(readBytes))
+			assert.Equal(t, expectedBytes, readBytes)
+		})
 	})
 }
 
@@ -544,7 +615,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			}`)
 		}
 		version, err := source.GetLatestVersion(getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Custom Server URL", func(t *testing.T) {
@@ -589,7 +660,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			panic("Unexpected call to getHTTPResponse")
 		}
 		version, err := source.GetLatestVersion(getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Private Pulumi GitHub Releases", func(t *testing.T) {
@@ -615,7 +686,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			panic("Unexpected call to getHTTPResponse")
 		}
 		version, err := source.GetLatestVersion(getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Internal GitHub Releases", func(t *testing.T) {
@@ -641,7 +712,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 			panic("Unexpected call to getHTTPResponse")
 		}
 		version, err := source.GetLatestVersion(getHTTPResponse)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
 }
