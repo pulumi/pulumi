@@ -15,17 +15,39 @@
 package workspace
 
 import (
+	_ "embed"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
+
+//go:embed project.json
+var projectSchema string
+
+var ProjectSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(u string) (io.ReadCloser, error) {
+		if u == "blob://project.json" {
+			return io.NopCloser(strings.NewReader(projectSchema)), nil
+		}
+		return jsonschema.LoadURL(u)
+	}
+	ProjectSchema = compiler.MustCompile("blob://project.json")
+}
 
 // Analyzers is a list of analyzers to run on this project.
 type Analyzers []tokens.QName
@@ -119,6 +141,71 @@ type Project struct {
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
+}
+
+func (proj *Project) unmarshal(raw map[string]interface{}) error {
+	// Couple of manual errors to match Validate
+	if name, ok := raw["name"]; !ok {
+		return errors.New("project is missing a 'name' attribute")
+	} else {
+		if strName, ok := name.(string); !ok || strName == "" {
+			return errors.New("project is missing a non-empty string 'name' attribute")
+		}
+	}
+	if _, ok := raw["runtime"]; !ok {
+		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	// Let everything else be caught by jsonschema
+	var err error
+	if err = ProjectSchema.Validate(raw); err == nil {
+		return nil
+	}
+	validationError, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return err
+	}
+
+	var errs *multierror.Error
+	var appendError func(err *jsonschema.ValidationError)
+	appendError = func(err *jsonschema.ValidationError) {
+		if err.InstanceLocation != "" && err.Message != "" {
+			errorf := func(path, message string, args ...interface{}) error {
+				contract.Require(path != "", "path")
+				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
+			}
+
+			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", err.Message))
+		}
+		for _, err := range err.Causes {
+			appendError(err)
+		}
+	}
+	appendError(validationError)
+
+	return errs
+}
+
+func (proj *Project) UnmarshalJSON(b []byte) error {
+	var raw interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if obj, ok := raw.(map[string]interface{}); ok {
+		return proj.unmarshal(obj)
+	}
+	return fmt.Errorf("expected a JSON object")
+}
+
+func (proj *Project) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw interface{}
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	if obj, ok := raw.(map[string]interface{}); ok {
+		return proj.unmarshal(obj)
+	}
+	return fmt.Errorf("expected a YAML object")
 }
 
 func (proj *Project) Validate() error {

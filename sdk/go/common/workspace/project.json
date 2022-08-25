@@ -1,31 +1,39 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/project.json",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/workspace/project.json",
     "title": "Pulumi Project",
     "description": "A schema for Pulumi project files.",
     "type": "object",
     "properties": {
         "name": {
             "description": "Name of the project containing alphanumeric characters, hyphens, underscores, and periods.",
-            "type": "string"
+            "type": "string",
+            "minLength": 1
         },
         "description": {
             "description": "Description of the project.",
             "type": "string"
         },
         "runtime": {
+            "title": "ProjectRuntimeInfo",
             "oneOf": [
                 {
-                    "type": "string"
+                    "title": "Name",
+                    "type": "string",
+                    "minLength": 1
                 },
                 {
                     "type": "object",
                     "properties": {
                         "name": {
-                            "type": "string"
+                            "title": "Name",
+                            "type": "string",
+                            "minLength": 1
                         },
                         "options": {
-                            "type": "object"
+                            "title": "Options",
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "additionalProperties": false
@@ -62,7 +70,8 @@
             "additionalProperties": false
         },
         "template": {
-            "description": "Config to be used when creating new stacks in the project.",
+            "title": "ProjectTemplate",
+            "description": "ProjectTemplate is a Pulumi project template manifest.",
             "type": "object",
             "properties": {
                 "description": {
@@ -99,21 +108,21 @@
                     "description": "Plugins for resource providers.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/$defs/projectPlugin"
+                        "$ref": "#/$defs/pluginOptions"
                     }
                 },
                 "analyzers": {
                     "description": "Plugins for policy analyzers.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/$defs/projectPlugin"
+                        "$ref": "#/$defs/pluginOptions"
                     }
                 },
                 "languages": {
                     "description": "Plugins for languages.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/$defs/projectPlugin"
+                        "$ref": "#/$defs/pluginOptions"
                     }
                 }
             }
@@ -122,8 +131,8 @@
     "required": ["name", "runtime"],
     "additionalProperties": true,
     "$defs": {
-        "projectPlugin": {
-            "title": "ProjectPlugin",
+        "pluginOptions": {
+            "title": "PluginOptions",
             "type": "object",
             "properties": {
                 "name": {
