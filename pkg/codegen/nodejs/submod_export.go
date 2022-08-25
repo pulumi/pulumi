@@ -3,27 +3,28 @@ package nodejs
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 // Desired Behavior:
 // Given a submodule "foo"…
 // …these are the given syntax forms:
-// 
+//
 // import * as fooModule from "./foo";
 // export const foo: typeof fooModule = {} as typeof fooModule;
-// 
+//
 // These are the methods we need to produce those forms:
 // foo
 // "./foo"
 // fooModule
 // typeof fooModule
-// 
+//
 // The functions to test:
 // name => foo
 // moduleFileName() => "./foo"
 // moduleTypeName => fooModule
 // qualifiedTypeName => typeof fooModule
-// 
+//
 // genModuleImport => import * as fooModule from "./foo";
 // genConstLocal => export const foo: typeof fooModule = {} as typeof fooModule;
 // TODO: Does this last statement impact Intellisense?
@@ -46,6 +47,10 @@ func newSubmoduleExport(name string) submoduleExport {
 // directory as the calling code.
 func (exp submoduleExport) fileName() string {
 	return `"./` + string(exp) + `"`
+}
+
+func (exp submoduleExport) quoted() string {
+	return `"` + string(exp) + `"`
 }
 
 // typeName provides the raw name of the module type.
@@ -75,8 +80,8 @@ func (exp submoduleExport) name() string {
 // import * as fooModule from "./foo";
 func (exp submoduleExport) genImport() string {
 	return fmt.Sprintf(
-		"import * as %s from %s;", 
-		exp.typeName(), 
+		"import * as %s from %s;",
+		exp.typeName(),
 		exp.fileName(),
 	)
 }
@@ -88,7 +93,7 @@ func (exp submoduleExport) genImport() string {
 // export const foo: typeof fooModule = {} as typeof fooModule;
 func (exp submoduleExport) genExportLocal() string {
 	return fmt.Sprintf(
-		"export const %s: %s = {} as %s;", 
+		"export const %s: %s = {} as %s;",
 		exp.name(),
 		exp.qualifiedTypeName(),
 		exp.qualifiedTypeName(),
@@ -104,6 +109,24 @@ func (exp submoduleExport) WriteSrc(w io.Writer) {
 	fmt.Fprintf(w, "\n")
 }
 
+// USAGE:
+// First, we must create an import/export pair for each item in the list.
+// • import * as fooModule from "./foo";
+// • export const foo: typeof fooModule = {} as typeof fooModule;
+// No need to declare a variable, this could conflict with the package name.
+// Instead use an array literal.
+// SKIP: Then, we create declare variable with their names:
+// SKIP: • const __module_exports = ["foo", "bar"];
+// Finally, we write the lazy-loading module loader.
+// • utilities.lazy_load_all(
+//     exports,
+//     ["foo", "bar"],
+//   );
+
+// This means we have a few functions:
+// JoinMods() => ["foo", "bar"]
+// utilities.lazy_load_all()
+
 type submoduleExportList []submoduleExport
 
 func newSubmoduleExportList(vals ...string) submoduleExportList {
@@ -114,40 +137,35 @@ func newSubmoduleExportList(vals ...string) submoduleExportList {
 	return result
 }
 
-/*
-func (exp submoduleExportList) objectFields() string {
-	var asPairs = make([]string, 0, len(exp))
-	for _, field := range exp {
-		asPairs = append(asPairs, field.nameTypePair())
+// joinMods builds a JS array from the contained submodule names.
+func (exp submoduleExportList) joinMods() string {
+	var quoted []string
+	for _, elem := range exp {
+		quoted = append(quoted, elem.quoted())
 	}
-	return strings.Join(asPairs, ",\n  ")
-}
-*/
-
-/*
-func (exp submoduleExportList) exportConstDecl() string {
-	return fmt.Sprintf("const exportNames = [%s];\n", exp.joinWithQuotes())
+	var arrayItems = strings.Join(quoted, ", ")
+	return "[" + arrayItems + "]"
 }
 
-func (exp submoduleExportList) joinWithQuotes() string {
-	var asStrings = make([]string, 0, len(exp))
-	for _, item := range exp {
-		asStrings = append(asStrings, item.wrapInQuotes())
+// genLazyLoad generates the instructions for lazy-loading
+// the modules in this list. target is the name of the variable
+// which will will exported containing the submodules.
+// It does not write a trailing newline.
+func (exp submoduleExportList) genLazyLoad(target string) string {
+	var srcTemplate = `
+utilities.lazy_load_all(
+	%s,
+	%s,
+);`
+	return fmt.Sprintf(srcTemplate, target, exp.joinMods())
+}
+
+// WrtieSrc writes the generated source code to the buffer.
+// Here, target is the name of the exported variable which
+// will contain the lazy-loaded modules.
+func (exp submoduleExportList) WriteSrc(w io.Writer, target string) {
+	for _, submod := range exp {
+		submod.WriteSrc(w)
 	}
-	return strings.Join(asStrings, ", ")
+	fmt.Fprintf(w, "%s\n", exp.genLazyLoad(target))
 }
-
-func (exp submoduleExportList) asTypeDecl() string {
-	var template = "{\n  %v\n  }"
-	return fmt.Sprintf(template, exp.objectFields)
-}
-
-// e.g.
-//  const exports: {
-//    foo: fooModuleType,
-//    bar: barModuleType
-//  } = {};
-func (exp submoduleExportList) generateExportDecl() string {
-	return fmt.Sprintf("const exports: %v = {}", exp.asTypeDecl())
-}
-*/
