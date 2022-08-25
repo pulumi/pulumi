@@ -31,6 +31,9 @@
 - [sdk/go] Improve error messages for `StackReference`s
   [#10477](https://github.com/pulumi/pulumi/pull/10477)
 
+- [policy] `pulumi policy publish` now takes into account `.gitignore` files higher in the file tree.
+  [#10493](https://github.com/pulumi/pulumi/pull/10493)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
