@@ -16,7 +16,6 @@ package apitype
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -97,8 +96,8 @@ type StartUpdateResponse struct {
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
 
-	// TokenExpiration is the point in time by which the token will expire.
-	TokenExpiration *time.Time `json:"tokenExpiration,omitempty"`
+	// TokenExpiration is a UNIX timestamp by which the token will expire.
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -191,7 +190,7 @@ type RenewUpdateLeaseResponse struct {
 	Token string `json:"token"`
 
 	// TokenExpiration is the point in time by which the token will expire.
-	TokenExpiration *time.Time `json:"tokenExpiration,omitempty"`
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 const (
