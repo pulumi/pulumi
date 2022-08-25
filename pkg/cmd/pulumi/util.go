@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -109,7 +108,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
-func currentBackend(opts display.Options) (backend.Backend, error) {
+func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
 	}
@@ -122,7 +121,7 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
+	return httpstate.Login(ctx, cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -144,7 +143,8 @@ func commandContext() context.Context {
 	return ctx
 }
 
-func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
+func createSecretsManager(
+	ctx context.Context, stack backend.Stack, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -152,52 +152,20 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
-	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
-		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = passphrase.Type
-	}
-
-	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(commandContext(), b)
-		if err != nil {
-			return err
-		}
-		if stack == nil {
-			// This means this is the first time we are initiating a stack
-			// there is no way a stack will exist here so we need to just return nil
-			// this will mean the "old" default behaviour will work for us
-			return nil
-		}
-		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
-			return serviceSecretsErr
-		}
+	if isDefaultSecretsProvider {
+		_, err := stack.DefaultSecretManager(stackConfigFile)
+		return err
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), stackConfigFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
-	} else if !isDefaultSecretsProvider {
+	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-
-		// Azure KeyVault never used to require an algorithm and there's no real reason to require it,
-		// but if someone specifies one, don't clobber it.
-		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
-			parsed, err := url.Parse(secretsProvider)
-			if err != nil {
-				return fmt.Errorf("failed to parse secrets provider URL: %w", err)
-			}
-
-			if parsed.Query().Get("algorithm") == "" {
-				parsed.Query().Set("algorithm", "RSA-OAEP-256")
-				secretsProvider = parsed.String()
-			}
-		}
-
-		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), stackConfigFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
@@ -206,11 +174,11 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(
+func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	stack, err := b.CreateStack(ctx, stackRef, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -222,7 +190,7 @@ func createStack(
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(b, stackRef, secretsProvider,
+	if err := createSecretsManager(ctx, stack, secretsProvider,
 		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}
@@ -239,13 +207,13 @@ func createStack(
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(
+func requireStack(ctx context.Context,
 	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew, opts, setCurrent)
+		return requireCurrentStack(ctx, offerNew, opts, setCurrent)
 	}
 
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +223,7 @@ func requireStack(
 		return nil, err
 	}
 
-	stack, err := b.GetStack(commandContext(), stackRef)
+	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -273,19 +241,21 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(
+	ctx context.Context, offerNew bool,
+	opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(commandContext(), b)
+	stack, err := state.CurrentStack(ctx, b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -293,14 +263,13 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew, opts, setCurrent)
+	return chooseStack(ctx, b, offerNew, opts, setCurrent)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(
+func chooseStack(ctx context.Context,
 	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
-	ctx := commandContext()
 
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
@@ -402,7 +371,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -468,6 +437,22 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
+	proj, path, err := readProjectWithPath()
+	if err != nil {
+		return nil, "", err
+	}
+	// Handle failure to find current project.
+	if path == "" {
+		return proj, "", nil
+	}
+
+	return proj, filepath.Dir(path), nil
+}
+
+// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to the project
+// file, which will be used as the root of the project's Pulumi program.
+func readProjectWithPath() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
@@ -486,7 +471,7 @@ func readProject() (*workspace.Project, string, error) {
 		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
@@ -878,6 +863,7 @@ func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets
 		return err
 	}
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "    ")
 	return encoder.Encode(deploymentPlan)
 }

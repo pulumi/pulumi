@@ -5,7 +5,7 @@ on:
     inputs:
       go-version:
         description: 'Version of the Go toolchain for the build'
-        default: '1.17.x'
+        default: '1.19.x'
         required: false
         type: string
       python-version:
@@ -32,6 +32,11 @@ on:
         default: false
         required: false
         type: boolean
+      macos-build-platform:
+        description: 'Platform to use when building macOS binaries'
+        default: macos-latest
+        required: false
+        type: string
     secrets: {}
 
 env:
@@ -43,11 +48,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: macos-latest
+          - platform: ${{ inputs.macos-build-platform }}
             os: darwin
             arch: amd64
             artifactName: pulumi-macOS-X64
-          - platform: macos-latest
+          - platform: ${{ inputs.macos-build-platform }}
             os: darwin
             arch: arm64
             artifactName: pulumi-macOS-ARM64
@@ -174,8 +179,9 @@ jobs:
       - name: Upload pulumi.whl
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi.whl
-            path: sdk/python/lib/dist/*.whl
+          name: pulumi.whl
+          path: sdk/python/lib/dist/*.whl
+          retention-days: 2
 
   build_node_sdk:
     name: Build Pulumi Node SDK tarball
@@ -226,8 +232,9 @@ jobs:
       - name: Upload pulumi-node-sdk.tgz
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-node-sdk.tgz
-            path: sdk/nodejs/bin/*.tgz
+          name: pulumi-node-sdk.tgz
+          path: sdk/nodejs/bin/*.tgz
+          retention-days: 2
 
   build_dotnet_sdk:
     name: Build Pulumi .NET SDK NuGet packages
@@ -270,5 +277,6 @@ jobs:
       - name: Upload the NuGet packages
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-nuget-packages
-            path: sdk/dotnet/nupkgs/*.nupkg
+          name: pulumi-nuget-packages
+          path: sdk/dotnet/nupkgs/*.nupkg
+          retention-days: 2

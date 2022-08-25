@@ -15,17 +15,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -37,24 +32,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/python"
-)
-
-const (
-	langPython = "python"
-	langNodejs = "nodejs"
-	langDotnet = "dotnet"
-	langGo     = "go"
-	langJava   = "java"
-	langYAML   = "yaml"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -78,7 +63,7 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				ctx := context.Background()
+				ctx := commandContext()
 				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
 				if jsonOut {
 					return printJSON(summary)
@@ -102,16 +87,16 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins       []pluginAbout             `json:"plugins"`
-	Host          *hostAbout                `json:"host"`
-	Backend       *backendAbout             `json:"backend"`
-	CurrentStack  *currentStackAbout        `json:"currentStack"`
-	CLI           *cliAbout                 `json:"cliAbout"`
-	Runtime       *projectRuntimeAbout      `json:"runtime"`
-	Dependencies  []programDependencieAbout `json:"dependencies"`
-	ErrorMessages []string                  `json:"errors"`
-	Errors        []error                   `json:"-"`
-	LogMessage    string                    `json:"-"`
+	Plugins       []pluginAbout            `json:"plugins"`
+	Host          *hostAbout               `json:"host"`
+	Backend       *backendAbout            `json:"backend"`
+	CurrentStack  *currentStackAbout       `json:"currentStack"`
+	CLI           *cliAbout                `json:"cliAbout"`
+	Runtime       *projectRuntimeAbout     `json:"runtime"`
+	Dependencies  []programDependencyAbout `json:"dependencies"`
+	ErrorMessages []string                 `json:"errors"`
+	Errors        []error                  `json:"-"`
+	LogMessage    string                   `json:"-"`
 }
 
 func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
@@ -147,26 +132,54 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	if proj, pwd, err = readProject(); err != nil {
 		addError(err, "Failed to read project")
 	} else {
-		var runtime projectRuntimeAbout
-		if runtime, err = getProjectRuntimeAbout(ctx, proj); err != nil {
-			addError(err, "Failed to get information about the project runtime")
+		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
+		pwd, program, pluginContext, err := engine.ProjectInfoContext(
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		if err != nil {
+			addError(err, "Failed to create plugin context")
 		} else {
-			result.Runtime = &runtime
-		}
-		if deps, err := getProgramDependenciesAbout(ctx, proj, pwd, transitiveDependencies); err != nil {
-			addError(err, "Failed to get information about the Pulumi program's plugins")
-		} else {
-			result.Dependencies = deps
+			defer pluginContext.Close()
+
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
+			if err != nil {
+				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
+			} else {
+				aboutResponse, err := lang.About()
+				if err != nil {
+					addError(err, "Failed to get information about the project runtime")
+				} else {
+					result.Runtime = &projectRuntimeAbout{
+						other:      aboutResponse.Metadata,
+						Language:   proj.Runtime.Name(),
+						Executable: aboutResponse.Executable,
+						Version:    aboutResponse.Version,
+					}
+				}
+
+				progInfo := plugin.ProgInfo{Proj: proj, Pwd: pwd, Program: program}
+				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
+				if err != nil {
+					addError(err, "Failed to get information about the Pulumi program's dependencies")
+				} else {
+					result.Dependencies = make([]programDependencyAbout, len(deps))
+					for i, dep := range deps {
+						result.Dependencies[i] = programDependencyAbout{
+							Name:    dep.Name,
+							Version: dep.Version.String(),
+						}
+					}
+				}
+			}
 		}
 	}
 
 	var backend backend.Backend
-	backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+	backend, err = currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -330,19 +343,18 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStackAbout, error) {
-	context := commandContext()
+func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
 	var stack backend.Stack
 	var err error
 	if selectedStack == "" {
-		stack, err = state.CurrentStack(context, b)
+		stack, err = state.CurrentStack(ctx, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
 		if err != nil {
 			return currentStackAbout{}, err
 		}
-		stack, err = b.GetStack(context, ref)
+		stack, err = b.GetStack(ctx, ref)
 	}
 	if err != nil {
 		return currentStackAbout{}, err
@@ -353,7 +365,7 @@ func getCurrentStackAbout(b backend.Backend, selectedStack string) (currentStack
 
 	name := stack.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = stack.Snapshot(context)
+	snapshot, err = stack.Snapshot(ctx)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
@@ -427,401 +439,12 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 	return rows
 }
 
-type programDependencieAbout struct {
+type programDependencyAbout struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
 
-type goModule struct {
-	Path     string
-	Version  string
-	Time     string
-	Indirect bool
-	Dir      string
-	GoMod    string
-	Main     bool
-}
-
-func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error) {
-	// go list -m ...
-	//
-	//Go has a --json flag, but it doesn't emit a single json object (which
-	//makes it invalid json).
-	ex, err := executable.FindExecutable("go")
-	if err != nil {
-		return nil, err
-	}
-	if err := goversion.CheckMinimumGoVersion(ex); err != nil {
-		return nil, err
-	}
-	cmdArgs := []string{"list", "--json", "-m", "..."}
-	cmd := exec.Command(ex, cmdArgs...)
-	var out []byte
-	if out, err = cmd.Output(); err != nil {
-		return nil, fmt.Errorf("Failed to get modules: %w", err)
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(out))
-	parsed := []goModule{}
-	for {
-		var m goModule
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("Failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
-		}
-		parsed = append(parsed, m)
-
-	}
-
-	result := []programDependencieAbout{}
-	for _, d := range parsed {
-		if (!d.Indirect || transitive) && !d.Main {
-			datum := programDependencieAbout{
-				Name:    d.Path,
-				Version: d.Version,
-			}
-			result = append(result, datum)
-		}
-	}
-	return result, nil
-}
-
-// Calls a python command as pulumi would. This means we need to accommodate for
-// a virtual environment if it exists.
-func callPythonCommand(ctx context.Context, proj *workspace.Project, root string, args ...string) (string, error) {
-	if proj == nil {
-		return "", errors.New("Project must not be nil")
-	}
-	options := proj.Runtime.Options()
-	if options == nil {
-		return callPythonCommandNoEnvironment(ctx, args...)
-	}
-	virtualEnv, exists := options["virtualenv"]
-	if !exists {
-		return callPythonCommandNoEnvironment(ctx, args...)
-	}
-	virtualEnvPath := virtualEnv.(string)
-	// We now know that a virtual environment exists.
-	if virtualEnv != "" && !filepath.IsAbs(virtualEnvPath) {
-		virtualEnvPath = filepath.Join(root, virtualEnvPath)
-	}
-	cmd := python.VirtualEnvCommand(virtualEnvPath, "python", args...)
-	result, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(result), nil
-}
-
-// Call a python command in a runtime agnostic way. Call python from the path.
-// Do not use a virtual environment.
-func callPythonCommandNoEnvironment(ctx context.Context, args ...string) (string, error) {
-	cmd, err := python.Command(ctx, args...)
-	if err != nil {
-		return "", err
-	}
-
-	var result []byte
-	if result, err = cmd.Output(); err != nil {
-		return "", err
-	}
-	return string(result), nil
-}
-
-func getPythonProgramDependencies(ctx context.Context, proj *workspace.Project, rootDir string,
-	transitive bool) ([]programDependencieAbout, error) {
-	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
-	if !transitive {
-		cmdArgs = append(cmdArgs, "--not-required")
-
-	}
-	out, err := callPythonCommand(ctx, proj, rootDir, cmdArgs...)
-	if err != nil {
-		return nil, err
-	}
-	var result []programDependencieAbout
-	err = json.Unmarshal([]byte(out), &result)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
-	}
-
-	return result, nil
-}
-
-func getDotNetProgramDependencies(proj *workspace.Project, transitive bool) ([]programDependencieAbout, error) {
-	// dotnet list package
-
-	var err error
-	options := proj.Runtime.Options()
-	if options != nil {
-		if _, exists := options["binary"]; exists {
-			return nil, errors.New("Could not get dependencies because pulumi specifies a binary")
-		}
-	}
-	var ex string
-	var out []byte
-	ex, err = executable.FindExecutable("dotnet")
-	if err != nil {
-		return nil, err
-	}
-	cmdArgs := []string{"list", "package"}
-	if transitive {
-		cmdArgs = append(cmdArgs, "--include-transitive")
-	}
-	cmd := exec.Command(ex, cmdArgs...)
-	if out, err = cmd.Output(); err != nil {
-		return nil, fmt.Errorf("Failed to call \"%s\": %w", ex, err)
-	}
-	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
-	var packages []programDependencieAbout
-
-	for _, p := range lines {
-		p := strings.TrimSpace(p)
-		if strings.HasPrefix(p, ">") {
-			p = strings.TrimPrefix(p, "> ")
-			segments := strings.Split(p, " ")
-			var nameRequiredVersion []string
-			for _, s := range segments {
-				if s != "" {
-					nameRequiredVersion = append(nameRequiredVersion, s)
-				}
-			}
-			var version int
-			if len(nameRequiredVersion) == 3 {
-				// Top level package => name required version
-				version = 2
-			} else if len(nameRequiredVersion) == 2 {
-				// Transitive package => name version
-				version = 1
-			} else {
-				return nil, fmt.Errorf("Failed to parse \"%s\"", p)
-			}
-			packages = append(packages, programDependencieAbout{
-				Name:    nameRequiredVersion[0],
-				Version: nameRequiredVersion[version],
-			})
-		}
-	}
-	return packages, nil
-}
-
-// The shape of a `yarn list --json`'s output.
-type yarnLock struct {
-	Type string       `json:"type"`
-	Data yarnLockData `json:"data"`
-}
-
-type yarnLockData struct {
-	Type  string         `json:"type"`
-	Trees []yarnLockTree `json:"trees"`
-}
-
-type yarnLockTree struct {
-	Name     string         `json:"name"`
-	Children []yarnLockTree `json:"children"`
-}
-
-func parseYarnLockFile(path string) ([]programDependencieAbout, error) {
-	ex, err := executable.FindExecutable("yarn")
-	if err != nil {
-		return nil, fmt.Errorf("Found %s but no yarn executable: %w", path, err)
-	}
-	cmdArgs := []string{"list", "--json"}
-	cmd := exec.Command(ex, cmdArgs...)
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
-	}
-
-	var lock yarnLock
-	if err = json.Unmarshal(out, &lock); err != nil {
-		return nil, fmt.Errorf("Failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
-	}
-	leafs := lock.Data.Trees
-
-	result := make([]programDependencieAbout, len(leafs))
-
-	// Has the form name@version
-	splitName := func(index int, nameVersion string) (string, string, error) {
-		if nameVersion == "" {
-			return "", "", fmt.Errorf("Expected \"name\" in dependency %d", index)
-		}
-		split := strings.LastIndex(nameVersion, "@")
-		if split == -1 {
-			return "", "", fmt.Errorf("Failed to parse name and version from %s", nameVersion)
-		}
-		return nameVersion[:split], nameVersion[split+1:], nil
-	}
-
-	for i, v := range leafs {
-		name, version, err := splitName(i, v.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		result[i] = programDependencieAbout{
-			Name:    name,
-			Version: version,
-		}
-	}
-	return result, nil
-}
-
-// Describes the shape of `npm ls --json --depth=0`'s output.
-type npmFile struct {
-	Name            string                `json:"name"`
-	LockFileVersion int                   `json:"lockfileVersion"`
-	Requires        bool                  `json:"requires"`
-	Dependencies    map[string]npmPackage `json:"dependencies"`
-}
-
-// A package in npmFile.
-type npmPackage struct {
-	Version  string `json:"version"`
-	Resolved string `json:"resolved"`
-}
-
-func parseNpmLockFile(path string) ([]programDependencieAbout, error) {
-	ex, err := executable.FindExecutable("npm")
-	if err != nil {
-		return nil, fmt.Errorf("Found %s but not npm: %w", path, err)
-	}
-	cmdArgs := []string{"ls", "--json", "--depth=0"}
-	cmd := exec.Command(ex, cmdArgs...)
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf(`Failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
-	}
-	file := npmFile{}
-	if err = json.Unmarshal(out, &file); err != nil {
-		return nil, fmt.Errorf(`Failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
-	}
-	result := make([]programDependencieAbout, len(file.Dependencies))
-	var i int
-	for k, v := range file.Dependencies {
-		result[i].Name = k
-		result[i].Version = v.Version
-		i++
-	}
-	return result, nil
-}
-
-// The shape of package.json
-type packageJSON struct {
-	Name            string            `json:"name"`
-	Main            string            `json:"main"`
-	Dependencies    map[string]string `json:"dependencies"`
-	DevDependencies map[string]string `json:"devDependencies"`
-}
-
-// Intersect a list of packages with the contents of `package.json`. Returns
-// only packages that appear in both sets. `path` is used only for error handling.
-func crossCheckPackageJSONFile(path string, file []byte,
-	packages []programDependencieAbout) ([]programDependencieAbout, error) {
-
-	var body packageJSON
-	if err := json.Unmarshal(file, &body); err != nil {
-		return nil, fmt.Errorf("Could not parse %s: %w", path, err)
-	}
-	dependencies := make(map[string]string)
-	for k, v := range body.Dependencies {
-		dependencies[k] = v
-	}
-	for k, v := range body.DevDependencies {
-		dependencies[k] = v
-	}
-
-	// There should be 1 (& only 1) instantiated dependency for each
-	// dependency in package.json. We do this because we want to get the
-	// actual version (not the range) that exists in lock files.
-	result := make([]programDependencieAbout, len(dependencies))
-	i := 0
-	for _, v := range packages {
-		if _, exists := dependencies[v.Name]; exists {
-			result[i] = v
-			// Some direct dependencies are also transitive dependencies. We
-			// only want to grab them once.
-			delete(dependencies, v.Name)
-			i++
-		}
-	}
-	return result, nil
-}
-
-// We get the node dependencies. This requires either a yarn.lock file and the
-// yarn executable, a package-lock.json file and the npm executable. If
-// transitive is false, we also need the package.json file.
-//
-// If we find a yarn.lock file, we assume that yarn is used.
-// Only then do we look for a package-lock.json file.
-func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDependencieAbout, error) {
-	// Neither "yarn list" or "npm ls" can describe what packages are required
-	//
-	// (direct dependencies). Only what packages they have installed (transitive
-	// dependencies). This means that to accurately report only direct
-	// dependencies, we need to also parse "package.json" and intersect it with
-	// reported dependencies.
-	var err error
-	yarnFile := filepath.Join(rootDir, "yarn.lock")
-	npmFile := filepath.Join(rootDir, "package-lock.json")
-	packageFile := filepath.Join(rootDir, "package.json")
-	var result []programDependencieAbout
-
-	if _, err = os.Stat(yarnFile); err == nil {
-		result, err = parseYarnLockFile(yarnFile)
-		if err != nil {
-			return nil, err
-		}
-	} else if _, err = os.Stat(npmFile); err == nil {
-		result, err = parseNpmLockFile(npmFile)
-		if err != nil {
-			return nil, err
-		}
-	} else if os.IsNotExist(err) {
-		return nil, fmt.Errorf("Could not find either %s or %s", yarnFile, npmFile)
-	} else {
-		return nil, fmt.Errorf("Could not get node dependency data: %w", err)
-	}
-	if !transitive {
-		file, err := ioutil.ReadFile(packageFile)
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("Could not find %s. "+
-				"Please include this in your report and run "+
-				`pulumi about --transitive" to get a list of used packages`,
-				packageFile)
-		} else if err != nil {
-			return nil, fmt.Errorf("Could not read %s: %w", packageFile, err)
-		}
-		return crossCheckPackageJSONFile(packageFile, file, result)
-	}
-	return result, nil
-}
-
-func getProgramDependenciesAbout(ctx context.Context, proj *workspace.Project, root string,
-	transitive bool) ([]programDependencieAbout, error) {
-	language := proj.Runtime.Name()
-	switch language {
-	case langNodejs:
-		return getNodeProgramDependencies(root, transitive)
-	case langPython:
-		return getPythonProgramDependencies(ctx, proj, root, transitive)
-	case langGo:
-		return getGoProgramDependencies(transitive)
-	case langDotnet:
-		return getDotNetProgramDependencies(proj, transitive)
-	case langJava:
-		// TODO: Implement dependency fetcher for Java
-		return nil, nil
-	case langYAML:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("Unknown Language: %s", language)
-	}
-}
-
-func formatProgramDependenciesAbout(deps []programDependencieAbout) string {
+func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
 	if len(deps) == 0 {
 		return "No dependencies found\n"
 	}
@@ -903,105 +526,6 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 	assignIf("executable", runtime.Executable)
 	assignIf("version", runtime.Version)
 	return json.Marshal(m)
-}
-
-func getProjectRuntimeAbout(ctx context.Context, proj *workspace.Project) (projectRuntimeAbout, error) {
-	var ex, version string
-	var err error
-	var out []byte
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have
-	// to hard code here.
-	language := proj.Runtime.Name()
-	errCouldNotGet := func(err error) (projectRuntimeAbout, error) {
-		return projectRuntimeAbout{}, fmt.Errorf("failed to get %s version: %w", language, err)
-	}
-
-	getResponse := func(execString string, args ...string) (string, error) {
-		ex, err = executable.FindExecutable(execString)
-		if err != nil {
-			return "", fmt.Errorf("could not find executable '%s': %w", execString, err)
-		}
-		cmd := exec.Command(ex, args...)
-		if out, err = cmd.Output(); err != nil {
-			cmd := ex
-			if len(args) != 0 {
-				cmd += " " + strings.Join(args, " ")
-			}
-			return "", fmt.Errorf("failed to execute '%s'", cmd)
-		}
-		return strings.TrimSpace(string(out)), nil
-	}
-
-	other := map[string]string{}
-	switch language {
-	case langNodejs:
-		node, err := getResponse("node", "--version")
-		if err != nil {
-			return projectRuntimeAbout{}, err
-		}
-		version = node
-	case langPython:
-		var cmd *exec.Cmd
-		// if CommandPath has an error, then so will Command. The error can
-		// therefore be ignored as redundant.
-		ex, _, _ = python.CommandPath()
-		cmd, err = python.Command(ctx, "--version")
-		if err != nil {
-			return projectRuntimeAbout{}, err
-		}
-		if out, err = cmd.Output(); err != nil {
-			return errCouldNotGet(err)
-		}
-		version = strings.TrimPrefix(string(out), "Python ")
-	case langGo:
-		goVersion, err := getResponse("go", "version")
-		if err != nil {
-			return projectRuntimeAbout{}, err
-		}
-
-		version = strings.TrimPrefix(goVersion, "go version go")
-	case langDotnet:
-		dotnet, err := getResponse("dotnet", "--version")
-		if err != nil {
-			return projectRuntimeAbout{}, err
-		}
-		version = dotnet
-	case langYAML:
-		return projectRuntimeAbout{Language: language}, nil
-	case langJava:
-
-		java, err := getResponse("java", "--version")
-		if err != nil {
-			return projectRuntimeAbout{}, err
-		}
-		other["java"] = strings.Split(java, "\n")[0]
-		javac, err := getResponse("javac", "--version")
-		if err != nil {
-			javac = "unknown"
-		}
-		other["javac"] = strings.TrimPrefix(javac, "javac ")
-		if maven, err := getResponse("mvn", "--version"); err == nil {
-			// We add this only if there are no errors
-			other["maven"] = strings.Split(maven, "\n")[0]
-		}
-		if gradle, err := getResponse("gradle", "--version"); err == nil {
-			for _, line := range strings.Split(gradle, "\n") {
-				if strings.HasPrefix(line, "Gradle") {
-					other["gradle"] = strings.TrimPrefix(line, "Gradle ")
-					break
-				}
-			}
-		}
-	default:
-		return projectRuntimeAbout{}, fmt.Errorf("Unknown Language: %s: %w", language, err)
-	}
-	version = strings.TrimSpace(version)
-	return projectRuntimeAbout{
-		other:      other,
-		Language:   language,
-		Executable: ex,
-		Version:    version,
-	}, nil
 }
 
 func (runtime projectRuntimeAbout) String() string {

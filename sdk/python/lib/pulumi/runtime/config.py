@@ -16,22 +16,23 @@
 Runtime support for the Pulumi configuration system.  Please use pulumi.Config instead.
 """
 from typing import Dict, Any, List, Optional, Set
+from contextvars import ContextVar
 
 import json
 import os
 
 # default to an empty map for config.
-CONFIG: Dict[str, Any] = {}
+CONFIG: ContextVar[Dict[str, Any]] = ContextVar("global_config", default={})
 
 # default to an empty set for config secret keys.
-_SECRET_KEYS: Set[str] = set()
+_SECRET_KEYS: ContextVar[Set[str]] = ContextVar("global_secret_keys", default=set())
 
 
 def set_config(k: str, v: Any):
     """
     Sets a configuration variable.  Meant for internal use only.
     """
-    CONFIG[k] = v
+    CONFIG.get()[k] = v
 
 
 def set_all_config(
@@ -43,12 +44,10 @@ def set_all_config(
     new_config = {}
     for key, value in config.items():
         new_config[key] = value
-    global CONFIG
-    CONFIG = new_config
+    CONFIG.set(new_config)
 
     if secret_keys is not None:
-        global _SECRET_KEYS
-        _SECRET_KEYS = set(secret_keys)
+        _SECRET_KEYS.set(set(secret_keys))
 
 
 def get_config_env() -> Dict[str, Any]:
@@ -92,8 +91,8 @@ def get_config(k: str) -> Any:
     Returns a configuration variable's value or None if it is unset.
     """
     # If the config has been set explicitly, use it.
-    if k in CONFIG:
-        return CONFIG[k]
+    if k in CONFIG.get():
+        return CONFIG.get()[k]
 
     # If there is a specific PULUMI_CONFIG_<k> environment variable, use it.
     env_key = get_config_env_key(k)
@@ -112,4 +111,4 @@ def is_config_secret(k: str) -> bool:
     """
     Returns True if the configuration variable is a secret.
     """
-    return k in _SECRET_KEYS
+    return k in _SECRET_KEYS.get()

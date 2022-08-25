@@ -67,7 +67,6 @@ const nodeEnvKeys = {
 };
 
 const pulumiEnvKeys = {
-    testMode: "PULUMI_TEST_MODE",
     legacyApply: "PULUMI_ENABLE_LEGACY_APPLY",
 };
 
@@ -126,33 +125,8 @@ export function _reset() {
 }
 
 /** @internal Used only for testing purposes */
-export function _setTestModeEnabled(val: boolean) {
-    process.env[pulumiEnvKeys.testMode] = val.toString();
-}
-
-/** @internal Used only for testing purposes */
 export function _setFeatureSupport(key: string, val: boolean) {
     featureSupport[key] = val;
-}
-
-/**
- * Returns true if test mode is enabled (PULUMI_TEST_MODE).
- *
- * NB: this test mode has nothing to do with preview/dryRun modality, and it is not automatically
- * enabled by calling `setMocks`. It is a vestigial mechanism related to testing the runtime itself,
- * and is not relevant to writing or running unit tests for a Pulumi project.
- */
-export function isTestModeEnabled(): boolean {
-    return options().testModeEnabled === true;
-}
-
-/**
- * Checks that test mode is enabled and, if not, throws an error.
- */
-function requireTestModeEnabled(): void {
-    if (!isTestModeEnabled()) {
-        throw new Error("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
-    }
 }
 
 /** @internal Used only for testing purposes. */
@@ -190,10 +164,8 @@ export function getProject(): string {
         return project;
     }
 
-    // If the project is missing, specialize the error. First, if test mode is disabled:
-    requireTestModeEnabled();
-
-    // And now an error if test mode is enabled, instructing how to manually configure the project:
+    // If the project is missing, specialize the error.
+    // Throw an error if test mode is enabled, instructing how to manually configure the project:
     throw new Error("Missing project name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 
@@ -211,11 +183,9 @@ export function getStack(): string {
         return stack;
     }
 
-    // If the stack is missing, specialize the error. First, if test mode is disabled:
-    requireTestModeEnabled();
-
-    // And now an error if test mode is enabled, instructing how to manually configure the stack:
-    throw new Error("Missing stack name; for test mode, please set PULUMI_NODEJS_STACK");
+    // If the stack is missing, specialize the error.
+    // Throw an error if test mode is enabled, instructing how to manually configure the stack:
+    throw new Error("Missing stack name; for test mode, please call `pulumi.runtime.setMocks` and provide a `stack` argument");
 }
 
 /** @internal Used only for testing purposes. */
@@ -251,9 +221,6 @@ export function getMonitor(): Object | undefined {
                 grpc.credentials.createInsecure(),
                 grpcChannelOptions,
             );
-        } else {
-            // If test mode isn't enabled, we can't run the program without an engine.
-            requireTestModeEnabled();
         }
     }
     return monitor;
@@ -360,7 +327,6 @@ function options(): Options {
         syncDir: process.env[nodeEnvKeys.syncDir],
         cacheDynamicProviders: process.env[nodeEnvKeys.cacheDynamicProviders] !== "false", // true by default
         // pulumi specific
-        testModeEnabled: (process.env[pulumiEnvKeys.testMode] === "true"),
         legacyApply: (process.env[pulumiEnvKeys.legacyApply] === "true"),
     };
 }
@@ -470,9 +436,7 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
 export async function monitorSupportsFeature(feature: string): Promise<boolean> {
     const monitorRef: any = getMonitor();
     if (!monitorRef) {
-        // If there's no monitor and test mode is disabled, just return false. Otherwise, return whatever is present in
-        // the featureSupport map.
-        return isTestModeEnabled() && featureSupport[feature];
+        return featureSupport[feature];
     }
 
     if (featureSupport[feature] === undefined) {

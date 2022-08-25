@@ -308,6 +308,14 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+
+	// Array of dependencies which come from local packages.
+	LocalDependencies []LocalDependency
+}
+
+type LocalDependency struct {
+	Package string
+	Path    string
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1889,6 +1897,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	defer contract.IgnoreClose(f)
 
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 
 	return fmt.Errorf("writing package.json: %w", encoder.Encode(metadata))

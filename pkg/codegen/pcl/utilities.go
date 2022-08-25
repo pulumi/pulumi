@@ -155,3 +155,10 @@ func MapProvidersAsResources(p *Program) {
 		nodes = append(nodes, n)
 	}
 }
+
+func FixupPulumiPackageTokens(r *Resource) {
+	pkg, mod, name, _ := r.DecomposeToken()
+	if pkg == "pulumi" && mod == "pulumi" {
+		r.Token = "pulumi::" + name
+	}
+}

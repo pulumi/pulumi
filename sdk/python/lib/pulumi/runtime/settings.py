@@ -15,13 +15,17 @@
 """
 Runtime settings and configuration.
 """
+from __future__ import annotations
+
 import asyncio
+from contextvars import ContextVar
 import os
 from typing import Optional, Union, Any, TYPE_CHECKING
 
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
+from .._utils import contextproperty
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -36,29 +40,18 @@ excessive_debug_output = False
 
 
 class Settings:
-    monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
-    engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
-    project: Optional[str]
-    stack: Optional[str]
-    parallel: Optional[int]
-    dry_run: Optional[bool]
-    test_mode_enabled: Optional[bool]
-    legacy_apply_enabled: Optional[bool]
-    feature_support: dict
-
     """
     A bag of properties for configuring the Pulumi Python language runtime.
     """
 
     def __init__(
         self,
+        project: Optional[str],
+        stack: Optional[str],
         monitor: Optional[Union[str, Any]] = None,
         engine: Optional[Union[str, Any]] = None,
-        project: Optional[str] = None,
-        stack: Optional[str] = None,
         parallel: Optional[int] = None,
         dry_run: Optional[bool] = None,
-        test_mode_enabled: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
     ):
         # Save the metadata information.
@@ -66,12 +59,8 @@ class Settings:
         self.stack = stack
         self.parallel = parallel
         self.dry_run = dry_run
-        self.test_mode_enabled = test_mode_enabled
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
-
-        if self.test_mode_enabled is None:
-            self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -98,9 +87,44 @@ class Settings:
         else:
             self.engine = None
 
+    @contextproperty
+    def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]:
+        ...
+
+    @contextproperty
+    def engine(self) -> Optional[engine_pb2_grpc.EngineStub]:
+        ...
+
+    @contextproperty
+    def project(self) -> Optional[str]:
+        ...
+
+    @contextproperty
+    def stack(self) -> Optional[str]:
+        ...
+
+    @contextproperty
+    def parallel(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def dry_run(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def legacy_apply_enabled(self) -> Optional[bool]:
+        ...
+
+    @contextproperty
+    def feature_support(self) -> Optional[dict]:
+        ...
+
+    def __repr__(self):
+        return f"<class Settings[engine={self.engine.__repr__()} monitor={self.monitor.__repr__()} project={self.project.__repr__()} stack={self.stack.__repr__()}>"
+
 
 # default to "empty" settings.
-SETTINGS = Settings()
+SETTINGS = Settings(stack="stack", project="project")
 
 
 def configure(settings: Settings):
@@ -117,36 +141,10 @@ def is_dry_run() -> bool:
     """
     Returns whether or not we are currently doing a preview.
 
-    When writing unit tests, you can set this flag via `set_mocks` by supplying a value
+    When writing unit tests, you can set this flag via `pulumi.runtime.set_mocks` by supplying a value
     for the argument `preview`.
     """
     return bool(SETTINGS.dry_run)
-
-
-def is_test_mode_enabled() -> bool:
-    """
-    Returns true if test mode is enabled (PULUMI_TEST_MODE).
-
-    NB: this test mode has nothing to do with preview/dry_run modality, and it is not
-    automatically enabled by calling `set_mocks`. It is a vestigial mechanism related to
-    testing the runtime itself, and is not relevant to writing or running unit tests for
-    a Pulumi project.
-    """
-    return bool(SETTINGS.test_mode_enabled)
-
-
-def _set_test_mode_enabled(v: Optional[bool]):
-    """
-    Enable or disable testing mode programmatically -- meant for testing only.
-    """
-    SETTINGS.test_mode_enabled = v
-
-
-def require_test_mode_enabled():
-    if not is_test_mode_enabled():
-        raise RunError(
-            "Program run without the Pulumi engine available; re-run using the `pulumi` CLI"
-        )
 
 
 def is_legacy_apply_enabled():
@@ -157,13 +155,7 @@ def get_project() -> str:
     """
     Returns the current project name.
     """
-    project = SETTINGS.project
-    if not project:
-        require_test_mode_enabled()
-        raise RunError(
-            "Missing project name; for test mode, please call `pulumi.runtime.set_mocks`"
-        )
-    return project
+    return SETTINGS.project
 
 
 def _set_project(v: Optional[str]):
@@ -177,13 +169,7 @@ def get_stack() -> str:
     """
     Returns the current stack name.
     """
-    stack = SETTINGS.stack
-    if not stack:
-        require_test_mode_enabled()
-        raise RunError(
-            "Missing stack name; for test mode, please set PULUMI_NODEJS_STACK"
-        )
-    return stack
+    return SETTINGS.stack
 
 
 def _set_stack(v: Optional[str]):
@@ -197,10 +183,7 @@ def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     """
     Returns the current resource monitoring service client for RPC communications.
     """
-    monitor = SETTINGS.monitor
-    if not monitor:
-        require_test_mode_enabled()
-    return monitor
+    return SETTINGS.monitor
 
 
 def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
@@ -210,23 +193,21 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
-ROOT: Optional["Resource"] = None
+ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
 
 
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
-    global ROOT  # pylint: disable=global-variable-not-assigned
-    return ROOT
+    return ROOT.get()
 
 
 def set_root_resource(root: "Resource"):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
-    global ROOT
-    ROOT = root
+    ROOT.set(root)
 
 
 async def monitor_supports_feature(feature: str) -> bool:
@@ -298,8 +279,7 @@ def reset_options(
 ):
     """Resets globals to the values provided."""
 
-    global ROOT
-    ROOT = None
+    ROOT.set(None)
 
     configure(
         Settings(

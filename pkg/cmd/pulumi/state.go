@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -30,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
@@ -100,19 +101,11 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	cmdutil.EndKeypadTransmitMode()
 
-	_, height, err := terminal.GetSize(0)
-	if err != nil {
-		height = 15
-	}
-	if height > len(options) {
-		height = len(options)
-	}
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: height - 5,
+		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
 	}, &option, nil); err != nil {
 		return nil, errors.New("no resource selected")
 	}
@@ -121,8 +114,10 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(stackName string, showPrompt bool, urn resource.URN, operation edit.OperationFunc) result.Result {
-	return runTotalStateEdit(stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+func runStateEdit(
+	ctx context.Context, stackName string, showPrompt bool,
+	urn resource.URN, operation edit.OperationFunc) result.Result {
+	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
@@ -135,16 +130,21 @@ func runStateEdit(stackName string, showPrompt bool, urn resource.URN, operation
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	stackName string, showPrompt bool,
+	ctx context.Context, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
+	s, err := requireStack(ctx, stackName, true, opts, false /*setCurrent*/)
 	if err != nil {
 		return result.FromError(err)
 	}
-	snap, err := s.Snapshot(commandContext())
+	return totalStateEdit(ctx, s, showPrompt, opts, operation)
+}
+
+func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
+	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -192,5 +192,5 @@ func runTotalStateEdit(
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return result.WrapIfNonNil(s.ImportDeployment(commandContext(), &dep))
+	return result.WrapIfNonNil(s.ImportDeployment(ctx, &dep))
 }

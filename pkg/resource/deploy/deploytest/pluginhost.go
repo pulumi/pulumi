@@ -420,7 +420,7 @@ func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	return host.languageRuntime.GetRequiredPlugins(info)
 }
 
-func (host *pluginHost) GetProjectPlugins() []*workspace.PluginInfo {
+func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
 	return nil
 }
 

@@ -52,11 +52,12 @@ func newLogsCmd() *cobra.Command {
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -66,7 +67,7 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("getting secrets manager: %w", err)
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -97,7 +98,7 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(commandContext(), cfg, operations.LogQuery{
+				logs, err := s.GetLogs(ctx, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})
