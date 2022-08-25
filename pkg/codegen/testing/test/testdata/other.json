@@ -16,10 +16,10 @@
           "type": "number"
         }
       }
-    },
+    }, 
     "pulumi:providers:other": {
       "inputProperties": {
-        "username": {
+        "name": {
           "type": "string"
         }
       }

@@ -16,7 +16,7 @@ return await Deployment.RunAsync(() =>
 
     var Provider = new Other.Provider("Provider", new()
     {
-        Username = "foo",
+        Name = "foo",
     });
 
 });
