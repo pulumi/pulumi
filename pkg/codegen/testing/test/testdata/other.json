@@ -8,7 +8,12 @@
         "idea": {
           "type": "string"
         }
-      }
+      },
+	  "aliases": [
+		{
+			"name": "other"
+		}
+	  ]
     },
     "other:module:Object": {
       "inputProperties": {
@@ -22,7 +27,12 @@
         "name": {
           "type": "string"
         }
-      }
+      },
+	  "aliases": [
+		{
+			"name": "other"
+		}
+	  ]
     }
   },
   "language": {

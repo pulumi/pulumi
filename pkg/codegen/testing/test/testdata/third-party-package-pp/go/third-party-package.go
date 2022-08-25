@@ -19,7 +19,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err := other.NewProvider(ctx, "Provider", &other.ProviderArgs{})
+		_, err := other.NewProvider(ctx, "Provider", nil)
 		if err != nil {
 			return err
 		}
