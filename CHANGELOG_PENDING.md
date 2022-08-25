@@ -58,5 +58,8 @@
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
 
+- [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
+  [#10489](https://github.com/pulumi/pulumi/pull/10489)
+
 - [cli] Improve Windows reliability with dependency update to ssh-agent
   [#10486](https://github.com/pulumi/pulumi/pull/10486)
