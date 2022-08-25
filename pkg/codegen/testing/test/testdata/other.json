@@ -16,7 +16,14 @@
           "type": "number"
         }
       }
-    }
+    },
+	"other:module:Provider": {
+		"inputProperties": {
+			"answer": {
+				"type": "number"
+			}
+		}
+	}
   },
   "language": {
     "nodejs": {

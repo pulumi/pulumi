@@ -6,6 +6,6 @@ resource Question "other:module:Object" {
     answer = 42
 }
 
-resource Provider "pulumi:providers:Provider" {
+resource Provider "other:module:Provider" {
 	username = "foo"
 }
