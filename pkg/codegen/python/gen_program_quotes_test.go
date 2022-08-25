@@ -30,7 +30,7 @@ resource rta "aws:ec2:RouteTableAssociation" {
 	program, diags := parseAndBindProgram(t, source, "lower_property_access.pp")
 	contract.Ignore(diags)
 
-	g, err := newGenerator(program)
+	g, err := newGenerator(program, false)
 	assert.NoError(t, err)
 
 	var rta *pcl.Resource
