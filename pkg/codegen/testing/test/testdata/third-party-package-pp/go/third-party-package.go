@@ -1,7 +1,6 @@
 package main
 
 import (
-	"git.example.org/thirdparty"
 	"git.example.org/thirdparty/module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -16,6 +15,12 @@ func main() {
 		}
 		_, err = module.NewObject(ctx, "Question", &module.ObjectArgs{
 			Answer: pulumi.Float64(42),
+		})
+		if err != nil {
+			return err
+		}
+		_, err := other.NewProvider(ctx, "Provider", &other.ProviderArgs{
+			Username: pulumi.String("foo"),
 		})
 		if err != nil {
 			return err

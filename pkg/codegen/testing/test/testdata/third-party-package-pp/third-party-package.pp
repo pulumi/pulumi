@@ -5,3 +5,7 @@ resource Other "other:index:Thing" {
 resource Question "other:module:Object" {
     answer = 42
 }
+
+resource Provider "pulumi:providers:thirdpartyprovider" {
+	username: "foo"
+}
