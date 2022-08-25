@@ -283,7 +283,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
-	stackId, err := b.getCloudStackIdentifier(stackRef)
+	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -303,8 +303,8 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	return &deploy.Target{
-		Name:         tokens.Name(stackId.Stack),
-		Organization: tokens.Name(stackId.Owner),
+		Name:         tokens.Name(stackID.Stack),
+		Organization: tokens.Name(stackID.Owner),
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
