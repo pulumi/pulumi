@@ -6,10 +6,6 @@ resource Question "other:module:Object" {
     answer = 42
 }
 
-<<<<<<< Updated upstream
-resource Provider "pulumi:providers:thirdpartyprovider" {
-=======
 resource Provider "pulumi:providers:Provider" {
->>>>>>> Stashed changes
 	username: "foo"
 }
