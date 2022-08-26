@@ -415,7 +415,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	program, err = compileProgramCwd(req.GetProject())
 	if err != nil {
-		return &pulumirpc.RunResponse{Error: "error in compiling Go"}, nil
+		return nil, errors.Wrap(err, "error in compiling Go")
 	}
 	defer os.Remove(program)
 
