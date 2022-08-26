@@ -295,8 +295,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if r.Schema != nil && r.Schema.Package != nil {
 				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
-					npmToPuPkgName[pkgName] = pkg
 				}
+				npmToPuPkgName[pkgName] = pkg
 			}
 			importSet.Add(pkgName)
 		}
@@ -323,7 +323,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		var as string
 		if puPkg, ok := npmToPuPkgName[pkg]; ok {
-			as = makeValidIdentifier(path.Base(puPkg))
+			as = makeValidIdentifier(puPkg)
 		} else {
 			as = makeValidIdentifier(path.Base(pkg))
 		}
