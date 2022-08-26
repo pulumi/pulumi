@@ -1939,7 +1939,7 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		sorted := directChildren.SortedValues()
 		newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
-		printExports(sorted)
+		printExports(w, sorted)
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -2071,7 +2071,7 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 				directChildren.Add(path.Base(child))
 			}
 			sorted := directChildren.SortedValues()
-			newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
+			newSubmoduleExportList(sorted...).WriteSrc(buffer, "exports")
 			printExports(buffer, sorted)
 		}
 	}
