@@ -614,12 +614,14 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
+	originalMod := mod
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
 		mod = ""
 		typ = "Provider"
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+		originalMod = mod
 		mod = pkg
 	}
 
@@ -636,7 +638,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	modOrAlias := g.getModOrAlias(pkg, mod)
+	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
@@ -920,7 +922,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
-func (g *generator) getModOrAlias(pkg, mod string) string {
+func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
 		return mod
@@ -932,13 +934,10 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
 	if alias, ok := info.PackageImportAliases[imp]; ok {
 		return alias
-	}
-	modSplit := strings.Split(mod, "/")
-	if modSplit[0] == "" || modSplit[0] == IndexToken {
-		if info.ImportBasePath != "" {
+	} else if info.ImportBasePath != "" {
+		if originalMod == "" || originalMod == IndexToken {
 			return path.Base(info.ImportBasePath)
 		}
-		return pkg
 	}
 	return mod
 }
