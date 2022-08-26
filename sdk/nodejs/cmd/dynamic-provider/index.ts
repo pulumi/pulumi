@@ -385,7 +385,7 @@ export async function main(args: string[]) {
         construct: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
-        server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {

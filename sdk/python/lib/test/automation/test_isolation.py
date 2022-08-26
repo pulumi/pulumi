@@ -17,6 +17,7 @@
 # so that errors from the first operation do not infect the subsequent
 # operations.
 
+import asyncio
 import pytest
 import sys
 import typing
@@ -67,6 +68,25 @@ def check_isolation(minimal=False):
     assert destroy_res.summary.result == "succeeded"
 
     stack.workspace.remove_stack(stack_name)
+
+
+async def async_stack_up(stack):
+    return stack.up(on_output=ignore)
+
+
+async def async_stack_destroy(stack):
+    return stack.destroy()
+
+
+@pytest.mark.asyncio
+async def test_parallel_updates():
+    first_stack_name = f"stack-{uuid.uuid4()}"
+    second_stack_name = f"stack-{uuid.uuid4()}"
+    stacks = [automation.create_stack(stack_name, project_name='test-parallel', program=program) for stack_name in {first_stack_name, second_stack_name}]
+    stack_up_responses = await asyncio.gather(*[async_stack_up(stack) for stack in stacks])
+    assert all({stack_response.summary.result == "succeeded" for stack_response in stack_up_responses})
+    stack_destroy_responses = await asyncio.gather(*[async_stack_destroy(stack) for stack in stacks])
+    assert all({stack_response.summary.result == "succeeded" for stack_response in stack_destroy_responses})
 
 
 @pytest.mark.skipif(
