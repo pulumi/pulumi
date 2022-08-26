@@ -37,6 +37,9 @@
 - [policy] `pulumi policy publish` now takes into account `.gitignore` files higher in the file tree.
   [#10493](https://github.com/pulumi/pulumi/pull/10493)
 
+- [sdk/go] enable direct compilation via `go build`(set `PULUMI_GO_USE_RUN=true` to opt out)
+  [#10375](https://github.com/pulumi/pulumi/pull/10375)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
