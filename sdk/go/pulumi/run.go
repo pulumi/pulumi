@@ -38,23 +38,21 @@ type RunOption func(*RunInfo)
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
-	if err := RunErr(body, opts...); err != nil {
-		if err == ErrPlugins {
-			printRequiredPlugins()
-		}
-
-		// `go run` only returns 0 or 1 as error codes and prints `exit status <number>`
-		if err != nil {
-			// Log the error message
-			if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
-				err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
-				contract.IgnoreError(err)
-			}
-			os.Exit(1)
-		}
-
+	err := RunErr(body, opts...)
+	if err == nil {
 		os.Exit(0)
 	}
+	if err == ErrPlugins {
+		printRequiredPlugins()
+		os.Exit(0)
+	}
+
+	// Log the error message
+	if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
+		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+		contract.IgnoreError(err)
+	}
+	os.Exit(1)
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use

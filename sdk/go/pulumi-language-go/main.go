@@ -353,8 +353,14 @@ func execProgramCmd(cmd *exec.Cmd, env []string) error {
 		return errors.Wrapf(err, "program exited unexpectedly")
 	}
 
+	if status.ExitStatus() == 1 {
+		// Exit status 1 occurs when the Run function returns an error
+		// the error is logged and does not require an error message.
+		return nil
+	}
+
 	// If the program ran, but exited with a non-zero error code. This will happen often, since user
-	// errors will trigger this.  So, the error message should look as nice as possible.
+	// errors will trigger this. So, the error message should look as nice as possible.
 	return errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
 }
 
@@ -409,7 +415,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	program, err = compileProgramCwd(req.GetProject())
 	if err != nil {
-		return nil, errors.Wrap(err, "error in compiling Go")
+		return &pulumirpc.RunResponse{Error: "error in compiling Go"}, nil
 	}
 	defer os.Remove(program)
 
@@ -418,7 +424,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
 
-	return &pulumirpc.RunResponse{}, nil
+	return &pulumirpc.RunResponse{Bail: true}, nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
