@@ -34,6 +34,9 @@
 - [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
   [#10467](https://github.com/pulumi/pulumi/pull/10467)
 
+- [policy] `pulumi policy publish` now takes into account `.gitignore` files higher in the file tree.
+  [#10493](https://github.com/pulumi/pulumi/pull/10493)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
