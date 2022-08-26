@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const IndexToken = "index"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -510,7 +512,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	modSplit := strings.Split(mod, "/")
 	// account for mods like "eks/ClusterVpcConfig" index...
 	if len(modSplit) > 1 {
-		if modSplit[0] == "" || modSplit[0] == "index" {
+		if modSplit[0] == "" || modSplit[0] == IndexToken {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 			if info.ImportBasePath != "" {
 				imp = info.ImportBasePath
@@ -898,7 +900,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	modSplit := strings.Split(module, "/")
 	mod := modSplit[0]
 	fn := Title(member)
-	if mod == "index" && len(modSplit) >= 2 {
+	if mod == IndexToken && len(modSplit) >= 2 {
 		// e.g. "aws:index/getPartition:getPartition" where module is "index/getPartition"
 		mod = ""
 		fn = Title(modSplit[1])
@@ -932,7 +934,7 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 		return alias
 	}
 	modSplit := strings.Split(mod, "/")
-	if modSplit[0] == "" || modSplit[0] == "index" {
+	if modSplit[0] == "" || modSplit[0] == IndexToken {
 		if info.ImportBasePath != "" {
 			return path.Base(info.ImportBasePath)
 		}
