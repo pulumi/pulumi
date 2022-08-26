@@ -42,15 +42,14 @@ func Run(body RunFunc, opts ...RunOption) {
 	if err == nil {
 		printRequiredPlugins()
 		os.Exit(0)
-	}
-	if err == ErrPlugins {
+	} else if err == ErrPlugins {
 		printRequiredPlugins()
 		os.Exit(0)
 	}
 
 	// Log the error message
 	if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
-		err := ctx.Log.Error(fmt.Sprintf("program failed: \n%v", err), nil)
+		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
 		contract.IgnoreError(err)
 	}
 	os.Exit(1)
