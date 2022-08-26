@@ -28,6 +28,15 @@
 - [sdk/python] Makes global ROOT, CONFIG, _SECRET_KEYS ContextVars to not leak state between parallel inline Pulumi programs
   [#10472](https://github.com/pulumi/pulumi/pull/10472)
 
+- [sdk/go] Improve error messages for `StackReference`s
+  [#10477](https://github.com/pulumi/pulumi/pull/10477)
+  
+- [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
+  [#10467](https://github.com/pulumi/pulumi/pull/10467)
+
+- [policy] `pulumi policy publish` now takes into account `.gitignore` files higher in the file tree.
+  [#10493](https://github.com/pulumi/pulumi/pull/10493)
+
 - [sdk/go] enable direct compilation via `go build`(set `PULUMI_GO_USE_RUN=true` to opt out)
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
@@ -57,3 +66,15 @@
 - [cli] Fixes `survey.v1` panics in Terminal UI introduced in
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
+
+- [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
+  [#10489](https://github.com/pulumi/pulumi/pull/10489)
+
+- [cli] Improve Windows reliability with dependency update to ssh-agent
+  [#10486](https://github.com/pulumi/pulumi/pull/10486)
+
+- [sdk/{dotnet,nodejs,python}] Dynamic providers and automation API will not trigger a firewall
+  permission prompt, will only accept network requests via loopback address.
+  [#10498](https://github.com/pulumi/pulumi/pull/10498)
+  [#10502](https://github.com/pulumi/pulumi/pull/10502)
+  [#10503](https://github.com/pulumi/pulumi/pull/10503)

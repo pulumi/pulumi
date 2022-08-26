@@ -349,6 +349,7 @@ static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<Sy
 static Pulumi.Output.All<T>(params Pulumi.Output<T>[] outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
+static Pulumi.Output.CreateSecret<T>(Pulumi.Output<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.Format(System.FormattableString formattableString) -> Pulumi.Output<string>
