@@ -20,7 +20,7 @@
   },
   "language": {
     "nodejs": {
-      "packageName": "@third-party/other"
+      "packageName": "@third-party/pulumi-other"
     },
     "csharp": {
       "rootNamespace": "ThirdParty"
