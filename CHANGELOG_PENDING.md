@@ -78,3 +78,6 @@
   [#10498](https://github.com/pulumi/pulumi/pull/10498)
   [#10502](https://github.com/pulumi/pulumi/pull/10502)
   [#10503](https://github.com/pulumi/pulumi/pull/10503)
+
+- [cli] Fix `pulumi console` command to follow documented behavior in help message/docs.
+  [#10509](https://github.com/pulumi/pulumi/pull/10509)
