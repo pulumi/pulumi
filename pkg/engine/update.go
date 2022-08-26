@@ -208,7 +208,7 @@ func RunInstallPlugins(
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginInfo, error) {
+	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//

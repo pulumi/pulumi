@@ -40,6 +40,7 @@ type RunOption func(*RunInfo)
 func Run(body RunFunc, opts ...RunOption) {
 	err := RunErr(body, opts...)
 	if err == nil {
+		printRequiredPlugins()
 		os.Exit(0)
 	}
 	if err == ErrPlugins {
@@ -49,7 +50,7 @@ func Run(body RunFunc, opts ...RunOption) {
 
 	// Log the error message
 	if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
-		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+		err := ctx.Log.Error(fmt.Sprintf("program failed: \n%v", err), nil)
 		contract.IgnoreError(err)
 	}
 	os.Exit(1)

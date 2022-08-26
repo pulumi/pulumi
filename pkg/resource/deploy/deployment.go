@@ -197,9 +197,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
 	for _, p := range prev.Manifest.Plugins {
-		defaultProviderInfo[tokens.Package(p.Name)] = p
+		defaultProviderInfo[tokens.Package(p.Name)] = p.Spec()
 	}
 
 	// Determine the necessary set of default providers and inject references to default providers as appropriate.
