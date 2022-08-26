@@ -30,6 +30,9 @@
 
 - [sdk/go] Improve error messages for `StackReference`s
   [#10477](https://github.com/pulumi/pulumi/pull/10477)
+  
+- [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
+  [#10467](https://github.com/pulumi/pulumi/pull/10467)
 
 ### Bug Fixes
 
