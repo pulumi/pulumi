@@ -248,7 +248,7 @@ namespace Pulumi.Tests.Core
                     Assert.False(data.IsSecret);
                     Assert.Null(data.Value);
                 });
-            
+
             [Fact]
             public Task AllParamsOutputs()
                 => RunInPreview(async () =>
@@ -259,7 +259,7 @@ namespace Pulumi.Tests.Core
                     var data = await o3.DataTask.ConfigureAwait(false);
                     Assert.Equal(new[] { 1, 2 }, data.Value);
                 });
-            
+
             [Fact]
             public Task AllEnumerableOutputs()
                 => RunInPreview(async () =>
@@ -282,7 +282,7 @@ namespace Pulumi.Tests.Core
                     var data = await o.DataTask.ConfigureAwait(false);
                     Assert.Equal(new[] { 1, 2 }, data.Value);
                 });
-            
+
             [Fact]
             public Task AllEnumerableInputs()
                 => RunInPreview(async () =>
@@ -294,7 +294,7 @@ namespace Pulumi.Tests.Core
                     var data = await o.DataTask.ConfigureAwait(false);
                     Assert.Equal(new[] { 1, 2 }, data.Value);
                 });
-            
+
             [Fact]
             public Task IsSecretAsyncOnKnownOutput()
                 => RunInPreview(async () =>
@@ -306,7 +306,7 @@ namespace Pulumi.Tests.Core
                     Assert.True(isSecret1);
                     Assert.False(isSecret2);
                 });
-            
+
             [Fact]
             public Task IsSecretAsyncOnAwaitableOutput()
                 => RunInPreview(async () =>
@@ -318,7 +318,7 @@ namespace Pulumi.Tests.Core
                     Assert.True(isSecret1);
                     Assert.False(isSecret2);
                 });
-            
+
             [Fact]
             public Task UnsecretOnKnownSecretValue()
                 => RunInPreview(async () =>
@@ -329,7 +329,7 @@ namespace Pulumi.Tests.Core
                     Assert.False(notSecretData.IsSecret);
                     Assert.Equal(1, notSecretData.Value);
                 });
-            
+
             [Fact]
             public Task UnsecretOnAwaitableSecretValue()
                 => RunInPreview(async () =>
@@ -340,7 +340,7 @@ namespace Pulumi.Tests.Core
                     Assert.False(notSecretData.IsSecret);
                     Assert.Equal("inner", notSecretData.Value);
                 });
-            
+
             [Fact]
             public Task UnsecretOnNonSecretValue()
                 => RunInPreview(async () =>
@@ -605,6 +605,18 @@ namespace Pulumi.Tests.Core
                     var data = await output.DataTask.ConfigureAwait(false);
                     Assert.False(data.IsKnown);
                     Assert.Equal("value", data.Value);
+                });
+
+            [Fact]
+            public Task CreateSecretSetsSecret()
+                => RunInNormal(async () =>
+                {
+                    var o1 = CreateOutput(0, true);
+                    var o2 = Output.CreateSecret(o1);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.True(data.IsKnown);
+                    Assert.True(data.IsSecret);
+                    Assert.Equal(0, data.Value);
                 });
         }
     }
