@@ -713,9 +713,14 @@ func (host *nodeLanguageHost) InstallDependencies(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
+	ctx := server.Context()
+
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx, "npm-install")
+	defer tracingSpan.Finish()
+
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(server.Context(), req.Directory, false /*production*/, stdout, stderr)
+	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("npm install failed: %w", err)
 	}
