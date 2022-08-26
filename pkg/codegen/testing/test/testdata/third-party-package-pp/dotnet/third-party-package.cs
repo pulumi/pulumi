@@ -14,8 +14,7 @@ return await Deployment.RunAsync(() =>
         Answer = 42,
     });
 
-    var Provider = new Other.Provider("Provider", new()
-    {});
+    var Provider = new Other.Provider("Provider");
 
 });
 
