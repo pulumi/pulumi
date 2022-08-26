@@ -931,6 +931,13 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 	if alias, ok := info.PackageImportAliases[imp]; ok {
 		return alias
 	}
+	modSplit := strings.Split(mod, "/")
+	if modSplit[0] == "" || modSplit[0] == "index" {
+		if info.ImportBasePath != "" {
+			return path.Base(info.ImportBasePath)
+		}
+		return pkg
+	}
 	return mod
 }
 
