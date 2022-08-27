@@ -16,11 +16,18 @@ package dotnet
 
 import (
 	"fmt"
+	"io"
+	"path"
 	"regexp"
 	"strings"
 	"unicode"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -153,4 +160,83 @@ func LowerCamelCase(s string) string {
 	}
 	runes := []rune(s)
 	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
+}
+func linearizeAndSetupGenerator(program *pcl.Program, options GenerateProgramOptions) ([]pcl.Node, *generator, error) {
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := pcl.Linearize(program)
+
+	// Import C#-specific schema info.
+	namespaces := make(map[string]map[string]string)
+	compatibilities := make(map[string]string)
+	tokenToModules := make(map[string]func(x string) string)
+	functionArgs := make(map[string]string)
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+			return nil, nil, err
+		}
+
+		csharpInfo, hasInfo := p.Language["csharp"].(CSharpPackageInfo)
+		if !hasInfo {
+			csharpInfo = CSharpPackageInfo{}
+		}
+		packageNamespaces := csharpInfo.Namespaces
+		namespaces[p.Name] = packageNamespaces
+		compatibilities[p.Name] = csharpInfo.Compatibility
+		tokenToModules[p.Name] = p.TokenToModule
+
+		for _, f := range p.Functions {
+			if f.Inputs != nil {
+				functionArgs[f.Inputs.Token] = f.Token
+			}
+		}
+	}
+
+	g := &generator{
+		program:                     program,
+		namespaces:                  namespaces,
+		compatibilities:             compatibilities,
+		tokenToModules:              tokenToModules,
+		functionArgs:                functionArgs,
+		functionInvokes:             map[string]*schema.Function{},
+		generateOptions:             options,
+		generatingComponentResource: true,
+	}
+
+	g.Formatter = format.NewFormatter(g)
+
+	for _, n := range nodes {
+		if r, ok := n.(*pcl.Resource); ok && requiresAsyncInit(r) {
+			g.asyncInit = true
+			break
+		}
+	}
+	return nodes, g, nil
+}
+
+// Prints the given rootname with a special prefix when a component resource is being generated, allowing it
+// to reference component resource members or input arguments
+func (g *generator) genRootNameWithPrefix(w io.Writer, rootName string, expr *model.ScopeTraversalExpression) {
+	fmtString := "%s"
+	switch expr.Parts[0].(type) {
+	case *pcl.ConfigVariable:
+		fmtString = "args.%s"
+	}
+	g.Fgenf(w, fmtString, rootName)
+}
+
+func decomposeTokenHelper(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
+	var pkg, module, member string
+	var diags hcl.Diagnostics
+	if r.IsModule {
+		// Terraform child modules are differentiated by their local path. Creating a unique identifier out it.
+		pkg = makeValidIdentifier(path.Base(r.Definition.Labels[1]))
+		member = "Index"
+	} else {
+		pkg, module, member, diags = r.DecomposeToken()
+	}
+	return pkg, module, member, diags
 }

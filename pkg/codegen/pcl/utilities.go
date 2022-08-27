@@ -144,7 +144,7 @@ func Linearize(p *Program) []Node {
 func MapProvidersAsResources(p *Program) {
 	nodes := make([]Node, 0, len(p.Nodes))
 	for _, n := range p.Nodes {
-		if r, ok := n.(*Resource); ok {
+		if r, ok := n.(*Resource); ok && !r.IsModule {
 			pkg, mod, name, _ := r.DecomposeToken()
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"

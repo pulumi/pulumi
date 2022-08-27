@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+func Check(t *testing.T, path string, dependencies codegen.StringSet, checkNamespaces bool, pulumiSDKPath string) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -67,7 +67,10 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		err = os.RemoveAll(filepath.Join(dir, "obj"))
 		assert.NoError(t, err, "Failed to remove obj result")
 	}()
-	TypeCheck(t, path, dependencies, pulumiSDKPath)
+
+	if checkNamespaces {
+		TypeCheck(t, path, dependencies, pulumiSDKPath)
+	}
 }
 
 func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {

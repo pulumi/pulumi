@@ -71,10 +71,19 @@ type generator struct {
 	insideFunctionInvoke bool
 	insideAwait          bool
 	// Program generation options
-	generateOptions GenerateProgramOptions
+	generateOptions             GenerateProgramOptions
+	generatingComponentResource bool
 }
 
 const pulumiPackage = "pulumi"
+
+func GenerateCode(program *pcl.Program, convertToComponentResource bool) (map[string][]byte, hcl.Diagnostics, error) {
+	if convertToComponentResource {
+		return GenerateComponentResource(program)
+	} else {
+		return GenerateProgram(program)
+	}
+}
 
 func GenerateProgramWithOptions(
 	program *pcl.Program,
@@ -114,13 +123,14 @@ func GenerateProgramWithOptions(
 	}
 
 	g := &generator{
-		program:         program,
-		namespaces:      namespaces,
-		compatibilities: compatibilities,
-		tokenToModules:  tokenToModules,
-		functionArgs:    functionArgs,
-		functionInvokes: map[string]*schema.Function{},
-		generateOptions: options,
+		program:                     program,
+		namespaces:                  namespaces,
+		compatibilities:             compatibilities,
+		tokenToModules:              tokenToModules,
+		functionArgs:                functionArgs,
+		functionInvokes:             map[string]*schema.Function{},
+		generateOptions:             options,
+		generatingComponentResource: false,
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -155,6 +165,31 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	return GenerateProgramWithOptions(program, defaultOptions)
+}
+
+func GenerateComponentResource(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	defaultOptions := GenerateProgramOptions{
+		// by default, we generate C# code that targets .NET 6
+		implicitResourceArgsTypeName: true,
+	}
+
+	// Setting up nodes, generator, and determining if async
+	nodes, g, err := linearizeAndSetupGenerator(program, defaultOptions)
+	if err != nil {
+		return make(map[string][]byte), nil, err
+	}
+
+	// Beginning code generation
+	var index bytes.Buffer
+	g.genPreamble(&index, program)
+	g.genComponentResourceClass(&index, &nodes)
+	g.genPostamble(&index, nodes)
+	g.genComponentResourceArgs(&index, &nodes)
+
+	files := map[string][]byte{
+		"ComponentResource.cs": index.Bytes(),
+	}
+	return files, g.diagnostics, nil
 }
 
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
@@ -309,23 +344,26 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	// to sort them later on.
 	systemUsings := codegen.NewStringSet("System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
+	componentResourceUsings := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			if r.IsModule {
-				// Terraform Child Module conversion isn't supported for CSharp yet
-				continue
-			}
-			pkg, _, _, _ := r.DecomposeToken()
-			if pkg != pulumiPackage {
-				namespace := namespaceName(g.namespaces[pkg], pkg)
-				var info CSharpPackageInfo
-				if r.Schema != nil && r.Schema.Package != nil {
-					if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
-						info = csharpinfo
+				// Resource is a call to a Terraform Child module. Its "package" is the source path attribute which we added as a label earlier
+				sourcePath := r.Definition.Labels[1]
+				componentResourceUsings.Add(Title(makeValidIdentifier(path.Base(sourcePath))))
+			} else {
+				pkg, _, _, _ := r.DecomposeToken()
+				if pkg != pulumiPackage {
+					namespace := namespaceName(g.namespaces[pkg], pkg)
+					var info CSharpPackageInfo
+					if r.Schema != nil && r.Schema.Package != nil {
+						if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
+							info = csharpinfo
+						}
 					}
+					pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
 				}
-				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
 			}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
@@ -355,6 +393,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		systemUsings.Add("System.Threading.Tasks")
 	}
 
+	for _, pkg := range componentResourceUsings.SortedValues() {
+		g.Fprintf(w, "using %v;\n", pkg)
+	}
 	for _, pkg := range systemUsings.SortedValues() {
 		g.Fprintf(w, "using %v;\n", pkg)
 	}
@@ -365,17 +406,25 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 
 	g.Fprint(w, "\n")
 
+	// Emit Stack class signature
+	if g.generatingComponentResource {
+		g.Fprint(w, "public class Index : ComponentResource\n")
+		g.Fprint(w, "{\n")
+	}
+
 	// If we collected any helper methods that should be added, write them just before the main func
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "\t%s\n\n", preambleHelperMethodBody)
 	}
 
-	asyncKeywordWhenNeeded := ""
-	if g.asyncInit {
-		asyncKeywordWhenNeeded = "async"
+	if !g.generatingComponentResource {
+		asyncKeywordWhenNeeded := ""
+		if g.asyncInit {
+			asyncKeywordWhenNeeded = "async"
+		}
+		g.Fprintf(w, "return await Deployment.RunAsync(%s() => \n", asyncKeywordWhenNeeded)
+		g.Fprint(w, "{\n")
 	}
-	g.Fprintf(w, "return await Deployment.RunAsync(%s() => \n", asyncKeywordWhenNeeded)
-	g.Fprint(w, "{\n")
 }
 
 // hasOutputVariables checks whether there are any output declarations
@@ -410,16 +459,16 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 		})
 	}
 	// Close lambda call expression
-	g.Fprintf(w, "});\n\n")
+	if g.generatingComponentResource {
+		g.Fprintf(w, "}\n")
+	} else {
+		g.Fprintf(w, "});\n\n")
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
 	case *pcl.Resource:
-		if n.IsModule {
-			// Terraform Child Module conversion isn't supported for CSharp yet
-			return
-		}
 		g.genResource(w, n)
 	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
@@ -441,7 +490,7 @@ func requiresAsyncInit(r *pcl.Resource) bool {
 // resourceTypeName computes the C# class name for the given resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diags := r.DecomposeToken()
+	pkg, module, member, diags := decomposeTokenHelper(r)
 	contract.Assert(len(diags) == 0)
 
 	namespaces := g.namespaces[pkg]
@@ -472,7 +521,7 @@ func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]stri
 // resourceArgsTypeName computes the C# arguments class name for the given resource.
 func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diags := r.DecomposeToken()
+	pkg, module, member, diags := decomposeTokenHelper(r)
 	contract.Assert(len(diags) == 0)
 
 	namespaces := g.namespaces[pkg]
@@ -610,6 +659,10 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent)
+	} else if g.generatingComponentResource {
+		// A component resource is being made, so the parent is automatically `this` unless the user
+		// explicitly set it to something.
+		appendOption("Parent", &model.CodeReferenceExpression{Value: "this"})
 	}
 	if opts.Provider != nil {
 		appendOption("Provider", opts.Provider)
@@ -640,8 +693,14 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	// Add conversions to input properties
 	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
+		var destType model.Traversable
+		var diagnostics hcl.Diagnostics
+		if r.IsModule {
+			destType = model.DynamicType
+		} else {
+			destType, diagnostics = r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+		}
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 		if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
 			input.Name = csharpName
@@ -774,4 +833,42 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 		Detail:   message,
 	})
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
+}
+
+func (g *generator) genComponentResourceArgs(w io.Writer, nodes *[]pcl.Node) {
+	g.Fgenf(w, "\npublic class IndexArgs\n{\n")
+	g.Indented(func() {
+		for _, n := range *nodes {
+			// Declaring args
+			switch n := n.(type) {
+			case *pcl.ConfigVariable:
+				g.Fgenf(w, "%spublic %s %s { get; set; } = null!;\n", g.Indent, n.Type().String(), Title(n.Name()))
+			}
+		}
+	})
+	g.Fgenf(w, "}\n")
+}
+
+func (g *generator) genComponentResourceClass(w io.Writer, nodes *[]pcl.Node) {
+	g.Indented(func() {
+		g.Fgenf(w, "%spublic Index(string name, IndexArgs args, ComponentResourceOptions? options = null)\n", g.Indent)
+		g.Indented(func() { g.Fgenf(w, "%s: base(\"pkg:index:component\", name, options)\n", g.Indent) })
+		g.Fgenf(w, "%s{\n", g.Indent)
+		g.Indented(func() { g.genInitializeResourcesAndLocals(&w, nodes) })
+		g.Fgenf(w, "%s}\n", g.Indent)
+	})
+}
+
+func (g *generator) genInitializeResourcesAndLocals(w *io.Writer, nodes *[]pcl.Node) {
+	indenter := func(f func()) { f() }
+	indenter(func() {
+		for _, n := range *nodes {
+			switch n := n.(type) {
+			case *pcl.Resource, *pcl.OutputVariable:
+				g.genNode(*w, n)
+			case *pcl.LocalVariable:
+				g.genLocalVariable(*w, n)
+			}
+		}
+	})
 }
