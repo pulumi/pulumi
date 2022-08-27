@@ -30,6 +30,15 @@
 
 - [sdk/go] Improve error messages for `StackReference`s
   [#10477](https://github.com/pulumi/pulumi/pull/10477)
+  
+- [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
+  [#10467](https://github.com/pulumi/pulumi/pull/10467)
+
+- [policy] `pulumi policy publish` now takes into account `.gitignore` files higher in the file tree.
+  [#10493](https://github.com/pulumi/pulumi/pull/10493)
+
+- [sdk/go] enable direct compilation via `go build`(set `PULUMI_GO_USE_RUN=true` to opt out)
+  [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
 ### Bug Fixes
 
@@ -66,3 +75,12 @@
 
 - [cli] Improve Windows reliability with dependency update to ssh-agent
   [#10486](https://github.com/pulumi/pulumi/pull/10486)
+
+- [sdk/{dotnet,nodejs,python}] Dynamic providers and automation API will not trigger a firewall
+  permission prompt, will only accept network requests via loopback address.
+  [#10498](https://github.com/pulumi/pulumi/pull/10498)
+  [#10502](https://github.com/pulumi/pulumi/pull/10502)
+  [#10503](https://github.com/pulumi/pulumi/pull/10503)
+
+- [cli] Fix `pulumi console` command to follow documented behavior in help message/docs.
+  [#10509](https://github.com/pulumi/pulumi/pull/10509)

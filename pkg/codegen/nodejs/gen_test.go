@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -141,7 +142,18 @@ func TestGenerateTypeNames(t *testing.T) {
 		root, ok := modules[""]
 		require.True(t, ok)
 
+		// Parallel tests will use the TypeNameGeneratorFunc
+		// from multiple goroutines, but root.typeString is
+		// not safe. Mutex is needed to avoid panics on
+		// concurrent map write.
+		//
+		// Note this problem is test-only since prod code
+		// works on a single goroutine.
+
+		var mutex sync.Mutex
 		return func(t schema.Type) string {
+			mutex.Lock()
+			defer mutex.Unlock()
 			return root.typeString(t, false, nil)
 		}
 	})
