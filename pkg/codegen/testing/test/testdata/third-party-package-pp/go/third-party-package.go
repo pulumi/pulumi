@@ -8,7 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := thirdparty.NewThing(ctx, "Other", &other.ThingArgs{
+		_, err := thirdparty.NewThing(ctx, "Other", &thirdparty.ThingArgs{
 			Idea: pulumi.String("Support Third Party"),
 		})
 		if err != nil {
@@ -20,7 +20,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err := thirdparty.NewProvider(ctx, "Provider", nil)
+		_, err = thirdparty.NewProvider(ctx, "Provider", nil)
 		if err != nil {
 			return err
 		}
