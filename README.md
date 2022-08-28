@@ -72,7 +72,7 @@ aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", () => {
 Many examples are available spanning containers, serverless, and infrastructure in
 [pulumi/examples](https://github.com/pulumi/examples).
 
-Pulumi is open source under the Apache 2.0 license, supports many languages and clouds, and is easy to extend.  This
+Pulumi is open source under the [Apache 2.0 license](https://github.com/pulumi/pulumi/blob/master/LICENSE), supports many languages and clouds, and is easy to extend.  This
 repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and individual libraries are in their own repos.
 
 ## Welcome
