@@ -84,3 +84,6 @@
 
 - [cli] Fix `pulumi console` command to follow documented behavior in help message/docs.
   [#10509](https://github.com/pulumi/pulumi/pull/10509)
+
+- [python] put python version check after installing dependencies to resolve `fork/exec` warning
+  [#10524](https://github.com/pulumi/pulumi/pull/10524)
