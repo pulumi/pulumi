@@ -36,22 +36,6 @@ func TestEmptyPython(t *testing.T) {
 	})
 }
 
-// TestPythonMain
-func TestPythonMain(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:             "project_venv",
-		RelativeWorkDir: "b",
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			_, err := os.Stat(filepath.Join("b", "venv"))
-			assert.NoError(t, err)
-			//assert.False(t, errors.Is(err, os.ErrNotExist))
-		},
-	})
-}
-
 // TestPrintfPython tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
 func TestPrintfPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -919,17 +903,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
 
-		otherDir := filepath.Join(e.RootPath, "should-not-contain-a-venv")
-		err = os.Mkdir(otherDir, 0755)
-		if err != nil {
-			t.Error(err)
-		}
-
-		err = os.Chdir(otherDir)
-		if err != nil {
-			t.Error(err)
-		}
-
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
 		e.RunCommand("pulumi", "preview")
@@ -961,6 +934,26 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 	t.Run("AbsolutePathWithMain", func(t *testing.T) {
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
+	})
+
+	t.Run("PythonVersionSuccess", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		dir := filepath.Join("python", "venv")
+		e.ImportDirectory(dir)
+
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "teststack")
+		stdout, stderr, _ := e.GetCommandResults("pulumi", "preview")
+		assert.NotContains(t, stdout, "fork/exec")
+		assert.NotContains(t, stderr, "fork/exec")
 	})
 }
 
