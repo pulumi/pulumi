@@ -87,3 +87,6 @@
 
 - [cli] Fix `pulumi console` command to follow documented behavior in help message/docs.
   [#10509](https://github.com/pulumi/pulumi/pull/10509)
+
+- [sdk/nodejs] Fixes an issue which would occur when multiple processes were spawned and some would receive no stdout/stderr
+  [10522](https://github.com/pulumi/pulumi/pull/10522)
