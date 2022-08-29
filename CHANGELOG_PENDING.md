@@ -41,9 +41,11 @@
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
 - [cli/backend] Updates no longer immediately renew the token but wait
-  until the token is about to expire. The change optimizes startup
-  latency for Pulumi CLI.
-  [#10462](https://github.com/pulumi/pulumi/pull/10462)
+  until the token is halfway through its expiration period. Currently
+  it is assumed tokens expire in 5 minutes, so with this change the
+  first lease renewal now happens approximately 2.5 minutes after the
+  start of the update. The change optimizes startup latency for Pulumi
+  CLI. [#10462](https://github.com/pulumi/pulumi/pull/10462)
 
 
 ### Bug Fixes
