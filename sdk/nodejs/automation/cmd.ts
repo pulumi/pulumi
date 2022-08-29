@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as childProcess from "child_process";
+import * as execa from "execa";
 
 import { createCommandError } from "./errors";
 
@@ -40,7 +40,7 @@ export class CommandResult {
 const unknownErrCode = -2;
 
 /** @internal */
-export function runPulumiCmd(
+export async function runPulumiCmd(
     args: string[],
     cwd: string,
     additionalEnv: { [key: string]: string },
@@ -55,35 +55,15 @@ export function runPulumiCmd(
 
     const env = { ...process.env, ...additionalEnv };
 
-    return new Promise<CommandResult>((resolve, reject) => {
-        const proc = childProcess.spawn("pulumi", args, { env, cwd });
-
-        // TODO: write to buffers and avoid concatenation
-        let stdout = "";
-        let stderr = "";
-        proc.stdout.on("data", (data) => {
-            if (data && data.toString) {
-                data = data.toString();
-            }
-            if (onOutput) {
-                onOutput(data);
-            }
-            stdout += data;
-        });
-        proc.stderr.on("data", (data) => {
-            stderr += data;
-        });
-        proc.on("exit", (code, signal) => {
-            const resCode = code !== null ? code : unknownErrCode;
-            const result = new CommandResult(stdout, stderr, resCode);
-            if (code !== 0) {
-                return reject(createCommandError(result));
-            }
-            return resolve(result);
-        });
-        proc.on("error", (err) => {
-            const result = new CommandResult(stdout, stderr, unknownErrCode, err);
-            return reject(createCommandError(result));
-        });
-    });
+    try {
+        const { stdout, stderr, exitCode } = await execa("pulumi", args, { env, cwd });
+        const commandResult = new CommandResult(stdout, stderr, exitCode);
+        if (exitCode !== 0) {
+            throw createCommandError(commandResult);
+        }
+        return commandResult;
+    } catch (err) {
+        const error = err as Error;
+        throw createCommandError(new CommandResult("", error.message, unknownErrCode, error));
+    }
 }
