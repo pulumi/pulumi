@@ -35,106 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type tokenRequest chan<- tokenResponse
-
-type tokenResponse struct {
-	token string
-	err   error
-}
-
-// tokenSource is a helper type that manages the renewal of the lease token for a managed update.
-type tokenSource struct {
-	requests chan tokenRequest
-	done     chan bool
-}
-
-func newTokenSource(ctx context.Context, initialToken string, backend *cloudBackend, update client.UpdateIdentifier,
-	duration time.Duration) (*tokenSource, error) {
-	requests, done := make(chan tokenRequest), make(chan bool)
-	ts := &tokenSource{requests: requests, done: done}
-	go ts.handleRequests(ctx, initialToken, backend.client, update, duration)
-	return ts, nil
-}
-
-func (ts *tokenSource) handleRequests(
-	ctx context.Context,
-	initialToken string,
-	client *client.Client,
-	update client.UpdateIdentifier,
-	duration time.Duration) {
-
-	renewTicker := time.NewTicker(duration / 8)
-	defer renewTicker.Stop()
-
-	state := struct {
-		token   string    // most recently renewed token
-		error   error     // non-nil indicates a terminal error state
-		expires time.Time // assumed expiry of the token
-	}{
-		token:   initialToken,
-		expires: time.Now().Add(duration),
-	}
-
-	renewUpdateLeaseIfStale := func() {
-		if state.error != nil {
-			return
-		}
-
-		now := time.Now()
-
-		// We will renew the lease after 50% of the duration
-		// has elapsed to allow time for retries.
-		stale := now.Add(duration / 2).After(state.expires)
-		if !stale {
-			return
-		}
-
-		newToken, err := client.RenewUpdateLease(ctx, update, state.token, duration)
-		// If renew failed, all further GetToken requests will return this error.
-		if err != nil {
-			logging.V(3).Infof("error renewing lease: %v", err)
-			state.error = fmt.Errorf("renewing lease: %w", err)
-			renewTicker.Stop()
-		} else {
-			state.token = newToken
-			state.expires = now.Add(duration)
-		}
-	}
-
-	for {
-		select {
-		case <-renewTicker.C:
-			renewUpdateLeaseIfStale()
-		case c, ok := <-ts.requests:
-			if !ok {
-				close(ts.done)
-				return
-			}
-			// If ticker has not kept up, block on
-			// renewing rather than risking returning a
-			// stale token.
-			renewUpdateLeaseIfStale()
-			if state.error == nil {
-				c <- tokenResponse{token: state.token}
-			} else {
-				c <- tokenResponse{err: state.error}
-			}
-		}
-	}
-}
-
-func (ts *tokenSource) Close() {
-	close(ts.requests)
-	<-ts.done
-}
-
-func (ts *tokenSource) GetToken() (string, error) {
-	ch := make(chan tokenResponse)
-	ts.requests <- ch
-	resp := <-ch
-	return resp.token, resp.err
-}
-
 type cloudQuery struct {
 	root string
 	proj *workspace.Project
@@ -267,7 +167,16 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
-		ts, err := newTokenSource(ctx, token, b, update, 5*time.Minute)
+
+		renewLease := func(
+			ctx context.Context,
+			duration time.Duration,
+			currentToken string) (string, error) {
+			return b.Client().RenewUpdateLease(
+				ctx, update, currentToken, duration)
+		}
+
+		ts, err := newTokenSource(ctx, token, 5*time.Minute, renewLease)
 		if err != nil {
 			return nil, err
 		}
