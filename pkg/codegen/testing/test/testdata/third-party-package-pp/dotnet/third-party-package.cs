@@ -18,9 +18,9 @@ return await Deployment.RunAsync(() =>
     {
         ObjectProp = 
         {
-            { prop1 = "foo" },
-            { prop2 = "bar" },
-            { prop3 = "fizz" },
+            { "prop1", "foo" },
+            { "prop2", "bar" },
+            { "prop3", "fizz" },
         },
     });
 
