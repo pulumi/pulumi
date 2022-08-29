@@ -40,7 +40,7 @@ type RunOption func(*RunInfo)
 func Run(body RunFunc, opts ...RunOption) {
 	err := RunErr(body, opts...)
 	if err == nil {
-		os.Exit(0)
+		return
 	}
 
 	if err == ErrPlugins {
