@@ -1,5 +1,8 @@
 ### Improvements
 
+- [codegen/nodejs] Implement lazy-loading of modules in generated code.
+  [#10517](https://github.com/pulumi/pulumi/pull/10517)
+
 - [cli] Clarify highlighting of confirmation text in `confirmPrompt`.
   [#10413](https://github.com/pulumi/pulumi/pull/10413)
 
