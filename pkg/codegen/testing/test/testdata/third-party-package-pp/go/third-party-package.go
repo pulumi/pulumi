@@ -20,7 +20,13 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = thirdparty.NewProvider(ctx, "Provider", nil)
+		_, err = thirdparty.NewProvider(ctx, "Provider", &thirdparty.ProviderArgs{
+			ObjectProp: pulumi.StringMap{
+				"prop1": pulumi.String("foo"),
+				"prop2": pulumi.String("bar"),
+				"prop3": pulumi.String("fizz"),
+			},
+		})
 		if err != nil {
 			return err
 		}

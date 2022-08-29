@@ -40,14 +40,14 @@
 			"objectProp": {
 				"type": "object",
 				"propertyNames": {
-					"propStr": {
+					"prop1": {
 						"type": "string"
 					},
-					"propBool": {
-						"type": "boolean"
+					"prop2": {
+						"type": "string"
 					},
-					"propInt": {
-						"type": "integer"
+					"prop3": {
+						"type": "string"
 					}
 				}
 			}

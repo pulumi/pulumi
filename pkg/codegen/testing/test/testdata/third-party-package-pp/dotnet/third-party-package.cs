@@ -14,7 +14,15 @@ return await Deployment.RunAsync(() =>
         Answer = 42,
     });
 
-    var Provider = new Other.Provider("Provider");
+    var Provider = new Other.Provider("Provider", new()
+    {
+        ObjectProp = 
+        {
+            { prop1 = "foo" },
+            { prop2 = "bar" },
+            { prop3 = "fizz" },
+        },
+    });
 
 });
 

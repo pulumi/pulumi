@@ -8,8 +8,8 @@ resource Question "other:module:Object" {
 
 resource Provider "pulumi:providers:other" {
    objectProp = {
-        propStr = "foo"
-        propBool = true
-        propInt = 42
+        prop1 = "foo"
+        prop2 = "bar"
+        prop3 = "fizz"
    }
 }
