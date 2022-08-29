@@ -383,7 +383,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		}
 		cmd := exec.Command(bin)
 		if err := execProgramCmd(cmd, env); err != nil {
-			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+			return &pulumirpc.RunResponse{Error: err.Error()}, err
 		}
 		return &pulumirpc.RunResponse{}, nil
 	}
@@ -404,7 +404,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err := execProgramCmd(cmd, env); err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
-			}, nil
+			}, err
 		}
 
 		return &pulumirpc.RunResponse{}, nil
@@ -421,10 +421,10 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	cmd := exec.Command(program)
 	if err := execProgramCmd(cmd, env); err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		return &pulumirpc.RunResponse{Error: err.Error()}, err
 	}
 
-	return &pulumirpc.RunResponse{Bail: true}, nil
+	return &pulumirpc.RunResponse{}, nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
