@@ -147,7 +147,6 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
@@ -680,6 +679,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			return nil, err
 		}
 	}
+	validateVersion(ctx, host.virtualenvPath)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
