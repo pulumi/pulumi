@@ -7,4 +7,9 @@ resource Question "other:module:Object" {
 }
 
 resource Provider "pulumi:providers:other" {
+   objectProp = {
+        propStr = "foo"
+        propBool = true
+        propInt = 42
+   }
 }
