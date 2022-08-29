@@ -15,6 +15,7 @@ jobs:
     with:
       enable-coverage: true
       goreleaser-flags: -p 3 --skip-validate
+      macos-build-platform: ubuntu-latest
   test-windows:
     name: Test Windows
     needs: build

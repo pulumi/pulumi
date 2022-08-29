@@ -330,6 +330,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value
+				case "version":
+					t = model.StringType
+					resourceOptions.Version = item.Value
+				case "pluginDownloadURL":
+					t = model.StringType
+					resourceOptions.PluginDownloadURL = item.Value
 				default:
 					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 					continue

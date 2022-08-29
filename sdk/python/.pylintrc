@@ -68,6 +68,7 @@ disable=raw-checker-failed,
         useless-suppression,
         deprecated-pragma,
         use-symbolic-message-instead,
+        method-hidden,
 
         # Pulumi-specific exclusions begin here
         too-few-public-methods,

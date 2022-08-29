@@ -1358,7 +1358,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		plugins  []workspace.PluginInfo
+		plugins  []workspace.PluginSpec
 		snapshot *deploy.Snapshot
 		validate func(t *testing.T, r *resource.State)
 		versions []string
@@ -1373,7 +1373,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		{
 			name:     "default-version",
 			versions: []string{"1.0.0", "1.1.0"},
-			plugins: []workspace.PluginInfo{{
+			plugins: []workspace.PluginSpec{{
 				Name:              "pkgA",
 				Version:           &semver.Version{Major: 1, Minor: 1},
 				PluginDownloadURL: "example.com/default",
@@ -1390,7 +1390,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 		{
 			name:     "specified-provider",
 			versions: []string{"1.0.0", "1.1.0"},
-			plugins: []workspace.PluginInfo{{
+			plugins: []workspace.PluginSpec{{
 				Name:    "pkgA",
 				Version: &semver.Version{Major: 1, Minor: 1},
 				Kind:    workspace.ResourcePlugin,
@@ -1408,7 +1408,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 			name:     "higher-in-snapshot",
 			versions: []string{"1.3.0", "1.1.0"},
 			prog:     prog(),
-			plugins: []workspace.PluginInfo{{
+			plugins: []workspace.PluginSpec{{
 				Name:    "pkgA",
 				Version: &semver.Version{Major: 1, Minor: 1},
 				Kind:    workspace.ResourcePlugin,

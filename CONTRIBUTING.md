@@ -79,7 +79,7 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
-We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.
+We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
 The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
 
@@ -107,7 +107,7 @@ When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for 
 
 ### Pulumi employees
 
-Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Test can run directly without approval for PRs based on branches rather than forks.
+Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Tests can run directly without approval for PRs based on branches rather than forks.
 
 Please ensure that you nest your branches under a unique identifier such as your name (e.g. `refs/heads/pulumipus/cool_feature`).
 

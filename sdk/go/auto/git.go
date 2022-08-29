@@ -16,7 +16,9 @@ package auto
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"strings"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -27,7 +29,8 @@ import (
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
 	cloneOptions := &git.CloneOptions{
-		URL: repoArgs.URL,
+		RemoteName: "origin", // be explicit so we can require it in remote refs
+		URL:        repoArgs.URL,
 	}
 
 	if repoArgs.Auth != nil {
@@ -81,40 +84,54 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		}
 	}
 
+	// *Repository.Clone() will do appropriate fetching given a branch name. We must deal with
+	// different varieties, since people have been advised to use these as a workaround while only
+	// "refs/heads/<default>" worked.
+	//
+	// If a reference name is not supplied, then .Clone will fetch all refs (and all objects
+	// referenced by those), and checking out a commit later will work as expected.
+	if repoArgs.Branch != "" {
+		refName := plumbing.ReferenceName(repoArgs.Branch)
+		switch {
+		case refName.IsRemote(): // e.g., refs/remotes/origin/branch
+			shorter := refName.Short() // this gives "origin/branch"
+			parts := strings.SplitN(shorter, "/", 2)
+			if len(parts) == 2 && parts[0] == "origin" {
+				refName = plumbing.NewBranchReferenceName(parts[1])
+			} else {
+				return "", fmt.Errorf("a remote ref must begin with 'refs/remote/origin/', but got %q", repoArgs.Branch)
+			}
+		case refName.IsTag(): // looks like `refs/tags/v1.0.0` -- respect this even though the field is `.Branch`
+			// nothing to do
+		case !refName.IsBranch(): // not a remote, not refs/heads/branch; treat as a simple branch name
+			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
+		default:
+			// already looks like a full branch name, so use as is
+		}
+		cloneOptions.ReferenceName = refName
+	}
+
 	// clone
 	repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to clone repo")
 	}
 
-	// checkout branch if specified
-	w, err := repo.Worktree()
-	if err != nil {
-		return "", err
-	}
-
-	var hash string
 	if repoArgs.CommitHash != "" {
-		hash = repoArgs.CommitHash
-	}
-	var refName plumbing.ReferenceName
-	if repoArgs.Branch != "" {
-		refName = plumbing.ReferenceName(repoArgs.Branch)
-		// We might be supplied `/refs/heads/main` or `main`; the first will answer true to
-		// `IsBranch()` and work OK as a reference for Checkout, the second will answer false and
-		// needs to be transformed into a branch ref.
-		if !refName.IsBranch() {
-			refName = plumbing.NewBranchReferenceName(repoArgs.Branch)
+		// checkout commit if specified
+		w, err := repo.Worktree()
+		if err != nil {
+			return "", err
 		}
-	}
 
-	err = w.Checkout(&git.CheckoutOptions{
-		Hash:   plumbing.NewHash(hash),
-		Branch: refName,
-		Force:  true,
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "unable to checkout branch")
+		hash := repoArgs.CommitHash
+		err = w.Checkout(&git.CheckoutOptions{
+			Hash:  plumbing.NewHash(hash),
+			Force: true,
+		})
+		if err != nil {
+			return "", errors.Wrap(err, "unable to checkout commit")
+		}
 	}
 
 	var relPath string
