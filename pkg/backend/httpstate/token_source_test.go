@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 func TestTokenSource(t *testing.T) {
@@ -29,15 +29,15 @@ func TestTokenSource(t *testing.T) {
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
 
-	tok0 := backend.NewToken(dur)
-	ts, err := newTokenSource(ctx, tok0, dur, backend.Refresh)
+	tok0, tok0Expires := backend.NewToken(dur)
+	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
 	assert.NoError(t, err)
 	defer ts.Close()
 
 	for i := 0; i < 32; i++ {
 		tok, err := ts.GetToken()
-		assert.NoError(t, err) // always fresh
-
+		assert.NoError(t, err)
+		assert.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
 
 		// tok0 initially
@@ -53,7 +53,25 @@ func TestTokenSource(t *testing.T) {
 
 		time.Sleep(dur / 16)
 	}
+}
 
+func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
+	ctx := context.TODO()
+	dur := 20 * time.Millisecond
+	backend := &testTokenBackend{tokens: map[string]time.Time{}}
+
+	tok0, tok0Expires := backend.NewToken(dur / 10)
+	ts, err := newTokenSource(ctx, tok0, tok0Expires, dur, backend.Refresh)
+	assert.NoError(t, err)
+	defer ts.Close()
+
+	for i := 0; i < 8; i++ {
+		tok, err := ts.GetToken()
+		assert.NoError(t, err)
+		assert.NoError(t, backend.VerifyToken(tok))
+		t.Logf("STEP: %d, TOKEN: %s", i, tok)
+		time.Sleep(dur / 16)
+	}
 }
 
 type testTokenBackend struct {
@@ -62,35 +80,60 @@ type testTokenBackend struct {
 	tokens  map[string]time.Time
 }
 
-func (ts *testTokenBackend) NewToken(duration time.Duration) string {
+func (ts *testTokenBackend) NewToken(duration time.Duration) (string, time.Time) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
-	now := time.Now()
-	return ts.newTokenInner(now, duration)
+	return ts.newTokenInner(duration)
 }
 
-func (ts *testTokenBackend) newTokenInner(now time.Time, duration time.Duration) string {
-	ts.counter++
-	tok := ts.TokenName(ts.counter)
-	ts.tokens[tok] = now.Add(duration)
-	return tok
+func (ts *testTokenBackend) Refresh(
+	ctx context.Context,
+	duration time.Duration,
+	currentToken string) (string, time.Time, error) {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	if err := ts.verifyTokenInner(currentToken); err != nil {
+		return "", time.Time{}, err
+	}
+	tok, expires := ts.newTokenInner(duration)
+	return tok, expires, nil
 }
 
 func (ts *testTokenBackend) TokenName(refreshCount int) string {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	return ts.tokenNameInner(refreshCount)
+}
+
+func (ts *testTokenBackend) VerifyToken(token string) error {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	return ts.verifyTokenInner(token)
+}
+
+func (ts *testTokenBackend) newTokenInner(duration time.Duration) (string, time.Time) {
+	now := time.Now()
+	ts.counter++
+	tok := ts.tokenNameInner(ts.counter)
+	expires := now.Add(duration)
+	ts.tokens[tok] = now.Add(duration)
+	return tok, expires
+}
+
+func (ts *testTokenBackend) tokenNameInner(refreshCount int) string {
 	return fmt.Sprintf("token-%d", ts.counter)
 }
 
-func (ts *testTokenBackend) Refresh(ctx context.Context, duration time.Duration, currentToken string) (string, error) {
-	ts.mu.Lock()
-	defer ts.mu.Unlock()
-
-	expires, gotCurrentToken := ts.tokens[currentToken]
-	if !gotCurrentToken {
-		return "", fmt.Errorf("Unknown token: %v", currentToken)
-	}
+func (ts *testTokenBackend) verifyTokenInner(token string) error {
 	now := time.Now()
-	if now.After(expires) {
-		return "", fmt.Errorf("Expired token: %v", currentToken)
+	expires, gotCurrentToken := ts.tokens[token]
+	if !gotCurrentToken {
+		return fmt.Errorf("Unknown token: %v", token)
 	}
-	return ts.newTokenInner(now, duration), nil
+
+	if now.After(expires) {
+		return fmt.Errorf("Expired token %v (%v past expiration)",
+			token, now.Sub(expires))
+	}
+	return nil
 }

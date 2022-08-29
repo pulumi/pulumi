@@ -38,28 +38,30 @@ type tokenResponse struct {
 func newTokenSource(
 	ctx context.Context,
 	initialToken string,
+	initialTokenExpires time.Time,
 	duration time.Duration,
 	refreshToken func(
 		ctx context.Context,
 		duration time.Duration,
 		currentToken string,
-	) (string, error),
+	) (string, time.Time, error),
 ) (*tokenSource, error) {
 	requests, done := make(chan tokenRequest), make(chan bool)
 	ts := &tokenSource{requests: requests, done: done}
-	go ts.handleRequests(ctx, initialToken, duration, refreshToken)
+	go ts.handleRequests(ctx, initialToken, initialTokenExpires, duration, refreshToken)
 	return ts, nil
 }
 
 func (ts *tokenSource) handleRequests(
 	ctx context.Context,
 	initialToken string,
+	initialTokenExpires time.Time,
 	duration time.Duration,
 	refreshToken func(
 		ctx context.Context,
 		duration time.Duration,
 		currentToken string,
-	) (string, error),
+	) (string, time.Time, error),
 ) {
 
 	renewTicker := time.NewTicker(duration / 8)
@@ -71,7 +73,7 @@ func (ts *tokenSource) handleRequests(
 		expires time.Time // assumed expiry of the token
 	}{
 		token:   initialToken,
-		expires: time.Now().Add(duration),
+		expires: initialTokenExpires,
 	}
 
 	renewUpdateLeaseIfStale := func() {
@@ -88,7 +90,7 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
-		newToken, err := refreshToken(ctx, duration, state.token)
+		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
 		// If renew failed, all further GetToken requests will return this error.
 		if err != nil {
 			logging.V(3).Infof("error renewing lease: %v", err)
@@ -96,7 +98,7 @@ func (ts *tokenSource) handleRequests(
 			renewTicker.Stop()
 		} else {
 			state.token = newToken
-			state.expires = now.Add(duration)
+			state.expires = newTokenExpires
 		}
 	}
 

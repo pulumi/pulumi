@@ -168,15 +168,27 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	var tokenSource *tokenSource
 	if token != "" {
 
+		// TODO[pulumi/pulumi#10482] instead of assuming
+		// expiration, consider expiration times returned by
+		// the backend, if any.
+		duration := 5 * time.Minute
+		assumedExpires := func() time.Time {
+			return time.Now().Add(duration)
+		}
+
 		renewLease := func(
 			ctx context.Context,
 			duration time.Duration,
-			currentToken string) (string, error) {
-			return b.Client().RenewUpdateLease(
+			currentToken string) (string, time.Time, error) {
+			tok, err := b.Client().RenewUpdateLease(
 				ctx, update, currentToken, duration)
+			if err != nil {
+				return "", time.Time{}, err
+			}
+			return tok, assumedExpires(), err
 		}
 
-		ts, err := newTokenSource(ctx, token, 5*time.Minute, renewLease)
+		ts, err := newTokenSource(ctx, token, assumedExpires(), duration, renewLease)
 		if err != nil {
 			return nil, err
 		}
