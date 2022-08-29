@@ -66,6 +66,9 @@
 - [cli] Fixes `survey.v1` panics in Terminal UI introduced in
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
+  
+- [codegen/ts] Fix non-pulumi owned provider import alias.
+  [#10447](https://github.com/pulumi/pulumi/pull/10447)
 
 - [codegen/go] Fix import path for non-pulumi owner providers
   [#10485](https://github.com/pulumi/pulumi/pull/10485)
