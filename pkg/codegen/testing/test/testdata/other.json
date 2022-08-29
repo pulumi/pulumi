@@ -16,13 +16,6 @@
           "type": "number"
         }
       }
-    }, 
-    "pulumi:providers:other": {
-      "inputProperties": {
-        "name": {
-          "type": "string"
-        }
-      }
     }
   },
   "language": {
@@ -38,5 +31,12 @@
     "go": {
       "importBasePath": "git.example.org/thirdparty"
     }
+  },
+  "provider": {
+	"inputProperties": {
+		"name": {
+			"type": "string"
+		}
+	}
   }
 }
