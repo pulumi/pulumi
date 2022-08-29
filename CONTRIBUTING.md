@@ -89,14 +89,14 @@ When making changes to Pulumi's code generation tooling, you may want to test yo
 
 1. Clone this repository and make local changes to codegen. Assume the absolute path to this repo is `/Users/platypus/pulumi`.
 
-2. Clone @pulumi/command and change into the directory.
+2. Clone pulumi-command and change into the directory.
 
 ```bash
 $ git clone https://github.com/pulumi/pulumi-command /Users/platypus/pulumi-command
 $ cd /Users/platypus/pulumi-command
 ```
 
-3. Pulumi providers repos have a top-level directory `provider` which contains a `go.mod` for a Go executable used in provider generation. In this next steps, you will edit the `go.mod` file to point to your local copy of the Pulumi source code.
+3. Pulumi provider repos have a top-level directory `provider` which contains a `go.mod` for a Go executable used in provider generation. In this next steps, you will edit the `go.mod` file to point to your local copy of the Pulumi source code.
 First, open the `go.mod` file.
 
 ```bash
