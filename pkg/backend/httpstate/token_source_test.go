@@ -25,6 +25,7 @@ import (
 )
 
 func TestTokenSource(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
@@ -56,6 +57,7 @@ func TestTokenSource(t *testing.T) {
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
