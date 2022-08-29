@@ -22,8 +22,10 @@ import * as ini from "ini";
 import * as semver from "semver";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
+import * as opentelemetry from "@opentelemetry/api";
 import * as stack from "../../runtime/stack";
 import * as settings from "../../runtime/settings";
+import * as tracing from "../../runtime/tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 
@@ -169,6 +171,15 @@ export function run(
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
+    
+    console.log("About to set up global tracer.");
+    
+    tracing.initGlobalTracer();
+    
+    const tracer = opentelemetry.trace.getTracer('nodejs-runtime');
+    const parentSpan = tracer.startSpan('run.ts');
+    parentSpan.setAttribute('run-key', 'run-value');
+    
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -186,6 +197,8 @@ export function run(
     const defaultTsConfigPath = "tsconfig.json";
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
+
+    parentSpan.end();
 
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
