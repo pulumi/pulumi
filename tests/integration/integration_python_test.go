@@ -936,7 +936,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 
-	t.Run("PythonVersionSuccess", func(t *testing.T) {
+	t.Run("TestInitVirtualEnvBeforePythonVersionCheck", func(t *testing.T) {
 		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
@@ -952,6 +952,12 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
 		stdout, stderr, _ := e.GetCommandResults("pulumi", "preview")
+		// pulumi/pulumi#9175
+		// Ensures this error message doesn't show up for uninitialized
+		// virtualenv
+		//     `Failed to resolve python version command: ` +
+		//     `fork/exec <path>/venv/bin/python: ` +
+		//     `no such file or directory`
 		assert.NotContains(t, stdout, "fork/exec")
 		assert.NotContains(t, stderr, "fork/exec")
 	})
