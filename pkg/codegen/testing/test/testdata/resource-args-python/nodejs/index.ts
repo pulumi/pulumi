@@ -5,20 +5,31 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./person";
-export * from "./pet";
-export * from "./provider";
 
-// Export sub-modules:
+export { PersonArgs } from "./person";
+export type Person = import("./person").Person;
+export const Person: typeof import("./person").Person = null as any
+utilities.lazy_load_property(exports, "./person", "Person");
+
+
+export { PetArgs } from "./pet";
+export type Pet = import("./pet").Pet;
+export const Pet: typeof import("./pet").Pet = null as any
+utilities.lazy_load_property(exports, "./pet", "Pet");
+
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+// Export sub-modules (modContext.genIndex):
 import * as types from "./types";
 
 export {
     types,
 };
-
-// Import resources to register:
-import { Person } from "./person";
-import { Pet } from "./pet";
 
 const _module = {
     version: utilities.getVersion(),
@@ -34,9 +45,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

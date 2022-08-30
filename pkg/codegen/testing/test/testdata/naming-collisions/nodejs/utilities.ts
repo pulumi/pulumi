@@ -52,3 +52,28 @@ export function getVersion(): string {
 export function resourceOptsDefaults(): any {
     return { version: getVersion() };
 }
+
+/** @internal */
+export function lazy_load(exports: any, module_name: string) {
+	Object.defineProperty(exports, module_name, {
+		enumerable: true,
+		get: function() {
+			return require(`./${module_name}`);
+		},
+	});
+}
+
+/** @internal */
+export function lazy_load_property(exports: any, module_name: string, property: string) {
+	Object.defineProperty(exports, module_name, {
+		enumerable: true,
+		get: function() {
+			return require(`./${module_name}`)[property];
+		},
+	});
+}
+
+/** @internal */
+export function lazy_load_all(exports: any, args: Array<string>) {
+	args.forEach(arg => lazy_load(exports, arg))
+}

@@ -5,21 +5,32 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./foo";
-export * from "./funcWithAllOptionalInputs";
-export * from "./moduleTest";
-export * from "./provider";
 
-// Export sub-modules:
+export { FooArgs } from "./foo";
+export type Foo = import("./foo").Foo;
+export const Foo: typeof import("./foo").Foo = null as any
+utilities.lazy_load_property(exports, "./foo", "Foo");
+
+export * from "./funcWithAllOptionalInputs";
+
+export { ModuleTestArgs } from "./moduleTest";
+export type ModuleTest = import("./moduleTest").ModuleTest;
+export const ModuleTest: typeof import("./moduleTest").ModuleTest = null as any
+utilities.lazy_load_property(exports, "./moduleTest", "ModuleTest");
+
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+// Export sub-modules (modContext.genIndex):
 import * as types from "./types";
 
 export {
     types,
 };
-
-// Import resources to register:
-import { Foo } from "./foo";
-import { ModuleTest } from "./moduleTest";
 
 const _module = {
     version: utilities.getVersion(),
@@ -35,9 +46,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "index", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

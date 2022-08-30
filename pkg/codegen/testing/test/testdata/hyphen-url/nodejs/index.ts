@@ -5,11 +5,18 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
-export * from "./registryGeoReplication";
 
-// Import resources to register:
-import { RegistryGeoReplication } from "./registryGeoReplication";
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+export { RegistryGeoReplicationArgs } from "./registryGeoReplication";
+export type RegistryGeoReplication = import("./registryGeoReplication").RegistryGeoReplication;
+export const RegistryGeoReplication: typeof import("./registryGeoReplication").RegistryGeoReplication = null as any
+utilities.lazy_load_property(exports, "./registryGeoReplication", "RegistryGeoReplication");
+
 
 const _module = {
     version: utilities.getVersion(),
@@ -23,9 +30,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("registrygeoreplication", "index", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("registrygeoreplication", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

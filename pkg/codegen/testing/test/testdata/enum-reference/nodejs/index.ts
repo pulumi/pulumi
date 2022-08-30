@@ -5,17 +5,19 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
 
-// Export sub-modules:
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+// Export sub-modules (modContext.genIndex):
 import * as mymodule from "./mymodule";
 
 export {
     mymodule,
 };
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

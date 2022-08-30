@@ -5,18 +5,25 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
-export * from "./staticPage";
 
-// Export sub-modules:
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+export { StaticPageArgs } from "./staticPage";
+export type StaticPage = import("./staticPage").StaticPage;
+export const StaticPage: typeof import("./staticPage").StaticPage = null as any
+utilities.lazy_load_property(exports, "./staticPage", "StaticPage");
+
+
+// Export sub-modules (modContext.genIndex):
 import * as types from "./types";
 
 export {
     types,
 };
-
-// Import resources to register:
-import { StaticPage } from "./staticPage";
 
 const _module = {
     version: utilities.getVersion(),
@@ -30,9 +37,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("xyz", "index", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("xyz", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

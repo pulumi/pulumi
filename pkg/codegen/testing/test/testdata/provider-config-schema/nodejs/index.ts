@@ -5,12 +5,17 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
 
 // Export enums:
 export * from "./types/enums";
 
-// Export sub-modules:
+// Export sub-modules (modContext.genIndex):
 import * as config from "./config";
 import * as types from "./types";
 
@@ -18,9 +23,6 @@ export {
     config,
     types,
 };
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("configstation", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

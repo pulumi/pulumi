@@ -6,26 +6,49 @@ import * as utilities from "./utilities";
 
 // Export members:
 export * from "./argFunction";
-export * from "./barResource";
-export * from "./fooResource";
-export * from "./otherResource";
-export * from "./provider";
-export * from "./resource";
-export * from "./typeUses";
 
-// Export sub-modules:
+export { BarResourceArgs } from "./barResource";
+export type BarResource = import("./barResource").BarResource;
+export const BarResource: typeof import("./barResource").BarResource = null as any
+utilities.lazy_load_property(exports, "./barResource", "BarResource");
+
+
+export { FooResourceArgs } from "./fooResource";
+export type FooResource = import("./fooResource").FooResource;
+export const FooResource: typeof import("./fooResource").FooResource = null as any
+utilities.lazy_load_property(exports, "./fooResource", "FooResource");
+
+
+export { OtherResourceArgs } from "./otherResource";
+export type OtherResource = import("./otherResource").OtherResource;
+export const OtherResource: typeof import("./otherResource").OtherResource = null as any
+utilities.lazy_load_property(exports, "./otherResource", "OtherResource");
+
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any
+utilities.lazy_load_property(exports, "./provider", "Provider");
+
+
+export { ResourceArgs } from "./resource";
+export type Resource = import("./resource").Resource;
+export const Resource: typeof import("./resource").Resource = null as any
+utilities.lazy_load_property(exports, "./resource", "Resource");
+
+
+export { TypeUsesArgs } from "./typeUses";
+export type TypeUses = import("./typeUses").TypeUses;
+export const TypeUses: typeof import("./typeUses").TypeUses = null as any
+utilities.lazy_load_property(exports, "./typeUses", "TypeUses");
+
+
+// Export sub-modules (modContext.genIndex):
 import * as types from "./types";
 
 export {
     types,
 };
-
-// Import resources to register:
-import { BarResource } from "./barResource";
-import { OtherResource } from "./otherResource";
-import { Resource } from "./resource";
-import { TypeUses } from "./typeUses";
-import { FooResource } from "./fooResource";
 
 const _module = {
     version: utilities.getVersion(),
@@ -47,9 +70,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
