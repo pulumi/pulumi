@@ -125,19 +125,28 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	return plugins[0]
 }
 
-func testDeletePlugin(t *testing.T, dir string, plugin PluginInfo) {
+func testDeletePlugin(t *testing.T, plugin PluginInfo) {
+	paths := []string{
+		plugin.Path,
+		plugin.Path + ".partial",
+		plugin.Path + ".lock",
+	}
+	anyPresent := false
+	for _, path := range paths {
+		_, err := os.Stat(path)
+		if !os.IsNotExist(err) {
+			anyPresent = true
+		}
+	}
+	assert.True(t, anyPresent, "None of the expected plugin files were present before Delete")
+
 	err := plugin.Delete()
 	assert.NoError(t, err)
 
-	paths := []string{
-		filepath.Join(dir, plugin.Path),
-		filepath.Join(dir, plugin.Path+".partial"),
-		filepath.Join(dir, plugin.Path+".lock"),
-	}
 	for _, path := range paths {
 		_, err := os.Stat(path)
 		assert.Error(t, err)
-		assert.True(t, os.IsNotExist(err))
+		assert.Truef(t, os.IsNotExist(err), "err was not IsNotExists, but was %s", err)
 	}
 }
 
@@ -159,7 +168,7 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, pluginInfo)
 }
 
 func TestInstallNoDeps(t *testing.T) {
@@ -182,7 +191,7 @@ func TestInstallNoDeps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, pluginInfo)
 }
 
 func TestReinstall(t *testing.T) {
@@ -216,7 +225,7 @@ func TestReinstall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, pluginInfo)
 }
 
 func TestConcurrentInstalls(t *testing.T) {
@@ -258,7 +267,7 @@ func TestConcurrentInstalls(t *testing.T) {
 
 	pluginInfo := assertSuccess()
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, pluginInfo)
 }
 
 func TestInstallCleansOldFiles(t *testing.T) {
@@ -290,7 +299,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 	}
 
-	testDeletePlugin(t, dir, pluginInfo)
+	testDeletePlugin(t, pluginInfo)
 }
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
