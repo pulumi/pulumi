@@ -20,6 +20,7 @@ import * as log from "./log";
 export function loadTypeScriptCompilerOptions(tsConfigPath: string): object {
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
+
         // Using local `require("typescript")` to avoid always loading
         // and only load on-demand, avoid up to 300s overhead in Node runtime.
         const ts: typeof typescript = require("typescript");
