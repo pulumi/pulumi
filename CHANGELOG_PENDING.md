@@ -44,6 +44,13 @@
 - [sdk/go] enable direct compilation via `go build`(set `PULUMI_GO_USE_RUN=true` to opt out)
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
 
+- [cli/backend] Updates no longer immediately renew the token but wait
+  until the token is halfway through its expiration period. Currently
+  it is assumed tokens expire in 5 minutes, so with this change the
+  first lease renewal now happens approximately 2.5 minutes after the
+  start of the update. The change optimizes startup latency for Pulumi
+  CLI. [#10462](https://github.com/pulumi/pulumi/pull/10462)
+
 - [cli/plugin] `plugin install` now supports a `--checksum` option.
   [#10528](https://github.com/pulumi/pulumi/pull/10528)
 
