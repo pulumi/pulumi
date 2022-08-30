@@ -508,6 +508,15 @@ func (source *fallbackSource) Download(
 	return pulumi.Download(version, opSy, arch, getHTTPResponse)
 }
 
+type checksumError struct {
+	expected []byte
+	actual   []byte
+}
+
+func (err *checksumError) Error() string {
+	return fmt.Sprintf("invalid checksum, expected %x, actual %x", err.expected, err.actual)
+}
+
 // checksumSource will validate that the archive downloaded from the inner source matches a checksum
 type checksumSource struct {
 	source   PluginSource
@@ -539,7 +548,7 @@ func (reader *checksumReader) Read(p []byte) (int, error) {
 			// Check the checksum matches
 			actualChecksum := reader.hasher.Sum(nil)
 			if !bytes.Equal(reader.checksum, actualChecksum) {
-				return n, fmt.Errorf("invalid checksum, expected %x, actual %x", reader.checksum, actualChecksum)
+				return n, &checksumError{expected: reader.checksum, actual: actualChecksum}
 			}
 		}
 		return n, err
@@ -1031,11 +1040,17 @@ func DownloadToFile(
 				return "", writeErr
 			}
 
-			if readErr != nil && attempt >= 5 {
+			// If the readErr is a checksum error don't retry
+			if _, ok := readErr.(*checksumError); ok {
+				return "", readErr
+			}
+			// Don't attempt more than 5 times
+			attempts := 5
+			if readErr != nil && attempt >= attempts {
 				return "", readErr
 			}
 			if retry != nil {
-				retry(readErr, attempt+1, 5, delay)
+				retry(readErr, attempt+1, attempts, delay)
 			}
 			time.Sleep(delay)
 			delay = delay * 2
