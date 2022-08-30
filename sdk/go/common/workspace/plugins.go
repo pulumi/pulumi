@@ -553,7 +553,7 @@ func (reader *checksumReader) Read(p []byte) (int, error) {
 }
 
 func (reader *checksumReader) Close() error {
-	err := reader.Close()
+	err := reader.io.Close()
 	if err != nil {
 		return err
 	}

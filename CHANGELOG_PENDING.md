@@ -34,7 +34,7 @@
 
 - [sdk/go] Improve error messages for `StackReference`s
   [#10477](https://github.com/pulumi/pulumi/pull/10477)
-  
+
 - [sdk/dotnet] Added `Output.CreateSecret<T>(Output<T> value)` to set the secret bit on an output value.
   [#10467](https://github.com/pulumi/pulumi/pull/10467)
 
@@ -43,6 +43,9 @@
 
 - [sdk/go] enable direct compilation via `go build`(set `PULUMI_GO_USE_RUN=true` to opt out)
   [#10375](https://github.com/pulumi/pulumi/pull/10375)
+
+- [cli/plugin] `plugin install` now supports a `--checksum` option.
+  [#10528](https://github.com/pulumi/pulumi/pull/10528)
 
 ### Bug Fixes
 
@@ -70,13 +73,13 @@
 - [cli] Fixes `survey.v1` panics in Terminal UI introduced in
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
-  
+
 - [codegen/ts] Fix non-pulumi owned provider import alias.
   [#10447](https://github.com/pulumi/pulumi/pull/10447)
 
 - [codegen/go] Fix import path for non-pulumi owner providers
   [#10485](https://github.com/pulumi/pulumi/pull/10485)
-  
+
 - [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
   [#10489](https://github.com/pulumi/pulumi/pull/10489)
 
