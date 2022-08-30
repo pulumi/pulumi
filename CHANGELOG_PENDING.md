@@ -54,6 +54,9 @@
 - [cli/plugin] `plugin install` now supports a `--checksum` option.
   [#10528](https://github.com/pulumi/pulumi/pull/10528)
 
+- [cli] Display outputs last in diff view.
+  [#10535](https://github.com/pulumi/pulumi/pull/10535)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
