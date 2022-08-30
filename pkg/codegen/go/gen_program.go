@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const IndexToken = "index"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -510,8 +512,11 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	modSplit := strings.Split(mod, "/")
 	// account for mods like "eks/ClusterVpcConfig" index...
 	if len(modSplit) > 1 {
-		if modSplit[0] == "" || modSplit[0] == "index" {
+		if modSplit[0] == "" || modSplit[0] == IndexToken {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+			if info.ImportBasePath != "" {
+				imp = info.ImportBasePath
+			}
 		} else {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
 		}
@@ -609,12 +614,14 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
+	originalMod := mod
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
 		mod = ""
 		typ = "Provider"
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+		originalMod = mod
 		mod = pkg
 	}
 
@@ -631,7 +638,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	modOrAlias := g.getModOrAlias(pkg, mod)
+	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
@@ -895,7 +902,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	modSplit := strings.Split(module, "/")
 	mod := modSplit[0]
 	fn := Title(member)
-	if mod == "index" && len(modSplit) >= 2 {
+	if mod == IndexToken && len(modSplit) >= 2 {
 		// e.g. "aws:index/getPartition:getPartition" where module is "index/getPartition"
 		mod = ""
 		fn = Title(modSplit[1])
@@ -915,7 +922,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
-func (g *generator) getModOrAlias(pkg, mod string) string {
+func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
 		return mod
@@ -927,6 +934,10 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
 	if alias, ok := info.PackageImportAliases[imp]; ok {
 		return alias
+	} else if info.ImportBasePath != "" {
+		if originalMod == "" || originalMod == IndexToken {
+			return path.Base(info.ImportBasePath)
+		}
 	}
 	return mod
 }

@@ -19,6 +19,10 @@
 - [codegen] Reduce time to execute `pulumi convert` and some YAML programs, depending on providers used, by up to 3 seconds.
   [#10444](https://github.com/pulumi/pulumi/pull/10444)
 
+
+- [dotnet/sdk] Implement `Deployment.TestAsync` overloads which accept functions that create resources without requiring a stack definition.
+  [#10458](https://github.com/pulumi/pulumi/pull/10458)
+
 - [sdk/nodejs] Added stack truncation to `SyntaxError` in nodejs.
   [#10465](https://github.com/pulumi/pulumi/pull/10465)
 
@@ -47,6 +51,8 @@
   start of the update. The change optimizes startup latency for Pulumi
   CLI. [#10462](https://github.com/pulumi/pulumi/pull/10462)
 
+- [cli/plugin] `plugin install` now supports a `--checksum` option.
+  [#10528](https://github.com/pulumi/pulumi/pull/10528)
 
 ### Bug Fixes
 
@@ -75,6 +81,12 @@
   [#10130](https://github.com/pulumi/pulumi/issues/10130) in v3.38.0.
   [#10475](https://github.com/pulumi/pulumi/pull/10475)
 
+- [codegen/ts] Fix non-pulumi owned provider import alias.
+  [#10447](https://github.com/pulumi/pulumi/pull/10447)
+
+- [codegen/go] Fix import path for non-pulumi owner providers
+  [#10485](https://github.com/pulumi/pulumi/pull/10485)
+
 - [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
   [#10489](https://github.com/pulumi/pulumi/pull/10489)
 
@@ -89,3 +101,6 @@
 
 - [cli] Fix `pulumi console` command to follow documented behavior in help message/docs.
   [#10509](https://github.com/pulumi/pulumi/pull/10509)
+
+- [sdk/nodejs] Fixes an issue which would occur when multiple processes were spawned and some would receive no stdout/stderr
+  [10522](https://github.com/pulumi/pulumi/pull/10522)

@@ -17,8 +17,10 @@ package workspace
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -506,6 +508,80 @@ func (source *fallbackSource) Download(
 	return pulumi.Download(version, opSy, arch, getHTTPResponse)
 }
 
+type checksumError struct {
+	expected []byte
+	actual   []byte
+}
+
+func (err *checksumError) Error() string {
+	return fmt.Sprintf("invalid checksum, expected %x, actual %x", err.expected, err.actual)
+}
+
+// checksumSource will validate that the archive downloaded from the inner source matches a checksum
+type checksumSource struct {
+	source   PluginSource
+	checksum map[string][]byte
+}
+
+func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksumSource {
+	return &checksumSource{
+		source:   source,
+		checksum: checksum,
+	}
+}
+
+func (source *checksumSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	return source.source.GetLatestVersion(getHTTPResponse)
+}
+
+type checksumReader struct {
+	checksum []byte
+	io       io.ReadCloser
+	hasher   hash.Hash
+}
+
+func (reader *checksumReader) Read(p []byte) (int, error) {
+	n, err := reader.io.Read(p)
+	if err != nil {
+		if err == io.EOF {
+			// Check the checksum matches
+			actualChecksum := reader.hasher.Sum(nil)
+			if !bytes.Equal(reader.checksum, actualChecksum) {
+				return n, &checksumError{expected: reader.checksum, actual: actualChecksum}
+			}
+		}
+		return n, err
+	}
+
+	m, err := reader.hasher.Write(p[0:n])
+	contract.AssertNoError(err)
+	contract.Assert(m == n)
+
+	return n, nil
+}
+
+func (reader *checksumReader) Close() error {
+	return reader.io.Close()
+}
+
+func (source *checksumSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+
+	checksum := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
+	response, length, err := source.source.Download(version, opSy, arch, getHTTPResponse)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return &checksumReader{
+		checksum: checksum,
+		hasher:   sha256.New(),
+		io:       response,
+	}, length, nil
+}
+
 // Information about a locally installed plugin specified by the project.
 type ProjectPlugin struct {
 	Name    string          // the simple name of the plugin.
@@ -530,6 +606,9 @@ type PluginSpec struct {
 	Version           *semver.Version // the plugin's semantic version, if present.
 	PluginDownloadURL string          // an optional server to use when downloading this plugin.
 	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+
+	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
+	Checksums map[string][]byte
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -711,28 +790,39 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 }
 
 func (spec PluginSpec) GetSource() (PluginSource, error) {
-	// The plugin has a set URL use that.
-	if spec.PluginDownloadURL != "" {
-		// Support schematised URLS if the URL has a "schema" part we recognize
-		url, err := url.Parse(spec.PluginDownloadURL)
-		if err != nil {
-			return nil, err
+	baseSource, err := func() (PluginSource, error) {
+		// The plugin has a set URL use that.
+		if spec.PluginDownloadURL != "" {
+			// Support schematised URLS if the URL has a "schema" part we recognize
+			url, err := url.Parse(spec.PluginDownloadURL)
+			if err != nil {
+				return nil, err
+			}
+
+			if url.Scheme == "github" {
+				return newGithubSource(url, spec.Name, spec.Kind)
+			}
+
+			return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
 		}
 
-		if url.Scheme == "github" {
-			return newGithubSource(url, spec.Name, spec.Kind)
+		// If the plugin name matches an override, download the plugin from the override URL.
+		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
+			return newPluginURLSource(spec.Name, spec.Kind, url), nil
 		}
 
-		return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
+		// Use our default fallback behaviour of github then get.pulumi.com
+		return newFallbackSource(spec.Name, spec.Kind), nil
+	}()
+
+	if err != nil {
+		return nil, err
 	}
 
-	// If the plugin name matches an override, download the plugin from the override URL.
-	if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
-		return newPluginURLSource(spec.Name, spec.Kind, url), nil
+	if len(spec.Checksums) != 0 {
+		return newChecksumSource(baseSource, spec.Checksums), nil
 	}
-
-	// Use our default fallback behaviour of github then get.pulumi.com
-	return newFallbackSource(spec.Name, spec.Kind), nil
+	return baseSource, nil
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
@@ -950,11 +1040,17 @@ func DownloadToFile(
 				return "", writeErr
 			}
 
-			if readErr != nil && attempt >= 5 {
+			// If the readErr is a checksum error don't retry
+			if _, ok := readErr.(*checksumError); ok {
+				return "", readErr
+			}
+			// Don't attempt more than 5 times
+			attempts := 5
+			if readErr != nil && attempt >= attempts {
 				return "", readErr
 			}
 			if retry != nil {
-				retry(readErr, attempt+1, 5, delay)
+				retry(readErr, attempt+1, attempts, delay)
 			}
 			time.Sleep(delay)
 			delay = delay * 2
