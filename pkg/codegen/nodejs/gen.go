@@ -1917,6 +1917,70 @@ func getChildMod(modName string) string {
 	return child
 }
 
+func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
+	modDir := strings.ToLower(mod.mod)
+
+	rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
+	contract.Assert(err == nil)
+	if path.Base(rel) == "." {
+		rel = path.Dir(rel)
+	}
+	quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
+
+	// only resource types currently have specialized logic,
+	// otherwise simply reexport everything
+	if exp.fileType != resourceFileType {
+		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
+		return
+	}
+
+	i := exp.resourceFileInfo
+
+	// not sure how to lazy-load in presence of re-exported
+	// namespaces; bail and use an eager load in this case; also
+	// eager-import the class.
+	if exp.resourceFileInfo.methodsNamespaceName == "" {
+		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
+		fmt.Fprintf(w, "import { %s } from %s;\n", i.resourceClassName, quotedImport)
+		return
+	}
+
+	// Optimize the case of resource files to lazy-load them in
+	// Node; instead of reexporting everything which generates
+	// require() calls.
+	//
+	// Note that we cannot yet do this reliably if the resource
+	// file exports a methods namespace.
+
+	interfaces := []string{
+		i.resourceArgsInterfaceName,
+	}
+	if i.stateInterfaceName != "" {
+		interfaces = append(interfaces, i.stateInterfaceName)
+	}
+	// Re-export interfaces. This is
+	// type-only and does not generate a
+	// require() call.
+	fmt.Fprintf(w, "\nexport { %s } from %s;\n",
+		strings.Join(interfaces, ", "),
+		quotedImport)
+
+	// Re-export class type into the type group, see
+	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html
+	fmt.Fprintf(w, "export type %[1]s = import(%[2]s).%[1]s;\n",
+		i.resourceClassName,
+		quotedImport)
+
+	// Re-export class value into the value group.
+	fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
+		i.resourceClassName,
+		quotedImport)
+
+	fmt.Fprintf(w, "utilities.lazy_load_property(exports, %s, %q);\n\n",
+		quotedImport,
+		i.resourceClassName)
+}
+
 // genIndex emits an index module, optionally re-exporting other members or submodules.
 func (mod *modContext) genIndex(exports []fileInfo) string {
 	children := codegen.NewStringSet()
@@ -1945,61 +2009,12 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
-		modDir := strings.ToLower(mod.mod)
 		fmt.Fprintf(w, "// Export members:\n")
 		sort.SliceStable(exports, func(i, j int) bool {
 			return exports[i].pathToNodeModule < exports[j].pathToNodeModule
 		})
 		for _, exp := range exports {
-			rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
-			contract.Assert(err == nil)
-			if path.Base(rel) == "." {
-				rel = path.Dir(rel)
-			}
-			quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
-
-			if exp.fileType == resourceFileType &&
-				exp.resourceFileInfo.methodsNamespaceName == "" {
-				// Optimize the case of resource files
-				// to lazy-load them in Node; instead
-				// of reexporting everything which
-				// generates require() calls.
-				//
-				// Note that we cannot yet do this
-				// reliably if the resource file
-				// exports a methods namespace.
-
-				i := exp.resourceFileInfo
-				interfaces := []string{
-					i.resourceArgsInterfaceName,
-				}
-				if i.stateInterfaceName != "" {
-					interfaces = append(interfaces, i.stateInterfaceName)
-				}
-				// Re-export interfaces. This is
-				// type-only and does not generate a
-				// require() call.
-				fmt.Fprintf(w, "\nexport { %s } from %s;\n",
-					strings.Join(interfaces, ", "),
-					quotedImport)
-
-				// Re-export class type into the type group, see
-				// https://www.typescriptlang.org/docs/handbook/declaration-merging.html
-				fmt.Fprintf(w, "export type %[1]s = import(%[2]s).%[1]s;\n",
-					i.resourceClassName,
-					quotedImport)
-
-				// Re-export class value into the value group.
-				fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
-					i.resourceClassName,
-					quotedImport)
-
-				fmt.Fprintf(w, "utilities.lazy_load_property(exports, %s, %q);\n\n",
-					quotedImport,
-					i.resourceClassName)
-			} else {
-				fmt.Fprintf(w, "export * from %s;\n", quotedImport)
-			}
+			mod.genReexport(w, exp)
 		}
 	}
 
