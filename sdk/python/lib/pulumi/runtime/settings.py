@@ -98,6 +98,10 @@ class Settings:
         ...
 
     @contextproperty
+    def organization(self) -> Optional[str]:
+        ...
+
+    @contextproperty
     def project(self) -> Optional[str]:
         ...
 
