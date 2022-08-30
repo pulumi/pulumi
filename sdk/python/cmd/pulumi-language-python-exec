@@ -79,8 +79,9 @@ if __name__ == "__main__":
             pulumi.runtime.set_config(k, v)
 
     # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
-    pulumi.runtime.configure(
-        pulumi.runtime.Settings(
+    # New versions of pulumi python support setting organization, old versions do not
+    try:
+        settings = pulumi.runtime.Settings(
             monitor=args.monitor,
             engine=args.engine,
             project=args.project,
@@ -89,7 +90,17 @@ if __name__ == "__main__":
             dry_run=args.dry_run == "true",
             organization=args.organization,
         )
-    )
+    except TypeError:
+        settings = pulumi.runtime.Settings(
+            monitor=args.monitor,
+            engine=args.engine,
+            project=args.project,
+            stack=args.stack,
+            parallel=int(args.parallel),
+            dry_run=args.dry_run == "true"
+        )
+
+    pulumi.runtime.configure(settings)
 
     # Finally, swap in the args, chdir if needed, and run the program as if it had been executed directly.
     sys.argv = [args.PROGRAM] + args.ARGS
