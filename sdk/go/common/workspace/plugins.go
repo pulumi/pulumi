@@ -39,6 +39,7 @@ import (
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1389,10 +1390,54 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 	return path, err
 }
 
+func attemptToDownloadMissingPlugin(kind PluginKind, name string, version *semver.Version) error {
+	pluginSpec := PluginSpec{
+		Kind: kind,
+		Name: name,
+	}
+
+	if version == nil {
+		latestVersion, err := pluginSpec.GetLatestVersion()
+		if err != nil {
+			return err
+		}
+
+		version = latestVersion
+	}
+
+	pluginSpec.Version = version
+
+	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		header := fmt.Sprintf("Downloading plugin %s v%s", pluginSpec.Name, version.String())
+		return ReadCloserProgressBar(stream, size, header, colors.Always)
+	}
+
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		cmdutil.Diag().Warningf(
+			diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+	}
+
+	downloadedFile, err := DownloadToFile(pluginSpec, withProgress, retry)
+	if err != nil {
+		return fmt.Errorf("error downloading %s: %w", pluginSpec.Name, err)
+	}
+
+	logging.V(1).Info("installing plugin")
+	return pluginSpec.Install(downloadedFile, false)
+}
+
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
+		if _, ok := err.(*MissingError); ok {
+			if err = attemptToDownloadMissingPlugin(kind, name, version); err != nil {
+				return nil, err
+			}
+
+			return GetPluginInfo(kind, name, version, projectPlugins)
+		}
+
 		return nil, err
 	}
 
@@ -1530,11 +1575,17 @@ func getPluginInfoAndPath(
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 		if err != nil {
-			return nil, "", NewMissingError(PluginInfo{
-				Name:    name,
-				Kind:    kind,
-				Version: version,
-			}, includeAmbient)
+			// could not find a compatible plugin
+			// this could be due to the fact that a transitive version of a plugin is required
+			// which are not picked up by initial pass of required plugin installations
+			// so instead of reporting an error, we just install that required plugin
+			if err = attemptToDownloadMissingPlugin(kind, name, version); err != nil {
+				return nil, "", err
+			}
+
+			// downloaded the plugin succesfully
+			// restart the plugin retrieval
+			return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 		}
 		match = &candidate
 	} else {
