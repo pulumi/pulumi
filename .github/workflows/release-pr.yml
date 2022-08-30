@@ -1,8 +1,17 @@
 name: Post-Release PR
 
+permissions:
+  # To create a PR
+  contents: write
+  pull-requests: write
+
 on:
   workflow_call:
     inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
       version:
         required: true
         description: "Version to produce"
@@ -11,14 +20,19 @@ on:
         required: false
         description: "Commit to branch from, if not the tag"
         type: string
-      next_version:
+      next-version:
         required: true
         description: "Version to bump files to"
         type: string
-      release_notes:
+      release-notes:
         required: true
         description: "Release notes to publish"
         type: string
+      queue-merge:
+        required: false
+        default: false
+        description: "Whether to queue the release for immediate merge"
+        type: boolean
 
 jobs:
   version-bump:
@@ -26,28 +40,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: git fetch --tags && git checkout tags/v${{ inputs.version }}
-        if: ${{ !inputs.branch_from_ref }}
-      - run: git fetch --tags && git fetch origin ${{ inputs.branch_from_ref }}:local_ref && git checkout local_ref
-        if: ${{ inputs.branch_from_ref }}
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-go@v3
         with:
           go-version: 1.19.x
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            sdk/go.sum
       - name: Create PR
         env:
-          VERSION: ${{ inputs.version }}
-          NEXT_VERSION: ${{ inputs.next_version }}
-          RELEASE_NOTES: ${{ inputs.release_notes }}
-          GH_TOKEN: ${{ secrets.MERGE_PR_TOKEN }}
-          PR_BODY: |
-            bors r+
+          PULUMI_VERSION: ${{ inputs.version }}
+          NEXT_VERSION: ${{ inputs.next-version }}
+          RELEASE_NOTES: ${{ inputs.release-notes }}
+          QUEUE_MERGE: ${{ inputs.queue-merge }}
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
-          git switch --create "automation/release-v${VERSION}"
+          git switch --create "automation/release-v${PULUMI_VERSION}-v${NEXT_VERSION}"
 
           echo -en "# Changelog\n\n${RELEASE_NOTES}\n\n$(tail -n+3 CHANGELOG.md)" > ./CHANGELOG.md
 
@@ -61,18 +68,24 @@ jobs:
 
           git commit -m "prepare for next release (v${NEXT_VERSION})"
 
+          # TODO: bump go module dependencies in pkg, test, etc.
           # Update go module dependencies
           # pushd ./pkg/test
-          # go get -u "github.com/aaronfriel/go-change@v${VERSION}"
+          # go get -u "github.com/aaronfriel/go-change@v${PULUMI_VERSION}"
           # go mod tidy
           # git add go.mod go.sum
           # popd
           # git commit -m "Update dependencies"
 
           # Publish Go module on another tag
-          git tag "pkg/test/v${VERSION}"
-          git push origin "pkg/test/v${VERSION}"
+          git tag "pkg/test/v${PULUMI_VERSION}"
+          git push origin "pkg/test/v${PULUMI_VERSION}"
           git push -u origin HEAD
+
+          PR_BODY=""
+          if [ "${QUEUE_MERGE}" = "true" ]; then
+            PR_BODY="bors r+"
+          fi
 
           gh pr create \
             --title "prepare for next release (v${NEXT_VERSION})" \
