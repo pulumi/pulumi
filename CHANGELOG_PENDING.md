@@ -19,6 +19,10 @@
 - [codegen] Reduce time to execute `pulumi convert` and some YAML programs, depending on providers used, by up to 3 seconds.
   [#10444](https://github.com/pulumi/pulumi/pull/10444)
 
+
+- [dotnet/sdk] Implement `Deployment.TestAsync` overloads which accept functions that create resources without requiring a stack definition.
+  [#10458](https://github.com/pulumi/pulumi/pull/10458)
+
 - [sdk/nodejs] Added stack truncation to `SyntaxError` in nodejs.
   [#10465](https://github.com/pulumi/pulumi/pull/10465)
 

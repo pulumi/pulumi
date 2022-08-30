@@ -105,5 +105,109 @@ namespace Pulumi.Tests
 
             Assert.Equal(42, result);
         }
+
+        [Fact]
+        public async Task TestAsyncReturnsCreatedResourcesAndOutputs()
+        {
+            var mocks = new MyMocks();
+            var testOptions = new TestOptions();
+            var publicIpProperty = "publicIp";
+            var (resources, outputs) = await Deployment.TestAsync(mocks, testOptions, () =>
+            {
+                var instance = new Instance("test-instance", new InstanceArgs());
+                return new Dictionary<string, object?>
+                {
+                    [publicIpProperty] = instance.PublicIp,
+                    ["extra"] = 1
+                };
+            });
+            
+            // There is only one resource created
+            Assert.Single(resources);
+            Assert.IsType<Instance>(resources[0]);
+            // There are two outputs
+            Assert.True(2 == outputs.Count);
+            Assert.True(outputs.ContainsKey(publicIpProperty));
+            Assert.True(outputs.ContainsKey("extra"));
+            if (outputs[publicIpProperty] is Output<string> publicIp)
+            {
+                var value = await publicIp.GetValueAsync("");
+                Assert.Equal(value, MyMocks.InstancePublicIpAddress);
+            }
+            else
+            {
+                throw new Exception($"Expected {publicIpProperty} to be of type Output<string>");
+            }
+            
+            Assert.Equal(1, outputs["extra"]);
+        }
+        
+        [Fact]
+        public async Task TestAsyncReturnsCreatedResourcesWithoutOuputs()
+        {
+            var mocks = new MyMocks();
+            var testOptions = new TestOptions();
+            var resources = await Deployment.TestAsync(mocks, testOptions, () =>
+            {
+                var instance = new Instance("test-instance", new InstanceArgs());
+            });
+            
+            // There is only one resource created
+            Assert.Single(resources);
+            Assert.IsType<Instance>(resources[0]);
+        }
+        
+        [Fact]
+        public async Task TestAsyncReturnsCreatedResourcesWithoutOuputsInAsyncOverload()
+        {
+            var mocks = new MyMocks();
+            var testOptions = new TestOptions();
+            var resources = await Deployment.TestAsync(mocks, testOptions, async() =>
+            {
+                await Task.Delay(1000);
+                var instance = new Instance("test-instance", new InstanceArgs());
+            });
+            
+            // There is only one resource created
+            Assert.Single(resources);
+            Assert.IsType<Instance>(resources[0]);
+        }
+        
+        [Fact]
+        public async Task TestAsyncReturnsCreatedResourcesAndOutputsInAsyncOverload()
+        {
+            var mocks = new MyMocks();
+            var testOptions = new TestOptions();
+            var publicIpProperty = "publicIp";
+            var (resources, outputs) = await Deployment.TestAsync(mocks, testOptions, async () =>
+            {
+                await Task.Delay(1000);
+                var instance = new Instance("test-instance", new InstanceArgs());
+                return new Dictionary<string, object?>
+                {
+                    [publicIpProperty] = instance.PublicIp,
+                    ["extra"] = 1
+                };
+            });
+            
+            // There is only one resource created
+            Assert.Single(resources);
+            Assert.IsType<Instance>(resources[0]);
+            // There are two outputs
+            Assert.True(2 == outputs.Count);
+            Assert.True(outputs.ContainsKey(publicIpProperty));
+            Assert.True(outputs.ContainsKey("extra"));
+            if (outputs[publicIpProperty] is Output<string> publicIp)
+            {
+                var value = await publicIp.GetValueAsync("");
+                Assert.Equal(value, MyMocks.InstancePublicIpAddress);
+            }
+            else
+            {
+                throw new Exception($"Expected {publicIpProperty} to be of type Output<string>");
+            }
+            
+            Assert.Equal(1, outputs["extra"]);
+        }
     }
 }
