@@ -1,7 +1,18 @@
 name: Lint
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   golangci:
@@ -9,14 +20,14 @@ jobs:
     container: golangci/golangci-lint:v1.44
     name: Lint ${{ matrix.directory }}
     strategy:
+      fail-fast: true
       matrix:
         directory: [ sdk, pkg, tests ]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          ref: ${{ env.PR_COMMIT_SHA }}
+          ref: ${{ inputs.ref }}
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
@@ -25,10 +36,9 @@ jobs:
     name: Check Protobufs
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          ref: ${{ env.PR_COMMIT_SHA }}
+          ref: ${{ inputs.ref }}
         # This till display missing pulumictl errors, but it won't prevent the lint from working.
       - name: Check Protobufs
         run: |
@@ -44,28 +54,20 @@ jobs:
         dotnet-version: [6.0.x]
         node-version: [14.x]
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
-          check-latest: true
-      - id: go-cache-paths
-        run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-      - name: Go Cache
-        uses: actions/cache@v2
-        id: go-cache
-        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
-        with:
-          path: |
-              ${{ steps.go-cache-paths.outputs.go-build }}
-              ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
@@ -83,7 +85,7 @@ jobs:
           dotnet --version
           dotnet nuget add source "${{ runner.temp }}/opt/pulumi/nuget"
       - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
@@ -98,18 +100,12 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - name: Fetch Tags
-        run: |
-          git fetch --quiet --prune --unshallow --tags
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.32
-          cache: enable
       - name: Ensure
         run: |
           make ensure
@@ -128,8 +124,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
       - run: |
-          # These vars are format strings.
-          # shellcheck disable=SC2016
-          go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.17 \
-            -format '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}' -ignore 'SC2016:'
+          make lint_actions

@@ -1,16 +1,78 @@
-name: Integration Test
+name: Unit Test
+
+permissions:
+  contents: read
 
 on:
   workflow_call:
     inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
       version:
         required: true
         description: "Version to produce"
         type: string
+      platform:
+        description: "OS to run tests on, e.g.: ubuntu-latest"
+        required: true
+        type: string
+      go-version:
+        description: Version of the Go toolchain for the build
+        default: "1.17.x"
+        required: false
+        type: string
+      python-version:
+        description: Version of the Python toolchain for the build
+        default: "3.9.x"
+        required: false
+        type: string
+      node-version:
+        description: Version of the Node toolchain for the build
+        default: "14.x"
+        required: false
+        type: string
+      dotnet-version:
+        description: "Version of the .NET toolchain for the build"
+        default: "6.0.x"
+        required: false
+        type: string
+      enable-coverage:
+        description: "Collects coverage stats; requires cov-enabled builds"
+        default: false
+        required: false
+        type: boolean
 
 jobs:
-  integration-test:
-    name: n/a
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo OK
+  test:
+    name: ${{ matrix.test-suite.run }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite:
+          - run: cd sdk/python && make test_auto
+          - run: cd sdk/dotnet && make test_auto
+          - run: cd sdk/nodejs && make test_auto
+          - run: cd sdk/go && make test_auto
+
+          - run: make test_integration_dotnet
+          - run: make test_integration_go
+          - run: make test_integration_nodejs
+          - run: make test_integration_python
+          - run: make test_integration_rest
+          - run: make test_integration_subpkgs
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ inputs.platform }}
+      go-version: ${{ inputs.go-version }}
+      python-version: ${{ inputs.python-version }}
+      node-version: ${{ inputs.node-version }}
+      dotnet-version: ${{ inputs.dotnet-version }}
+      enable-coverage: ${{ inputs.enable-coverage }}
+      run-command: ${{ matrix.test-suite.run }}
+      require-build: true
+      is-integration-test: true
+    secrets: inherit
