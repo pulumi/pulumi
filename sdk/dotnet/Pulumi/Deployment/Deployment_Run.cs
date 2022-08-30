@@ -166,6 +166,128 @@ namespace Pulumi
             where TStack : Stack, new()
             => TestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
 
+        /// <summary>
+        /// Used inside TestAsync overloads where users have a function that creates resources
+        /// in which case an internal TestStack is used to create the resources.
+        ///
+        /// This function takes the created resources from the TestStack and filters it out of the created resources
+        /// (since it is internal) and obtains the outputs returned, if any from that TestStack. 
+        /// </summary>
+        /// <param name="resources">The created resources from TestAsync</param>
+        /// <returns>Resources and outputs</returns>
+        private static (ImmutableArray<Resource> Resources, IDictionary<string, object?> Outputs) TestResults(
+            ImmutableArray<Resource> resources)
+        {
+            var result = new List<Resource>();
+            IDictionary<string, object?> outputs = new Dictionary<string, object?>(); 
+            foreach (var resource in resources)
+            {
+                if (resource is TestStack testStack)
+                {
+                    // Obtain the outputs from the test stack
+                    outputs = testStack.Outputs;
+                    // Since TestStack is internal, Skip adding it as part of the resources created by the callback
+                    continue;
+                }
+                
+                result.Add(resource);
+            }
+
+            return (result.ToImmutableArray(), outputs);
+        }
+        
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// run the provided function that creates resources but doesn't actually deploy them
+        /// Note: Currently, unit tests that call this function 
+        /// must run serially; parallel execution is not supported.
+        /// </summary>
+        /// <param name="testMocks">Hooks to mock the engine calls.</param>
+        /// <param name="testOptions">Optional settings for the test run.</param>
+        /// <param name="createResources">The function which creates resources and returns outputs.</param>
+        /// <returns>Test result containing created resources and outputs, if any.</returns>
+        public static async Task<(ImmutableArray<Resource> Resources, IDictionary<string, object?> Outputs)> TestAsync(
+            IMocks testMocks,
+            TestOptions testOptions,
+            Func<Task<IDictionary<string, object?>>> createResources)
+        {
+            var createdResources = await TestAsync(
+                mocks: testMocks,
+                runAsync: runner => runner.RunAsync(() => new TestStack(createResources)), 
+                testOptions);
+
+            return TestResults(createdResources);
+        }
+        
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// run the provided function that creates resources but doesn't actually deploy them
+        /// Note: Currently, unit tests that call this function 
+        /// must run serially; parallel execution is not supported.
+        /// </summary>
+        /// <param name="testMocks">Hooks to mock the engine calls.</param>
+        /// <param name="testOptions">Optional settings for the test run.</param>
+        /// <param name="createResources">The function which creates resources and returns outputs.</param>
+        /// <returns>Test result containing created resources and outputs, if any.</returns>
+        public static async Task<(ImmutableArray<Resource> Resources, IDictionary<string, object?> Outputs)> TestAsync(
+            IMocks testMocks,
+            TestOptions testOptions,
+            Func<IDictionary<string, object?>> createResources)
+        {
+            var createdResources = await TestAsync(
+                mocks: testMocks,
+                runAsync: runner => runner.RunAsync(() => new TestStack(createResources)), 
+                testOptions);
+
+            return TestResults(createdResources);
+        }
+        
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// run the provided function that creates resources but doesn't actually deploy them
+        /// Note: Currently, unit tests that call this function 
+        /// must run serially; parallel execution is not supported.
+        /// </summary>
+        /// <param name="testMocks">Hooks to mock the engine calls.</param>
+        /// <param name="testOptions">Optional settings for the test run.</param>
+        /// <param name="createResources">The function which creates resources and returns outputs.</param>
+        /// <returns>Test result containing created resources and outputs, if any.</returns>
+        public static async Task<ImmutableArray<Resource>> TestAsync(
+            IMocks testMocks,
+            TestOptions testOptions,
+            Func<Task> createResources)
+        {
+            var createdResources = await TestAsync(
+                mocks: testMocks,
+                runAsync: runner => runner.RunAsync(() => new TestStack(createResources)), 
+                testOptions);
+
+            return TestResults(createdResources).Resources;
+        }
+        
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// run the provided function that creates resources but doesn't actually deploy them
+        /// Note: Currently, unit tests that call this function 
+        /// must run serially; parallel execution is not supported.
+        /// </summary>
+        /// <param name="testMocks">Hooks to mock the engine calls.</param>
+        /// <param name="testOptions">Optional settings for the test run.</param>
+        /// <param name="createResources">The function which creates resources and returns outputs.</param>
+        /// <returns>Test result containing created resources and outputs, if any.</returns>
+        public static async Task<ImmutableArray<Resource>> TestAsync(
+            IMocks testMocks,
+            TestOptions testOptions,
+            Action createResources)
+        {
+            var createdResources = await TestAsync(
+                mocks: testMocks,
+                runAsync: runner => runner.RunAsync(() => new TestStack(createResources)), 
+                testOptions);
+
+            return TestResults(createdResources).Resources;
+        }
+
         private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {
             var result = await TryTestAsync(mocks, runAsync, options);

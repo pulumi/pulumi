@@ -218,6 +218,23 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
+        } else if (
+            err.name === tsnode.TSError.name
+            || err.name === SyntaxError.name) {
+
+            // Hide stack frames as TSError/SyntaxError have messages containing
+            // where the error is located
+            const errOut = err.stack?.toString() || "";
+            let errMsg = err.message;
+
+            const errParts = errOut.split(err.message);
+            if (errParts.length === 2) {
+                errMsg = errParts[0]+err.message;
+            }
+
+            log.error(
+                `Running program '${program}' failed with an unhandled exception:
+${errMsg}`);
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
