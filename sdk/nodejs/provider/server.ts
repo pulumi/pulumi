@@ -641,7 +641,7 @@ export async function main(provider: Provider, args: string[]) {
     const engineAddr = parsedArgs?.engineAddress;
     server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
     const port: number = await new Promise<number>((resolve, reject) => {
-        server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {

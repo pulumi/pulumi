@@ -106,7 +106,7 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 func (h *langhost) Runtime() string { return h.runtime }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
+func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error) {
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
@@ -129,7 +129,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		return nil, rpcError
 	}
 
-	var results []workspace.PluginInfo
+	var results []workspace.PluginSpec
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -142,7 +142,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		if !workspace.IsPluginKind(info.GetKind()) {
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
-		results = append(results, workspace.PluginInfo{
+		results = append(results, workspace.PluginSpec{
 			Name:              info.GetName(),
 			Kind:              workspace.PluginKind(info.GetKind()),
 			Version:           version,

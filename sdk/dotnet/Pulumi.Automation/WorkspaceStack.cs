@@ -643,7 +643,7 @@ namespace Pulumi.Automation
                         webBuilder
                             .ConfigureKestrel(kestrelOptions =>
                             {
-                                kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
+                                kestrelOptions.Listen(IPAddress.Loopback, 0, listenOptions =>
                                 {
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });

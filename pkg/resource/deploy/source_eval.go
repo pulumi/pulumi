@@ -58,7 +58,7 @@ type EvalRunInfo struct {
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
 func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginInfo, dryRun bool) Source {
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool) Source {
 
 	return &evalSource{
 		plugctx:             plugctx,
@@ -71,7 +71,7 @@ func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
 type evalSource struct {
 	plugctx             *plugin.Context                         // the plugin context.
 	runinfo             *EvalRunInfo                            // the directives to use when running the program.
-	defaultProviderInfo map[tokens.Package]workspace.PluginInfo // the default provider versions for this source.
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec // the default provider versions for this source.
 	dryRun              bool                                    // true if this is a dry-run operation only.
 }
 
@@ -247,7 +247,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 type defaultProviders struct {
 	// A map of package identifiers to versions, used to disambiguate which plugin to load if no version is provided
 	// by the language host.
-	defaultProviderInfo map[tokens.Package]workspace.PluginInfo
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec
 
 	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
 	// have already been loaded.

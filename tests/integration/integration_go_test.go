@@ -5,6 +5,7 @@
 package ints
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +20,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
+
+// This checks that the Exit Status artifact from Go Run is not being produced
+func TestNoEmitExitStatus(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "go-exit-5"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stderr:        stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure exit status is not emitted by the program
+			assert.NotContains(t, stderr.String(), "exit status")
+		},
+	})
+}
+
+// This checks that the PULUMI_GO_USE_RUN=true flag is triggering go run by checking the `exit status`
+// string is being emitted. This is a temporary fallback measure in case it breaks users and should
+// not be assumed to be stable.
+func TestGoRunEnvFlag(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{"PULUMI_GO_USE_RUN=true"},
+		Dir: filepath.Join("go", "go-exit-5"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stderr:        stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure exit status IS emitted by the program as it indicates `go run` was used
+			assert.Contains(t, stderr.String(), "exit status")
+		},
+	})
+}
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
 func TestEmptyGo(t *testing.T) {
