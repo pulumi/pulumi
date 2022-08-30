@@ -174,8 +174,11 @@ export function run(
 
     // Start tracing. Before exiting, gracefully shutdown tracing, exporting 
     // all remaining spans in the batch.
-    tracing.start();
-    process.on("exit", tracing.stop);
+    const tracingUrl: string | boolean = argv["tracing"];
+    if(typeof tracingUrl === "string" && tracingUrl.length > 0) {
+        tracing.start(tracingUrl);
+        process.on("exit", tracing.stop);
+    }
     // Start a new span, which we shutdown at the bottom of this method.
     const span = tracing.newSpan('language-runtime.run');    
 
@@ -197,6 +200,7 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
+    span.setAttribute("typescript-enabled", false);
     if (typeScript) {
         span.setAttribute("typescript-enabled", true);
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
