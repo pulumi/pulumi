@@ -17,7 +17,7 @@ import * as packageJson from "../package.json";
 import * as opentelemetry from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { BatchSpanProcessor, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
@@ -49,8 +49,11 @@ export function start(destinationUrl: string) {
   });
   
   // Configure span processor to send spans to the exporter
-  exporter = new ZipkinExporter({url: destinationUrl});
-  provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+  // exporter = new ZipkinExporter({url: destinationUrl});
+  exporter = new ZipkinExporter();
+  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+  // provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+  console.log("Registering provider with url: ", destinationUrl);
 
   /**
    * Taken from OpenTelemetry Examples (Apache 2 License):
@@ -70,6 +73,7 @@ export function start(destinationUrl: string) {
 }
 
 export function stop() {
+  console.log("Shutting down tracer.");
   // Be sure to end the span.
   rootSpan.end();
 
