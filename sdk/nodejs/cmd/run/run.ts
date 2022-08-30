@@ -183,28 +183,30 @@ export function run(
     // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
-    const defaultTsConfigPath = "tsconfig.json";
-    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
-    const skipProject = !fs.existsSync(tsConfigPath);
+    const tsConfigPath = "tsconfig.json";
+
+    let compilerOptions = {
+        target: "es6",
+        module: "commonjs",
+        moduleResolution: "node",
+        sourceMap: "true",
+        // esModuleInterop: true,
+    }
+    try {
+        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
+        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
+        if (tsConfig["compilerOptions"]) {
+            compilerOptions = tsConfig["compilerOptions"];
+        }
+    } catch (e) {}
 
     if (typeScript) {
-        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
-        tsn.register({
-            transpileOnly,
-            // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
-            // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
-            // use (Which might just be ./tsconfig.yaml)
-            project: tsConfigPath,
-            skipProject: skipProject,
-            compilerOptions: {
-                target: "es6",
-                module: "commonjs",
-                moduleResolution: "node",
-                sourceMap: "true",
-                ...compilerOptions,
-            },
+        tsnode.register({
+            typeCheck: false,
+            skipProject: false,
+            transpileOnly: true,
+            files: true,
+            compilerOptions,
         });
     }
 
