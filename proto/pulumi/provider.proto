@@ -146,6 +146,7 @@ message CallRequest {
     string provider = 4;                                   // an optional reference to the provider to use for this invoke.
     string version = 5;                                    // the version of the provider to use when servicing this request.
     string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
+    map<string, bytes> pluginChecksums = 16;               // a map of checksums of the provider to use when servicing this request.
 
     string project = 6;             // the project name.
     string stack = 7;               // the name of the stack being deployed into.

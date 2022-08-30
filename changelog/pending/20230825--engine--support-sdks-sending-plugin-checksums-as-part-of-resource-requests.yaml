@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Support SDKs sending plugin checksums as part of resource requests.

@@ -33,15 +33,16 @@ import (
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type              tokens.Type     // The type token for the resource. Required.
-	Name              tokens.QName    // The name of the resource. Required.
-	ID                resource.ID     // The ID of the resource. Required.
-	Parent            resource.URN    // The parent of the resource, if any.
-	Provider          resource.URN    // The specific provider to use for the resource, if any.
-	Version           *semver.Version // The provider version to use for the resource, if any.
-	PluginDownloadURL string          // The provider PluginDownloadURL to use for the resource, if any.
-	Protect           bool            // Whether to mark the resource as protected after import
-	Properties        []string        // Which properties to include (Defaults to required properties)
+	Type              tokens.Type       // The type token for the resource. Required.
+	Name              tokens.QName      // The name of the resource. Required.
+	ID                resource.ID       // The ID of the resource. Required.
+	Parent            resource.URN      // The parent of the resource, if any.
+	Provider          resource.URN      // The specific provider to use for the resource, if any.
+	Version           *semver.Version   // The provider version to use for the resource, if any.
+	PluginDownloadURL string            // The provider PluginDownloadURL to use for the resource, if any.
+	PluginChecksums   map[string][]byte // The provider checksums to use for the resource, if any.
+	Protect           bool              // Whether to mark the resource as protected after import
+	Properties        []string          // Which properties to include (Defaults to required properties)
 }
 
 // ImportOptions controls the import process.
@@ -203,7 +204,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, result.Error("incorrect package type specified"), false
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
+		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -248,6 +249,9 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		}
 		if url := req.PluginDownloadURL(); url != "" {
 			providers.SetProviderURL(inputs, url)
+		}
+		if checksums := req.PluginChecksums(); checksums != nil {
+			providers.SetProviderChecksums(inputs, checksums)
 		}
 		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
 		if err != nil {
@@ -331,7 +335,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		providerURN := imp.Provider
 		if providerURN == "" {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
+			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL, imp.PluginChecksums)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
