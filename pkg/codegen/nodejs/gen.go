@@ -2037,7 +2037,10 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			directChildren.Add(path.Base(child))
 		}
 		sorted := directChildren.SortedValues()
-		newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
+		for _, mod := range sorted {
+			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
+		}
+		// newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
 		printExports(w, sorted)
 	}
 
@@ -2162,7 +2165,10 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 				directChildren.Add(path.Base(child))
 			}
 			sorted := directChildren.SortedValues()
-			newSubmoduleExportList(sorted...).WriteSrc(buffer, "exports")
+			for _, mod := range sorted {
+				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			}
+			//newSubmoduleExportList(sorted...).WriteSrc(buffer, "exports")
 			printExports(buffer, sorted)
 		}
 	}
