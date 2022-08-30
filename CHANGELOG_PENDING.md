@@ -70,6 +70,9 @@
 - [codegen/ts] Fix non-pulumi owned provider import alias.
   [#10447](https://github.com/pulumi/pulumi/pull/10447)
 
+- [codegen/go] Fix import path for non-pulumi owner providers
+  [#10485](https://github.com/pulumi/pulumi/pull/10485)
+  
 - [cli] Fixes panics on repeat Ctrl+C invocation during long-running updates
   [#10489](https://github.com/pulumi/pulumi/pull/10489)
 
