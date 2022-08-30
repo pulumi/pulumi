@@ -161,6 +161,7 @@ def get_organization() -> str:
         raise Exception("organization is not available")
     return SETTINGS.organization
 
+
 def get_project() -> str:
     """
     Returns the current project name.
