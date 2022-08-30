@@ -209,6 +209,8 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
+	validateVersion(ctx, host.virtualenvPath)
+
 	// Now, determine which Pulumi packages are installed.
 	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
 	if err != nil {
@@ -679,7 +681,6 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			return nil, err
 		}
 	}
-	validateVersion(ctx, host.virtualenvPath)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
