@@ -236,7 +236,20 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
+	outputEvents := make([]engine.Event, 0)
 	for _, e := range events {
+		// display output events last
+		if e.Type == engine.ResourceOutputsEvent {
+			outputEvents = append(outputEvents, e)
+			continue
+		}
+		msg := display.RenderDiffEvent(e, seen, displayOpts)
+		if msg != "" && e.Type != engine.SummaryEvent {
+			_, err := buff.WriteString(msg)
+			contract.IgnoreError(err)
+		}
+	}
+	for _, e := range outputEvents {
 		msg := display.RenderDiffEvent(e, seen, displayOpts)
 		if msg != "" && e.Type != engine.SummaryEvent {
 			_, err := buff.WriteString(msg)
