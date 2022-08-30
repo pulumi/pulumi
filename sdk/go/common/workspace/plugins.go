@@ -1583,7 +1583,7 @@ func getPluginInfoAndPath(
 				return nil, "", err
 			}
 
-			// downloaded the plugin succesfully
+			// downloaded the plugin successfully
 			// restart the plugin retrieval
 			return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 		}
