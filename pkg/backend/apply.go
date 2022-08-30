@@ -125,23 +125,15 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, nil
 	}
 
+	infoPrefix := "\b" + op.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
 	if kind != apitype.UpdateUpdate {
-		// If not an update, we can continue
+		// If not an update, we can skip displaying warnings
 	} else if countResources(events) == 0 {
 		// This is an update and there are no resources being CREATED
-		emptyStackWarningMessage := "\b" + op.Opts.Display.Color.Colorize(
-			fmt.Sprintf("%sinfo:%s There are no resources found in this update.\n",
-				colors.SpecInfo,
-				colors.Reset))
-		fmt.Printf(emptyStackWarningMessage)
+		fmt.Print(infoPrefix, "There are no resources in your stack(other than the stack resource).\n\n")
 	} else if !hasChanges(events) {
 		// This is an update and there are no resources being UPDATED
-		noChangesWarningMessage := "\b" + op.Opts.Display.Color.Colorize(
-			fmt.Sprintf("%sinfo:%s There are no changes found in this update.\n",
-				colors.SpecInfo,
-				colors.Reset))
-		fmt.Printf(noChangesWarningMessage)
-
+		fmt.Print(infoPrefix, "This update does not contain any changes to resources.\n\n")
 	}
 
 	// Otherwise, ensure the user wants to proceed.
