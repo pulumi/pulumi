@@ -9,6 +9,9 @@ PREVIOUS_VERSION="${1:-""}"
 if [ -z "$PREVIOUS_VERSION" ]; then
   PREVIOUS_VERSION="$(.github/scripts/get-version)"
 fi
-VERSION="$(echo -n "$PREVIOUS_VERSION" | awk -F. -v OFS=. '{$NF += 1 ; print}')"
+
+# Semver minor: increment field 2 and reset field 3
+# 3.39.3 -> 3.40.0
+VERSION="$(echo -n "$PREVIOUS_VERSION" | awk -F. -v OFS=. '{$2 += 1 ; $3 = 0 ; print}')"
 
 echo -n "$VERSION"
