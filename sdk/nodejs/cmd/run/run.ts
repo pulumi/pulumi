@@ -171,15 +171,14 @@ export function run(
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
-    
-    console.log("About to set up global tracer.");
-    
-    tracing.initGlobalTracer();
-    
-    const tracer = opentelemetry.trace.getTracer('nodejs-runtime');
-    const parentSpan = tracer.startSpan('run.ts');
-    parentSpan.setAttribute('run-key', 'run-value');
-    
+
+    // Start tracing. Before exiting, gracefully shutdown tracing, exporting 
+    // all remaining spans in the batch.
+    tracing.start();
+    process.on("exit", tracing.stop);
+    // Start a new span, which we shutdown at the bottom of this method.
+    const span = tracing.newSpan('language-runtime.run');    
+
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -198,9 +197,8 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
-    parentSpan.end();
-
     if (typeScript) {
+        span.setAttribute("typescript-enabled", true);
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require("ts-node");
@@ -278,7 +276,8 @@ ${errMsg}`);
                 `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
-
+        
+        span.addEvent(`uncaughtError: ${err}`);
         reportLoggedError(err);
     };
 
@@ -404,7 +403,9 @@ ${defaultMessage}`);
             throw e;
         }
     };
-
+    
     // Construct a `Stack` resource to represent the outputs of the program.
-    return stack.runInPulumiStack(runProgram);
+    const stackOutputs = stack.runInPulumiStack(runProgram);
+    span.end();
+    return stackOutputs;
 }
