@@ -121,39 +121,6 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 	return result, nil
 }
 
-// MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
-type MissingError struct {
-	// Info contains information about the plugin that was not found.
-	Info PluginInfo
-	// includeAmbient is true if we search $PATH for this plugin
-	includeAmbient bool
-}
-
-// NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info PluginInfo, includeAmbient bool) error {
-	return &MissingError{
-		Info:           info,
-		includeAmbient: includeAmbient,
-	}
-}
-
-func (err *MissingError) Error() string {
-	includePath := ""
-	if err.includeAmbient {
-		includePath = " or on your $PATH"
-	}
-
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version, includePath)
-	}
-
-	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s, "+
-		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
-		err.Info.Kind, err.Info.Name, includePath)
-}
-
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
