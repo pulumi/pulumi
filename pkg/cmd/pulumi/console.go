@@ -73,13 +73,13 @@ func newConsoleCmd() *cobra.Command {
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if consoleURL, err := cloudBackend.StackConsoleURL(stack.Ref()); err != nil {
-					launchConsole(consoleURL)
-				} else {
+				url, err := cloudBackend.StackConsoleURL(stack.Ref())
+				if err != nil {
 					// Open the cloud backend home page if retrieving the stack
 					// console URL fails.
-					launchConsole(cloudBackend.URL())
+					url = cloudBackend.URL()
 				}
+				launchConsole(url)
 				return nil
 			}
 			fmt.Println("This command is not available for your backend. " +

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
@@ -101,19 +101,11 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	cmdutil.EndKeypadTransmitMode()
 
-	_, height, err := terminal.GetSize(0)
-	if err != nil {
-		height = 15
-	}
-	if height > len(options) {
-		height = len(options)
-	}
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: height - 5,
+		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
 	}, &option, nil); err != nil {
 		return nil, errors.New("no resource selected")
 	}
@@ -147,6 +139,11 @@ func runTotalStateEdit(
 	if err != nil {
 		return result.FromError(err)
 	}
+	return totalStateEdit(ctx, s, showPrompt, opts, operation)
+}
+
+func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return result.FromError(err)

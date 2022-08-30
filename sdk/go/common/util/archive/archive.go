@@ -148,6 +148,26 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 		ignores = ignores.Append(ignore)
 	}
 
+	// If we're at root, also add any .gitignores above us
+	if root == dir {
+		parent := filepath.Dir(dir)
+		// Keep going up till we hit the root of the file system
+		for ; parent != filepath.Dir(parent); parent = filepath.Dir(parent) {
+			// If there is an ignorefile, process it before looking at any child paths.
+			ignoreFilePath := filepath.Join(parent, gitIgnoreFile)
+			if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
+				logging.V(9).Infof("processing ignore file in %v", dir)
+
+				ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
+				if err != nil {
+					return errors.Wrapf(err, "could not read ignore file in %v", dir)
+				}
+
+				ignores = ignores.Append(ignore)
+			}
+		}
+	}
+
 	if useDefaultIgnores {
 		dotGitPath := filepath.Join(dir, gitDir)
 		if stat, err := os.Stat(dotGitPath); err == nil {

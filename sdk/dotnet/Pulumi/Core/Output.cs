@@ -27,6 +27,9 @@ namespace Pulumi
         public static Output<T> CreateSecret<T>(Task<T> value)
             => Output<T>.CreateSecret(value);
 
+        public static Output<T> CreateSecret<T>(Output<T> value)
+            => Output<T>.CreateSecret(value);
+
         /// <summary>
         /// Returns a new <see cref="Output{T}"/> which is a copy of the existing output but marked as
         /// a non-secret. The original output is not modified in any way.
@@ -168,6 +171,21 @@ namespace Pulumi
 
         internal static Output<T> CreateSecret(Task<T> value)
             => Create(value, isSecret: true);
+
+        internal static Output<T> CreateSecret(Output<T> value) {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            async Task<OutputData<T>> GetData()
+            {
+                var data = await value.DataTask.ConfigureAwait(false);
+                return new OutputData<T>(data.Resources, data.Value, data.IsKnown, true);
+            }
+
+            return new Output<T>(GetData());
+        }
 
         internal Output<T> WithIsSecret(Task<bool> isSecret)
         {
