@@ -1536,10 +1536,15 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	}
 
 	if utilities {
-		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
+		imports = append(imports, mod.utilitiesImport())
 	}
 
 	return imports
+}
+
+func (mod *modContext) utilitiesImport() string {
+	relRoot := mod.getRelativePath()
+	return fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot)
 }
 
 func (mod *modContext) genTypes() (string, string, error) {
@@ -1868,12 +1873,27 @@ func getChildMod(modName string) string {
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
 func (mod *modContext) genIndex(exports []string) string {
+	children := codegen.NewStringSet()
+
+	for _, mod := range mod.children {
+		child := getChildMod(mod.mod)
+		children.Add(child)
+	}
+
+	if len(mod.types) > 0 {
+		children.Add("input")
+		children.Add("output")
+	}
+
 	w := &bytes.Buffer{}
 
 	var imports []string
 	// Include the SDK import if we'll be registering module resources.
 	if len(mod.resources) != 0 {
 		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
+	} else if len(children) > 0 {
+		// Even if there are no resources, exports ref utilities.
+		imports = append(imports, mod.utilitiesImport())
 	}
 	mod.genHeader(w, imports, nil, nil)
 
@@ -1890,18 +1910,6 @@ func (mod *modContext) genIndex(exports []string) string {
 			}
 			fmt.Fprintf(w, "export * from \"./%s\";\n", strings.TrimSuffix(rel, ".ts"))
 		}
-	}
-
-	children := codegen.NewStringSet()
-
-	for _, mod := range mod.children {
-		child := getChildMod(mod.mod)
-		children.Add(child)
-	}
-
-	if len(mod.types) > 0 {
-		children.Add("input")
-		children.Add("output")
 	}
 
 	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
@@ -1931,7 +1939,7 @@ func (mod *modContext) genIndex(exports []string) string {
 		if len(exports) > 0 {
 			fmt.Fprintf(w, "\n")
 		}
-		fmt.Fprintf(w, "// Export sub-modules:\n")
+		fmt.Fprintf(w, "// Export sub-modules (modContext.genIndex):\n")
 
 		directChildren := codegen.NewStringSet()
 		for _, child := range children.SortedValues() {
@@ -2064,7 +2072,7 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 		}
 
 		if len(children) > 0 {
-			fmt.Fprintf(buffer, "// Export sub-modules:\n")
+			fmt.Fprintf(buffer, "// Export sub-modules (genEnums):\n")
 
 			directChildren := codegen.NewStringSet()
 			for _, child := range children.SortedValues() {
@@ -2554,7 +2562,7 @@ export function resourceOptsDefaults(): any {
 }
 
 /** @internal */
-function lazy_load(exports: any, module_name: string) {
+export function lazy_load(exports: any, module_name: string) {
 	Object.defineProperty(exports, module_name, {
 		enumerable: true,
 		get: function() {
@@ -2564,7 +2572,7 @@ function lazy_load(exports: any, module_name: string) {
 }
 
 /** @internal */
-function lazy_load_all(exprots: any, args: Array<string>) {
+export function lazy_load_all(exprots: any, args: Array<string>) {
 	args.forEach(arg => lazy_load(exports, arg))
 }`
 	var pluginDownloadURL string

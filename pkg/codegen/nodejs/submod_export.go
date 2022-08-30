@@ -71,7 +71,7 @@ func (exp submoduleExport) genImport() string {
 // export const foo: typeof fooModule = {} as typeof fooModule;
 func (exp submoduleExport) genExportLocal() string {
 	return fmt.Sprintf(
-		"export const %s: %s = {} as %s;",
+		"const %s: %s = {} as %s;",
 		exp.name(),
 		exp.qualifiedTypeName(),
 		exp.qualifiedTypeName(),
