@@ -1,10 +1,10 @@
 'use strict';
 
-const opentelemetry = require('@opentelemetry/api');
-const { Resource } = require('@opentelemetry/resources');
-const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
-const { BasicTracerProvider, ConsoleSpanExporter, SimpleSpanProcessor } = require('@opentelemetry/sdk-trace-base');
-const { JaegerExporter } = require('@opentelemetry/exporter-jaeger');
+import * as opentelemetry from "@opentelemetry/api";
+import { Resource } from "@opentelemetry/resources";
+import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import { BasicTracerProvider, ConsoleSpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 
 export function initGlobalTracer() {
   console.log("Running global tracer.");
@@ -16,9 +16,7 @@ export function initGlobalTracer() {
   });
 
   // Configure span processor to send spans to the exporter
-  const exporter = new JaegerExporter({
-    endpoint: 'http://localhost:9411/',
-  });
+  const exporter = new ZipkinExporter();
 
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
   provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
