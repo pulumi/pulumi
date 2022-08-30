@@ -1,0 +1,25 @@
+name: Publish Tags
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      tag:
+        required: true
+        description: "Tag to publish"
+        type: string
+
+jobs:
+  git-tag:
+    name: Tag ${{ inputs.tag }} -> ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: git fetch --tags && git checkout tags/v${{ inputs.version }}
+      - run: |
+          git tag "${{ inputs.tag }}" "tags/v${{ inputs.version }}"
+          # dry run
+          echo git push origin "${{ inputs.tag }}"

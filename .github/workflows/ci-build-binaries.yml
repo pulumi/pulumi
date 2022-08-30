@@ -1,0 +1,83 @@
+name: Build Binaries
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        description: "Target OS (i.e.: GOOS)"
+        type: string
+      arch:
+        required: true
+        description: "Target Architectur (i.e.: GOARCH)"
+        type: string
+      build-platform:
+        description: 'Build platform (i.e.: runs-on) for job'
+        default: ubuntu-latest
+        required: false
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      go-version:
+        description: 'Version of the Go toolchain for the build'
+        default: '1.19.x'
+        required: false
+        type: string
+      enable-coverage:
+        description: 'Builds executables with coverage analysis enabled'
+        default: false
+        required: false
+        type: boolean
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    name: ${{ inputs.os }}-${{ inputs.arch }}
+    runs-on: ${{ inputs.build-platform }}
+
+    env:
+      version: ${{ inputs.version }}
+
+    steps:
+      - name: Enable code coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
+        if: ${{ inputs.enable-coverage }}
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            sdk/go.sum
+      - name: Setup versioning env vars
+        run: |
+          ./scripts/versions.sh "$version" | tee "$GITHUB_ENV"
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          install-only: true
+          distribution: goreleaser-pro
+      - name: Package
+        shell: bash
+        env:
+          GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+        run: |
+          set -euxo pipefail
+          # Spurious, this command requires piping via stdin
+          # shellcheck disable=SC2002
+          cat .goreleaser.yml \
+            | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
+            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          retention-days: 1
+          path: |
+            goreleaser/*.tar.gz
+            goreleaser/*.zip

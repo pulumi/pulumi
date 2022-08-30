@@ -1,0 +1,53 @@
+name: PR Changelog
+
+on:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Preview
+    runs-on: ubuntu-latest
+    outputs:
+      release_notes: "${{ fromJSON(steps.changelog.outputs.CHANGELOG) }}"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - name: Changelog
+        id: changelog
+        env:
+          GITHUB_PR: ${{ github.event.pull_request.number }}
+        run: |
+          PREVIOUS_VERSION="${{ github.event.pull_request.base.sha }}"
+          CHANGELOG_REQUIRED="${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}"
+          CHANGELOG="$(./.github/scripts/get-changelog-comment "${PREVIOUS_VERSION}" "${CHANGELOG_REQUIRED}" "${GITHUB_PR}")"
+          ./.github/scripts/set-output CHANGELOG "${CHANGELOG}"
+      - name: Find Comment
+        uses: peter-evans/find-comment@1769778a0c5bd330272d749d12c036d65e70d39d # v2.0.0
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: "# Changelog"
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@c9fcb64660bc90ec1cc535646af190c992007c32 # v2.0.0
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            # Changelog
+
+            ${{ fromJSON(steps.changelog.outputs.CHANGELOG) }}
+          edit-mode: replace

@@ -1,0 +1,16 @@
+name: Integration Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+
+jobs:
+  integration-test:
+    name: n/a
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo OK

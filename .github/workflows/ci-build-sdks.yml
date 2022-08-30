@@ -1,0 +1,159 @@
+name: Build SDKs
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      python-version:
+        description: 'Version of the Python toolchain for the build'
+        default: '3.9.x'
+        required: false
+        type: string
+      node-version:
+        description: 'Version of the Node toolchain for the build'
+        default: '14.x'
+        required: false
+        type: string
+      dotnet-version:
+        description: 'Version of the .NET toolchain for the build'
+        default: '6.0.x'
+        required: false
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build_python_sdk:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Setup versioning env vars
+        run: |
+          ./scripts/versions.sh "$version" | tee "$GITHUB_ENV"
+      - name: Build Pulumi Python SDK wheel
+        run: |
+            # TODO unify with sdk/python/Makefile once that does not use pipenv
+            cp README.md sdk/python/lib
+            cd sdk/python/lib
+            sed -i.bak "s/\${VERSION}/$PYPI_VERSION/g" setup.py
+            rm setup.py.bak
+            python3 -m venv venv
+            source venv/bin/activate
+            python -m pip install wheel
+            python setup.py build bdist_wheel --python-tag py3
+      - name: Upload pulumi.whl
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: sdk/python/lib/dist/*.whl
+          retention-days: 2
+
+  build_node_sdk:
+    name: Node.js
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
+      - name: Set up Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
+      - name: Install yarn
+        run: |
+          npm install -g yarn
+      # TODO something in `cd sdk/nodejs && make ensure` executes Go
+      # downloads, which is unfortunate and wasteful in this context.
+      # When this is fixed the no-op Go command can be removed.
+      - name: Make no-op Go command to avoid Go builds
+        run: |
+           cd sdk/nodejs
+           mkdir -p bin
+           # shellcheck disable=SC2230 # need to locate echo binary
+           ln -s "$(which echo)" bin/go
+      - name: Ensure installed dependencies
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make ensure
+      - name: Build the Node SDK package
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make build_package
+      - name: Pack the Node SDK
+        run: |
+          cd sdk/nodejs/bin
+          npm pack
+      - name: Upload pulumi-node-sdk.tgz
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: sdk/nodejs/bin/*.tgz
+          retention-days: 2
+
+  build_dotnet_sdk:
+    name: .NET
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
+      - name: Set up DotNet ${{ inputs.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Setup versioning env vars
+        run: |
+          ./scripts/versions.sh "$version" | tee "$GITHUB_ENV"
+      - name: Build the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet build --configuration Release dotnet.sln "/p:Version=$DOTNET_VERSION"
+      - name: Pack the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet pack --configuration Release --output nupkgs dotnet.sln "/p:Version=$DOTNET_VERSION"
+      - name: Upload the NuGet packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: sdk/dotnet/nupkgs/*.nupkg
+          retention-days: 2
