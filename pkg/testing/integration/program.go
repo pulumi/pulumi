@@ -206,6 +206,8 @@ type ProgramTestOptions struct {
 	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
+	// RequireService indicates that the test must be run against the Pulumi Service
+	RequireService bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
@@ -377,7 +379,9 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
 // We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
 func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+
+	if opts.RequireService && owner != "" {
 		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
 	}
 
@@ -736,6 +740,23 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipExportImport = true
 		opts.SkipEmptyPreviewUpdate = true
 	}
+	if opts.RequireService {
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			// t.Fatalf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+	} else {
+		tempDir, err := os.MkdirTemp("", "")
+		if err != nil {
+			t.Fatalf("Failed to create temporary directory: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(tempDir) })
+
+		opts.Env = append(opts.Env,
+			fmt.Sprintf("PULUMI_BACKEND_URL=file://%v", tempDir),
+		)
+	}
+	opts.Env = append(opts.Env, "GOWORK=off")
+
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,

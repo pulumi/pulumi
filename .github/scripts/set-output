@@ -7,3 +7,4 @@ VALUE="$2"
 
 ESCAPED="$(echo -n "${VALUE}" | jq -Rsc ".")" # JSON encode
 echo "::set-output name=${OUTPUT_NAME}::${ESCAPED}"
+echo "::info::Set output ${OUTPUT_NAME}=\`${VALUE}\`"

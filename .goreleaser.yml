@@ -2,11 +2,6 @@ dist: goreleaser
 
 project_name: pulumi
 
-before:
-  hooks:
-    - ./scripts/get-language-providers.sh
-    - ./scripts/prep-for-goreleaser.sh
-
 blobs:
 - bucket: get.pulumi.com
   folder: releases/sdk/
@@ -16,7 +11,6 @@ blobs:
   region: us-west-2
 
 builds:
-
 - &pulumibin
   id: pulumi
   binary: pulumi
@@ -29,9 +23,6 @@ builds:
   goos: ['linux', 'darwin', 'windows']
   goarch: ['amd64', 'arm64']
   goamd64: ['v1']
-  ignore:
-    - goos: windows
-      goarch: arm64
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   mod_timestamp: '{{ .CommitTimestamp }}'
@@ -55,18 +46,6 @@ builds:
   binary: pulumi-language-dotnet
   dir: sdk
   main: ./dotnet/cmd/pulumi-language-dotnet
-- <<: *pulumibin
-  id: pulumi-language-java
-  binary: pulumi-language-java
-  builder: prebuilt
-  prebuilt:
-    path: goreleaser-lang/java/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
-- <<: *pulumibin
-  id: pulumi-language-yaml
-  binary: pulumi-language-yaml
-  builder: prebuilt
-  prebuilt:
-    path: goreleaser-lang/yaml/{{ .Os }}-{{ replace .Arch "amd64" "x64" }}/{{ .Name }}
 
 archives:
 - id: pulumi
