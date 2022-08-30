@@ -97,7 +97,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		return nil
 	}
 
-	pkgPlugin := workspace.PluginInfo{
+	pkgPlugin := workspace.PluginSpec{
 		Kind:    workspace.ResourcePlugin,
 		Name:    pkg,
 		Version: version,

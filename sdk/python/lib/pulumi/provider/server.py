@@ -336,7 +336,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
-        port = server.add_insecure_port(address="0.0.0.0:0")
+        port = server.add_insecure_port(address="127.0.0.1:0")
         await server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())
         sys.stdout.buffer.flush()

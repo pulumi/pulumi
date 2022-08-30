@@ -318,7 +318,7 @@ class LanghostTest(unittest.TestCase):
         resource_pb2_grpc.add_ResourceMonitorServicer_to_server(monitor, server)
         engine_pb2_grpc.add_EngineServicer_to_server(engine, server)
 
-        port = server.add_insecure_port(address="0.0.0.0:0")
+        port = server.add_insecure_port(address="127.0.0.1:0")
         server.start()
         return ResourceMonitorEndpoint(monitor, server, port)
 

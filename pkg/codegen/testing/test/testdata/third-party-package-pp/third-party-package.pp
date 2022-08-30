@@ -5,3 +5,11 @@ resource Other "other:index:Thing" {
 resource Question "other:module:Object" {
     answer = 42
 }
+
+resource Provider "pulumi:providers:other" {
+   objectProp = {
+        prop1 = "foo"
+        prop2 = "bar"
+        prop3 = "fizz"
+   }
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -278,7 +278,7 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 				if !ok {
 					// If the event source has been closed, flush the queue.
 					for _, e := range queue {
-						events <- e
+						trySendEvent(events, e)
 					}
 					return
 				}
@@ -345,8 +345,12 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 }
 
 func (e *eventEmitter) Close() {
-	close(e.ch)
+	tryCloseEventChan(e.ch)
 	<-e.done
+}
+
+func (e *eventEmitter) sendEvent(event Event) {
+	trySendEvent(e.ch, event)
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
@@ -354,21 +358,21 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+	e.sendEvent(NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Status:   status,
 		Steps:    steps,
-	})
+	}))
 }
 
 func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step, planning bool, debug bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
+	e.sendEvent(NewEvent(ResourceOutputsEvent, ResourceOutputsEventPayload{
 		Metadata: makeStepEventMetadata(op, step, debug),
 		Planning: planning,
 		Debug:    debug,
-	})
+	}))
 }
 
 func (e *eventEmitter) resourcePreEvent(
@@ -376,11 +380,11 @@ func (e *eventEmitter) resourcePreEvent(
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- NewEvent(ResourcePreEvent, ResourcePreEventPayload{
+	e.sendEvent(NewEvent(ResourcePreEvent, ResourcePreEventPayload{
 		Metadata: makeStepEventMetadata(step.Op(), step, debug),
 		Planning: planning,
 		Debug:    debug,
-	})
+	}))
 }
 
 func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
@@ -394,10 +398,10 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 		configStringMap[keyString] = valueString
 	}
 
-	e.ch <- NewEvent(PreludeEvent, PreludeEventPayload{
+	e.sendEvent(NewEvent(PreludeEvent, PreludeEventPayload{
 		IsPreview: isPreview,
 		Config:    configStringMap,
-	})
+	}))
 }
 
 func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
@@ -405,13 +409,13 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
+	e.sendEvent(NewEvent(SummaryEvent, SummaryEventPayload{
 		IsPreview:       preview,
 		MaybeCorrupt:    maybeCorrupt,
 		Duration:        duration,
 		ResourceChanges: resourceChanges,
 		PolicyPacks:     policyPacks,
-	})
+	}))
 }
 
 func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
@@ -442,7 +446,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
 
-	e.ch <- NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
+	e.sendEvent(NewEvent(PolicyViolationEvent, PolicyViolationEventPayload{
 		ResourceURN:       urn,
 		Message:           logging.FilterString(buffer.String()),
 		Color:             colors.Raw,
@@ -451,14 +455,14 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Prefix:            logging.FilterString(prefix.String()),
-	})
+	}))
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
 	ephemeral bool) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
-	e.ch <- NewEvent(DiagEvent, DiagEventPayload{
+	e.sendEvent(NewEvent(DiagEvent, DiagEventPayload{
 		URN:       d.URN,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),
@@ -466,7 +470,7 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 		Severity:  sev,
 		StreamID:  d.StreamID,
 		Ephemeral: ephemeral,
-	})
+	}))
 }
 
 func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
@@ -583,4 +587,50 @@ func filterArchive(v *resource.Archive, debug bool) *resource.Archive {
 		Hash:   v.Hash,
 		Assets: assets,
 	}
+}
+
+// Sends an event like a normal send but recovers from a panic on a
+// closed channel. This is generally a design smell and should be used
+// very sparingly and every use of this function needs to document the
+// need.
+//
+// eventEmitter uses tryEventSend to recover in the scenario of
+// cancelSource.Terminate being called (such as user pressing Ctrl+C
+// twice), when straggler stepExecutor workers are sending diag events
+// but the engine is shutting down.
+//
+// See https://github.com/pulumi/pulumi/issues/10431 for the details.
+func trySendEvent(ch chan<- Event, ev Event) (sent bool) {
+	sent = true
+	defer func() {
+		if recover() != nil {
+			sent = false
+			if logging.V(9) {
+				logging.V(9).Infof(
+					"Ignoring %v send on a closed channel %p",
+					ev.Type, ch)
+			}
+		}
+	}()
+	ch <- ev
+	return sent
+}
+
+// Tries to close a channel but recovers from a panic of closing a
+// closed channel. Restrictions on use are similarly to those of
+// trySendEvent.
+func tryCloseEventChan(ch chan<- Event) (closed bool) {
+	closed = true
+	defer func() {
+		if recover() != nil {
+			closed = false
+			if logging.V(9) {
+				logging.V(9).Infof(
+					"Ignoring close of a closed event channel %p",
+					ch)
+			}
+		}
+	}()
+	close(ch)
+	return closed
 }

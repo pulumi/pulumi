@@ -1570,7 +1570,7 @@ async function createMockEngineAsync(
     server.addService(enginerpc.EngineService, engineImpl);
 
     const port = await new Promise<number>((resolve, reject) => {
-        server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync("127.0.0.1:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {
@@ -1583,7 +1583,7 @@ async function createMockEngineAsync(
 
     cleanup(async () => server.forceShutdown());
 
-    return { server: server, addr: `0.0.0.0:${port}` };
+    return { server: server, addr: `127.0.0.1:${port}` };
 }
 
 function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
@@ -1608,7 +1608,7 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
         const dataString: string = stripEOL(data);
         if (addrResolve) {
             // The first line is the address; strip off the newline and resolve the promise.
-            addrResolve(`0.0.0.0:${dataString}`);
+            addrResolve(`127.0.0.1:${dataString}`);
             addrResolve = undefined;
         } else {
             console.log(`langhost.stdout: ${dataString}`);
