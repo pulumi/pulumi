@@ -30,7 +30,7 @@ import (
 func migrateStack(
 	ctx context.Context, opts display.Options,
 	getBackend func(context.Context, display.Options, string) (backend.Backend, error),
-	sourceStack string, version string, targetStack string,
+	sourceStack string, version string,
 	targetURL string, secretsProvider string) error {
 
 	// Fetch the current stack and export its deployment
@@ -86,10 +86,9 @@ func migrateStack(
 		return err
 	}
 
-	// Create the target stack
-	if targetStack == "" {
-		targetStack = s.Ref().String()
-	}
+	// Create the target stack, this just uses the name of the current stack but picks up any default values
+	// for project and organization (if the backend uses them).
+	targetStack := s.Ref().Name().String()
 	targetStackRef, err := targetBackend.ParseStackReference(targetStack)
 	if err != nil {
 		return err
@@ -113,7 +112,6 @@ func migrateStack(
 
 func newStackMigrateCmd() *cobra.Command {
 	var stackName string
-	var target string
 	var version string
 
 	cmd := &cobra.Command{
@@ -145,14 +143,12 @@ func newStackMigrateCmd() *cobra.Command {
 			return migrateStack(
 				ctx, opts,
 				getBackend,
-				stackName, version, target,
+				stackName, version,
 				args[0], secretProvider)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
-	cmd.PersistentFlags().StringVarP(
-		&target, "target", "t", "", "The name of the new stack to create. Defaults to the name of source stack")
 	cmd.PersistentFlags().StringVarP(
 		&version, "version", "", "", "Previous stack version to migrate. (If unset, will export the latest.)")
 	return cmd

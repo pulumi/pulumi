@@ -185,7 +185,7 @@ func TestMigrate(t *testing.T) {
 	err = migrateStack(
 		ctx, display.Options{},
 		getBackend,
-		"some_stack", "", "",
+		"some_stack", "",
 		"file://test", "")
 	assert.NoError(t, err)
 
