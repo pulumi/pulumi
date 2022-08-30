@@ -553,17 +553,7 @@ func (reader *checksumReader) Read(p []byte) (int, error) {
 }
 
 func (reader *checksumReader) Close() error {
-	err := reader.io.Close()
-	if err != nil {
-		return err
-	}
-
-	actualChecksum := reader.hasher.Sum(nil)
-	if !bytes.Equal(reader.checksum, actualChecksum) {
-		return fmt.Errorf("invalid checksum, expected %x, actual %x", reader.checksum, actualChecksum)
-	}
-
-	return nil
+	return reader.io.Close()
 }
 
 func (source *checksumSource) Download(
