@@ -340,6 +340,7 @@ function options(): Options {
     // we will fail later on when we actually need to create an RPC connection back to the engine.
     return {
         // node runtime
+        organization: process.env[nodeEnvKeys.organization],
         project: process.env[nodeEnvKeys.project],
         stack: process.env[nodeEnvKeys.stack],
         dryRun: (process.env[nodeEnvKeys.dryRun] === "true"),
