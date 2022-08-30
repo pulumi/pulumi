@@ -46,7 +46,7 @@ export interface Options {
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
-    readonly organization?: string // the name of the current organization (if available).
+    readonly organization?: string; // the name of the current organization (if available).
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -162,7 +162,7 @@ export function cacheDynamicProviders(): boolean {
 /**
  * Get the organization being run by the current update.
  */
- export function getOrganization(): string {
+export function getOrganization(): string {
     const organization = options().organization;
     if (organization) {
         return organization;

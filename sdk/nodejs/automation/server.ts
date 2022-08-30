@@ -55,7 +55,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             }
         }
         // these are globals and we need to clean up after ourselves
-        settings.resetOptions("", "", -1, "", "", false);
+        settings.resetOptions("", "", -1, "", "", false, "");
     }
 
     getRequiredPlugins(call: any, callback: any): void {

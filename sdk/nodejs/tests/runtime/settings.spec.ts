@@ -27,7 +27,7 @@ describe("settings", () => {
     });
     it("runtime options and config are read from and updated via the environment", () => {
         const testOrganization = "TestOrg";
-        runtime._setOrganization(testOrganization)
+        runtime._setOrganization(testOrganization);
         const testProject = "TestProject";
         runtime._setProject(testProject);
         const testStack = "TestStack";
@@ -40,7 +40,7 @@ describe("settings", () => {
         const val = "v";
         runtime.setConfig(key, val);
 
-        assert.strictEqual(runtime.getOrganization(), testOrganization)
+        assert.strictEqual(runtime.getOrganization(), testOrganization);
         assert.strictEqual(runtime.getProject(), testProject);
         assert.strictEqual(runtime.getStack(), testStack);
         assert.strictEqual(runtime.isDryRun(), isDryRun);
