@@ -1,131 +1,49 @@
-name: Merge
+name: CI
+
+permissions:
+  contents: read
 
 on:
-  push:
-    branches:
-      - staging
-      - trying
-    tags-ignore:
-      - "*"
-  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      lint:
+        required: false
+        default: true
+        description: "Whether to run lints"
+        type: boolean
+      unit-test:
+        required: false
+        default: true
+        description: "Whether to run unit tests"
+        type: boolean
+      integration-test:
+        required: false
+        default: true
+        description: "Whether to run integration tests"
+        type: boolean
 
 jobs:
-  info:
-    name: Gather info
-    runs-on: ubuntu-latest
-    outputs:
-      version: "${{ fromJSON(steps.version.outputs.version) }}"
-      release_notes: "${{ fromJSON(steps.notes.outputs.release_notes) }}"
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Compute version
-        id: version
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # needed to get previous version
-        run: |
-          # Sets output VERSION
-          VERSION="$(./.github/scripts/get-version)"
-
-          ./.github/scripts/set-output version "${VERSION}"
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.19.x
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            sdk/go.sum
-      - name: Extract release notes
-        id: notes
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # needed to get previous version
-        run: |
-          PREVIOUS_VERSION="$(./.github/scripts/get-previous-version)"
-          CHANGELOG="$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "${{ fromJSON(steps.version.outputs.version) }}")"
-          ./.github/scripts/set-output release_notes "${CHANGELOG}"
-
-  version-check:
-    # ensure versions in the repo match the intended publish version
-    name: Version Check
-    needs: [info]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: |
-          VERSION="${{ needs.info.outputs.version }}"
-
-          ./.github/scripts/update-versions "$VERSION"
-
-          ERROR=false
-          if [ -n "$(git status --porcelain)" ]; then
-            ERROR=true
-            echo "::error::Versions in files do not match expected version $VERSION."
-            echo "::group::git diff"
-            git diff
-            echo "::endgroup::"
-          fi
-
-          if EXISTING_RELEASE="$(gh release view "v${VERSION}")"; then
-            echo "::error::This version has already been released!"
-            echo "::group::Release $VERSION"
-            echo "$EXISTING_RELEASE"
-            echo "::endgroup::"
-          fi
-
-          if $ERROR; then
-            exit 1;
-          fi
-
   lint:
     name: Lint
+    if: inputs.lint
     uses: ./.github/workflows/ci-lint.yml
-
-  build-binaries:
-    name: Build Binaries
-    needs: [info]
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [linux, windows]
-        arch: [amd64, arm64]
-        include:
-          # TODO: use macos-latest
-          - os: darwin
-            arch: amd64
-            # build-platform: macos-latest
-          - os: darwin
-            arch: arm64
-            # build-platform: macos-latest
-    uses: ./.github/workflows/ci-build-binaries.yml
     with:
-      version: ${{ needs.info.outputs.version }}
-      os: ${{ matrix.os }}
-      arch: ${{ matrix.arch }}
-      build-platform: ${{ matrix.build-platform }}
-    secrets: inherit
+      ref: ${{ inputs.ref }}
 
-  build-sdks:
-    name: Build SDKs
-    needs: [info]
-    uses: ./.github/workflows/ci-build-sdks.yml
-    with:
-      version: ${{ needs.info.outputs.version }}
-    secrets: inherit
-
-  build-ok:
-    # bors watches for this check
-    name: Build OK
-    needs: [build-binaries, build-sdks]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo OK
-
+  # Tests that can run concurrently with builds
   unit-test:
     name: Unit Test
+    if: inputs.unit-test
     strategy:
+      # To avoid tying up macOS runners:
       fail-fast: true
       matrix:
         # TODO: use other OSes
@@ -133,46 +51,68 @@ jobs:
         platform: [ubuntu-latest]
     uses: ./.github/workflows/ci-unit-test.yml
     with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
       platform: ${{ matrix.platform }}
-
-  unit-test-ok:
-    name: Unit Test OK
-    needs: [unit-test]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo OK
-
-  integration-test:
-    name: Integration Test
-    needs: [info, build-ok]
-    uses: ./.github/workflows/ci-integration-test.yml
-    with:
-      version: ${{ needs.info.outputs.version }}
-
-  test-ok:
-    # bors watches for this check
-    name: Test OK
-    needs: [lint, unit-test-ok, integration-test]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo OK
-
-  publish:
-    name: Publish
-    needs: [test-ok, version-check, info]
-    uses: ./.github/workflows/ci-publish.yml
-    if: ${{ github.ref_name == 'staging' }}
-    with:
-      version: ${{ needs.info.outputs.version }}
-      release_notes: ${{ needs.info.outputs.release_notes }}
-      project: ${{ github.repository }}
-      commit: ${{ github.sha }}
     secrets: inherit
 
-  publish-ok:
-    # bors watches for this check
-    name: Publish OK
-    needs: [publish]
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo OK # test, block release
+  build-goreleaser-prep:
+    name: Build Goreleaser Prep
+    uses: ./.github/workflows/ci-build-goreleaser-prep.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets: inherit
+
+  build-binaries:
+    name: Build Binaries
+    needs: [build-goreleaser-prep]
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: true
+      matrix:
+        os: [linux, windows]
+        arch: [amd64, arm64]
+        build-platform: [ubuntu-latest]
+        include:
+          - os: darwin
+            arch: amd64
+            build-platform: macos-latest
+          - os: darwin
+            arch: arm64
+            build-platform: macos-latest
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.os }}
+      arch: ${{ matrix.arch }}
+      # TODO: use macos-latest
+      # build-platform: ${{ matrix.build-platform }}
+    secrets: inherit
+
+  build-sdks:
+    name: Build SDKs
+    uses: ./.github/workflows/ci-build-sdks.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  # Tests that can depend on builds
+  integration-test:
+    name: Integration Test
+    if: inputs.integration-test
+    needs: [build-binaries, build-sdks]
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: true
+      matrix:
+        # TODO: use other OSes
+        # platform: [windows-latest, macos-latest, ubuntu-latest]
+        platform: [ubuntu-latest]
+    uses: ./.github/workflows/ci-integration-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit

@@ -1,0 +1,81 @@
+name: PR Changelog
+
+permissions:
+  # To add and edit comments on PRs
+  contents: read
+  pull-requests: write
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use, must be the merge ref of the pull request"
+        type: string
+      base-ref:
+        required: true
+        description: "GitHub base ref, the base ref of the pull request"
+        type: string
+      pr-number:
+        required: true
+        description: "PR number to use"
+        type: string
+      changelog-required:
+        required: true
+        description: "Whether the changelog is required, used to allow check to pass on empty changelogs"
+        type: boolean
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check:
+    name: Comment
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.MERGE_PR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - name: Changelog
+        id: changelog
+        env:
+          GITHUB_PR: ${{ inputs.pr-number }}
+          PREVIOUS_VERSION: ${{ inputs.base-ref }}
+          CHANGELOG_REQUIRED: ${{ inputs.changelog-required }}
+        run: |
+          CHANGELOG="$(./.github/scripts/get-changelog-comment "${PREVIOUS_VERSION}" "${CHANGELOG_REQUIRED}" "${GITHUB_PR}")"
+          ./.github/scripts/set-output CHANGELOG "${CHANGELOG}"
+      - name: Find Comment
+        uses: peter-evans/find-comment@1769778a0c5bd330272d749d12c036d65e70d39d # v2.0.0
+        id: fc
+        with:
+          token: ${{ secrets.MERGE_PR_TOKEN }}
+          issue-number: ${{ inputs.pr-number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: "# Changelog"
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@c9fcb64660bc90ec1cc535646af190c992007c32 # v2.0.0
+        with:
+          token: ${{ secrets.MERGE_PR_TOKEN }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ inputs.pr-number }}
+          body: |
+            # Changelog
+
+            ${{ fromJSON(steps.changelog.outputs.CHANGELOG) }}
+          edit-mode: replace

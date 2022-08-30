@@ -1,5 +1,10 @@
 name: Release
 
+permissions:
+  # To create the follow-up PR.
+  contents: write
+  pull-requests: write
+
 on:
   release:
     types:
@@ -16,23 +21,25 @@ jobs:
       next_version: "${{ fromJSON(steps.version.outputs.next_version) }}"
     steps:
       - uses: actions/checkout@v3
+        # Uses release ref (tag)
       - name: Gather info
         id: version
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}" # remove prefix
+          PULUMI_VERSION="${TAG#v}" # remove prefix
 
-          ./.github/scripts/set-output version "${VERSION}"
+          ./.github/scripts/set-output version "${PULUMI_VERSION}"
 
-          NEXT_VERSION="$(.github/scripts/get-next-version "${VERSION}")"
+          NEXT_VERSION="$(.github/scripts/get-next-version "${PULUMI_VERSION}")"
           ./.github/scripts/set-output next_version "${NEXT_VERSION}"
 
   release-pr:
     name: Post-Release PR
     needs: [info]
-    uses: ./.github/workflows/release-pr.yml
+    uses: ./.github/workflows/on-release-pr.yml
     with:
+      ref: ${{ github.event.release.tag_name }}
       version: ${{ needs.info.outputs.version }}
       next_version: ${{ needs.info.outputs.next_version }}
-      release_notes: ${{ github.event.release.body }}
+      release-notes: ${{ github.event.release.body }}
     secrets: inherit

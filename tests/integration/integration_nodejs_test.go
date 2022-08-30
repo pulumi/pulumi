@@ -160,6 +160,8 @@ func TestProjectMain(t *testing.T) {
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          "stack_project_name",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
@@ -603,6 +605,8 @@ func TestStackReferenceNodeJS(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join("stack_reference", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
@@ -688,6 +692,8 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join(d, "nodejs", "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,

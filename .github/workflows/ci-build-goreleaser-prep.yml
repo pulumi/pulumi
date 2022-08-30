@@ -1,0 +1,32 @@
+name: Goreleaser Prep
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up bin dir
+        run: ./scripts/prep-for-goreleaser.sh
+      - run: find bin
+      - uses: actions/upload-artifact@v2
+        with:
+          name: goreleaser-extra-binaries
+          retention-days: 1
+          path: ./bin/*
