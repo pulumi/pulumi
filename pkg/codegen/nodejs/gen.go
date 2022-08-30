@@ -49,6 +49,26 @@ type typeDetails struct {
 	usedInFunctionOutputVersionInputs bool // helps decide naming under the tfbridge20 flag
 }
 
+type fileType int
+
+const (
+	resourceFileType fileType = iota
+	otherFileType
+)
+
+type fileInfo struct {
+	fileType         fileType
+	pathToNodeModule string
+	resourceFileInfo resourceFileInfo
+}
+
+type resourceFileInfo struct {
+	resourceClassName         string
+	resourceArgsInterfaceName string
+	stateInterfaceName        string // may be empty
+	methodsNamespaceName      string // may be empty
+}
+
 // title capitalizes the first rune in s.
 //
 // Examples:
@@ -609,9 +629,12 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, " }")
 }
 
-func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
+func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
+	info := resourceFileInfo{}
+
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
+	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
@@ -627,7 +650,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	// Begin defining the class.
-	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", name, baseType)
+	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", info.resourceClassName, baseType)
 
 	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
@@ -837,14 +860,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 			err := genInputProps()
 			if err != nil {
-				return err
+				return resourceFileInfo{}, err
 			}
 		} else {
 			// The creation case:
 			fmt.Fprintf(w, "        if (!opts.id) {\n")
 			err := genInputProps()
 			if err != nil {
-				return err
+				return resourceFileInfo{}, err
 			}
 			// The get case:
 			fmt.Fprintf(w, "        } else {\n")
@@ -858,7 +881,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        {\n")
 		err := genInputProps()
 		if err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
 	}
 	var secretProps []string
@@ -1004,16 +1027,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
 		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0); err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
+		info.stateInterfaceName = stateType
 	}
 
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
 	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0); err != nil {
-		return err
+		return resourceFileInfo{}, err
 	}
+	info.resourceArgsInterfaceName = argsType
 
 	// Emit any method types inside a namespace merged with the class, to represent types nested in the class.
 	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
@@ -1054,7 +1079,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	types := &bytes.Buffer{}
 	for _, method := range r.Methods {
 		if err := genMethodTypes(types, method); err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
 	}
 	typesString := types.String()
@@ -1062,8 +1087,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
 		fmt.Fprintf(w, typesString)
 		fmt.Fprintf(w, "}\n")
+		info.methodsNamespaceName = name
 	}
-	return nil
+	return info, nil
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
@@ -1734,13 +1760,32 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs fs) error {
-	files := append([]string(nil), mod.extraSourceFiles...)
+	var files []fileInfo
+	for _, path := range mod.extraSourceFiles {
+		files = append(files, fileInfo{
+			fileType:         otherFileType,
+			pathToNodeModule: path,
+		})
+	}
 
 	modDir := strings.ToLower(mod.mod)
 
-	addFile := func(name, contents string) {
+	addFile := func(fileType fileType, name, contents string) {
 		p := path.Join(modDir, name)
-		files = append(files, p)
+		files = append(files, fileInfo{
+			fileType:         fileType,
+			pathToNodeModule: p,
+		})
+		fs.add(p, []byte(contents))
+	}
+
+	addResourceFile := func(resourceFileInfo resourceFileInfo, name, contents string) {
+		p := path.Join(modDir, name)
+		files = append(files, fileInfo{
+			fileType:         resourceFileType,
+			resourceFileInfo: resourceFileInfo,
+			pathToNodeModule: p,
+		})
 		fs.add(p, []byte(contents))
 	}
 
@@ -1776,7 +1821,7 @@ func (mod *modContext) gen(fs fs) error {
 			if err := mod.genConfig(buffer, mod.pkg.Config); err != nil {
 				return err
 			}
-			addFile("vars.ts", buffer.String())
+			addFile(otherFileType, "vars.ts", buffer.String())
 		}
 	}
 
@@ -1793,12 +1838,13 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
-		if err := mod.genResource(buffer, r); err != nil {
+		rinfo, err := mod.genResource(buffer, r)
+		if err != nil {
 			return err
 		}
 
 		fileName := mod.resourceFileName(r)
-		addFile(fileName, buffer.String())
+		addResourceFile(rinfo, fileName, buffer.String())
 	}
 
 	// Functions
@@ -1822,7 +1868,7 @@ func (mod *modContext) gen(fs fs) error {
 		if mod.isReservedSourceFileName(fileName) {
 			fileName = camel(tokenToName(f.Token)) + "_.ts"
 		}
-		addFile(fileName, buffer.String())
+		addFile(otherFileType, fileName, buffer.String())
 	}
 
 	if mod.hasEnums() {
@@ -1872,7 +1918,7 @@ func getChildMod(modName string) string {
 }
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
-func (mod *modContext) genIndex(exports []string) string {
+func (mod *modContext) genIndex(exports []fileInfo) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
@@ -1901,14 +1947,59 @@ func (mod *modContext) genIndex(exports []string) string {
 	if len(exports) > 0 {
 		modDir := strings.ToLower(mod.mod)
 		fmt.Fprintf(w, "// Export members:\n")
-		sort.Strings(exports)
+		sort.SliceStable(exports, func(i, j int) bool {
+			return exports[i].pathToNodeModule < exports[j].pathToNodeModule
+		})
 		for _, exp := range exports {
-			rel, err := filepath.Rel(modDir, exp)
+			rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
 			contract.Assert(err == nil)
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
 			}
-			fmt.Fprintf(w, "export * from \"./%s\";\n", strings.TrimSuffix(rel, ".ts"))
+			quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
+
+			if exp.fileType == resourceFileType &&
+				exp.resourceFileInfo.methodsNamespaceName == "" {
+				// Optimize the case of resource files
+				// to lazy-load them in Node; instead
+				// of reexporting everything which
+				// generates require() calls.
+				//
+				// Note that we cannot yet do this
+				// reliably if the resource file
+				// exports a methods namespace.
+
+				i := exp.resourceFileInfo
+				interfaces := []string{
+					i.resourceArgsInterfaceName,
+				}
+				if i.stateInterfaceName != "" {
+					interfaces = append(interfaces, i.stateInterfaceName)
+				}
+				// Re-export interfaces. This is
+				// type-only and does not generate a
+				// require() call.
+				fmt.Fprintf(w, "\nexport { %s } from %s;\n",
+					strings.Join(interfaces, ", "),
+					quotedImport)
+
+				// Re-export class type into the type group, see
+				// https://www.typescriptlang.org/docs/handbook/declaration-merging.html
+				fmt.Fprintf(w, "export type %[1]s = import(%[2]s).%[1]s;\n",
+					i.resourceClassName,
+					quotedImport)
+
+				// Re-export class value into the value group.
+				fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
+					i.resourceClassName,
+					quotedImport)
+
+				fmt.Fprintf(w, "utilities.lazy_load_property(exports, %s, %q);\n\n",
+					quotedImport,
+					i.resourceClassName)
+			} else {
+				fmt.Fprintf(w, "export * from %s;\n", quotedImport)
+			}
 		}
 	}
 
@@ -1970,7 +2061,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
 		provider = mod.resources[0]
 	} else {
-		registrations, first := codegen.StringSet{}, true
+		registrations := codegen.StringSet{}
 		for _, r := range mod.resources {
 			if r.IsOverlay {
 				// This resource code is generated by the provider, so no further action is required.
@@ -1984,13 +2075,6 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 			}
 
 			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
-
-			if first {
-				first = false
-				fmt.Fprintf(w, "\n// Import resources to register:\n")
-			}
-			fileName := strings.TrimSuffix(mod.resourceFileName(r), ".ts")
-			fmt.Fprintf(w, "import { %s } from \"./%s\";\n", resourceName(r), fileName)
 		}
 
 		fmt.Fprintf(w, "\nconst _module = {\n")
@@ -2023,7 +2107,6 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	}
 
 	if provider != nil {
-		fmt.Fprintf(w, "\nimport { Provider } from \"./provider\";\n\n")
 		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
 		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
@@ -2572,7 +2655,17 @@ export function lazy_load(exports: any, module_name: string) {
 }
 
 /** @internal */
-export function lazy_load_all(exprots: any, args: Array<string>) {
+export function lazy_load_property(exports: any, module_name: string, property: string) {
+	Object.defineProperty(exports, module_name, {
+		enumerable: true,
+		get: function() {
+			return require(` + "`./${module_name}`" + `)[property];
+		},
+	});
+}
+
+/** @internal */
+export function lazy_load_all(exports: any, args: Array<string>) {
 	args.forEach(arg => lazy_load(exports, arg))
 }`
 	var pluginDownloadURL string
