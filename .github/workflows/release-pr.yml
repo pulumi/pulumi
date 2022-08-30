@@ -1,0 +1,79 @@
+name: Post-Release PR
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      branch_from_ref:
+        required: false
+        description: "Commit to branch from, if not the tag"
+        type: string
+      next_version:
+        required: true
+        description: "Version to bump files to"
+        type: string
+      release_notes:
+        required: true
+        description: "Release notes to publish"
+        type: string
+
+jobs:
+  version-bump:
+    name: Version Bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: git fetch --tags && git checkout tags/v${{ inputs.version }}
+        if: ${{ !inputs.branch_from_ref }}
+      - run: git fetch --tags && git fetch origin ${{ inputs.branch_from_ref }}:local_ref && git checkout local_ref
+        if: ${{ inputs.branch_from_ref }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            sdk/go.sum
+      - name: Create PR
+        env:
+          VERSION: ${{ inputs.version }}
+          NEXT_VERSION: ${{ inputs.next_version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          GH_TOKEN: ${{ secrets.MERGE_PR_TOKEN }}
+          PR_BODY: |
+            bors r+
+        run: |
+          set -euo pipefail
+          git switch --create "automation/release-v${VERSION}"
+
+          echo -en "# Changelog\n\n${RELEASE_NOTES}\n\n$(tail -n+3 CHANGELOG.md)" > ./CHANGELOG.md
+
+          ./.github/scripts/update-versions "${NEXT_VERSION}"
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          rm ./changelog/pending/*.yaml || true
+          git add -A
+
+          git commit -m "prepare for next release (v${NEXT_VERSION})"
+
+          # Update go module dependencies
+          # pushd ./pkg/test
+          # go get -u "github.com/aaronfriel/go-change@v${VERSION}"
+          # go mod tidy
+          # git add go.mod go.sum
+          # popd
+          # git commit -m "Update dependencies"
+
+          # Publish Go module on another tag
+          git tag "pkg/test/v${VERSION}"
+          git push origin "pkg/test/v${VERSION}"
+          git push -u origin HEAD
+
+          gh pr create \
+            --title "prepare for next release (v${NEXT_VERSION})" \
+            --body "${PR_BODY}"

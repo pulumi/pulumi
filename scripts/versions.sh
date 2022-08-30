@@ -2,8 +2,9 @@
 
 set -euo pipefail
 
-GENERIC_VERSION="$(pulumictl get version --language generic -o)"
+# TODO: use pulumictl or another tool to get other versions
+GENERIC_VERSION="$1"
 echo GENERIC_VERSION="$GENERIC_VERSION"
-echo PYPI_VERSION="$(pulumictl get version --language python)"
-echo DOTNET_VERSION="$(pulumictl get version --language dotnet)"
+echo PYPI_VERSION="$GENERIC_VERSION"
+echo DOTNET_VERSION="$GENERIC_VERSION"
 echo GORELEASER_CURRENT_TAG="v$GENERIC_VERSION"

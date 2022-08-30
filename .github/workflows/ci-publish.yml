@@ -1,0 +1,116 @@
+name: Publish (Prerelease)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      commit:
+        required: true
+        description: "Commit to tag"
+        type: string
+      project:
+        required: true
+        description: "Project name, e.g.: the repository name"
+        type: string
+      release_notes:
+        required: true
+        description: "Release notes"
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  sign:
+    name: Checksum and sign
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install rsign2
+        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
+        with:
+          crate: rsign2
+          version: 0.6.1
+
+      - name: Install b3sum
+        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
+        with:
+          crate: b3sum
+          version: 1.3.0
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: artifacts
+          path: artifacts
+
+      - name: Checksums with BLAKE3
+        working-directory: artifacts
+        run: b3sum ./* | tee B3SUMS
+
+      - name: Checksums with SHA512
+        working-directory: artifacts
+        run: sha512sum ./* | tee SHA512SUMS
+
+      - name: Sign checksums
+        working-directory: artifacts
+        shell: bash
+        env:
+          RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
+          version: ${{ inputs.version }}
+        run: |
+          set -u
+          echo "$RELEASE_KEY" > release.key
+          set -x
+          for algo in B3 SHA512; do
+            echo | rsign sign \
+              -p "${GITHUB_WORKSPACE}/.github/workflows/release.pub" \
+              -s release.key \
+              -t "${{ inputs.project }} v$version signed with automated key" \
+              -c 'see website for signing information' \
+              -x "${algo}SUMS.auto.minisig" \
+              "${algo}SUMS"
+          done
+          rm release.key
+          cat {B3,SHA512}SUMS.auto.minisig
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          retention-days: 1
+          path: |
+            artifacts/*SUMS*
+
+  publish:
+    name: Publish
+    needs: [sign]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: artifacts
+          path: artifacts
+
+      - uses: ncipollo/release-action@3d2de22e3d0beab188d8129c27f103d8e91bf13a
+        with:
+          name: v${{ inputs.version }}
+          tag: v${{ inputs.version }}
+          commit: ${{ inputs.commit }}
+          draft: true
+          prerelease: false
+          allowUpdates: true
+
+          body: |
+            ${{ inputs.release_notes }}
+
+          removeArtifacts: true
+          replacesArtifacts: true
+          artifactErrorsFailBuild: true
+          artifacts: |
+            artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

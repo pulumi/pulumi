@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -euo pipefail
+
+OUTPUT_NAME="$1"
+VALUE="$2"
+
+ESCAPED="$(echo -n "${VALUE}" | jq -Rsc ".")" # JSON encode
+echo "::set-output name=${OUTPUT_NAME}::${ESCAPED}"

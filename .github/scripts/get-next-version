@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -euo pipefail
+
+>&2 echo "::group::Get version"
+trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+
+PREVIOUS_VERSION="${1:-""}"
+if [ -z "$PREVIOUS_VERSION" ]; then
+  PREVIOUS_VERSION="$(.github/scripts/get-version)"
+fi
+VERSION="$(echo -n "$PREVIOUS_VERSION" | awk -F. -v OFS=. '{$NF += 1 ; print}')"
+
+echo -n "$VERSION"
