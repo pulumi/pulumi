@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as typescript from "typescript";
 import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
@@ -183,6 +184,7 @@ export function run(
     // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
+    const skipProject = false;
     const tsConfigPath = "tsconfig.json";
 
     let compilerOptions = {
@@ -194,7 +196,8 @@ export function run(
     }
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
+        const ts: typeof typescript = require("typescript");
+        const tsConfig = ts.parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
         if (tsConfig["compilerOptions"]) {
             compilerOptions = tsConfig["compilerOptions"];
         }
@@ -203,9 +206,9 @@ export function run(
     if (typeScript) {
         tsnode.register({
             typeCheck: false,
-            skipProject: false,
             transpileOnly: true,
             files: true,
+            skipProject,
             compilerOptions,
         });
     }
@@ -280,7 +283,7 @@ ${defaultMessage}`);
     programStarted();
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.
-    if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+    if (skipProject) {
         return new Promise(() => {
             const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
             e.stack = undefined;
