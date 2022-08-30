@@ -72,7 +72,7 @@ const (
 
 var (
 	// The minimum python version that Pulumi supports
-	minimumSupportedPythonVersion = semver.MustParse("3.6.0")
+	minimumSupportedPythonVersion = semver.MustParse("3.7.0")
 	// Any version less then `eolPythonVersion` is EOL.
 	eolPythonVersion = semver.MustParse("3.7.0")
 	// An url to the issue discussing EOL.
