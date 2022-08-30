@@ -1430,14 +1430,6 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
-		if _, ok := err.(*MissingError); ok {
-			if err = attemptToDownloadMissingPlugin(kind, name, version); err != nil {
-				return nil, err
-			}
-
-			return GetPluginInfo(kind, name, version, projectPlugins)
-		}
-
 		return nil, err
 	}
 
@@ -1583,7 +1575,7 @@ func getPluginInfoAndPath(
 				return nil, "", err
 			}
 
-			// downloaded the plugin successfully
+			// downloaded the missing plugin successfully
 			// restart the plugin retrieval
 			return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 		}
@@ -1621,11 +1613,13 @@ func getPluginInfoAndPath(
 		return match, matchPath, nil
 	}
 
-	return nil, "", NewMissingError(PluginInfo{
-		Name:    name,
-		Kind:    kind,
-		Version: version,
-	}, includeAmbient)
+	if err := attemptToDownloadMissingPlugin(kind, name, version); err != nil {
+		return nil, "", err
+	}
+
+	// downloaded the missing plugin successfully
+	// restart the plugin retrieval
+	return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
