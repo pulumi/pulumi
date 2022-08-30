@@ -273,7 +273,7 @@ class Stack:
                 language_server, server
             )
 
-            port = server.add_insecure_port(address="0.0.0.0:0")
+            port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
 
             def on_exit_fn():
@@ -386,7 +386,7 @@ class Stack:
                 language_server, server
             )
 
-            port = server.add_insecure_port(address="0.0.0.0:0")
+            port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
 
             def on_exit_fn():

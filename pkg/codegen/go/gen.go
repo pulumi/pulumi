@@ -3606,7 +3606,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			if pkg.pkg.Description != "" {
 				printComment(buffer, pkg.pkg.Description, false)
 			} else {
-				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", pkg.pkg.Name)
+				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", name)
 			}
 			fmt.Fprintf(buffer, "\n")
 			fmt.Fprintf(buffer, "package %s\n", name)

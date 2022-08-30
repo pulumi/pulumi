@@ -18,11 +18,12 @@ https://github.com/pulumi/pulumi/issues/6981
 
 """
 
-from typing import Any, Optional, Sequence, Dict
+import contextlib
+from typing import Dict
 import pytest
 import uuid
 
-from pulumi import Input, Output, ResourceOptions
+from pulumi import Input, Output
 from pulumi.runtime import settings, mocks
 import pulumi
 import pulumi.dynamic as dyn

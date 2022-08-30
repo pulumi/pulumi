@@ -199,6 +199,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
 			return err
 		}
+		if p.Name == pulumiPackage {
+			continue
+		}
 
 		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
 		if langInfo, found := p.Language["csharp"]; found {
@@ -312,6 +315,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
@@ -432,6 +436,7 @@ func requiresAsyncInit(r *pcl.Resource) bool {
 
 // resourceTypeName computes the C# class name for the given resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) string {
+	pcl.FixupPulumiPackageTokens(r)
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
