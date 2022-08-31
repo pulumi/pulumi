@@ -110,3 +110,6 @@
 
 - [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
   [#10530](https://github.com/pulumi/pulumi/pull/10530)
+
+- [go/codegen] Fix generating invalid Go code when derivatives of input types collide with existing resource types
+  [#10551](https://github.com/pulumi/pulumi/pull/10551)
