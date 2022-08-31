@@ -17,6 +17,6 @@ if (projName !== expName) {
 
 const expOrgName =  process.env["PULUMI_TEST_OWNER"];
 const orgName = pulumi.getOrganization();
-if (projName !== expOrgName) {
+if (orgName !== expOrgName) {
     throw new Error(`Unexpected pulumi.getOrganization(); wanted '${expOrgName}', got '${orgName}'`);
 }
