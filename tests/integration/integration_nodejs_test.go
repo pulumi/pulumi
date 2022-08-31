@@ -601,17 +601,12 @@ func TestStackReferenceNodeJS(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
 
 	opts := &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_reference", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
+		Env:          []string{"PULUMI_ORGANIZATION=test-org"},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step1",
@@ -700,6 +695,7 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 			"org": owner,
 		},
 		Quick: true,
+		Env:   []string{fmt.Sprintf("PULUMI_ORGANIZATION=%s", owner)},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:             filepath.Join(d, "nodejs", "step2"),

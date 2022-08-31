@@ -53,6 +53,7 @@ class Settings:
         parallel: Optional[int] = None,
         dry_run: Optional[bool] = None,
         legacy_apply_enabled: Optional[bool] = None,
+        organization: Optional[str] = None,
     ):
         # Save the metadata information.
         self.project = project
@@ -61,6 +62,7 @@ class Settings:
         self.dry_run = dry_run
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
+        self.organization = organization
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -93,6 +95,10 @@ class Settings:
 
     @contextproperty
     def engine(self) -> Optional[engine_pb2_grpc.EngineStub]:
+        ...
+
+    @contextproperty
+    def organization(self) -> Optional[str]:
         ...
 
     @contextproperty
@@ -149,6 +155,15 @@ def is_dry_run() -> bool:
 
 def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
+
+
+def get_organization() -> str:
+    """
+    Returns the current organization name (if available).
+    """
+    if SETTINGS.organization is None:
+        raise Exception("organization is not available")
+    return SETTINGS.organization
 
 
 def get_project() -> str:
@@ -276,6 +291,7 @@ def reset_options(
     engine_address: Optional[str] = None,
     monitor_address: Optional[str] = None,
     preview: Optional[bool] = None,
+    organization: Optional[str] = None,
 ):
     """Resets globals to the values provided."""
 
@@ -289,5 +305,6 @@ def reset_options(
             stack=stack,
             parallel=parallel,
             dry_run=preview,
+            organization=organization,
         )
     )
