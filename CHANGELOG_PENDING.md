@@ -115,3 +115,6 @@
 
 - [python] put python version check after installing dependencies to resolve `fork/exec` warning
   [#10524](https://github.com/pulumi/pulumi/pull/10524)
+
+- [go/codegen] Fix generating invalid Go code when derivatives of input types collide with existing resource types
+  [#10551](https://github.com/pulumi/pulumi/pull/10551)
