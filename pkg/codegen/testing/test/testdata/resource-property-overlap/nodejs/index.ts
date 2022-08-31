@@ -5,17 +5,15 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
-
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 export { RecArgs } from "./rec";
 export type Rec = import("./rec").Rec;
 export const Rec: typeof import("./rec").Rec = null as any
-utilities.lazy_load_property(exports, "./rec", "Rec");
+utilities.lazyLoadProperty(exports, "Rec", () => require("./rec"));
 
 
 const _module = {

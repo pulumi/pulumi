@@ -5,27 +5,29 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-
 export { FooArgs } from "./foo";
 export type Foo = import("./foo").Foo;
 export const Foo: typeof import("./foo").Foo = null as any
-utilities.lazy_load_property(exports, "./foo", "Foo");
+utilities.lazyLoadProperty(exports, "Foo", () => require("./foo"));
 
-export * from "./funcWithAllOptionalInputs";
+export { FuncWithAllOptionalInputsArgs, FuncWithAllOptionalInputsResult, FuncWithAllOptionalInputsOutputArgs } from "./funcWithAllOptionalInputs";
+export const funcWithAllOptionalInputs: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputs = null as any
+utilities.lazyLoadProperty(exports, "funcWithAllOptionalInputs", () => require("./funcWithAllOptionalInputs"));
+export const funcWithAllOptionalInputsOutput: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputsOutput = null as any
+utilities.lazyLoadProperty(exports, "funcWithAllOptionalInputsOutput", () => require("./funcWithAllOptionalInputs"));
 
 export { ModuleTestArgs } from "./moduleTest";
 export type ModuleTest = import("./moduleTest").ModuleTest;
 export const ModuleTest: typeof import("./moduleTest").ModuleTest = null as any
-utilities.lazy_load_property(exports, "./moduleTest", "ModuleTest");
-
+utilities.lazyLoadProperty(exports, "ModuleTest", () => require("./moduleTest"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

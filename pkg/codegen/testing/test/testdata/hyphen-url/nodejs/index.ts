@@ -5,17 +5,15 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
-
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 export { RegistryGeoReplicationArgs } from "./registryGeoReplication";
 export type RegistryGeoReplication = import("./registryGeoReplication").RegistryGeoReplication;
 export const RegistryGeoReplication: typeof import("./registryGeoReplication").RegistryGeoReplication = null as any
-utilities.lazy_load_property(exports, "./registryGeoReplication", "RegistryGeoReplication");
+utilities.lazyLoadProperty(exports, "RegistryGeoReplication", () => require("./registryGeoReplication"));
 
 
 const _module = {

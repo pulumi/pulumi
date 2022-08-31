@@ -5,33 +5,34 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./argFunction";
+export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
+export const argFunction: typeof import("./argFunction").argFunction = null as any
+utilities.lazyLoadProperty(exports, "argFunction", () => require("./argFunction"));
+export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any
+utilities.lazyLoadProperty(exports, "argFunctionOutput", () => require("./argFunction"));
 
 export { CatArgs } from "./cat";
 export type Cat = import("./cat").Cat;
 export const Cat: typeof import("./cat").Cat = null as any
-utilities.lazy_load_property(exports, "./cat", "Cat");
-
+utilities.lazyLoadProperty(exports, "Cat", () => require("./cat"));
 
 export { ComponentArgs } from "./component";
 export type Component = import("./component").Component;
 export const Component: typeof import("./component").Component = null as any
-utilities.lazy_load_property(exports, "./component", "Component");
-
+utilities.lazyLoadProperty(exports, "Component", () => require("./component"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
-
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 export { WorkloadArgs } from "./workload";
 export type Workload = import("./workload").Workload;
 export const Workload: typeof import("./workload").Workload = null as any
-utilities.lazy_load_property(exports, "./workload", "Workload");
+utilities.lazyLoadProperty(exports, "Workload", () => require("./workload"));
 
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

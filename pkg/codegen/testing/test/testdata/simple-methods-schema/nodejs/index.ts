@@ -6,14 +6,15 @@ import * as utilities from "./utilities";
 
 // Export members:
 export * from "./foo";
+import { Foo } from "./foo";
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as nested from "./nested";
 import * as types from "./types";
 

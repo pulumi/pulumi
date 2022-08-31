@@ -5,27 +5,29 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./argFunction";
+export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
+export const argFunction: typeof import("./argFunction").argFunction = null as any
+utilities.lazyLoadProperty(exports, "argFunction", () => require("./argFunction"));
+export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any
+utilities.lazyLoadProperty(exports, "argFunctionOutput", () => require("./argFunction"));
 
 export { OtherResourceArgs } from "./otherResource";
 export type OtherResource = import("./otherResource").OtherResource;
 export const OtherResource: typeof import("./otherResource").OtherResource = null as any
-utilities.lazy_load_property(exports, "./otherResource", "OtherResource");
-
+utilities.lazyLoadProperty(exports, "OtherResource", () => require("./otherResource"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
-
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 export { ResourceArgs } from "./resource";
 export type Resource = import("./resource").Resource;
 export const Resource: typeof import("./resource").Resource = null as any
-utilities.lazy_load_property(exports, "./resource", "Resource");
+utilities.lazyLoadProperty(exports, "Resource", () => require("./resource"));
 
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

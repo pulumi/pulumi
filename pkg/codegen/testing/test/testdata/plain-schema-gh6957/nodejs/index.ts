@@ -5,20 +5,18 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
-
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 export { StaticPageArgs } from "./staticPage";
 export type StaticPage = import("./staticPage").StaticPage;
 export const StaticPage: typeof import("./staticPage").StaticPage = null as any
-utilities.lazy_load_property(exports, "./staticPage", "StaticPage");
+utilities.lazyLoadProperty(exports, "StaticPage", () => require("./staticPage"));
 
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

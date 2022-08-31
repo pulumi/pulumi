@@ -3,7 +3,7 @@
 
 import * as utilities from "../utilities";
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as module from "./module";
 
 export {

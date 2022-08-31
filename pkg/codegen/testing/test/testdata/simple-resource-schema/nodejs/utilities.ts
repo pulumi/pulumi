@@ -54,26 +54,11 @@ export function resourceOptsDefaults(): any {
 }
 
 /** @internal */
-export function lazy_load(exports: any, module_name: string) {
-	Object.defineProperty(exports, module_name, {
-		enumerable: true,
-		get: function() {
-			return require(`./${module_name}`);
-		},
-	});
-}
-
-/** @internal */
-export function lazy_load_property(exports: any, module_name: string, property: string) {
-	Object.defineProperty(exports, module_name, {
-		enumerable: true,
-		get: function() {
-			return require(`./${module_name}`)[property];
-		},
-	});
-}
-
-/** @internal */
-export function lazy_load_all(exports: any, args: Array<string>) {
-	args.forEach(arg => lazy_load(exports, arg))
+export function lazyLoadProperty(exports: any, property: string, loadModule: any) {
+    Object.defineProperty(exports, property, {
+        enumerable: true,
+        get: function() {
+            return loadModule()[property];
+        },
+    });
 }

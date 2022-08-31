@@ -5,23 +5,21 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-
 export { ModuleResourceArgs } from "./moduleResource";
 export type ModuleResource = import("./moduleResource").ModuleResource;
 export const ModuleResource: typeof import("./moduleResource").ModuleResource = null as any
-utilities.lazy_load_property(exports, "./moduleResource", "ModuleResource");
-
+utilities.lazyLoadProperty(exports, "ModuleResource", () => require("./moduleResource"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 
 // Export enums:
 export * from "./types/enums";
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

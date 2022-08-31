@@ -5,19 +5,28 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./listConfigurations";
-export * from "./listProductFamilies";
+export { ListConfigurationsArgs, ListConfigurationsResult, ListConfigurationsOutputArgs } from "./listConfigurations";
+export const listConfigurations: typeof import("./listConfigurations").listConfigurations = null as any
+utilities.lazyLoadProperty(exports, "listConfigurations", () => require("./listConfigurations"));
+export const listConfigurationsOutput: typeof import("./listConfigurations").listConfigurationsOutput = null as any
+utilities.lazyLoadProperty(exports, "listConfigurationsOutput", () => require("./listConfigurations"));
+
+export { ListProductFamiliesArgs, ListProductFamiliesResult, ListProductFamiliesOutputArgs } from "./listProductFamilies";
+export const listProductFamilies: typeof import("./listProductFamilies").listProductFamilies = null as any
+utilities.lazyLoadProperty(exports, "listProductFamilies", () => require("./listProductFamilies"));
+export const listProductFamiliesOutput: typeof import("./listProductFamilies").listProductFamiliesOutput = null as any
+utilities.lazyLoadProperty(exports, "listProductFamiliesOutput", () => require("./listProductFamilies"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazy_load_property(exports, "./provider", "Provider");
+utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
 
 
 // Export enums:
 export * from "./types/enums";
 
-// Export sub-modules (modContext.genIndex):
+// Export sub-modules:
 import * as types from "./types";
 
 export {

@@ -5,11 +5,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "../utilities";
 
 // Export members:
-
 export { IamResourceArgs } from "./iamResource";
 export type IamResource = import("./iamResource").IamResource;
 export const IamResource: typeof import("./iamResource").IamResource = null as any
-utilities.lazy_load_property(exports, "./iamResource", "IamResource");
+utilities.lazyLoadProperty(exports, "IamResource", () => require("./iamResource"));
 
 
 const _module = {
