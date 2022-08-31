@@ -1371,7 +1371,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     parallel: jspb.Message.getFieldWithDefault(msg, 8, 0),
     monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
     querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
-    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f
+    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
+    organization: jspb.Message.getFieldWithDefault(msg, 12, "")
   };
 
   if (includeInstance) {
@@ -1453,6 +1454,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 11:
       var value = /** @type {string} */ (reader.readString());
       msg.addConfigsecretkeys(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOrganization(value);
       break;
     default:
       reader.skipField();
@@ -1554,6 +1559,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f.length > 0) {
     writer.writeRepeatedString(
       11,
+      f
+    );
+  }
+  f = message.getOrganization();
+  if (f.length > 0) {
+    writer.writeString(
+      12,
       f
     );
   }
@@ -1797,6 +1809,24 @@ proto.pulumirpc.RunRequest.prototype.addConfigsecretkeys = function(value, opt_i
  */
 proto.pulumirpc.RunRequest.prototype.clearConfigsecretkeysList = function() {
   return this.setConfigsecretkeysList([]);
+};
+
+
+/**
+ * optional string organization = 12;
+ * @return {string}
+ */
+proto.pulumirpc.RunRequest.prototype.getOrganization = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 12, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setOrganization = function(value) {
+  return jspb.Message.setProto3StringField(this, 12, value);
 };
 
 

@@ -53,6 +53,9 @@
 
 - [cli/plugin] `plugin install` now supports a `--checksum` option.
   [#10528](https://github.com/pulumi/pulumi/pull/10528)
+  
+- [sdk/{nodejs/python}] Added `getOrganization()` to return the current organization if available.
+  [#10504](https://github.com/pulumi/pulumi/pull/10504)
 
 ### Bug Fixes
 

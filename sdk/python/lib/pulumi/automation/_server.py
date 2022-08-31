@@ -55,6 +55,7 @@ class LanguageServer(LanguageRuntimeServicer):
             stack=request.stack,
             parallel=request.parallel,
             preview=request.dryRun,
+            organization=request.organization,
         )
 
         if request.config:
