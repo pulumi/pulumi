@@ -1939,7 +1939,9 @@ func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 	// not sure how to lazy-load in presence of re-exported
 	// namespaces; bail and use an eager load in this case; also
 	// eager-import the class.
-	if exp.resourceFileInfo.methodsNamespaceName == "" {
+	if i.methodsNamespaceName != "" {
+		fmt.Fprintf(w, "// uses method namespace %v\n",
+			i.methodsNamespaceName)
 		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
 		fmt.Fprintf(w, "import { %s } from %s;\n", i.resourceClassName, quotedImport)
 		return
