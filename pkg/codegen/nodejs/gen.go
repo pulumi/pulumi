@@ -1607,8 +1607,13 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 			fmt.Sprintf(`import * as inputs from "%s/types/input";`, relRoot),
 			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
 		}...)
+
 		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
-			imports = append(imports, fmt.Sprintf(`import type * as enums from "%s/types/enums";`, relRoot))
+			code := `import * as enums from "%s/types/enums";`
+			if mod.nodeModuleOptimizationFlags().useTypeOnlyEnumsReferences {
+				code = `import type * as enums from "%s/types/enums";`
+			}
+			imports = append(imports, fmt.Sprintf(code, relRoot))
 		}
 	}
 
@@ -1979,6 +1984,38 @@ func getChildMod(modName string) string {
 	return child
 }
 
+func (mod *modContext) nodeModuleOptimizationFlags() struct {
+	lazyLoadFunctions          bool
+	lazyLoadResources          bool
+	useTypeOnlyEnumsReferences bool
+} {
+	flags := struct {
+		lazyLoadFunctions          bool
+		lazyLoadResources          bool
+		useTypeOnlyEnumsReferences bool
+	}{}
+	nodePackageInfo := NodePackageInfo{}
+	if languageInfo, ok := mod.pkg.Language["nodejs"]; ok {
+		if info, ok2 := languageInfo.(NodePackageInfo); ok2 {
+			nodePackageInfo = info
+		}
+	}
+
+	for _, s := range nodePackageInfo.OptimizeNodeModuleLoading {
+		switch s {
+		case "lazy-load-functions":
+			flags.lazyLoadFunctions = true
+		case "lazy-load-resources":
+			flags.lazyLoadResources = true
+		case "use-type-only-enums-references":
+			flags.useTypeOnlyEnumsReferences = true
+		default:
+			continue
+		}
+	}
+	return flags
+}
+
 func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 	modDir := strings.ToLower(mod.mod)
 	rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
@@ -1987,19 +2024,24 @@ func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 		rel = path.Dir(rel)
 	}
 	quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
-	switch exp.fileType {
-	case functionFileType:
-		// optimize lazy-loading function files
+	flags := mod.nodeModuleOptimizationFlags()
+	if exp.fileType == functionFileType && flags.lazyLoadFunctions {
 		mod.genFunctionReexport(w, exp.functionFileInfo, quotedImport)
-		return
-	case resourceFileType:
-		// optimize lazy-loading resource files
-		mod.genResourceReexport(w, exp.resourceFileInfo, quotedImport)
-		return
-	default:
+	} else if exp.fileType == resourceFileType {
+		if flags.lazyLoadResources {
+			// optimize lazy-loading resource files
+			mod.genResourceReexport(w, exp.resourceFileInfo, quotedImport)
+		} else {
+			fmt.Fprintf(w, "export * from %s;\n", quotedImport)
+
+			// Something relies on these to be imported also.
+			fmt.Fprintf(w, "import { %s } from %s;\n",
+				exp.resourceFileInfo.resourceClassName,
+				quotedImport)
+		}
+	} else {
 		// non-optimized but foolproof eager reexport
 		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
-		return
 	}
 }
 
