@@ -1603,12 +1603,13 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		var enumsImport string
-		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
-		if containsEnums {
-			enumsImport = ", enums"
+		imports = append(imports, []string{
+			fmt.Sprintf(`import * as inputs from "%s/types/input";`, relRoot),
+			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
+		}...)
+		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
+			imports = append(imports, fmt.Sprintf(`import type { enums } from "%s/types";`, relRoot))
 		}
-		imports = append(imports, fmt.Sprintf(`import { input as inputs, output as outputs%s } from "%s/types";`, enumsImport, relRoot))
 	}
 
 	if utilities {
