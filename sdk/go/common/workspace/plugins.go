@@ -941,7 +941,7 @@ func DownloadToFile(
 
 }
 
-// InstallPluginError is returned by functions that are unable to download and install
+// InstallPluginError is returned by functions that are unable to download and install a plugin
 type InstallPluginError struct {
 	// The name of the plugin
 	Name string
@@ -949,7 +949,7 @@ type InstallPluginError struct {
 	Kind PluginKind
 	// The requested version of the plugin, if any.
 	Version *semver.Version
-	// the underlying error that occured during the download or install
+	// the underlying error that occurred during the download or install
 	UnderlyingError error
 }
 
