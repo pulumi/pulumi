@@ -1608,7 +1608,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
 		}...)
 		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
-			imports = append(imports, fmt.Sprintf(`import type { enums } from "%s/types";`, relRoot))
+			imports = append(imports, fmt.Sprintf(`import type * as enums from "%s/types/enums";`, relRoot))
 		}
 	}
 
