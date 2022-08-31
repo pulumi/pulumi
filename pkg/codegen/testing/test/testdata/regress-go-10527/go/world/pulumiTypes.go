@@ -41,31 +41,6 @@ func (i WorldArgs) ToWorldOutputWithContext(ctx context.Context) WorldOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(WorldOutput)
 }
 
-// WorldMapInput is an input type that accepts WorldMap and WorldMapOutput values.
-// You can construct a concrete instance of `WorldMapInput` via:
-//
-//          WorldMap{ "key": WorldArgs{...} }
-type WorldMapInput interface {
-	pulumi.Input
-
-	ToWorldMapOutput() WorldMapOutput
-	ToWorldMapOutputWithContext(context.Context) WorldMapOutput
-}
-
-type WorldMap map[string]WorldInput
-
-func (WorldMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]World)(nil)).Elem()
-}
-
-func (i WorldMap) ToWorldMapOutput() WorldMapOutput {
-	return i.ToWorldMapOutputWithContext(context.Background())
-}
-
-func (i WorldMap) ToWorldMapOutputWithContext(ctx context.Context) WorldMapOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(WorldMapOutput)
-}
-
 type WorldOutput struct{ *pulumi.OutputState }
 
 func (WorldOutput) ElementType() reflect.Type {
@@ -84,29 +59,8 @@ func (o WorldOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v World) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
-type WorldMapOutput struct{ *pulumi.OutputState }
-
-func (WorldMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]World)(nil)).Elem()
-}
-
-func (o WorldMapOutput) ToWorldMapOutput() WorldMapOutput {
-	return o
-}
-
-func (o WorldMapOutput) ToWorldMapOutputWithContext(ctx context.Context) WorldMapOutput {
-	return o
-}
-
-func (o WorldMapOutput) MapIndex(k pulumi.StringInput) WorldOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) World {
-		return vs[0].(map[string]World)[vs[1].(string)]
-	}).(WorldOutput)
-}
-
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*WorldInput)(nil)).Elem(), WorldArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*WorldMapInput)(nil)).Elem(), WorldMap{})
 	pulumi.RegisterOutputType(WorldOutput{})
 	pulumi.RegisterOutputType(WorldMapOutput{})
 }
