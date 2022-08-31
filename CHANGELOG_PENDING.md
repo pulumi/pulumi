@@ -1,5 +1,7 @@
 ### Improvements
 
+- [yaml] [Updates Pulumi YAML to v0.5.5](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.5)
+
 - [cli] Allow `pulumi refresh` to interactively resolve pending creates.
   [#10394](https://github.com/pulumi/pulumi/pull/10394)
 
