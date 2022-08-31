@@ -690,10 +690,7 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(d, "nodejs", "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
-		Config: map[string]string{
-			"org": owner,
-		},
-		Quick: true,
+		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
 				Dir:             filepath.Join(d, "nodejs", "step2"),

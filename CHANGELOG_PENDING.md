@@ -1,5 +1,7 @@
 ### Improvements
 
+- [yaml] [Updates Pulumi YAML to v0.5.5](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.5)
+
 - [cli] Allow `pulumi refresh` to interactively resolve pending creates.
   [#10394](https://github.com/pulumi/pulumi/pull/10394)
 
@@ -110,6 +112,9 @@
 
 - [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
   [#10530](https://github.com/pulumi/pulumi/pull/10530)
+
+- [python] put python version check after installing dependencies to resolve `fork/exec` warning
+  [#10524](https://github.com/pulumi/pulumi/pull/10524)
 
 - [go/codegen] Fix generating invalid Go code when derivatives of input types collide with existing resource types
   [#10551](https://github.com/pulumi/pulumi/pull/10551)
