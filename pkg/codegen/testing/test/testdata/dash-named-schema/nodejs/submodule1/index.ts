@@ -5,11 +5,8 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "../utilities";
 
 // Export members:
-export { ModuleResourceArgs } from "./moduleResource";
-export type ModuleResource = import("./moduleResource").ModuleResource;
-export const ModuleResource: typeof import("./moduleResource").ModuleResource = null as any
-utilities.lazyLoadProperty(exports, "ModuleResource", () => require("./moduleResource"));
-
+export * from "./moduleResource";
+import { ModuleResource } from "./moduleResource";
 
 const _module = {
     version: utilities.getVersion(),

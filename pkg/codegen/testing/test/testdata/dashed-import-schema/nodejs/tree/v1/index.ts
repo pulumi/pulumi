@@ -5,16 +5,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "../../utilities";
 
 // Export members:
-export { NurseryArgs } from "./nursery";
-export type Nursery = import("./nursery").Nursery;
-export const Nursery: typeof import("./nursery").Nursery = null as any
-utilities.lazyLoadProperty(exports, "Nursery", () => require("./nursery"));
-
-export { RubberTreeArgs, RubberTreeState } from "./rubberTree";
-export type RubberTree = import("./rubberTree").RubberTree;
-export const RubberTree: typeof import("./rubberTree").RubberTree = null as any
-utilities.lazyLoadProperty(exports, "RubberTree", () => require("./rubberTree"));
-
+export * from "./nursery";
+import { Nursery } from "./nursery";
+export * from "./rubberTree";
+import { RubberTree } from "./rubberTree";
 
 // Export enums:
 export * from "../../types/enums/tree/v1";

@@ -5,21 +5,12 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
-export { ResourceArgs } from "./resource";
-export type Resource = import("./resource").Resource;
-export const Resource: typeof import("./resource").Resource = null as any
-utilities.lazyLoadProperty(exports, "Resource", () => require("./resource"));
-
-export { ResourceInputArgs } from "./resourceInput";
-export type ResourceInput = import("./resourceInput").ResourceInput;
-export const ResourceInput: typeof import("./resourceInput").ResourceInput = null as any
-utilities.lazyLoadProperty(exports, "ResourceInput", () => require("./resourceInput"));
-
+export * from "./provider";
+import { Provider } from "./provider";
+export * from "./resource";
+import { Resource } from "./resource";
+export * from "./resourceInput";
+import { ResourceInput } from "./resourceInput";
 
 // Export enums:
 export * from "./types/enums";

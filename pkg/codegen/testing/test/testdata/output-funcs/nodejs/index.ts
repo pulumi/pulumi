@@ -5,67 +5,18 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { FuncWithAllOptionalInputsArgs, FuncWithAllOptionalInputsResult, FuncWithAllOptionalInputsOutputArgs } from "./funcWithAllOptionalInputs";
-export const funcWithAllOptionalInputs: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputs = null as any
-utilities.lazyLoadProperty(exports, "funcWithAllOptionalInputs", () => require("./funcWithAllOptionalInputs"));
-export const funcWithAllOptionalInputsOutput: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputsOutput = null as any
-utilities.lazyLoadProperty(exports, "funcWithAllOptionalInputsOutput", () => require("./funcWithAllOptionalInputs"));
-
-export { FuncWithConstInputArgs } from "./funcWithConstInput";
-export const funcWithConstInput: typeof import("./funcWithConstInput").funcWithConstInput = null as any
-utilities.lazyLoadProperty(exports, "funcWithConstInput", () => require("./funcWithConstInput"));
-
-export { FuncWithDefaultValueArgs, FuncWithDefaultValueResult, FuncWithDefaultValueOutputArgs } from "./funcWithDefaultValue";
-export const funcWithDefaultValue: typeof import("./funcWithDefaultValue").funcWithDefaultValue = null as any
-utilities.lazyLoadProperty(exports, "funcWithDefaultValue", () => require("./funcWithDefaultValue"));
-export const funcWithDefaultValueOutput: typeof import("./funcWithDefaultValue").funcWithDefaultValueOutput = null as any
-utilities.lazyLoadProperty(exports, "funcWithDefaultValueOutput", () => require("./funcWithDefaultValue"));
-
-export { FuncWithDictParamArgs, FuncWithDictParamResult, FuncWithDictParamOutputArgs } from "./funcWithDictParam";
-export const funcWithDictParam: typeof import("./funcWithDictParam").funcWithDictParam = null as any
-utilities.lazyLoadProperty(exports, "funcWithDictParam", () => require("./funcWithDictParam"));
-export const funcWithDictParamOutput: typeof import("./funcWithDictParam").funcWithDictParamOutput = null as any
-utilities.lazyLoadProperty(exports, "funcWithDictParamOutput", () => require("./funcWithDictParam"));
-
-export { FuncWithEmptyOutputsArgs, FuncWithEmptyOutputsResult, FuncWithEmptyOutputsOutputArgs } from "./funcWithEmptyOutputs";
-export const funcWithEmptyOutputs: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputs = null as any
-utilities.lazyLoadProperty(exports, "funcWithEmptyOutputs", () => require("./funcWithEmptyOutputs"));
-export const funcWithEmptyOutputsOutput: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputsOutput = null as any
-utilities.lazyLoadProperty(exports, "funcWithEmptyOutputsOutput", () => require("./funcWithEmptyOutputs"));
-
-export { FuncWithListParamArgs, FuncWithListParamResult, FuncWithListParamOutputArgs } from "./funcWithListParam";
-export const funcWithListParam: typeof import("./funcWithListParam").funcWithListParam = null as any
-utilities.lazyLoadProperty(exports, "funcWithListParam", () => require("./funcWithListParam"));
-export const funcWithListParamOutput: typeof import("./funcWithListParam").funcWithListParamOutput = null as any
-utilities.lazyLoadProperty(exports, "funcWithListParamOutput", () => require("./funcWithListParam"));
-
-export { GetBastionShareableLinkArgs, GetBastionShareableLinkResult, GetBastionShareableLinkOutputArgs } from "./getBastionShareableLink";
-export const getBastionShareableLink: typeof import("./getBastionShareableLink").getBastionShareableLink = null as any
-utilities.lazyLoadProperty(exports, "getBastionShareableLink", () => require("./getBastionShareableLink"));
-export const getBastionShareableLinkOutput: typeof import("./getBastionShareableLink").getBastionShareableLinkOutput = null as any
-utilities.lazyLoadProperty(exports, "getBastionShareableLinkOutput", () => require("./getBastionShareableLink"));
-
-export { GetClientConfigResult } from "./getClientConfig";
-export const getClientConfig: typeof import("./getClientConfig").getClientConfig = null as any
-utilities.lazyLoadProperty(exports, "getClientConfig", () => require("./getClientConfig"));
-
-export { GetIntegrationRuntimeObjectMetadatumArgs, GetIntegrationRuntimeObjectMetadatumResult, GetIntegrationRuntimeObjectMetadatumOutputArgs } from "./getIntegrationRuntimeObjectMetadatum";
-export const getIntegrationRuntimeObjectMetadatum: typeof import("./getIntegrationRuntimeObjectMetadatum").getIntegrationRuntimeObjectMetadatum = null as any
-utilities.lazyLoadProperty(exports, "getIntegrationRuntimeObjectMetadatum", () => require("./getIntegrationRuntimeObjectMetadatum"));
-export const getIntegrationRuntimeObjectMetadatumOutput: typeof import("./getIntegrationRuntimeObjectMetadatum").getIntegrationRuntimeObjectMetadatumOutput = null as any
-utilities.lazyLoadProperty(exports, "getIntegrationRuntimeObjectMetadatumOutput", () => require("./getIntegrationRuntimeObjectMetadatum"));
-
-export { ListStorageAccountKeysArgs, ListStorageAccountKeysResult, ListStorageAccountKeysOutputArgs } from "./listStorageAccountKeys";
-export const listStorageAccountKeys: typeof import("./listStorageAccountKeys").listStorageAccountKeys = null as any
-utilities.lazyLoadProperty(exports, "listStorageAccountKeys", () => require("./listStorageAccountKeys"));
-export const listStorageAccountKeysOutput: typeof import("./listStorageAccountKeys").listStorageAccountKeysOutput = null as any
-utilities.lazyLoadProperty(exports, "listStorageAccountKeysOutput", () => require("./listStorageAccountKeys"));
-
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
+export * from "./funcWithAllOptionalInputs";
+export * from "./funcWithConstInput";
+export * from "./funcWithDefaultValue";
+export * from "./funcWithDictParam";
+export * from "./funcWithEmptyOutputs";
+export * from "./funcWithListParam";
+export * from "./getBastionShareableLink";
+export * from "./getClientConfig";
+export * from "./getIntegrationRuntimeObjectMetadatum";
+export * from "./listStorageAccountKeys";
+export * from "./provider";
+import { Provider } from "./provider";
 
 // Export sub-modules:
 import * as types from "./types";

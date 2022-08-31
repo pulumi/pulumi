@@ -5,23 +5,10 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { GetAmiIdsArgs, GetAmiIdsResult, GetAmiIdsOutputArgs } from "./getAmiIds";
-export const getAmiIds: typeof import("./getAmiIds").getAmiIds = null as any
-utilities.lazyLoadProperty(exports, "getAmiIds", () => require("./getAmiIds"));
-export const getAmiIdsOutput: typeof import("./getAmiIds").getAmiIdsOutput = null as any
-utilities.lazyLoadProperty(exports, "getAmiIdsOutput", () => require("./getAmiIds"));
-
-export { ListStorageAccountKeysArgs, ListStorageAccountKeysResult, ListStorageAccountKeysOutputArgs } from "./listStorageAccountKeys";
-export const listStorageAccountKeys: typeof import("./listStorageAccountKeys").listStorageAccountKeys = null as any
-utilities.lazyLoadProperty(exports, "listStorageAccountKeys", () => require("./listStorageAccountKeys"));
-export const listStorageAccountKeysOutput: typeof import("./listStorageAccountKeys").listStorageAccountKeysOutput = null as any
-utilities.lazyLoadProperty(exports, "listStorageAccountKeysOutput", () => require("./listStorageAccountKeys"));
-
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
+export * from "./getAmiIds";
+export * from "./listStorageAccountKeys";
+export * from "./provider";
+import { Provider } from "./provider";
 
 // Export sub-modules:
 import * as types from "./types";

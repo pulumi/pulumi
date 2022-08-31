@@ -5,42 +5,19 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
-export const argFunction: typeof import("./argFunction").argFunction = null as any
-utilities.lazyLoadProperty(exports, "argFunction", () => require("./argFunction"));
-export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any
-utilities.lazyLoadProperty(exports, "argFunctionOutput", () => require("./argFunction"));
-
-export { BarResourceArgs } from "./barResource";
-export type BarResource = import("./barResource").BarResource;
-export const BarResource: typeof import("./barResource").BarResource = null as any
-utilities.lazyLoadProperty(exports, "BarResource", () => require("./barResource"));
-
-export { FooResourceArgs } from "./fooResource";
-export type FooResource = import("./fooResource").FooResource;
-export const FooResource: typeof import("./fooResource").FooResource = null as any
-utilities.lazyLoadProperty(exports, "FooResource", () => require("./fooResource"));
-
-export { OtherResourceArgs } from "./otherResource";
-export type OtherResource = import("./otherResource").OtherResource;
-export const OtherResource: typeof import("./otherResource").OtherResource = null as any
-utilities.lazyLoadProperty(exports, "OtherResource", () => require("./otherResource"));
-
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
-export { ResourceArgs } from "./resource";
-export type Resource = import("./resource").Resource;
-export const Resource: typeof import("./resource").Resource = null as any
-utilities.lazyLoadProperty(exports, "Resource", () => require("./resource"));
-
-export { TypeUsesArgs } from "./typeUses";
-export type TypeUses = import("./typeUses").TypeUses;
-export const TypeUses: typeof import("./typeUses").TypeUses = null as any
-utilities.lazyLoadProperty(exports, "TypeUses", () => require("./typeUses"));
-
+export * from "./argFunction";
+export * from "./barResource";
+import { BarResource } from "./barResource";
+export * from "./fooResource";
+import { FooResource } from "./fooResource";
+export * from "./otherResource";
+import { OtherResource } from "./otherResource";
+export * from "./provider";
+import { Provider } from "./provider";
+export * from "./resource";
+import { Resource } from "./resource";
+export * from "./typeUses";
+import { TypeUses } from "./typeUses";
 
 // Export sub-modules:
 import * as types from "./types";

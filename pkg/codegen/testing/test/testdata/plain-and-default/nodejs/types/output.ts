@@ -4,5 +4,5 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
-import type * as enums from "../types/enums";
+import * as enums from "../types/enums";
 

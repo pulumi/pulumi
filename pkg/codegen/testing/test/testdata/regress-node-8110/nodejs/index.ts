@@ -5,15 +5,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { ExampleFuncArgs } from "./exampleFunc";
-export const exampleFunc: typeof import("./exampleFunc").exampleFunc = null as any
-utilities.lazyLoadProperty(exports, "exampleFunc", () => require("./exampleFunc"));
-
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
+export * from "./exampleFunc";
+export * from "./provider";
+import { Provider } from "./provider";
 
 // Export enums:
 export * from "./types/enums";

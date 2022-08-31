@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "./types/input";
 import * as outputs from "./types/output";
-import type * as enums from "./types/enums";
+import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
 export function exampleFunc(args?: ExampleFuncArgs, opts?: pulumi.InvokeOptions): Promise<void> {

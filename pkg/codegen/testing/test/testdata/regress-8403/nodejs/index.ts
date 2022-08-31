@@ -5,15 +5,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { GetCustomDbRolesArgs, GetCustomDbRolesResult } from "./getCustomDbRoles";
-export const getCustomDbRoles: typeof import("./getCustomDbRoles").getCustomDbRoles = null as any
-utilities.lazyLoadProperty(exports, "getCustomDbRoles", () => require("./getCustomDbRoles"));
-
-export { ProviderArgs } from "./provider";
-export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
-
+export * from "./getCustomDbRoles";
+export * from "./provider";
+import { Provider } from "./provider";
 
 // Export sub-modules:
 import * as types from "./types";
