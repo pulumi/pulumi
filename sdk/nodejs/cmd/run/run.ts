@@ -68,6 +68,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
 function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
+    const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");    
     const emptyConfig = {};
     try {
         const npmRcPath = path.join(projectRoot, ".npmrc");
@@ -79,10 +80,13 @@ function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
         // Use ini to parse the contents of the .npmrc file
         // This is what node does as described in the npm docs
         // https://docs.npmjs.com/cli/v8/configuring-npm/npmrc#comments
-        return ini.parse(npmRc);
+        const parseResult = ini.parse(npmRc);
+        rcSpan.end();
+        return parseResult;
     } catch {
         // .npmrc file exists but we couldn't read or parse it
         // user out of luck here
+        rcSpan.end();
         return emptyConfig;
     }
 }
@@ -183,7 +187,7 @@ export function run(
         console.log("Tracing NOT Enabled");
     }
     // Start a new span, which we shutdown at the bottom of this method.
-    const span = tracing.newSpan('language-runtime.run');    
+    const span = tracing.newSpan("language-runtime.run");    
 
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
@@ -203,9 +207,8 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
-    span.setAttribute("typescript-enabled", false);
+    span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
-        span.setAttribute("typescript-enabled", true);
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require("ts-node");
@@ -298,6 +301,7 @@ ${defaultMessage}`);
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.
     if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+        span.addEvent("Missing tsconfig file");
         return new Promise(() => {
             const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
             e.stack = undefined;
@@ -323,6 +327,10 @@ ${defaultMessage}`);
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+
+        // Create a new span for the execution of the user program.
+        const runProgramSpan = tracing.newSpan("language-runtime.runProgram");    
+
         try {
             const projectRoot = projectRootFromProgramPath(program);
             const packageObject = packageObjectFromProjectRoot(projectRoot);
@@ -381,6 +389,7 @@ ${defaultMessage}`);
                         `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
                     ];
 
+                    runProgramSpan.addEvent("Incompatible Node version");
                     throw new Error(errorMessage.join("\n"));
                 }
             }
@@ -392,7 +401,7 @@ ${defaultMessage}`);
             const invokeResult = programExport instanceof Function
                 ? programExport()
                 : programExport;
-
+            runProgramSpan.end();
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
@@ -404,10 +413,14 @@ ${defaultMessage}`);
             // Give a better error message, if we can.
             const errorCode = (<any>e).code;
             if (errorCode === "MODULE_NOT_FOUND") {
+                runProgramSpan.addEvent("Module Load Failure.");
                 reportModuleLoadFailure(program, e);
             }
 
             throw e;
+        }
+        finally {
+            runProgramSpan.end();
         }
     };
     
