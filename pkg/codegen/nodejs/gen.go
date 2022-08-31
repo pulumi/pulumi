@@ -2044,9 +2044,8 @@ func (mod *modContext) genResourceReexport(w io.Writer, i resourceFileInfo, quot
 		quotedImport)
 
 	// At runtime, install lazy loading. This has no effect on types.
-	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n",
-		quotedImport,
-		i.resourceClassName)
+	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
+		i.resourceClassName, quotedImport)
 }
 
 func (mod *modContext) genFunctionReexport(w io.Writer, i functionFileInfo, quotedImport string) {
@@ -2065,8 +2064,8 @@ func (mod *modContext) genFunctionReexport(w io.Writer, i functionFileInfo, quot
 	for _, f := range i.functions() {
 		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
 			f, quotedImport)
-		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n",
-			quotedImport, f)
+		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
+			f, quotedImport)
 	}
 }
 
@@ -2134,17 +2133,19 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		if len(exports) > 0 {
 			fmt.Fprintf(w, "\n")
 		}
-		fmt.Fprintf(w, "// Export sub-modules (modContext.genIndex):\n")
+		fmt.Fprintf(w, "// Export sub-modules:\n")
 
 		directChildren := codegen.NewStringSet()
 		for _, child := range children.SortedValues() {
 			directChildren.Add(path.Base(child))
 		}
+
 		sorted := directChildren.SortedValues()
+
 		for _, mod := range sorted {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
-		// newSubmoduleExportList(sorted...).WriteSrc(w, "exports")
+
 		printExports(w, sorted)
 	}
 
@@ -2262,17 +2263,18 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 		}
 
 		if len(children) > 0 {
-			fmt.Fprintf(buffer, "// Export sub-modules (genEnums):\n")
+			fmt.Fprintf(buffer, "// Export sub-modules:\n")
 
 			directChildren := codegen.NewStringSet()
 			for _, child := range children.SortedValues() {
 				directChildren.Add(path.Base(child))
 			}
 			sorted := directChildren.SortedValues()
+
 			for _, mod := range sorted {
 				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
 			}
-			//newSubmoduleExportList(sorted...).WriteSrc(buffer, "exports")
+
 			printExports(buffer, sorted)
 		}
 	}
@@ -2755,29 +2757,15 @@ export function resourceOptsDefaults(): any {
 }
 
 /** @internal */
-export function lazy_load(exports: any, module_name: string) {
-	Object.defineProperty(exports, module_name, {
-		enumerable: true,
-		get: function() {
-			return require(` + "`./${module_name}`" + `);
-		},
-	});
+export function lazyLoadProperty(exports: any, property: string, loadModule: any) {
+    Object.defineProperty(exports, property, {
+        enumerable: true,
+        get: function() {
+            return loadModule()[property];
+        },
+    });
 }
-
-/** @internal */
-export function lazyLoadProperty(exports: any, loadModule: any, property: string) {
-	Object.defineProperty(exports, property, {
-		enumerable: true,
-		get: function() {
-			return loadModule()[property];
-		},
-	});
-}
-
-/** @internal */
-export function lazy_load_all(exports: any, args: Array<string>) {
-	args.forEach(arg => lazy_load(exports, arg))
-}`
+`
 	var pluginDownloadURL string
 	if url := mod.pkg.PluginDownloadURL; url != "" {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
