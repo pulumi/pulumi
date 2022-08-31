@@ -16,7 +16,10 @@ if (projName !== expName) {
 }
 
 const expOrgName =  process.env["PULUMI_TEST_OWNER"];
-const orgName = pulumi.getOrganization();
-if (projName !== expOrgName) {
-    throw new Error(`Unexpected pulumi.getOrganization(); wanted '${expOrgName}', got '${orgName}'`);
+// If we're running serviceless don't check the org name
+if (expOrgName !== undefined) {
+    const orgName = pulumi.getOrganization();
+    if (orgName !== expOrgName) {
+        throw new Error(`Unexpected pulumi.getOrganization(); wanted '${expOrgName}', got '${orgName}'`);
+    }
 }
