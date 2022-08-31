@@ -17,15 +17,21 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenSource(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
+	}
 	t.Parallel()
+
 	ctx := context.TODO()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
@@ -57,7 +63,11 @@ func TestTokenSource(t *testing.T) {
 }
 
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Flaky on Windows CI workers due to the use of timer+Sleep")
+	}
 	t.Parallel()
+
 	ctx := context.TODO()
 	dur := 20 * time.Millisecond
 	backend := &testTokenBackend{tokens: map[string]time.Time{}}
