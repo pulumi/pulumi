@@ -112,3 +112,6 @@
 
 - [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
   [#10530](https://github.com/pulumi/pulumi/pull/10530)
+
+- [python] put python version check after installing dependencies to resolve `fork/exec` warning
+  [#10524](https://github.com/pulumi/pulumi/pull/10524)

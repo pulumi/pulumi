@@ -147,7 +147,6 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
@@ -209,6 +208,8 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	validateVersion(ctx, host.virtualenvPath)
 
 	// Now, determine which Pulumi packages are installed.
 	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
