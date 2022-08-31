@@ -1978,7 +1978,7 @@ func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 		i.resourceClassName,
 		quotedImport)
 
-	fmt.Fprintf(w, "utilities.lazy_load_property(exports, %s, %q);\n\n",
+	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n\n",
 		quotedImport,
 		i.resourceClassName)
 }
@@ -2678,11 +2678,11 @@ export function lazy_load(exports: any, module_name: string) {
 }
 
 /** @internal */
-export function lazy_load_property(exports: any, module_name: string, property: string) {
-	Object.defineProperty(exports, module_name, {
+export function lazyLoadProperty(exports: any, loadModule: any, property: string) {
+	Object.defineProperty(exports, property, {
 		enumerable: true,
 		get: function() {
-			return require(` + "`./${module_name}`" + `)[property];
+			return loadModule()[property];
 		},
 	});
 }
