@@ -2089,7 +2089,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 	// Include the SDK import if we'll be registering module resources.
 	if len(mod.resources) != 0 {
 		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
-	} else if len(children) > 0 {
+	} else if len(children) > 0 || len(mod.functions) > 0 {
 		// Even if there are no resources, exports ref utilities.
 		imports = append(imports, mod.utilitiesImport())
 	}
