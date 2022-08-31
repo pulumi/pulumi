@@ -22,6 +22,7 @@ import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
+import * as log from "../log";
 
 let exporter: ZipkinExporter;
 let rootSpan: opentelemetry.Span;
@@ -52,7 +53,6 @@ export function start(destinationUrl: string) {
   // exporter = new ZipkinExporter({url: destinationUrl});
   exporter = new ZipkinExporter();
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-  // provider.addSpanProcessor(new BatchSpanProcessor(exporter));
   destinationUrl = `http://localhost:9411/api/v1/spans`
   console.log("Registering provider with url: ", destinationUrl);
 
@@ -73,13 +73,18 @@ export function start(destinationUrl: string) {
   rootSpan = tracer.startSpan("nodejs-runtime-root");
 }
 
-export function stop() {
-  console.log("Shutting down tracer.");
+export async function stop() {
+  log.debug("Shutting down tracer.");
   // Be sure to end the span.
   rootSpan.end();
-
   // flush and close the connection.
-  exporter.shutdown();
+  await exporter
+    .shutdown()
+    .then(() => {
+      log.debug("Tracing exporter successful.");
+    }).catch( e => {
+      log.error("Tracing exporter unsuccessful. Error: ", e);
+    });
 }
 
 export function newSpan(name: string): opentelemetry.Span {

@@ -182,7 +182,7 @@ export function run(
     if(typeof tracingUrl === "string" && tracingUrl.length > 0) {
         console.log(`Tracing Enabled at ${tracingUrl}`);
         tracing.start(tracingUrl);
-        process.on("exit", tracing.stop);
+        process.on("beforeExit", tracing.stop);
     } else {
         console.log("Tracing NOT Enabled");
     }
