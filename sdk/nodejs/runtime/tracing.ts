@@ -53,6 +53,7 @@ export function start(destinationUrl: string) {
   exporter = new ZipkinExporter();
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
   // provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+  destinationUrl = `http://localhost:9411/api/v1/spans`
   console.log("Registering provider with url: ", destinationUrl);
 
   /**
@@ -67,9 +68,9 @@ export function start(destinationUrl: string) {
    * registered here.
    */
   provider.register();
-  const tracer = opentelemetry.trace.getTracer('nodejs-runtime');
+  const tracer = opentelemetry.trace.getTracer("nodejs-runtime");
   // Create a root span, which must be closed.
-  rootSpan = tracer.startSpan('nodejs-runtime-root');
+  rootSpan = tracer.startSpan("nodejs-runtime-root");
 }
 
 export function stop() {
