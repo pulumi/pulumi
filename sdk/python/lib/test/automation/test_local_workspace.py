@@ -109,6 +109,7 @@ def get_stack(stack_list: List[StackSummary], name: str) -> Optional[StackSummar
     return None
 
 
+@pytest.mark.skipif('PULUMI_ACCESS_TOKEN' not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
 class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings(self):
         for ext in extensions:
