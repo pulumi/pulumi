@@ -107,3 +107,6 @@
 
 - [sdk/nodejs] Fixes an issue which would occur when multiple processes were spawned and some would receive no stdout/stderr
   [10522](https://github.com/pulumi/pulumi/pull/10522)
+
+- [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
+  [#10530](https://github.com/pulumi/pulumi/pull/10530)
