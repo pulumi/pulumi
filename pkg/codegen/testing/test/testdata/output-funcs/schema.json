@@ -662,7 +662,7 @@
         "Microsoft.NET.Test.Sdk": "16.5.0",
         "Moq": "4.13.1",
         "NUnit": "3.12.0",
-        "NUnit3TestAdapter": "3.16.1"
+        "NUnit3TestAdapter": "4.2.1"
       }
     }
   }

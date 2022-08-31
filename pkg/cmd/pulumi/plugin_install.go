@@ -15,10 +15,12 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -39,6 +41,7 @@ func newPluginInstallCmd() *cobra.Command {
 	var exact bool
 	var file string
 	var reinstall bool
+	var checksum string
 
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
@@ -80,11 +83,23 @@ func newPluginInstallCmd() *cobra.Command {
 					return errors.New("missing plugin version argument, this is required if installing from a file")
 				}
 
+				var checksums map[string][]byte
+				if checksum != "" {
+					checksumBytes, err := hex.DecodeString(checksum)
+					if err != nil {
+						return fmt.Errorf("--checksum was not a valid hex string: %w", err)
+					}
+					checksums = map[string][]byte{
+						runtime.GOOS + "-" + runtime.GOARCH: checksumBytes,
+					}
+				}
+
 				pluginSpec := workspace.PluginSpec{
 					Kind:              workspace.PluginKind(args[0]),
 					Name:              args[1],
 					Version:           version,
 					PluginDownloadURL: serverURL, // If empty, will use default plugin source.
+					Checksums:         checksums,
 				}
 
 				// If we don't have a version try to look one up
@@ -100,6 +115,9 @@ func newPluginInstallCmd() *cobra.Command {
 			} else {
 				if file != "" {
 					return errors.New("--file (-f) is only valid if a specific package is being installed")
+				}
+				if checksum != "" {
+					return errors.New("--checksum is only valid if a specific package is being installed")
 				}
 
 				// If a specific plugin wasn't given, compute the set of plugins the current project needs.
@@ -184,6 +202,8 @@ func newPluginInstallCmd() *cobra.Command {
 		"file", "f", "", "Install a plugin from a binary, folder or tarball, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
+	cmd.PersistentFlags().StringVar(&checksum,
+		"checksum", "", "The expected SHA256 checksum for the plugin archive")
 
 	return cmd
 }
