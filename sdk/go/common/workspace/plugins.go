@@ -941,6 +941,33 @@ func DownloadToFile(
 
 }
 
+// InstallPluginError is returned by functions that are unable to download and install
+type InstallPluginError struct {
+	// The name of the plugin
+	Name string
+	// The kind of the plugin
+	Kind PluginKind
+	// The requested version of the plugin, if any.
+	Version *semver.Version
+	// the underlying error that occured during the download or install
+	UnderlyingError error
+}
+
+func (err *InstallPluginError) Error() string {
+	if err.Version != nil {
+		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+			"at version v%[3]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
+			"Underlying error: %[4]s",
+			err.Kind, err.Name, err.Version.String(), err.UnderlyingError.Error())
+	}
+
+	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s', "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`.\n"+
+		"Underlying error: %[3]s",
+		err.Kind, err.Name, err.UnderlyingError.Error())
+}
+
 type PluginContent interface {
 	io.Closer
 
@@ -1357,7 +1384,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 	return path, err
 }
 
-func attemptToDownloadMissingPlugin(kind PluginKind, name string, version *semver.Version) error {
+func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *semver.Version) error {
 	pluginSpec := PluginSpec{
 		Kind: kind,
 		Name: name,
@@ -1366,7 +1393,11 @@ func attemptToDownloadMissingPlugin(kind PluginKind, name string, version *semve
 	if version == nil {
 		latestVersion, err := pluginSpec.GetLatestVersion()
 		if err != nil {
-			return err
+			return &InstallPluginError{
+				Name:            name,
+				Kind:            kind,
+				UnderlyingError: err,
+			}
 		}
 
 		version = latestVersion
@@ -1386,11 +1417,27 @@ func attemptToDownloadMissingPlugin(kind PluginKind, name string, version *semve
 
 	downloadedFile, err := DownloadToFile(pluginSpec, withProgress, retry)
 	if err != nil {
-		return fmt.Errorf("error downloading %s: %w", pluginSpec.Name, err)
+		downloadError := fmt.Errorf("error downloading plugin %s to file: %w", pluginSpec.Name, err)
+		return &InstallPluginError{
+			Name:            name,
+			Kind:            kind,
+			Version:         version,
+			UnderlyingError: downloadError,
+		}
 	}
 
-	logging.V(1).Info("installing plugin")
-	return pluginSpec.Install(downloadedFile, false)
+	logging.V(1).Infof("installing plugin %s", pluginSpec.Name)
+	pluginInstallError := pluginSpec.Install(downloadedFile, false)
+	if pluginInstallError != nil {
+		return &InstallPluginError{
+			Name:            name,
+			Kind:            kind,
+			Version:         version,
+			UnderlyingError: pluginInstallError,
+		}
+	}
+
+	return nil
 }
 
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
@@ -1538,7 +1585,7 @@ func getPluginInfoAndPath(
 			// this could be due to the fact that a transitive version of a plugin is required
 			// which are not picked up by initial pass of required plugin installations
 			// so instead of reporting an error, we just install that required plugin
-			if err = attemptToDownloadMissingPlugin(kind, name, version); err != nil {
+			if err = attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
 				return nil, "", err
 			}
 
@@ -1580,7 +1627,7 @@ func getPluginInfoAndPath(
 		return match, matchPath, nil
 	}
 
-	if err := attemptToDownloadMissingPlugin(kind, name, version); err != nil {
+	if err := attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
 		return nil, "", err
 	}
 
