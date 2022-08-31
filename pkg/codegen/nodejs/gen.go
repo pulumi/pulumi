@@ -53,6 +53,7 @@ type fileType int
 
 const (
 	resourceFileType fileType = iota
+	functionFileType
 	otherFileType
 )
 
@@ -60,6 +61,7 @@ type fileInfo struct {
 	fileType         fileType
 	pathToNodeModule string
 	resourceFileInfo resourceFileInfo
+	functionFileInfo functionFileInfo
 }
 
 type resourceFileInfo struct {
@@ -67,6 +69,39 @@ type resourceFileInfo struct {
 	resourceArgsInterfaceName string
 	stateInterfaceName        string // may be empty
 	methodsNamespaceName      string // may be empty
+}
+
+type functionFileInfo struct {
+	functionName                           string
+	functionArgsInterfaceName              string // may be empty
+	functionResultInterfaceName            string // may be empty
+	functionOutputVersionName              string // may be empty
+	functionOutputVersionArgsInterfaceName string // may be empty
+}
+
+func (fi functionFileInfo) nonEmpty(candidates []string) []string {
+	res := []string{}
+	for _, c := range candidates {
+		if c != "" {
+			res = append(res, c)
+		}
+	}
+	return res
+}
+
+func (fi functionFileInfo) functions() []string {
+	return fi.nonEmpty([]string{
+		fi.functionName,
+		fi.functionOutputVersionName,
+	})
+}
+
+func (fi functionFileInfo) interfaces() []string {
+	return fi.nonEmpty([]string{
+		fi.functionArgsInterfaceName,
+		fi.functionResultInterfaceName,
+		fi.functionOutputVersionArgsInterfaceName,
+	})
 }
 
 // title capitalizes the first rune in s.
@@ -1092,8 +1127,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	return info, nil
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
+	info := functionFileInfo{functionName: name}
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1153,18 +1189,22 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
-			return err
+		argsInterfaceName := title(name) + "Args"
+		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
+			return info, err
 		}
+		info.functionArgsInterfaceName = argsInterfaceName
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
-			return err
+		resultInterfaceName := title(name) + "Result"
+		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
+			return info, err
 		}
+		info.functionResultInterfaceName = resultInterfaceName
 	}
 
-	return mod.genFunctionOutputVersion(w, fun)
+	return mod.genFunctionOutputVersion(w, fun, info)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -1187,13 +1227,17 @@ func functionReturnType(fun *schema.Function) string {
 
 // Generates `function ${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunctionOutputVersion(
+	w io.Writer,
+	fun *schema.Function,
+	info functionFileInfo) (functionFileInfo, error) {
 	if !fun.NeedsOutputVersion() {
-		return nil
+		return info, nil
 	}
 
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
 	var argsig string
@@ -1211,13 +1255,19 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 `, fnOutput, argsig, functionReturnType(fun), originalName)
 	fmt.Fprintf(w, "\n")
 
-	return mod.genPlainType(w,
+	info.functionOutputVersionArgsInterfaceName = argTypeName
+
+	if err := mod.genPlainType(w,
 		argTypeName,
 		fun.Inputs.Comment,
 		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
-		0 /* level */)
+		0 /* level */); err != nil {
+		return info, err
+	}
+
+	return info, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -1789,6 +1839,16 @@ func (mod *modContext) gen(fs fs) error {
 		fs.add(p, []byte(contents))
 	}
 
+	addFunctionFile := func(info functionFileInfo, name, contents string) {
+		p := path.Join(modDir, name)
+		files = append(files, fileInfo{
+			fileType:         functionFileType,
+			functionFileInfo: info,
+			pathToNodeModule: p,
+		})
+		fs.add(p, []byte(contents))
+	}
+
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
@@ -1860,7 +1920,8 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
-		if err := mod.genFunction(buffer, f); err != nil {
+		funInfo, err := mod.genFunction(buffer, f)
+		if err != nil {
 			return err
 		}
 
@@ -1868,7 +1929,7 @@ func (mod *modContext) gen(fs fs) error {
 		if mod.isReservedSourceFileName(fileName) {
 			fileName = camel(tokenToName(f.Token)) + "_.ts"
 		}
-		addFile(otherFileType, fileName, buffer.String())
+		addFunctionFile(funInfo, fileName, buffer.String())
 	}
 
 	if mod.hasEnums() {
@@ -1919,29 +1980,35 @@ func getChildMod(modName string) string {
 
 func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 	modDir := strings.ToLower(mod.mod)
-
 	rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
 	contract.Assert(err == nil)
 	if path.Base(rel) == "." {
 		rel = path.Dir(rel)
 	}
 	quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
-
-	// only resource types currently have specialized logic,
-	// otherwise simply reexport everything
-	if exp.fileType != resourceFileType {
+	switch exp.fileType {
+	case functionFileType:
+		// optimize lazy-loading function files
+		mod.genFunctionReexport(w, exp.functionFileInfo, quotedImport)
+		return
+	case resourceFileType:
+		// optimize lazy-loading resource files
+		mod.genResourceReexport(w, exp.resourceFileInfo, quotedImport)
+		return
+	default:
+		// non-optimized but foolproof eager reexport
 		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
 		return
 	}
+}
 
-	i := exp.resourceFileInfo
+func (mod *modContext) genResourceReexport(w io.Writer, i resourceFileInfo, quotedImport string) {
+	defer fmt.Fprintf(w, "\n")
 
 	// not sure how to lazy-load in presence of re-exported
 	// namespaces; bail and use an eager load in this case; also
 	// eager-import the class.
 	if i.methodsNamespaceName != "" {
-		fmt.Fprintf(w, "// uses method namespace %v\n",
-			i.methodsNamespaceName)
 		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
 		fmt.Fprintf(w, "import { %s } from %s;\n", i.resourceClassName, quotedImport)
 		return
@@ -1953,17 +2020,15 @@ func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 	//
 	// Note that we cannot yet do this reliably if the resource
 	// file exports a methods namespace.
-
 	interfaces := []string{
 		i.resourceArgsInterfaceName,
 	}
 	if i.stateInterfaceName != "" {
 		interfaces = append(interfaces, i.stateInterfaceName)
 	}
-	// Re-export interfaces. This is
-	// type-only and does not generate a
-	// require() call.
-	fmt.Fprintf(w, "\nexport { %s } from %s;\n",
+	// Re-export interfaces. This is type-only and does not
+	// generate a require() call.
+	fmt.Fprintf(w, "export { %s } from %s;\n",
 		strings.Join(interfaces, ", "),
 		quotedImport)
 
@@ -1973,14 +2038,36 @@ func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
 		i.resourceClassName,
 		quotedImport)
 
-	// Re-export class value into the value group.
+	// Mock re-export class value into the value group - for compilation.
 	fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
 		i.resourceClassName,
 		quotedImport)
 
-	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n\n",
+	// At runtime, install lazy loading. This has no effect on types.
+	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n",
 		quotedImport,
 		i.resourceClassName)
+}
+
+func (mod *modContext) genFunctionReexport(w io.Writer, i functionFileInfo, quotedImport string) {
+	defer fmt.Fprintf(w, "\n")
+
+	// Re-export interfaces. This is type-only and does not
+	// generate a require() call.
+	interfaces := i.interfaces()
+	if len(interfaces) > 0 {
+		fmt.Fprintf(w, "export { %s } from %s;\n",
+			strings.Join(interfaces, ", "),
+			quotedImport)
+	}
+
+	// Re-export function values into the value group, and install lazy loading.
+	for _, f := range i.functions() {
+		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
+			f, quotedImport)
+		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, () => require(%s), %q);\n",
+			quotedImport, f)
+	}
 }
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
