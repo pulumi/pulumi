@@ -19,6 +19,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -56,6 +57,12 @@ type binder struct {
 	tokens syntax.TokenMap
 	nodes  []Node
 	root   *model.Scope
+}
+
+type packageInfo struct {
+	versionSemver         semver.Version
+	versionExpr           model.Expression
+	pluginDownloadURLExpr model.Expression
 }
 
 type BindOption func(*bindOptions)
@@ -149,6 +156,47 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 			return nil, nil, err
 		}
 		diagnostics = append(diagnostics, fileDiags...)
+	}
+
+	// iterate over each node, updating pkgInfoMap to the info of the package with the highest version
+	pkgInfoMap := make(map[string]*packageInfo)
+	resourcePkg := make([]string, 0, len(b.nodes))
+	for i, n := range b.nodes {
+		if r, ok := n.(*Resource); ok {
+			FixupPulumiPackageTokens(r)
+			pkg, mod, name, _ := r.DecomposeToken()
+			if pkg == "pulumi" && mod == "providers" {
+				pkg = name
+			}
+			resourcePkg[i] = pkg
+
+			versionStr := modelExprToString(&r.Options.Version)
+			versionSemver, err := semver.Make(versionStr)
+			// ignore invalid versions
+			if err != nil {
+				continue
+			}
+
+			// 1 means that version is strictly greater than info.version
+			if info, ok := pkgInfoMap[pkg]; !ok || versionSemver.Compare(info.versionSemver) == 1 {
+				pkgInfoMap[pkg] = &packageInfo{
+					versionSemver:         versionSemver,
+					versionExpr:           r.Options.Version,
+					pluginDownloadURLExpr: r.Options.PluginDownloadURL,
+				}
+			}
+		}
+	}
+
+	// now iterate over each node again, resetting their package info
+	for i, n := range b.nodes {
+		if r, ok := n.(*Resource); ok {
+			pkg := resourcePkg[i]
+			if info, ok := pkgInfoMap[pkg]; ok {
+				r.Options.Version = info.versionExpr
+				r.Options.PluginDownloadURL = info.pluginDownloadURLExpr
+			}
+		}
 	}
 
 	// Now bind the nodes.
@@ -291,4 +339,12 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
 	return model.BindExpression(node, b.root, b.tokens, b.options.modelOptions()...)
+}
+
+func modelExprToString(expr *model.Expression) string {
+	if expr == nil {
+		return ""
+	}
+	return (*expr).(*model.TemplateExpression).
+		Parts[0].(*model.LiteralValueExpression).Value.AsString()
 }
