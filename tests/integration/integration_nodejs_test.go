@@ -606,6 +606,7 @@ func TestStackReferenceNodeJS(t *testing.T) {
 		Dir:          filepath.Join("stack_reference", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		Env:          []string{"PULUMI_ORGANIZATION=test-org"},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step1",
@@ -694,6 +695,7 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 			"org": owner,
 		},
 		Quick: true,
+		Env:   []string{fmt.Sprintf("PULUMI_ORGANIZATION=%s", owner)},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:             filepath.Join(d, "nodejs", "step2"),
