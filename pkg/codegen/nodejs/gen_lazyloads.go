@@ -21,15 +21,23 @@
 package nodejs
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type lazyLoadGen struct{}
+type lazyLoadGen struct {
+	deferredLazyLoads map[string][]string
+}
 
 func newLazyLoadGen() *lazyLoadGen {
-	return &lazyLoadGen{}
+	return &lazyLoadGen{
+		deferredLazyLoads: map[string][]string{},
+	}
 }
 
 // Generates TypeScript code to re-export a generated module. For
@@ -48,11 +56,29 @@ func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string)
 	}
 }
 
+// Used as a follow up to multiple genReexport calls to generate a
+// lazy-load polyfill to all the properties that need that.
+func (ll *lazyLoadGen) genLazyLoads(w io.Writer) {
+	importPaths := []string{}
+	for importPath := range ll.deferredLazyLoads {
+		importPaths = append(importPaths, importPath)
+	}
+	sort.Strings(importPaths)
+	for _, importPath := range importPaths {
+		props := ll.deferredLazyLoads[importPath]
+		sort.Strings(props)
+		j, err := json.Marshal(props)
+		contract.AssertNoError(err)
+		fmt.Fprintf(w, "utilities.lazyLoad(exports, %s, () => require(%q));\n",
+			string(j), importPath)
+	}
+}
+
 // Generates TypeScript code that lazily imports and re-exports a
 // module defining a resource, while also importing the resoure class
 // in-scope. Needs to know which names the module defines
 // (resourceFileInfo).
-func (*lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, importPath string) {
+func (ll *lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, importPath string) {
 	defer fmt.Fprintf(w, "\n")
 
 	quotedImport := fmt.Sprintf("%q", importPath)
@@ -83,15 +109,13 @@ func (*lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, importP
 		i.resourceClassName,
 		quotedImport)
 
-	// At runtime, install lazy loading. This has no effect on types.
-	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
-		i.resourceClassName, quotedImport)
+	ll.deferLazyLoad(i.resourceClassName, importPath)
 }
 
 // Generates TypeScript code that lazily imports and re-exports a
 // module defining a function. Needs to which names the module defines
 // (functionFileInfo).
-func (*lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, importPath string) {
+func (ll *lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, importPath string) {
 	defer fmt.Fprintf(w, "\n")
 
 	quotedImport := fmt.Sprintf("%q", importPath)
@@ -109,7 +133,10 @@ func (*lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, importP
 	for _, f := range i.functions() {
 		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any;\n",
 			f, quotedImport)
-		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
-			f, quotedImport)
+		ll.deferLazyLoad(f, importPath)
 	}
+}
+
+func (ll *lazyLoadGen) deferLazyLoad(propertyName, importPath string) {
+	ll.deferredLazyLoads[importPath] = append(ll.deferredLazyLoads[importPath], propertyName)
 }

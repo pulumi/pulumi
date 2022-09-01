@@ -22,6 +22,8 @@ import (
 )
 
 func TestLazyLoadsGeneration(t *testing.T) {
+	t.Parallel()
+
 	ll := newLazyLoadGen()
 
 	t.Run("resource", func(t *testing.T) {
@@ -37,7 +39,6 @@ func TestLazyLoadsGeneration(t *testing.T) {
 		assert.Equal(t, `export { MyResArgs } from "./myResource";
 export type MyRes = import("./myResource").MyRes;
 export const MyRes: typeof import("./myResource").MyRes = null as any;
-utilities.lazyLoadProperty(exports, "MyRes", () => require("./myResource"));
 
 `,
 			buf.String())
@@ -48,16 +49,15 @@ utilities.lazyLoadProperty(exports, "MyRes", () => require("./myResource"));
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
 			resourceFileInfo: resourceFileInfo{
-				resourceClassName:         "MyRes",
-				resourceArgsInterfaceName: "MyResArgs",
-				stateInterfaceName:        "MyResState",
+				resourceClassName:         "MyRes1",
+				resourceArgsInterfaceName: "MyRes1Args",
+				stateInterfaceName:        "MyRes1State",
 			},
-		}, "./myResource")
+		}, "./myResource1")
 
-		assert.Equal(t, `export { MyResArgs, MyResState } from "./myResource";
-export type MyRes = import("./myResource").MyRes;
-export const MyRes: typeof import("./myResource").MyRes = null as any;
-utilities.lazyLoadProperty(exports, "MyRes", () => require("./myResource"));
+		assert.Equal(t, `export { MyRes1Args, MyRes1State } from "./myResource1";
+export type MyRes1 = import("./myResource1").MyRes1;
+export const MyRes1: typeof import("./myResource1").MyRes1 = null as any;
 
 `,
 			buf.String())
@@ -68,14 +68,14 @@ utilities.lazyLoadProperty(exports, "MyRes", () => require("./myResource"));
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
 			resourceFileInfo: resourceFileInfo{
-				resourceClassName:         "MyRes",
-				resourceArgsInterfaceName: "MyResArgs",
-				methodsNamespaceName:      "MyRes",
+				resourceClassName:         "MyRes2",
+				resourceArgsInterfaceName: "MyRes2Args",
+				methodsNamespaceName:      "MyRes2",
 			},
-		}, "./myResource")
+		}, "./myResource2")
 
-		assert.Equal(t, `export * from "./myResource";
-import { MyRes } from "./myResource";
+		assert.Equal(t, `export * from "./myResource2";
+import { MyRes2 } from "./myResource2";
 
 `, buf.String())
 	})
@@ -93,7 +93,6 @@ import { MyRes } from "./myResource";
 
 		assert.Equal(t, `export { MyFuncArgs, MyFuncResult } from "./myFunc";
 export const myFunc: typeof import("./myFunc").myFunc = null as any;
-utilities.lazyLoadProperty(exports, "myFunc", () => require("./myFunc"));
 
 `, buf.String())
 	})
@@ -103,19 +102,17 @@ utilities.lazyLoadProperty(exports, "myFunc", () => require("./myFunc"));
 		ll.genReexport(&buf, fileInfo{
 			fileType: functionFileType,
 			functionFileInfo: functionFileInfo{
-				functionName:                           "myFunc",
-				functionArgsInterfaceName:              "MyFuncArgs",
-				functionResultInterfaceName:            "MyFuncResult",
-				functionOutputVersionName:              "myFuncOutput",
-				functionOutputVersionArgsInterfaceName: "MyFuncOutputArgs",
+				functionName:                           "myFunc1",
+				functionArgsInterfaceName:              "MyFunc1Args",
+				functionResultInterfaceName:            "MyFunc1Result",
+				functionOutputVersionName:              "myFunc1Output",
+				functionOutputVersionArgsInterfaceName: "MyFunc1OutputArgs",
 			},
-		}, "./myFunc")
+		}, "./myFunc1")
 
-		assert.Equal(t, `export { MyFuncArgs, MyFuncResult, MyFuncOutputArgs } from "./myFunc";
-export const myFunc: typeof import("./myFunc").myFunc = null as any;
-utilities.lazyLoadProperty(exports, "myFunc", () => require("./myFunc"));
-export const myFuncOutput: typeof import("./myFunc").myFuncOutput = null as any;
-utilities.lazyLoadProperty(exports, "myFuncOutput", () => require("./myFunc"));
+		assert.Equal(t, `export { MyFunc1Args, MyFunc1Result, MyFunc1OutputArgs } from "./myFunc1";
+export const myFunc1: typeof import("./myFunc1").myFunc1 = null as any;
+export const myFunc1Output: typeof import("./myFunc1").myFunc1Output = null as any;
 
 `, buf.String())
 	})
@@ -130,4 +127,13 @@ utilities.lazyLoadProperty(exports, "myFuncOutput", () => require("./myFunc"));
 `, buf.String())
 	})
 
+	t.Run("check-lazy-loads", func(t *testing.T) {
+		var buf bytes.Buffer
+		ll.genLazyLoads(&buf)
+		assert.Equal(t, `utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
+utilities.lazyLoad(exports, ["myFunc1","myFunc1Output"], () => require("./myFunc1"));
+utilities.lazyLoad(exports, ["MyRes"], () => require("./myResource"));
+utilities.lazyLoad(exports, ["MyRes1"], () => require("./myResource1"));
+`, buf.String())
+	})
 }
