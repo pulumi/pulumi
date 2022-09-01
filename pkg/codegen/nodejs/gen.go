@@ -1610,7 +1610,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
 			code := `import * as enums from "%s/types/enums";`
-			if mod.nodeModuleOptimizationFlags().useTypeOnlyEnumsReferences {
+			if nodeModuleOptimizationFlags(mod.pkg).useTypeOnlyEnumsReferences {
 				code = `import type * as enums from "%s/types/enums";`
 			}
 			imports = append(imports, fmt.Sprintf(code, relRoot))
@@ -1984,134 +1984,6 @@ func getChildMod(modName string) string {
 	return child
 }
 
-func (mod *modContext) nodeModuleOptimizationFlags() struct {
-	lazyLoadFunctions          bool
-	lazyLoadResources          bool
-	useTypeOnlyEnumsReferences bool
-} {
-	flags := struct {
-		lazyLoadFunctions          bool
-		lazyLoadResources          bool
-		useTypeOnlyEnumsReferences bool
-	}{}
-	nodePackageInfo := NodePackageInfo{}
-	if languageInfo, ok := mod.pkg.Language["nodejs"]; ok {
-		if info, ok2 := languageInfo.(NodePackageInfo); ok2 {
-			nodePackageInfo = info
-		}
-	}
-
-	for _, s := range nodePackageInfo.OptimizeNodeModuleLoading {
-		switch s {
-		case "lazy-load-functions":
-			flags.lazyLoadFunctions = true
-		case "lazy-load-resources":
-			flags.lazyLoadResources = true
-		case "use-type-only-enums-references":
-			flags.useTypeOnlyEnumsReferences = true
-		default:
-			continue
-		}
-	}
-	return flags
-}
-
-func (mod *modContext) genReexport(w io.Writer, exp fileInfo) {
-	modDir := strings.ToLower(mod.mod)
-	rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
-	contract.Assert(err == nil)
-	if path.Base(rel) == "." {
-		rel = path.Dir(rel)
-	}
-	quotedImport := fmt.Sprintf(`"./%s"`, strings.TrimSuffix(rel, ".ts"))
-	flags := mod.nodeModuleOptimizationFlags()
-	if exp.fileType == functionFileType && flags.lazyLoadFunctions {
-		mod.genFunctionReexport(w, exp.functionFileInfo, quotedImport)
-	} else if exp.fileType == resourceFileType {
-		if flags.lazyLoadResources {
-			// optimize lazy-loading resource files
-			mod.genResourceReexport(w, exp.resourceFileInfo, quotedImport)
-		} else {
-			fmt.Fprintf(w, "export * from %s;\n", quotedImport)
-
-			// Something relies on these to be imported also.
-			fmt.Fprintf(w, "import { %s } from %s;\n",
-				exp.resourceFileInfo.resourceClassName,
-				quotedImport)
-		}
-	} else {
-		// non-optimized but foolproof eager reexport
-		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
-	}
-}
-
-func (mod *modContext) genResourceReexport(w io.Writer, i resourceFileInfo, quotedImport string) {
-	defer fmt.Fprintf(w, "\n")
-
-	// not sure how to lazy-load in presence of re-exported
-	// namespaces; bail and use an eager load in this case; also
-	// eager-import the class.
-	if i.methodsNamespaceName != "" {
-		fmt.Fprintf(w, "export * from %s;\n", quotedImport)
-		fmt.Fprintf(w, "import { %s } from %s;\n", i.resourceClassName, quotedImport)
-		return
-	}
-
-	// Optimize the case of resource files to lazy-load them in
-	// Node; instead of reexporting everything which generates
-	// require() calls.
-	//
-	// Note that we cannot yet do this reliably if the resource
-	// file exports a methods namespace.
-	interfaces := []string{
-		i.resourceArgsInterfaceName,
-	}
-	if i.stateInterfaceName != "" {
-		interfaces = append(interfaces, i.stateInterfaceName)
-	}
-	// Re-export interfaces. This is type-only and does not
-	// generate a require() call.
-	fmt.Fprintf(w, "export { %s } from %s;\n",
-		strings.Join(interfaces, ", "),
-		quotedImport)
-
-	// Re-export class type into the type group, see
-	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html
-	fmt.Fprintf(w, "export type %[1]s = import(%[2]s).%[1]s;\n",
-		i.resourceClassName,
-		quotedImport)
-
-	// Mock re-export class value into the value group - for compilation.
-	fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
-		i.resourceClassName,
-		quotedImport)
-
-	// At runtime, install lazy loading. This has no effect on types.
-	fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
-		i.resourceClassName, quotedImport)
-}
-
-func (mod *modContext) genFunctionReexport(w io.Writer, i functionFileInfo, quotedImport string) {
-	defer fmt.Fprintf(w, "\n")
-
-	// Re-export interfaces. This is type-only and does not
-	// generate a require() call.
-	interfaces := i.interfaces()
-	if len(interfaces) > 0 {
-		fmt.Fprintf(w, "export { %s } from %s;\n",
-			strings.Join(interfaces, ", "),
-			quotedImport)
-	}
-
-	// Re-export function values into the value group, and install lazy loading.
-	for _, f := range i.functions() {
-		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
-			f, quotedImport)
-		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
-			f, quotedImport)
-	}
-}
-
 // genIndex emits an index module, optionally re-exporting other members or submodules.
 func (mod *modContext) genIndex(exports []fileInfo) string {
 	children := codegen.NewStringSet()
@@ -2144,8 +2016,17 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		sort.SliceStable(exports, func(i, j int) bool {
 			return exports[i].pathToNodeModule < exports[j].pathToNodeModule
 		})
+
+		ll := newLazyLoadGen()
+		modDir := strings.ToLower(mod.mod)
 		for _, exp := range exports {
-			mod.genReexport(w, exp)
+			rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
+			contract.Assert(err == nil)
+			if path.Base(rel) == "." {
+				rel = path.Dir(rel)
+			}
+			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
+			ll.genReexport(w, exp, importPath)
 		}
 	}
 
