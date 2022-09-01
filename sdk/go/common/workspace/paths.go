@@ -123,6 +123,8 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
+var ErrProjectNotFound = errors.New("no project file found")
+
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, an empty path is returned.
 func DetectProjectPathFrom(path string) (string, error) {
@@ -130,12 +132,13 @@ func DetectProjectPathFrom(path string) (string, error) {
 		return true
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to locate Pulumi.yaml project file: %w", err)
 	}
 	if path == "" {
+		// Embed/wrap ErrProjectNotFound
 		return "", fmt.Errorf(
 			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", path)
+				"created a project yet, use `pulumi new` to do so: %w", path, ErrProjectNotFound)
 	}
 	return path, nil
 }

@@ -245,9 +245,6 @@ func TestStackReferencePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
 
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference", "python"),
@@ -255,9 +252,6 @@ func TestStackReferencePython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step1",
@@ -934,6 +928,32 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 	t.Run("AbsolutePathWithMain", func(t *testing.T) {
 		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
+	})
+
+	t.Run("TestInitVirtualEnvBeforePythonVersionCheck", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		dir := filepath.Join("python", "venv")
+		e.ImportDirectory(dir)
+
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "teststack")
+		stdout, stderr, _ := e.GetCommandResults("pulumi", "preview")
+		// pulumi/pulumi#9175
+		// Ensures this error message doesn't show up for uninitialized
+		// virtualenv
+		//     `Failed to resolve python version command: ` +
+		//     `fork/exec <path>/venv/bin/python: ` +
+		//     `no such file or directory`
+		assert.NotContains(t, stdout, "fork/exec")
+		assert.NotContains(t, stderr, "fork/exec")
 	})
 }
 

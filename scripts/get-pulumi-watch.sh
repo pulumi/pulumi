@@ -24,11 +24,11 @@ fi
 TAG="v0.1.4"
 
 for i in \
-  "darwin-amd64   x86_64-apple-darwin            tar.gz" \
+  "darwin-x64     x86_64-apple-darwin            tar.gz" \
   "darwin-arm64   aarch64-apple-darwin           tar.gz" \
-  "linux-amd64    x86_64-unknown-linux-gnu       tar.gz" \
+  "linux-x64      x86_64-unknown-linux-gnu       tar.gz" \
   "linux-arm64    aarch64-unknown-linux-gnu      tar.gz" \
-  "windows-amd64  x86_64-pc-windows-msvc         zip"; do # Windows is synonymous with ".exe" as well
+  "windows-x64    x86_64-pc-windows-msvc         zip"; do # Windows is synonymous with ".exe" as well
   set -- $i # read loop strings as args
   TARGET="$1"
   FILE="$2"

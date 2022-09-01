@@ -23,7 +23,7 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 ensure:: $(PYTHON).ensure .ensure.phony
 .ensure.phony:
 	$(PYTHON) -m venv venv
-	. venv/*/activate && python -m pip install wheel
+	. venv/*/activate && python -m pip install --upgrade pip setuptools wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 	@touch .ensure.phony

@@ -28,7 +28,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -130,7 +132,12 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			proj, root, err := readProject()
-			if err != nil {
+			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
+				logging.Warningf("failed to find current Pulumi project, continuing with an empty project using stack %v from backend %v",
+					s.Ref().Name(), s.Backend().Name())
+				proj = &workspace.Project{}
+				root = ""
+			} else if err != nil {
 				return result.FromError(err)
 			}
 

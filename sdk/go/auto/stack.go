@@ -1019,6 +1019,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		Stack:            req.GetStack(),
 		Parallel:         int(req.GetParallel()),
 		DryRun:           req.GetDryRun(),
+		Organization:     req.GetOrganization(),
 	}
 
 	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)

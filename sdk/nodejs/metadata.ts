@@ -17,6 +17,12 @@
 import * as settings from "./runtime/settings";
 
 /**
+ * getOrganization returns the current organization name.  It throws an exception if none is registered.
+ */
+export function getOrganization(): string {
+    return settings.getOrganization();
+}
+/**
  * getProject returns the current project name.  It throws an exception if none is registered.
  */
 export function getProject(): string {

@@ -47,6 +47,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		DryRun:           req.GetDryRun(),
 		MonitorAddr:      req.GetMonitorEndpoint(),
 		engineConn:       engineConn,
+		Organization:     req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -726,13 +727,14 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Config:      req.GetConfig(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
-		MonitorAddr: req.GetMonitorEndpoint(),
-		engineConn:  engineConn,
+		Project:      req.GetProject(),
+		Stack:        req.GetStack(),
+		Config:       req.GetConfig(),
+		Parallel:     int(req.GetParallel()),
+		DryRun:       req.GetDryRun(),
+		MonitorAddr:  req.GetMonitorEndpoint(),
+		engineConn:   engineConn,
+		Organization: req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
