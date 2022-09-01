@@ -59,6 +59,10 @@
 - [sdk/{nodejs/python}] Added `getOrganization()` to return the current organization if available.
   [#10504](https://github.com/pulumi/pulumi/pull/10504)
 
+- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against 
+  the Pulumi Service backend.
+  [#10558](https://github.com/pulumi/pulumi/pull/10558)
+
 ### Bug Fixes
 
 - [codegen/go] Fix StackReference codegen.
