@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import * as log from "../log";
-
+import * as state from "./state";
 /**
  * debugPromiseLeaks can be set to enable promises leaks debugging.
  */
@@ -24,15 +24,11 @@ const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
  */
 let leakDetectorScheduled: boolean = false;
 
-/**
- * leakCandidates tracks the list of potential leak candidates.
- */
-let leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
-
 /** @internal */
 export function leakedPromises(): [Set<Promise<any>>, string] {
-    const leaked = leakCandidates;
-    const promisePlural = leaked.size === 0 ? "promise was" : "promises were";
+    const localStore = state.getStore();
+    const leaked = localStore.leakCandidates;
+    const promisePlural = leaked.size === 1 ? "promise was" : "promises were";
     const message = leaked.size === 0 ? "" :
         `The Pulumi runtime detected that ${leaked.size} ${promisePlural} still active\n` +
         "at the time that the process exited. There are a few ways that this can occur:\n" +
@@ -53,7 +49,7 @@ export function leakedPromises(): [Set<Promise<any>>, string] {
         }
     }
 
-    leakCandidates = new Set<Promise<any>>();
+    localStore.leakCandidates = new Set();
     return [leaked, message];
 }
 
@@ -71,6 +67,7 @@ let promiseId = 0;
  * @internal
  */
 export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
+    const localStore = state.getStore();
     // Whack some stack onto the promise.  Leave them non-enumerable to avoid awkward rendering.
     Object.defineProperty(p, "_debugId", { writable: true, value: promiseId });
     Object.defineProperty(p, "_debugCtx", { writable: true, value: ctx });
@@ -105,12 +102,12 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
     }
 
     // Add this promise to the leak candidates list, and schedule it for removal if it resolves.
-    leakCandidates.add(p);
+    localStore.leakCandidates.add(p);
     return p.then((val: any) => {
-        leakCandidates.delete(p);
+        localStore.leakCandidates.delete(p);
         return val;
     }).catch((err: any) => {
-        leakCandidates.delete(p);
+        localStore.leakCandidates.delete(p);
         err.promise = p;
         throw err;
     });

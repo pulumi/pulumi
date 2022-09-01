@@ -18,7 +18,7 @@ import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
-import { hasTrueBooleanMember } from "../../utils";
+import { hasTrueBooleanMember, hasFunctionMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap } from "./parseFunction";
 import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
@@ -869,6 +869,20 @@ async function getOrCreateEntryAsync(
         const errorFunc = () => { throw new Error(message); };
 
         obj = errorFunc;
+    }
+
+    if (obj instanceof Function && hasFunctionMember(obj, "captureReplacement")) {
+        // If we've defined a replacement function, then use that instead.
+        // This is best used in the case we'd serialize something with undefined runtime
+        // behavior.  For example, we don't want to serialize out a function that will
+        // reference unset environment variables etc, so we provide an alternate function
+        // that will be called at runtime instead.
+        const funcToSerialize = obj.captureReplacement();
+
+        if (!(funcToSerialize instanceof Function)) {
+            throw new Error("captureReplacement must return a function");
+        }
+        obj = funcToSerialize;
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder

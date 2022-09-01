@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import execa from "execa";
+import { getStore } from "../runtime/state";
 
 import { createCommandError } from "./errors";
 
@@ -53,7 +54,11 @@ export async function runPulumiCmd(
         args.push("--non-interactive");
     }
 
-    const env = { ...process.env, ...additionalEnv };
+    const store = getStore();
+
+    const config = store?.config ?? {};
+
+    const env = { ...config, ...additionalEnv };
 
     try {
         const proc = execa("pulumi", args, { env, cwd });

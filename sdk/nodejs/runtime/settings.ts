@@ -17,11 +17,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource } from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { getLocalStore, getStore } from "./state";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
+
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
@@ -55,23 +57,8 @@ export interface Options {
     readonly syncDir?: string;
 }
 
-const nodeEnvKeys = {
-    project: "PULUMI_NODEJS_PROJECT",
-    stack: "PULUMI_NODEJS_STACK",
-    dryRun: "PULUMI_NODEJS_DRY_RUN",
-    queryMode: "PULUMI_NODEJS_QUERY_MODE",
-    parallel: "PULUMI_NODEJS_PARALLEL",
-    monitorAddr: "PULUMI_NODEJS_MONITOR",
-    engineAddr: "PULUMI_NODEJS_ENGINE",
-    syncDir: "PULUMI_NODEJS_SYNC",
-    // this value is not set by the CLI and is controlled via a user set env var unlike the values above
-    cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
-    organization: "PULUMI_NODEJS_ORGANIZATION",
-};
-
-const pulumiEnvKeys = {
-    legacyApply: "PULUMI_ENABLE_LEGACY_APPLY",
-};
+let monitor: any | undefined;
+let engine: any | undefined;
 
 // reset options resets nodejs runtime global state (such as rpc clients),
 // and sets nodejs runtime option env vars to the specified values.
@@ -79,20 +66,25 @@ export function resetOptions(
     project: string, stack: string, parallel: number, engineAddr: string,
     monitorAddr: string, preview: boolean, organization: string) {
 
+    const { settings } = getStore();
+
     monitor = undefined;
     engine = undefined;
-    rpcDone = Promise.resolve();
-    featureSupport = {};
+    settings.monitor = undefined;
+    settings.engine = undefined;
+    settings.rpcDone = Promise.resolve();
+    settings.featureSupport = {};
+
 
     // reset node specific environment variables in the process
-    process.env[nodeEnvKeys.project] = project;
-    process.env[nodeEnvKeys.stack] = stack;
-    process.env[nodeEnvKeys.dryRun] = preview.toString();
-    process.env[nodeEnvKeys.queryMode] = isQueryMode.toString();
-    process.env[nodeEnvKeys.parallel] = parallel.toString();
-    process.env[nodeEnvKeys.monitorAddr] = monitorAddr;
-    process.env[nodeEnvKeys.engineAddr] = engineAddr;
-    process.env[nodeEnvKeys.organization] = organization === "" ? "organization" : organization;
+    settings.options.project = project;
+    settings.options.stack = stack;
+    settings.options.dryRun = preview;
+    settings.options.queryMode = isQueryMode();
+    settings.options.parallel = parallel;
+    settings.options.monitorAddr = monitorAddr;
+    settings.options.engineAddr = engineAddr;
+    settings.options.organization = organization;
 }
 
 export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean, organization?: string) {
@@ -112,7 +104,8 @@ export function setMockOptions(mockMonitor: any, project?: string, stack?: strin
 
 /** @internal Used only for testing purposes. */
 export function _setIsDryRun(val: boolean) {
-    process.env[nodeEnvKeys.dryRun] = val.toString();
+    const { settings } = getStore();
+    settings.options.dryRun = val;
 }
 
 /**
@@ -124,19 +117,22 @@ export function isDryRun(): boolean {
     return options().dryRun === true;
 }
 
-/** @internal Used only for testing purposes */
-export function _reset() {
-    resetOptions("", "", -1, "", "", false, "");
-}
 
 /** @internal Used only for testing purposes */
 export function _setFeatureSupport(key: string, val: boolean) {
+    const { featureSupport } = getStore().settings;
     featureSupport[key] = val;
 }
 
 /** @internal Used only for testing purposes. */
 export function _setQueryMode(val: boolean) {
-    process.env[nodeEnvKeys.queryMode] = val.toString();
+    const { settings } = getStore();
+    settings.options.queryMode = val;
+}
+
+/** @internal Used only for testing purposes */
+export function _reset(): void {
+    resetOptions("", "", -1, "", "", false, "");
 }
 
 /**
@@ -176,52 +172,41 @@ export function getOrganization(): string {
 
 /** @internal Used only for testing purposes. */
 export function _setOrganization(val: string | undefined) {
-    process.env[nodeEnvKeys.organization] = val;
+    const { settings } = getStore();
+    settings.options.organization = val;
+    return settings.options.organization;
 }
 
 /**
  * Get the project being run by the current update.
  */
 export function getProject(): string {
-    const project = options().project;
-    if (project) {
-        return project;
-    }
-
-    // If the project is missing, specialize the error.
-    // Throw an error if test mode is enabled, instructing how to manually configure the project:
-    throw new Error("Missing project name; for test mode, please call `pulumi.runtime.setMocks`");
+    const { project } = options();
+    return project || "";
 }
 
 /** @internal Used only for testing purposes. */
 export function _setProject(val: string | undefined) {
-    process.env[nodeEnvKeys.project] = val;
+    const { settings } = getStore();
+    settings.options.project = val;
+    return settings.options.project;
 }
 
 /**
  * Get the stack being targeted by the current update.
  */
 export function getStack(): string {
-    const stack = options().stack;
-    if (stack) {
-        return stack;
-    }
-
-    // If the stack is missing, specialize the error.
-    // Throw an error if test mode is enabled, instructing how to manually configure the stack:
-    throw new Error("Missing stack name; for test mode, please call `pulumi.runtime.setMocks` and provide a `stack` argument");
+    const { stack } = options();
+    return stack || "";
 }
 
 /** @internal Used only for testing purposes. */
 export function _setStack(val: string | undefined) {
-    process.env[nodeEnvKeys.stack] = val;
+    const { settings } = getStore();
+    settings.options.stack = val;
+    return settings.options.stack;
 }
 
-/**
- * monitor is a live connection to the resource monitor that tracks deployments (lazily initialized).
- */
-let monitor: any | undefined;
-let featureSupport: Record<string, boolean> = {};
 
 /**
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
@@ -234,20 +219,36 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object | undefined {
-    // pre-emptive fail fast check for node inline programs
     runSxSCheck();
-    if (monitor === undefined) {
-        const addr = options().monitorAddr;
-        if (addr) {
-            // Lazily initialize the RPC connection to the monitor.
-            monitor = new resrpc.ResourceMonitorClient(
-                addr,
-                grpc.credentials.createInsecure(),
-                grpcChannelOptions,
-            );
+    const { settings } = getStore();
+    const addr = options().monitorAddr;
+    if (getLocalStore() === undefined) {
+        if (monitor === undefined) {
+            if (addr) {
+                // Lazily initialize the RPC connection to the monitor.
+                monitor = new resrpc.ResourceMonitorClient(
+                    addr,
+                    grpc.credentials.createInsecure(),
+                    grpcChannelOptions,
+                );
+                settings.options.monitorAddr = addr;
+            }
         }
+        return monitor;
+    } else {
+        if (settings.monitor === undefined) {
+            if (addr) {
+                // Lazily initialize the RPC connection to the monitor.
+                settings.monitor = new resrpc.ResourceMonitorClient(
+                    addr,
+                    grpc.credentials.createInsecure(),
+                    grpcChannelOptions,
+                );
+                settings.options.monitorAddr = addr;
+            }
+        }
+        return settings.monitor;
     }
-    return monitor;
 }
 
 /** @internal */
@@ -270,10 +271,6 @@ export function tryGetSyncInvokes(): SyncInvokes | undefined {
     return syncInvokes;
 }
 
-/**
- * engine is a live connection to the engine, used for logging, etc. (lazily initialized).
- */
-let engine: any | undefined;
 
 /**
  * hasEngine returns true if we are currently connected to an engine.
@@ -286,18 +283,34 @@ export function hasEngine(): boolean {
  * getEngine returns the current engine, if any, for RPC communications back to the resource engine.
  */
 export function getEngine(): Object | undefined {
-    if (engine === undefined) {
-        const addr = options().engineAddr;
-        if (addr) {
-            // Lazily initialize the RPC connection to the engine.
-            engine = new engrpc.EngineClient(
-                addr,
-                grpc.credentials.createInsecure(),
-                grpcChannelOptions,
-            );
+    const { settings } = getStore();
+    if (getLocalStore() === undefined) {
+        if (engine === undefined) {
+            const addr = options().engineAddr;
+            if (addr) {
+                // Lazily initialize the RPC connection to the engine.
+                engine = new engrpc.EngineClient(
+                    addr,
+                    grpc.credentials.createInsecure(),
+                    grpcChannelOptions,
+                );
+            }
         }
+        return engine;
+    } else {
+        if (settings.engine === undefined) {
+            const addr = options().engineAddr;
+            if (addr) {
+                // Lazily initialize the RPC connection to the engine.
+                settings.engine = new engrpc.EngineClient(
+                    addr,
+                    grpc.credentials.createInsecure(),
+                    grpcChannelOptions,
+                );
+            }
+        }
+        return settings.engine;
     }
-    return engine;
 }
 
 export function terminateRpcs() {
@@ -323,37 +336,10 @@ export function serialize(): boolean {
 
  */
 function options(): Options {
-    // pre-emptive fail fast check for node inline programs
     runSxSCheck();
-    // The only option that needs parsing is the parallelism flag.  Ignore any failures.
-    let parallel: number | undefined;
-    const parallelOpt = process.env[nodeEnvKeys.parallel];
-    if (parallelOpt) {
-        try {
-            parallel = parseInt(parallelOpt, 10);
-        }
-        catch (err) {
-            // ignore.
-        }
-    }
+    const { settings } = getStore();
 
-    // Now just hydrate the rest from environment variables.  These might be missing, in which case
-    // we will fail later on when we actually need to create an RPC connection back to the engine.
-    return {
-        // node runtime
-        organization: process.env[nodeEnvKeys.organization],
-        project: process.env[nodeEnvKeys.project],
-        stack: process.env[nodeEnvKeys.stack],
-        dryRun: (process.env[nodeEnvKeys.dryRun] === "true"),
-        queryMode: (process.env[nodeEnvKeys.queryMode] === "true"),
-        parallel: parallel,
-        monitorAddr: process.env[nodeEnvKeys.monitorAddr],
-        engineAddr: process.env[nodeEnvKeys.engineAddr],
-        syncDir: process.env[nodeEnvKeys.syncDir],
-        cacheDynamicProviders: process.env[nodeEnvKeys.cacheDynamicProviders] !== "false", // true by default
-        // pulumi specific
-        legacyApply: (process.env[pulumiEnvKeys.legacyApply] === "true"),
-    };
+    return settings.options;
 }
 
 /**
@@ -366,11 +352,12 @@ export function disconnect(): Promise<void> {
 
 /** @internal */
 export function waitForRPCs(disconnectFromServers = false): Promise<void> {
+    const localStore = getStore();
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
-        if (done !== rpcDone) {
+        if (done !== localStore.settings.rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
-            done = rpcDone;
+            done = localStore.settings.rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
         if (disconnectFromServers) {
@@ -379,6 +366,14 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
         return Promise.resolve();
     };
     return closeCallback();
+}
+
+/**
+ * getMaximumListeners returns the configured number of process listeners available
+ */
+export function getMaximumListeners(): number {
+    const { settings } = getStore();
+    return settings.options.maximumProcessListeners;
 }
 
 /**
@@ -407,19 +402,16 @@ export function disconnectSync(): void {
     }
 }
 
-/**
- * rpcDone resolves when the last known client-side RPC call finishes.
- */
-let rpcDone: Promise<any> = Promise.resolve();
 
 /**
  * rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
  * a function that, when invoked, signals that the RPC has completed.
  */
 export function rpcKeepAlive(): () => void {
+    const localStore = getStore();
     let done: (() => void) | undefined = undefined;
     const donePromise = debuggablePromise(new Promise<void>(resolve => done = resolve), "rpcKeepAlive");
-    rpcDone = rpcDone.then(() => donePromise);
+    localStore.settings.rpcDone = localStore.settings.rpcDone.then(() => donePromise);
     return done!;
 }
 
@@ -459,12 +451,13 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
  * to is able to support a particular feature.
  */
 export async function monitorSupportsFeature(feature: string): Promise<boolean> {
+    const localStore = getStore();
     const monitorRef: any = getMonitor();
     if (!monitorRef) {
-        return featureSupport[feature];
+        return localStore.settings.featureSupport[feature];
     }
 
-    if (featureSupport[feature] === undefined) {
+    if (localStore.settings.featureSupport[feature] === undefined) {
         const req = new resproto.SupportsFeatureRequest();
         req.setId(feature);
 
@@ -484,10 +477,10 @@ export async function monitorSupportsFeature(feature: string): Promise<boolean> 
             });
         });
 
-        featureSupport[feature] = result;
+        localStore.settings.featureSupport[feature] = result;
     }
 
-    return featureSupport[feature];
+    return localStore.settings.featureSupport[feature];
 }
 
 /**
