@@ -629,6 +629,7 @@ func (host *nodeLanguageHost) constructArguments(
 	maybeAppendArg("monitor", address)
 	maybeAppendArg("engine", host.engineAddress)
 	maybeAppendArg("sync", pipesDirectory)
+	maybeAppendArg("organization", req.GetOrganization())
 	maybeAppendArg("project", req.GetProject())
 	maybeAppendArg("stack", req.GetStack())
 	maybeAppendArg("pwd", req.GetPwd())

@@ -1429,7 +1429,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	}
 
 	// Generate the array input.
-	if details.arrayInput {
+	if details.arrayInput && !pkg.names.Has(name+"Array") {
 		pkg.genInputInterface(w, name+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
@@ -1438,7 +1438,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	}
 
 	// Generate the map input.
-	if details.mapInput {
+	if details.mapInput && !pkg.names.Has(name+"Map") {
 		pkg.genInputInterface(w, name+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
@@ -1535,11 +1535,11 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		}
 	}
 
-	if details.arrayOutput {
+	if details.arrayOutput && !pkg.names.Has(name+"Array") {
 		genArrayOutput(w, name, name)
 	}
 
-	if details.mapOutput {
+	if details.mapOutput && !pkg.names.Has(name+"Map") {
 		genMapOutput(w, name, name)
 	}
 }
@@ -2536,11 +2536,11 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
 			}
-			if details.arrayInput {
+			if details.arrayInput && !pkg.names.Has(name+"Array") {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
 			}
-			if details.mapInput {
+			if details.mapInput && !pkg.names.Has(name+"Map") {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
 			}

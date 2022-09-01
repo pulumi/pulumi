@@ -147,7 +147,6 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
@@ -209,6 +208,8 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	validateVersion(ctx, host.virtualenvPath)
 
 	// Now, determine which Pulumi packages are installed.
 	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
@@ -752,6 +753,7 @@ func (host *pythonLanguageHost) constructArguments(req *pulumirpc.RunRequest) []
 	maybeAppendArg("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
+	maybeAppendArg("organization", req.GetOrganization())
 
 	// If no program is specified, just default to the current directory (which will invoke "__main__.py").
 	if req.GetProgram() == "" {

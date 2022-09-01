@@ -2170,7 +2170,8 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
     dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
-    monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, "")
+    monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
+    organization: jspb.Message.getFieldWithDefault(msg, 14, "")
   };
 
   if (includeInstance) {
@@ -2263,6 +2264,10 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.setMonitorendpoint(value);
+      break;
+    case 14:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOrganization(value);
       break;
     default:
       reader.skipField();
@@ -2376,6 +2381,13 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   if (f.length > 0) {
     writer.writeString(
       12,
+      f
+    );
+  }
+  f = message.getOrganization();
+  if (f.length > 0) {
+    writer.writeString(
+      14,
       f
     );
   }
@@ -2815,6 +2827,24 @@ proto.pulumirpc.CallRequest.prototype.getMonitorendpoint = function() {
  */
 proto.pulumirpc.CallRequest.prototype.setMonitorendpoint = function(value) {
   return jspb.Message.setProto3StringField(this, 12, value);
+};
+
+
+/**
+ * optional string organization = 14;
+ * @return {string}
+ */
+proto.pulumirpc.CallRequest.prototype.getOrganization = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 14, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.setOrganization = function(value) {
+  return jspb.Message.setProto3StringField(this, 14, value);
 };
 
 
@@ -6491,7 +6521,8 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
     aliasesList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
     dependenciesList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
-    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f
+    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f,
+    organization: jspb.Message.getFieldWithDefault(msg, 17, "")
   };
 
   if (includeInstance) {
@@ -6598,6 +6629,10 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
     case 16:
       var value = /** @type {string} */ (reader.readString());
       msg.addConfigsecretkeys(value);
+      break;
+    case 17:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOrganization(value);
       break;
     default:
       reader.skipField();
@@ -6729,6 +6764,13 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f.length > 0) {
     writer.writeRepeatedString(
       16,
+      f
+    );
+  }
+  f = message.getOrganization();
+  if (f.length > 0) {
+    writer.writeString(
+      17,
       f
     );
   }
@@ -7264,6 +7306,24 @@ proto.pulumirpc.ConstructRequest.prototype.addConfigsecretkeys = function(value,
  */
 proto.pulumirpc.ConstructRequest.prototype.clearConfigsecretkeysList = function() {
   return this.setConfigsecretkeysList([]);
+};
+
+
+/**
+ * optional string organization = 17;
+ * @return {string}
+ */
+proto.pulumirpc.ConstructRequest.prototype.getOrganization = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 17, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ConstructRequest} returns this
+ */
+proto.pulumirpc.ConstructRequest.prototype.setOrganization = function(value) {
+  return jspb.Message.setProto3StringField(this, 17, value);
 };
 
 

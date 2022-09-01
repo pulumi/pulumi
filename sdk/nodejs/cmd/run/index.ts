@@ -89,6 +89,7 @@ function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
     console.error(``);
     console.error(`    where [flags] may include`);
+    console.error(`        --organization=o    set the organization name to o`);
     console.error(`        --project=p         set the project name to p`);
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
@@ -116,7 +117,7 @@ function main(args: string[]): void {
         // eslint-disable-next-line id-blacklist
         boolean: [ "dry-run", "query-mode" ],
         // eslint-disable-next-line id-blacklist
-        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
+        string: [ "organization", "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             return true;
         },
@@ -146,6 +147,7 @@ function main(args: string[]): void {
     // to squirel these settings in the environment such that other copies which may be loaded later can recover them.
     //
     // Config is already an environment variaible set by the language plugin.
+    addToEnvIfDefined("PULUMI_NODEJS_ORGANIZATION", argv["organization"]);
     addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
     addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
