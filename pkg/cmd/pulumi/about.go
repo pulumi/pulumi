@@ -107,16 +107,10 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 		ErrorMessages: []string{},
 		LogMessage:    formatLogAbout(),
 	}
-	var plugins []pluginAbout
 	addError := func(err error, message string) {
 		err = fmt.Errorf("%s: %w", message, err)
 		result.ErrorMessages = append(result.ErrorMessages, err.Error())
 		result.Errors = append(result.Errors, err)
-	}
-	if plugins, err = getPluginsAbout(); err != nil {
-		addError(err, "Failed to get information about the plugin")
-	} else {
-		result.Plugins = plugins
 	}
 
 	var host hostAbout
@@ -138,6 +132,13 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 			addError(err, "Failed to create plugin context")
 		} else {
 			defer pluginContext.Close()
+
+			// Only try to get project plugins if we managed to read a project
+			if plugins, err := getPluginsAbout(pluginContext, proj, pwd, program); err != nil {
+				addError(err, "Failed to get information about the plugin")
+			} else {
+				result.Plugins = plugins
+			}
 
 			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
 			if err != nil {
@@ -221,9 +222,8 @@ type pluginAbout struct {
 	Version *semver.Version `json:"version"`
 }
 
-func getPluginsAbout() ([]pluginAbout, error) {
-	pluginSpec, err := getProjectPluginsSilently()
-
+func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]pluginAbout, error) {
+	pluginSpec, err := getProjectPluginsSilently(ctx, proj, pwd, main)
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func (runtime projectRuntimeAbout) String() string {
 
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
-func getProjectPluginsSilently() ([]workspace.PluginSpec, error) {
+func getProjectPluginsSilently(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]workspace.PluginSpec, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -556,5 +556,9 @@ func getProjectPluginsSilently() ([]workspace.PluginSpec, error) {
 	defer func() { os.Stdout = stdout }()
 	os.Stdout = w
 
-	return getProjectPlugins()
+	return plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+	}, plugin.AllPlugins)
 }
