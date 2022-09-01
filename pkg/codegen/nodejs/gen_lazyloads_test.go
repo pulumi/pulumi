@@ -120,4 +120,14 @@ utilities.lazyLoadProperty(exports, "myFuncOutput", () => require("./myFunc"));
 `, buf.String())
 	})
 
+	t.Run("fallthrough-reexport", func(t *testing.T) {
+		var buf bytes.Buffer
+		ll.genReexport(&buf, fileInfo{
+			fileType: otherFileType,
+		}, "./myOtherFile")
+
+		assert.Equal(t, `export * from "./myOtherFile";
+`, buf.String())
+	})
+
 }

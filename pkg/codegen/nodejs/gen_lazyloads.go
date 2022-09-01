@@ -78,7 +78,7 @@ func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string)
 		ll.genResourceReexport(w, exp.resourceFileInfo, importPath)
 	} else {
 		// non-optimized but foolproof eager reexport
-		fmt.Fprintf(w, "export * from %s;\n", importPath)
+		fmt.Fprintf(w, "export * from %q;\n", importPath)
 	}
 }
 
