@@ -268,9 +268,6 @@ func TestStackReferenceDotnet(t *testing.T) {
 		Dir:          filepath.Join("stack_reference", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step1",
@@ -299,10 +296,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join(d, "dotnet", "step1"),
 		Dependencies: []string{"Pulumi"},
-		Config: map[string]string{
-			"org": owner,
-		},
-		Quick: true,
+		Quick:        true,
 		EditDirs: []integration.EditDir{
 			{
 				Dir:             filepath.Join(d, "dotnet", "step2"),

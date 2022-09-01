@@ -17,6 +17,11 @@ namespace Pulumi
         string ProjectName { get; }
 
         /// <summary>
+        /// Returns the current organization name (if available)
+        /// </summary>
+        string OrganizationName { get; }
+
+        /// <summary>
         /// Whether or not the application is currently being previewed or actually applied.
         /// </summary>
         bool IsDryRun { get; }

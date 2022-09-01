@@ -25,6 +25,11 @@ namespace Pulumi
         public string ProjectName => _deployment.ProjectName;
 
         /// <summary>
+        /// Returns the current organization name (if available).
+        /// </summary>
+        public string OrganizationName => _deployment.OrganizationName;
+
+        /// <summary>
         /// Whether or not the application is currently being previewed or actually applied.
         /// </summary>
         public bool IsDryRun => _deployment.IsDryRun;

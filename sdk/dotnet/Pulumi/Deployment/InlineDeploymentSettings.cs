@@ -17,6 +17,8 @@ namespace Pulumi
 
         public IEnumerable<string>? ConfigSecretKeys { get; }
 
+        public string? Organization { get; }
+
         public string Project { get; }
 
         public string Stack { get; }
@@ -31,6 +33,7 @@ namespace Pulumi
             string monitorAddr,
             IDictionary<string, string> config,
             IEnumerable<string>? configSecretKeys,
+            string? organization,
             string project,
             string stack,
             int parallel,
@@ -41,6 +44,7 @@ namespace Pulumi
             MonitorAddr = monitorAddr;
             Config = config;
             ConfigSecretKeys = configSecretKeys;
+            Organization = organization;
             Project = project;
             Stack = stack;
             Parallel = parallel;
