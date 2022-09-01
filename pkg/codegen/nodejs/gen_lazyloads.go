@@ -153,7 +153,7 @@ func (*lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, importP
 
 	// Re-export function values into the value group, and install lazy loading.
 	for _, f := range i.functions() {
-		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any\n",
+		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any;\n",
 			f, quotedImport)
 		fmt.Fprintf(w, "utilities.lazyLoadProperty(exports, %q, () => require(%s));\n",
 			f, quotedImport)
