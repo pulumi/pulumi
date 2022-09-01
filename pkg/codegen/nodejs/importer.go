@@ -70,23 +70,15 @@ type NodePackageInfo struct {
 	// Respect the Pkg.Version field in the schema
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 
-	// Set of optimization strategies for optimizing node module
-	// loading in the generated code. By default the code eagerly
-	// loads all modules.
-	//
-	// Supported strategies include:
-	//
-	//     "lazy-load-functions"
-	//     "lazy-load-resources"
-	//     "use-type-only-enums-references"
-	//
-	// Optimizing module loading is relevant for larger providers
-	// like azure-native.
-	//
-	// Note that "use-type-only-enums-references" is experimental.
-	// It requires TypeScript 3.8 or higher to compile the
-	// generated code, and may in some cases fail to generate compiling code.
-	OptimizeNodeModuleLoading []string `json:"optimizeNodeModuleLoading,omitempty"`
+	// Experimental flag that permits `import type *` style code
+	// to be generated to optimize startup time of programs
+	// consuming the provider by minimizing the set of Node
+	// modules loaded at startup. Turning this on may currently
+	// generate non-compiling code for some providers; but if the
+	// code compiles it is safe to use. Also, turning this on
+	// requires TypeScript 3.8 or higher to compile the generated
+	// code.
+	UseTypeOnlyReferences bool `json:"useTypeOnlyReferences,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.

@@ -24,46 +24,12 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 type lazyLoadGen struct{}
 
 func newLazyLoadGen() *lazyLoadGen {
 	return &lazyLoadGen{}
-}
-
-func nodeModuleOptimizationFlags(pkg *schema.Package) struct {
-	lazyLoadFunctions          bool
-	lazyLoadResources          bool
-	useTypeOnlyEnumsReferences bool
-} {
-	flags := struct {
-		lazyLoadFunctions          bool
-		lazyLoadResources          bool
-		useTypeOnlyEnumsReferences bool
-	}{}
-	nodePackageInfo := NodePackageInfo{}
-	if languageInfo, ok := pkg.Language["nodejs"]; ok {
-		if info, ok2 := languageInfo.(NodePackageInfo); ok2 {
-			nodePackageInfo = info
-		}
-	}
-
-	for _, s := range nodePackageInfo.OptimizeNodeModuleLoading {
-		switch s {
-		case "lazy-load-functions":
-			flags.lazyLoadFunctions = true
-		case "lazy-load-resources":
-			flags.lazyLoadResources = true
-		case "use-type-only-enums-references":
-			flags.useTypeOnlyEnumsReferences = true
-		default:
-			continue
-		}
-	}
-	return flags
 }
 
 // Generates TypeScript code to re-export a generated module. For

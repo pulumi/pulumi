@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1610,7 +1610,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
 			code := `import * as enums from "%s/types/enums";`
-			if nodeModuleOptimizationFlags(mod.pkg).useTypeOnlyEnumsReferences {
+			if lookupNodePackageInfo(mod.pkg).UseTypeOnlyReferences {
 				code = `import type * as enums from "%s/types/enums";`
 			}
 			imports = append(imports, fmt.Sprintf(code, relRoot))
