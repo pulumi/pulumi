@@ -54,11 +54,15 @@ export function resourceOptsDefaults(): any {
 }
 
 /** @internal */
-export function lazyLoadProperty(exports: any, property: string, loadModule: any) {
-    Object.defineProperty(exports, property, {
-        enumerable: true,
-        get: function() {
-            return loadModule()[property];
-        },
-    });
+export function lazyLoad(exports: any, props: string[], loadModule: any) {
+    let cache = {module: null};
+    for (let property of props) {
+        Object.defineProperty(exports, property, {
+            enumerable: true,
+            get: function() {
+                let m = cache.module || (cache.module = loadModule());
+                return m[property];
+            },
+        });
+    }
 }

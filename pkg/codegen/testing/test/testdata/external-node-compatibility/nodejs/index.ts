@@ -5,10 +5,16 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./foo";
-import { Foo } from "./foo";
-export * from "./provider";
-import { Provider } from "./provider";
+export { FooArgs } from "./foo";
+export type Foo = import("./foo").Foo;
+export const Foo: typeof import("./foo").Foo = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+utilities.lazyLoad(exports, ["Foo"], () => require("./foo"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 const _module = {
     version: utilities.getVersion(),

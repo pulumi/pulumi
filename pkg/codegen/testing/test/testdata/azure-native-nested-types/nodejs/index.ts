@@ -7,9 +7,9 @@ import * as utilities from "./utilities";
 // Export members:
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
-export const Provider: typeof import("./provider").Provider = null as any
-utilities.lazyLoadProperty(exports, "Provider", () => require("./provider"));
+export const Provider: typeof import("./provider").Provider = null as any;
 
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 // Export sub-modules:
 import * as documentdb from "./documentdb";

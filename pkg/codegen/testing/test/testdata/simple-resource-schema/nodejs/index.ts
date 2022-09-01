@@ -5,19 +5,41 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./argFunction";
-export * from "./barResource";
-import { BarResource } from "./barResource";
-export * from "./fooResource";
-import { FooResource } from "./fooResource";
-export * from "./otherResource";
-import { OtherResource } from "./otherResource";
-export * from "./provider";
-import { Provider } from "./provider";
-export * from "./resource";
-import { Resource } from "./resource";
-export * from "./typeUses";
-import { TypeUses } from "./typeUses";
+export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
+export const argFunction: typeof import("./argFunction").argFunction = null as any;
+export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any;
+
+export { BarResourceArgs } from "./barResource";
+export type BarResource = import("./barResource").BarResource;
+export const BarResource: typeof import("./barResource").BarResource = null as any;
+
+export { FooResourceArgs } from "./fooResource";
+export type FooResource = import("./fooResource").FooResource;
+export const FooResource: typeof import("./fooResource").FooResource = null as any;
+
+export { OtherResourceArgs } from "./otherResource";
+export type OtherResource = import("./otherResource").OtherResource;
+export const OtherResource: typeof import("./otherResource").OtherResource = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+export { ResourceArgs } from "./resource";
+export type Resource = import("./resource").Resource;
+export const Resource: typeof import("./resource").Resource = null as any;
+
+export { TypeUsesArgs } from "./typeUses";
+export type TypeUses = import("./typeUses").TypeUses;
+export const TypeUses: typeof import("./typeUses").TypeUses = null as any;
+
+utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
+utilities.lazyLoad(exports, ["BarResource"], () => require("./barResource"));
+utilities.lazyLoad(exports, ["FooResource"], () => require("./fooResource"));
+utilities.lazyLoad(exports, ["OtherResource"], () => require("./otherResource"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
+utilities.lazyLoad(exports, ["TypeUses"], () => require("./typeUses"));
 
 // Export sub-modules:
 import * as types from "./types";

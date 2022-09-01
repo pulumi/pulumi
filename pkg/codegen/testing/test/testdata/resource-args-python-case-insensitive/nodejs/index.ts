@@ -5,12 +5,21 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./person";
-import { Person } from "./person";
-export * from "./pet";
-import { Pet } from "./pet";
-export * from "./provider";
-import { Provider } from "./provider";
+export { PersonArgs } from "./person";
+export type Person = import("./person").Person;
+export const Person: typeof import("./person").Person = null as any;
+
+export { PetArgs } from "./pet";
+export type Pet = import("./pet").Pet;
+export const Pet: typeof import("./pet").Pet = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+utilities.lazyLoad(exports, ["Person"], () => require("./person"));
+utilities.lazyLoad(exports, ["Pet"], () => require("./pet"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 // Export sub-modules:
 import * as types from "./types";
