@@ -93,7 +93,7 @@ jobs:
           GOPROXY: "https://proxy.golang.org"
         with:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk,github.com/pulumi/pulumi-terraform-bridge/v3=pulumi-terraform-bridge
+          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk,github.com/pulumi/pulumi-terraform-bridge/v3=pulumi/pulumi-terraform-bridge
           downstream-name: pulumi-${{ matrix.provider }}
           downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider }}
           use-provider-dir: true
