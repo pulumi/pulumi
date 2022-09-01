@@ -26,7 +26,7 @@ func TestLazyLoadsGeneration(t *testing.T) {
 
 	ll := newLazyLoadGen()
 
-	t.Run("resource", func(t *testing.T) {
+	t.Run("resource", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -44,7 +44,7 @@ export const MyRes: typeof import("./myResource").MyRes = null as any;
 			buf.String())
 	})
 
-	t.Run("resource-with-state", func(t *testing.T) {
+	t.Run("resource-with-state", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -63,7 +63,7 @@ export const MyRes1: typeof import("./myResource1").MyRes1 = null as any;
 			buf.String())
 	})
 
-	t.Run("resource-with-methods", func(t *testing.T) {
+	t.Run("resource-with-methods", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -80,7 +80,7 @@ import { MyRes2 } from "./myResource2";
 `, buf.String())
 	})
 
-	t.Run("function", func(t *testing.T) {
+	t.Run("function", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: functionFileType,
@@ -97,7 +97,7 @@ export const myFunc: typeof import("./myFunc").myFunc = null as any;
 `, buf.String())
 	})
 
-	t.Run("function-with-output-version", func(t *testing.T) {
+	t.Run("function-with-output-version", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: functionFileType,
@@ -117,7 +117,7 @@ export const myFunc1Output: typeof import("./myFunc1").myFunc1Output = null as a
 `, buf.String())
 	})
 
-	t.Run("fallthrough-reexport", func(t *testing.T) {
+	t.Run("fallthrough-reexport", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: otherFileType,
@@ -127,7 +127,7 @@ export const myFunc1Output: typeof import("./myFunc1").myFunc1Output = null as a
 `, buf.String())
 	})
 
-	t.Run("check-lazy-loads", func(t *testing.T) {
+	t.Run("check-lazy-loads", func(t *testing.T) { // nolint: paralleltest
 		var buf bytes.Buffer
 		ll.genLazyLoads(&buf)
 		assert.Equal(t, `utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
