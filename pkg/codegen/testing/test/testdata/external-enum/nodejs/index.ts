@@ -5,8 +5,16 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./component";
-export * from "./provider";
+export { ComponentArgs } from "./component";
+export type Component = import("./component").Component;
+export const Component: typeof import("./component").Component = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+utilities.lazyLoad(exports, ["Component"], () => require("./component"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 // Export sub-modules:
 import * as local from "./local";
@@ -16,9 +24,6 @@ export {
     local,
     types,
 };
-
-// Import resources to register:
-import { Component } from "./component";
 
 const _module = {
     version: utilities.getVersion(),
@@ -32,9 +37,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "index", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
