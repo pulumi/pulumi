@@ -16,6 +16,7 @@ import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
+import { getStackResource } from "./runtime/state";
 import * as stacklib from "./runtime/stack";
 import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
@@ -1109,10 +1110,4 @@ export function parseResourceReference(ref: string): [string, string] {
     const urn = ref.slice(0, lastSep);
     const id = ref.slice(lastSep+2);
     return [urn, id];
-}
-
-function getStackResource(): ComponentResource | undefined {
-    // break the module import cycle between this module and "./runtime/stack".
-    const stack: typeof stacklib = require("./runtime/stack");
-    return stack.getStackResource();
 }

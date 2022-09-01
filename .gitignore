@@ -12,6 +12,7 @@ coverage.cov
 **/obj/
 coverage/
 venv/
+.envrc
 
 **/.idea/
 *.iml

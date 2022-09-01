@@ -16,7 +16,6 @@ import * as fs from "fs";
 import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as util from "util";
 import * as tsnode from "ts-node";
 import * as ini from "ini";
 import * as semver from "semver";
@@ -26,6 +25,7 @@ import * as opentelemetry from "@opentelemetry/api";
 import * as stack from "../../runtime/stack";
 import * as settings from "../../runtime/settings";
 import * as tracing from "./tracing";
+import * as state from "../../runtime/state";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 

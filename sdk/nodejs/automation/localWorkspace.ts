@@ -23,6 +23,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap, Stack } from "./stack";
+import * as localState from "../runtime/state";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
@@ -65,6 +66,10 @@ export class LocalWorkspace implements Workspace {
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
      */
     envVars: { [key: string]: string };
+    /**
+     * Store in which workspace-dependent state can be stored
+     */
+    store: localState.Store;
     private _pulumiVersion?: semver.SemVer;
     /**
      * The version of the underlying Pulumi CLI/Engine.
@@ -218,6 +223,8 @@ export class LocalWorkspace implements Workspace {
     private constructor(opts?: LocalWorkspaceOptions) {
         let dir = "";
         let envs = {};
+        this.store = new localState.LocalStore();
+        localState.asyncLocalStorage.enterWith(this.store);
 
         if (opts) {
             const { workDir, pulumiHome, program, envVars, secretsProvider } = opts;

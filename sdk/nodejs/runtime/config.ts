@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { getStore } from "./state";
+
 /**
  * configEnvKey is the environment variable key that the language plugin uses to set configuration values.
  */
-const configEnvKey = "PULUMI_CONFIG";
+export const configEnvKey = "PULUMI_CONFIG";
 
 /**
  * configSecretKeysEnvKey is the environment variable key that the language plugin uses to set configuration keys that
  * contain secrets.
  */
-const configSecretKeysEnvKey = "PULUMI_CONFIG_SECRET_KEYS";
+export const configSecretKeysEnvKey = "PULUMI_CONFIG_SECRET_KEYS";
 
 /**
  * allConfig returns a copy of the full config map.
@@ -64,7 +66,8 @@ export function getConfig(k: string): string | undefined {
  * @internal
  */
 export function isConfigSecret(k: string): boolean {
-    const envConfigSecretKeys = process.env[configSecretKeysEnvKey];
+    const { config } = getStore();
+    const envConfigSecretKeys = config[configSecretKeysEnvKey];
     if (envConfigSecretKeys) {
         const envConfigSecretArray = JSON.parse(envConfigSecretKeys);
         if (Array.isArray(envConfigSecretArray)) {
@@ -80,8 +83,9 @@ export function isConfigSecret(k: string): boolean {
  * new program lifetime semantics where program lifetime != module lifetime.
  */
 function parseConfig() {
+    const { config } = getStore();
     const parsedConfig: {[key: string]: string} = {};
-    const envConfig = process.env[configEnvKey];
+    const envConfig = config[configEnvKey];
     if (envConfig) {
         const envObject: {[key: string]: string} = JSON.parse(envConfig);
         for (const k of Object.keys(envObject)) {
@@ -98,10 +102,11 @@ function parseConfig() {
  * new program lifetime semantics where program lifetime != module lifetime.
  */
 function persistConfig(config: {[key: string]: string}, secretKeys?: string[]) {
+    const store = getStore();
     const serializedConfig = JSON.stringify(config);
     const serializedSecretKeys = Array.isArray(secretKeys) ? JSON.stringify(secretKeys) : "[]";
-    process.env[configEnvKey] = serializedConfig;
-    process.env[configSecretKeysEnvKey] = serializedSecretKeys;
+    store.config[configEnvKey] = serializedConfig;
+    store.config[configSecretKeysEnvKey] = serializedSecretKeys;
 }
 
 /**
