@@ -547,7 +547,8 @@ func (runtime projectRuntimeAbout) String() string {
 
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
-func getProjectPluginsSilently(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]workspace.PluginSpec, error) {
+func getProjectPluginsSilently(
+	ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]workspace.PluginSpec, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
