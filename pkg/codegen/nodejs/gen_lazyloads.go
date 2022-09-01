@@ -66,22 +66,10 @@ func (*lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, importP
 		return
 	}
 
-	// Optimize the case of resource files to lazy-load them in
-	// Node; instead of reexporting everything which generates
-	// require() calls.
-	//
-	// Note that we cannot yet do this reliably if the resource
-	// file exports a methods namespace.
-	interfaces := []string{
-		i.resourceArgsInterfaceName,
-	}
-	if i.stateInterfaceName != "" {
-		interfaces = append(interfaces, i.stateInterfaceName)
-	}
 	// Re-export interfaces. This is type-only and does not
 	// generate a require() call.
 	fmt.Fprintf(w, "export { %s } from %s;\n",
-		strings.Join(interfaces, ", "),
+		strings.Join(i.interfaces(), ", "),
 		quotedImport)
 
 	// Re-export class type into the type group, see

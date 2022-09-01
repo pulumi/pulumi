@@ -156,3 +156,13 @@ func lookupNodePackageInfo(pkg *schema.Package) NodePackageInfo {
 	}
 	return nodePackageInfo
 }
+
+func nonEmptyStrings(candidates []string) []string {
+	res := []string{}
+	for _, c := range candidates {
+		if c != "" {
+			res = append(res, c)
+		}
+	}
+	return res
+}

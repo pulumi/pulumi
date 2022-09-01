@@ -49,61 +49,6 @@ type typeDetails struct {
 	usedInFunctionOutputVersionInputs bool // helps decide naming under the tfbridge20 flag
 }
 
-type fileType int
-
-const (
-	resourceFileType fileType = iota
-	functionFileType
-	otherFileType
-)
-
-type fileInfo struct {
-	fileType         fileType
-	pathToNodeModule string
-	resourceFileInfo resourceFileInfo
-	functionFileInfo functionFileInfo
-}
-
-type resourceFileInfo struct {
-	resourceClassName         string
-	resourceArgsInterfaceName string
-	stateInterfaceName        string // may be empty
-	methodsNamespaceName      string // may be empty
-}
-
-type functionFileInfo struct {
-	functionName                           string
-	functionArgsInterfaceName              string // may be empty
-	functionResultInterfaceName            string // may be empty
-	functionOutputVersionName              string // may be empty
-	functionOutputVersionArgsInterfaceName string // may be empty
-}
-
-func (fi functionFileInfo) nonEmpty(candidates []string) []string {
-	res := []string{}
-	for _, c := range candidates {
-		if c != "" {
-			res = append(res, c)
-		}
-	}
-	return res
-}
-
-func (fi functionFileInfo) functions() []string {
-	return fi.nonEmpty([]string{
-		fi.functionName,
-		fi.functionOutputVersionName,
-	})
-}
-
-func (fi functionFileInfo) interfaces() []string {
-	return fi.nonEmpty([]string{
-		fi.functionArgsInterfaceName,
-		fi.functionResultInterfaceName,
-		fi.functionOutputVersionArgsInterfaceName,
-	})
-}
-
 // title capitalizes the first rune in s.
 //
 // Examples:
