@@ -79,16 +79,21 @@ jobs:
           tag: v0.0.32
           cache: enable
       - name: Check out source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
+      - uses: actions/checkout@v3
+        with:
+          repository: pulumi/pulumi-terraform-bridge
+          ref: master
+          path: ./pulumi-terraform-bridge
       - name: Test Downstream
         uses: pulumi/action-test-provider-downstream@v1.0.0
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk,github.com/pulumi/pulumi-terraform-bridge/v3=a79f0cc9709ad6a27b3791bdd63e751c889fac14
+          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk,github.com/pulumi/pulumi-terraform-bridge/v3=pulumi-terraform-bridge
           downstream-name: pulumi-${{ matrix.provider }}
           downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider }}
           use-provider-dir: true
