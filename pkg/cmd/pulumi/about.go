@@ -30,7 +30,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -174,10 +173,10 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	}
 
 	var backend backend.Backend
-	backend, err = currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+	backend, err = nonInteractiveCurrentBackend(ctx)
 	if err != nil {
 		addError(err, "Could not access the backend")
-	} else {
+	} else if backend != nil {
 		var stack currentStackAbout
 		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")

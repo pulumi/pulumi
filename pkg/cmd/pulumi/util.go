@@ -108,6 +108,22 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
+func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) {
+	if backendInstance != nil {
+		return backendInstance, nil
+	}
+
+	url, err := workspace.GetCurrentCloudURL()
+	if err != nil {
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
+	}
+
+	if filestate.IsFileStateBackendURL(url) {
+		return filestate.New(cmdutil.Diag(), url)
+	}
+	return httpstate.Current(ctx, cmdutil.Diag(), url)
+}
+
 func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
