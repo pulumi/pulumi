@@ -49,6 +49,7 @@ export function start(destinationUrl: string) {
     resource: resource,
   });
   
+  // TODO: Experiment: Use provided tracing URI instead.
   // Configure span processor to send spans to the exporter
   // exporter = new ZipkinExporter({url: destinationUrl});
   exporter = new ZipkinExporter();
@@ -82,8 +83,10 @@ export async function stop() {
     .shutdown()
     .then(() => {
       log.debug("Tracing exporter successful.");
+      process.exit(0);
     }).catch( e => {
       log.error("Tracing exporter unsuccessful. Error: ", e);
+      process.exit(0);
     });
 }
 
