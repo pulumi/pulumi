@@ -1,0 +1,112 @@
+name: Info
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      is-snapshot:
+        required: false
+        default: true
+        description: "Is this a snapshot release?"
+        type: boolean
+    outputs:
+      version:
+        description: "Version to produce"
+        value: ${{ jobs.info.outputs.version }}
+      next-version:
+        description: "Next version to produce"
+        value: ${{ jobs.info.outputs.next-version }}
+      release-notes:
+        description: "Release notes for CHANGELOG"
+        value: ${{ jobs.info.outputs.release-notes }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  info:
+    name: gather
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: "${{ fromJSON(steps.version.outputs.version) }}"
+      next-version: "${{ fromJSON(steps.version.outputs.next-version) }}"
+      release-notes: "${{ fromJSON(steps.notes.outputs.release-notes) }}"
+    env:
+      GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Print rate limits
+        continue-on-error: true
+        run: gh api -i repos/${{ github.repository }}/releases/latest
+      - name: Compute version
+        id: version
+        env:
+          IS_SNAPSHOT: ${{ inputs.is-snapshot }}
+        run: |
+          PLAIN_VERSION="$(./.github/scripts/get-version)"
+          PULUMI_VERSION="${PLAIN_VERSION}"
+
+          if [ "$IS_SNAPSHOT" = "true" ]; then
+            TIMESTAMP=$(date +%s)
+            PULUMI_VERSION="${PULUMI_VERSION}-alpha.$TIMESTAMP"
+          fi
+
+          ./.github/scripts/set-output version "${PULUMI_VERSION}"
+
+          NEXT_VERSION="$(.github/scripts/get-next-version "${PLAIN_VERSION}")"
+          ./.github/scripts/set-output next-version "${NEXT_VERSION}"
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - name: Extract release notes
+        id: notes
+        run: |
+          PREVIOUS_VERSION="$(./.github/scripts/get-previous-version)"
+          CHANGELOG="$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "${{ fromJSON(steps.version.outputs.version) }}")"
+          ./.github/scripts/set-output release-notes "${CHANGELOG}"
+      - name: Check version
+        if: (!inputs.is-snapshot)
+        run: |
+          PULUMI_VERSION="${{ fromJSON(steps.version.outputs.version) }}"
+
+          ./.github/scripts/update-versions "${PULUMI_VERSION}"
+
+          ERROR=false
+          if [ -n "$(git status --porcelain)" ]; then
+            ERROR=true
+            echo "::error::Versions in files do not match expected version ${PULUMI_VERSION}."
+            echo "::group::git diff"
+            git diff
+            echo "::endgroup::"
+          fi
+
+          if EXISTING_RELEASE="$(gh release view "v${PULUMI_VERSION}")"; then
+            echo "::error::This version has already been released!"
+            echo "::group::Release ${PULUMI_VERSION}"
+            echo "$EXISTING_RELEASE"
+            echo "::endgroup::"
+          fi
+
+          if $ERROR; then
+            exit 1;
+          fi

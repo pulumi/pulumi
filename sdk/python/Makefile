@@ -1,7 +1,7 @@
 PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
-VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version))
-PYPI_VERSION 	 := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language python))
+VERSION          := $(shell ../../scripts/pulumi-version.sh)
+PYPI_VERSION 	   := $(shell ../../scripts/pulumi-version.sh python)
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -88,9 +88,13 @@ brew::
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
-publish:: build_package
+publish::
+	for file in ../../artifacts/sdk-python-*.whl; do \
+		basename=$$(basename $${file}); \
+		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
+	done
 	twine upload \
 	-u pulumi -p "${PYPI_PASSWORD}" \
-        "env/src/dist"/*.whl \
-        --skip-existing \
-        --verbose
+		../../artifacts/*.whl \
+		--skip-existing \
+		--verbose
