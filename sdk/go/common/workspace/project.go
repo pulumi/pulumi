@@ -144,38 +144,44 @@ type Project struct {
 }
 
 func ValidateProject(raw interface{}) error {
-	var obj map[string]interface{}
-	var ok bool
-	// raw might be a map[interface{}]interface{} if parsed by yaml, try to convert to map[string]
-	if yamlObj, ok := raw.(map[interface{}]interface{}); ok {
-		// Cast any map[interface{}] to map[string]
-		var cast func(value interface{}) (interface{}, error)
-		cast = func(value interface{}) (interface{}, error) {
-			if objMap, ok := value.(map[interface{}]interface{}); ok {
-				strMap := make(map[string]interface{})
-				for key, value := range objMap {
-					if strKey, ok := key.(string); ok {
-						innerValue, err := cast(value)
-						if err != nil {
-							return nil, err
-						}
-						strMap[strKey] = innerValue
-					} else {
-						return nil, fmt.Errorf("expected only string keys, got '%s'", key)
+	// Cast any map[interface{}] from the yaml decoder to map[string]
+	var cast func(value interface{}) (interface{}, error)
+	cast = func(value interface{}) (interface{}, error) {
+		if objMap, ok := value.(map[interface{}]interface{}); ok {
+			strMap := make(map[string]interface{})
+			for key, value := range objMap {
+				if strKey, ok := key.(string); ok {
+					innerValue, err := cast(value)
+					if err != nil {
+						return nil, err
 					}
+					strMap[strKey] = innerValue
+				} else {
+					return nil, fmt.Errorf("expected only string keys, got '%s'", key)
 				}
-				return strMap, nil
 			}
-			return value, nil
+			return strMap, nil
+		} else if objArray, ok := value.([]interface{}); ok {
+			strArray := make([]interface{}, len(objArray))
+			for key, value := range objArray {
+				innerValue, err := cast(value)
+				if err != nil {
+					return nil, err
+				}
+				strArray[key] = innerValue
+			}
+			return strArray, nil
 		}
-		result, err := cast(yamlObj)
-		if err != nil {
-			return err
-		}
-		// This cast should be safe because we passed a `map[interface{}]interface{}` to cast and that will
-		// return a `map[string]interface{}` for that input.
-		obj = result.(map[string]interface{})
-	} else if obj, ok = raw.(map[string]interface{}); !ok {
+		return value, nil
+	}
+	result, err := cast(raw)
+	if err != nil {
+		return err
+	}
+
+	var ok bool
+	var obj map[string]interface{}
+	if obj, ok = result.(map[string]interface{}); !ok {
 		return fmt.Errorf("expected an object")
 	}
 
@@ -192,7 +198,6 @@ func ValidateProject(raw interface{}) error {
 	}
 
 	// Let everything else be caught by jsonschema
-	var err error
 	if err = ProjectSchema.Validate(obj); err == nil {
 		return nil
 	}
