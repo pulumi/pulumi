@@ -31,9 +31,10 @@ import (
 
 func newSchemaExtractCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "extract",
-		Args:  cmdutil.ExactArgs(2),
-		Short: "Extract a Pulumi package schema from a plugin",
+		Use:    "extract",
+		Args:   cmdutil.ExactArgs(2),
+		Hidden: !hasDebugCommands(),
+		Short:  "Extract a Pulumi package schema from a plugin",
 		Long: `Extract a Pulumi package schema from a resource plugin.
 
 Resolves the specified resource plugin and extracts its schema spec
