@@ -54,13 +54,14 @@ func TestProjectValidation(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
 
-	// Test successs
+	// Test success
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
 	assert.NoError(t, err)
 }
 
 func TestProjectUnmarshal(t *testing.T) {
+	t.Parallel()
 	var proj Project
 
 	// Test wrong type

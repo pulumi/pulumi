@@ -145,12 +145,12 @@ type Project struct {
 
 func (proj *Project) unmarshal(raw map[string]interface{}) error {
 	// Couple of manual errors to match Validate
-	if name, ok := raw["name"]; !ok {
+	name, ok := raw["name"]
+	if !ok {
 		return errors.New("project is missing a 'name' attribute")
-	} else {
-		if strName, ok := name.(string); !ok || strName == "" {
-			return errors.New("project is missing a non-empty string 'name' attribute")
-		}
+	}
+	if strName, ok := name.(string); !ok || strName == "" {
+		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
 	if _, ok := raw["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
