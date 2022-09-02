@@ -17,8 +17,10 @@ package workspace
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -39,6 +41,7 @@ import (
 	"github.com/djherbis/times"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -118,39 +121,6 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 		})
 	}
 	return result, nil
-}
-
-// MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
-type MissingError struct {
-	// Info contains information about the plugin that was not found.
-	Info PluginInfo
-	// includeAmbient is true if we search $PATH for this plugin
-	includeAmbient bool
-}
-
-// NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info PluginInfo, includeAmbient bool) error {
-	return &MissingError{
-		Info:           info,
-		includeAmbient: includeAmbient,
-	}
-}
-
-func (err *MissingError) Error() string {
-	includePath := ""
-	if err.includeAmbient {
-		includePath = " or on your $PATH"
-	}
-
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version, includePath)
-	}
-
-	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s, "+
-		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
-		err.Info.Kind, err.Info.Name, includePath)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -506,6 +476,80 @@ func (source *fallbackSource) Download(
 	return pulumi.Download(version, opSy, arch, getHTTPResponse)
 }
 
+type checksumError struct {
+	expected []byte
+	actual   []byte
+}
+
+func (err *checksumError) Error() string {
+	return fmt.Sprintf("invalid checksum, expected %x, actual %x", err.expected, err.actual)
+}
+
+// checksumSource will validate that the archive downloaded from the inner source matches a checksum
+type checksumSource struct {
+	source   PluginSource
+	checksum map[string][]byte
+}
+
+func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksumSource {
+	return &checksumSource{
+		source:   source,
+		checksum: checksum,
+	}
+}
+
+func (source *checksumSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	return source.source.GetLatestVersion(getHTTPResponse)
+}
+
+type checksumReader struct {
+	checksum []byte
+	io       io.ReadCloser
+	hasher   hash.Hash
+}
+
+func (reader *checksumReader) Read(p []byte) (int, error) {
+	n, err := reader.io.Read(p)
+	if err != nil {
+		if err == io.EOF {
+			// Check the checksum matches
+			actualChecksum := reader.hasher.Sum(nil)
+			if !bytes.Equal(reader.checksum, actualChecksum) {
+				return n, &checksumError{expected: reader.checksum, actual: actualChecksum}
+			}
+		}
+		return n, err
+	}
+
+	m, err := reader.hasher.Write(p[0:n])
+	contract.AssertNoError(err)
+	contract.Assert(m == n)
+
+	return n, nil
+}
+
+func (reader *checksumReader) Close() error {
+	return reader.io.Close()
+}
+
+func (source *checksumSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+
+	checksum := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
+	response, length, err := source.source.Download(version, opSy, arch, getHTTPResponse)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	return &checksumReader{
+		checksum: checksum,
+		hasher:   sha256.New(),
+		io:       response,
+	}, length, nil
+}
+
 // Information about a locally installed plugin specified by the project.
 type ProjectPlugin struct {
 	Name    string          // the simple name of the plugin.
@@ -530,6 +574,9 @@ type PluginSpec struct {
 	Version           *semver.Version // the plugin's semantic version, if present.
 	PluginDownloadURL string          // an optional server to use when downloading this plugin.
 	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+
+	// if set will be used to validate the plugin downloaded matches. This is keyed by "$os-$arch", e.g. "linux-x64".
+	Checksums map[string][]byte
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -711,28 +758,39 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 }
 
 func (spec PluginSpec) GetSource() (PluginSource, error) {
-	// The plugin has a set URL use that.
-	if spec.PluginDownloadURL != "" {
-		// Support schematised URLS if the URL has a "schema" part we recognize
-		url, err := url.Parse(spec.PluginDownloadURL)
-		if err != nil {
-			return nil, err
+	baseSource, err := func() (PluginSource, error) {
+		// The plugin has a set URL use that.
+		if spec.PluginDownloadURL != "" {
+			// Support schematised URLS if the URL has a "schema" part we recognize
+			url, err := url.Parse(spec.PluginDownloadURL)
+			if err != nil {
+				return nil, err
+			}
+
+			if url.Scheme == "github" {
+				return newGithubSource(url, spec.Name, spec.Kind)
+			}
+
+			return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
 		}
 
-		if url.Scheme == "github" {
-			return newGithubSource(url, spec.Name, spec.Kind)
+		// If the plugin name matches an override, download the plugin from the override URL.
+		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
+			return newPluginURLSource(spec.Name, spec.Kind, url), nil
 		}
 
-		return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
+		// Use our default fallback behaviour of github then get.pulumi.com
+		return newFallbackSource(spec.Name, spec.Kind), nil
+	}()
+
+	if err != nil {
+		return nil, err
 	}
 
-	// If the plugin name matches an override, download the plugin from the override URL.
-	if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
-		return newPluginURLSource(spec.Name, spec.Kind, url), nil
+	if len(spec.Checksums) != 0 {
+		return newChecksumSource(baseSource, spec.Checksums), nil
 	}
-
-	// Use our default fallback behaviour of github then get.pulumi.com
-	return newFallbackSource(spec.Name, spec.Kind), nil
+	return baseSource, nil
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
@@ -950,11 +1008,17 @@ func DownloadToFile(
 				return "", writeErr
 			}
 
-			if readErr != nil && attempt >= 5 {
+			// If the readErr is a checksum error don't retry
+			if _, ok := readErr.(*checksumError); ok {
+				return "", readErr
+			}
+			// Don't attempt more than 5 times
+			attempts := 5
+			if readErr != nil && attempt >= attempts {
 				return "", readErr
 			}
 			if retry != nil {
-				retry(readErr, attempt+1, 5, delay)
+				retry(readErr, attempt+1, attempts, delay)
 			}
 			time.Sleep(delay)
 			delay = delay * 2
@@ -971,6 +1035,33 @@ func DownloadToFile(
 	}
 	return reader, nil
 
+}
+
+// InstallPluginError is returned by functions that are unable to download and install a plugin
+type InstallPluginError struct {
+	// The name of the plugin
+	Name string
+	// The kind of the plugin
+	Kind PluginKind
+	// The requested version of the plugin, if any.
+	Version *semver.Version
+	// the underlying error that occurred during the download or install
+	UnderlyingError error
+}
+
+func (err *InstallPluginError) Error() string {
+	if err.Version != nil {
+		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+			"at version v%[3]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
+			"Underlying error: %[4]s",
+			err.Kind, err.Name, err.Version.String(), err.UnderlyingError.Error())
+	}
+
+	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s', "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`.\n"+
+		"Underlying error: %[3]s",
+		err.Kind, err.Name, err.UnderlyingError.Error())
 }
 
 type PluginContent interface {
@@ -1389,6 +1480,62 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 	return path, err
 }
 
+func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *semver.Version) error {
+	pluginSpec := PluginSpec{
+		Kind: kind,
+		Name: name,
+	}
+
+	if version == nil {
+		latestVersion, err := pluginSpec.GetLatestVersion()
+		if err != nil {
+			return &InstallPluginError{
+				Name:            name,
+				Kind:            kind,
+				UnderlyingError: err,
+			}
+		}
+
+		version = latestVersion
+	}
+
+	pluginSpec.Version = version
+
+	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		header := fmt.Sprintf("Downloading plugin %s v%s", pluginSpec.Name, version.String())
+		return ReadCloserProgressBar(stream, size, header, colors.Always)
+	}
+
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		cmdutil.Diag().Warningf(
+			diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
+	}
+
+	downloadedFile, err := DownloadToFile(pluginSpec, withProgress, retry)
+	if err != nil {
+		downloadError := fmt.Errorf("error downloading plugin %s to file: %w", pluginSpec.Name, err)
+		return &InstallPluginError{
+			Name:            name,
+			Kind:            kind,
+			Version:         version,
+			UnderlyingError: downloadError,
+		}
+	}
+
+	logging.V(1).Infof("installing plugin %s", pluginSpec.Name)
+	pluginInstallError := pluginSpec.Install(downloadedFile, false)
+	if pluginInstallError != nil {
+		return &InstallPluginError{
+			Name:            name,
+			Kind:            kind,
+			Version:         version,
+			UnderlyingError: pluginInstallError,
+		}
+	}
+
+	return nil
+}
+
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
@@ -1530,11 +1677,17 @@ func getPluginInfoAndPath(
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 		if err != nil {
-			return nil, "", NewMissingError(PluginInfo{
-				Name:    name,
-				Kind:    kind,
-				Version: version,
-			}, includeAmbient)
+			// could not find a compatible plugin
+			// this could be due to the fact that a transitive version of a plugin is required
+			// which are not picked up by initial pass of required plugin installations
+			// so instead of reporting an error, we just install that required plugin
+			if err = attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
+				return nil, "", err
+			}
+
+			// downloaded the missing plugin successfully
+			// restart the plugin retrieval
+			return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 		}
 		match = &candidate
 	} else {
@@ -1570,11 +1723,13 @@ func getPluginInfoAndPath(
 		return match, matchPath, nil
 	}
 
-	return nil, "", NewMissingError(PluginInfo{
-		Name:    name,
-		Kind:    kind,
-		Version: version,
-	}, includeAmbient)
+	if err := attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
+		return nil, "", err
+	}
+
+	// downloaded the missing plugin successfully
+	// restart the plugin retrieval
+	return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.

@@ -195,7 +195,8 @@ class LanghostTest(unittest.TestCase):
                  expected_resource_count=None,
                  expected_error=None,
                  expected_stderr_contains=None,
-                 expected_bail=None):
+                 expected_bail=None,
+                 organization=None):
         """
         Runs a language host test. The basic flow of a language host test is that
         a test is launched using the real language host while mocking out the resource
@@ -229,7 +230,7 @@ class LanghostTest(unittest.TestCase):
                 grpc.channel_ready_future(channel).result()
                 stub = language_pb2_grpc.LanguageRuntimeStub(channel)
                 result = self._run_program(stub, monitor, project, stack,
-                                           program, pwd, args, config, dryrun)
+                                           program, pwd, args, config, dryrun, organization)
 
             # Tear down the language host process we just spun up.
             langhost.process.kill()
@@ -343,12 +344,13 @@ class LanghostTest(unittest.TestCase):
             raise
 
     def _run_program(self, stub, monitor, project, stack, program, pwd, args,
-                     config, dryrun):
+                     config, dryrun, organization):
         args = {}
         args["monitor_address"] = "localhost:%d" % monitor.port
         args["project"] = project or "project"
         args["stack"] = stack or "stack"
         args["program"] = program
+        args["organization"] = organization
         if pwd:
             args["pwd"] = pwd
 

@@ -17,10 +17,12 @@ namespace Pulumi.Tests.Mocks
             return Task.FromResult<object>(args);
         }
 
+        public static string InstancePublicIpAddress => "203.0.113.12";
+
         public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) =>
             args.Type switch
             {
-                "aws:ec2/instance:Instance" => Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> { { "publicIp", "203.0.113.12" }, })),
+                "aws:ec2/instance:Instance" => Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> { { "publicIp", InstancePublicIpAddress  }, })),
                 "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
                 _ => throw new Exception($"Unknown resource {args.Type}")
             };

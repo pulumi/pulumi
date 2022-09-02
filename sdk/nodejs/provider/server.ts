@@ -481,7 +481,7 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
     }
 
     settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-        req.getMonitorendpoint(), req.getDryrun());
+        req.getMonitorendpoint(), req.getDryrun(), req.getOrganization());
 
     const pulumiConfig: {[key: string]: string} = {};
     const rpcConfig = req.getConfigMap();

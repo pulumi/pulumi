@@ -142,6 +142,7 @@ type RunInfo struct {
 	DryRun           bool
 	MonitorAddr      string
 	EngineAddr       string
+	Organization     string
 	Mocks            MockResourceMonitor
 	getPlugins       bool
 	engineConn       *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.

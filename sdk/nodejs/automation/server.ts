@@ -55,7 +55,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             }
         }
         // these are globals and we need to clean up after ourselves
-        settings.resetOptions("", "", -1, "", "", false);
+        settings.resetOptions("", "", -1, "", "", false, "");
     }
 
     getRequiredPlugins(call: any, callback: any): void {
@@ -77,7 +77,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             const engineAddr = args && args.length > 0 ? args[0] : "";
 
             settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                req.getMonitorAddress(), req.getDryrun());
+                req.getMonitorAddress(), req.getDryrun(), req.getOrganization());
 
             const config: {[key: string]: string} = {};
             for (const [k, v] of req.getConfigMap()?.entries() || []) {
