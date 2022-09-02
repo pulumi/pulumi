@@ -2,8 +2,9 @@
 
 set -euo pipefail
 
-GENERIC_VERSION="$(pulumictl get version --language generic -o)"
-echo GENERIC_VERSION="$GENERIC_VERSION"
-echo PYPI_VERSION="$(pulumictl get version --language python)"
-echo DOTNET_VERSION="$(pulumictl get version --language dotnet)"
-echo GORELEASER_CURRENT_TAG="v$GENERIC_VERSION"
+SCRIPTDIR=$(dirname "$0")
+PULUMI_VERSION=$("${SCRIPTDIR}/pulumi-version.sh")
+echo GENERIC_VERSION="${PULUMI_VERSION}"
+echo PYPI_VERSION="$("${SCRIPTDIR}/pulumi-version.sh" python)"
+echo DOTNET_VERSION="$("${SCRIPTDIR}/pulumi-version.sh" dotnet)"
+echo GORELEASER_CURRENT_TAG="v${PULUMI_VERSION}"
