@@ -44,3 +44,7 @@ brew::
 
 lint:: golangci-lint.ensure
 	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m
+
+publish:
+	git tag sdk/v${VERSION}
+	git push origin sdk/v${VERSION}
