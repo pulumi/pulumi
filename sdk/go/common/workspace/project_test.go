@@ -106,7 +106,7 @@ func TestProjectLoadJSON(t *testing.T) {
 	expected = []string{
 		"2 errors occurred:",
 		"* #/main: expected string, but got object",
-		"* #/backend: expected string, but got number"}
+		"* #/backend: expected object, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -170,7 +170,7 @@ func TestProjectLoadYAML(t *testing.T) {
 	expected = []string{
 		"2 errors occurred:",
 		"* #/main: expected string, but got object",
-		"* #/backend: expected string, but got number"}
+		"* #/backend: expected object, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}

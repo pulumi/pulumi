@@ -55,7 +55,14 @@
         },
         "backend": {
             "description": "Backend of the project.",
-            "type": "string"
+            "type": "object",
+            "properties": {
+                "url": {
+                    "description": "URL is optional field to explicitly set backend url",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
         },
         "options": {
             "description": "Additional project options.",
