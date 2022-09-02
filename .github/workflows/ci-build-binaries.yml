@@ -1,0 +1,114 @@
+name: Build Binaries
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      os:
+        required: true
+        description: "Target OS (i.e.: GOOS)"
+        type: string
+      arch:
+        required: true
+        description: "Target Architectur (i.e.: GOARCH)"
+        type: string
+      build-platform:
+        required: false
+        default: ubuntu-latest
+        description: 'Build platform (i.e.: runs-on) for job'
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      go-version:
+        description: 'Version of the Go toolchain for the build'
+        default: '1.19.x'
+        required: false
+        type: string
+      enable-coverage:
+        description: 'Builds executables with coverage analysis enabled'
+        default: false
+        required: false
+        type: boolean
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_VERSION: ${{ inputs.version }}
+
+jobs:
+  build:
+    name: ${{ inputs.os }}-${{ inputs.arch }}
+    runs-on: ${{ inputs.build-platform }}
+
+    env:
+      PULUMI_VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: "Windows cache workaround"
+        # https://github.com/actions/cache/issues/752#issuecomment-1222415717
+        if: runner.os == 'Windows'
+        run: echo 'C:\Program Files\Git\usr\bin' > "$GITHUB_PATH"
+      - name: Enable code coverage
+        if: inputs.enable-coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - name: Configure Go cache key for builds # Include target OS and arch
+        env:
+          CACHE_KEY: "${{ inputs.os }}-${{ inputs.arch }}"
+        run: echo "$CACHE_KEY" >> .gocache.tmp
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - name: Setup versioning env vars
+        run: |
+          ./scripts/versions.sh | tee "$GITHUB_ENV"
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          install-only: true
+          distribution: goreleaser-pro
+      - uses: actions/download-artifact@v2
+        with:
+          name: build-external-deps
+          path: bin
+      - run: find bin
+      - name: Package
+        shell: bash
+        env:
+          GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+        run: |
+          set -euxo pipefail
+          # Spurious, this command requires piping via stdin
+          # shellcheck disable=SC2002
+          cat .goreleaser.yml \
+            | go run github.com/t0yv0/goreleaser-filter@v0.3.0 -goos ${{ inputs.os }} -goarch ${{ inputs.arch }} \
+            | goreleaser release -f - -p 5 --skip-validate --rm-dist --snapshot
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifacts-cli-${{ inputs.os }}-${{ inputs.arch }}
+          retention-days: 1
+          path: |
+            goreleaser/*.tar.gz
+            goreleaser/*.zip
