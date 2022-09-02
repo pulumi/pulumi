@@ -1,0 +1,148 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      lint:
+        required: false
+        default: true
+        description: "Whether to run lints"
+        type: boolean
+      unit-test:
+        required: false
+        default: true
+        description: "Whether to run unit tests"
+        type: boolean
+      integration-test:
+        required: false
+        default: true
+        description: "Whether to run integration tests"
+        type: boolean
+      test-platforms:
+        required: false
+        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+        description: "Platforms to test"
+        type: string
+      macos-build-platform:
+        required: false
+        default: macos-latest
+        description: "Platform to use to build macOS binaries"
+        type: string
+
+jobs:
+  lint:
+    name: lint
+    if: inputs.lint
+    uses: ./.github/workflows/ci-lint.yml
+    with:
+      ref: ${{ inputs.ref }}
+
+  workaround:
+    # As of 2022-09-01, using inputs in matrices below result in "waiting for
+    # pending jobs" or failures starting them. This job is a workaround to avoid
+    # that.
+    #
+    # See: https://github.com/pulumi/pulumi/actions/runs/2976429676
+    #
+    # By introducing this workaround node in the evaluator, the matrix jobs below succeed.
+    name: workaround
+    runs-on: ubuntu-latest
+    outputs:
+      test-platforms: ${{ inputs.test-platforms }}
+      macos-build-platform: ${{ inputs.macos-build-platform }}
+    steps:
+      - run: echo "OK"
+
+  # Tests that can run concurrently with builds
+  unit-test:
+    name: unit test
+    needs: [workaround]
+    if: inputs.unit-test
+    strategy:
+      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
+      matrix:
+        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
+    uses: ./.github/workflows/ci-unit-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit
+
+  build-goreleaser-prep:
+    name: goreleaser prep
+    uses: ./.github/workflows/ci-build-goreleaser-prep.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets: inherit
+
+  build-binaries:
+    name: build binaries
+    needs: [workaround, build-goreleaser-prep]
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: ${{ contains(needs.workaround.outputs.macos-build-platform, 'macos-latest') }}
+      matrix:
+        target:
+          - os: linux
+            arch: amd64
+            build-platform: ubuntu-latest
+          - os: linux
+            arch: arm64
+            build-platform: ubuntu-latest
+          - os: windows
+            arch: amd64
+            build-platform: ubuntu-latest
+          - os: windows
+            arch: arm64
+            build-platform: ubuntu-latest
+          - os: darwin
+            arch: amd64
+            build-platform: ${{ needs.workaround.outputs.macos-build-platform }}
+          - os: darwin
+            arch: arm64
+            build-platform: ${{ needs.workaround.outputs.macos-build-platform }}
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.target.os }}
+      arch: ${{ matrix.target.arch }}
+      build-platform: ${{ matrix.target.build-platform }}
+    secrets: inherit
+
+  build-sdks:
+    name: build SDKs
+    uses: ./.github/workflows/ci-build-sdks.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  # Tests that can depend on builds
+  integration-test:
+    name: integration test
+    if: inputs.integration-test
+    needs: [workaround, build-binaries, build-sdks]
+    strategy:
+      # ignore yaml schema for this value, the expression is a boolean:
+      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
+      matrix:
+        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
+    uses: ./.github/workflows/ci-integration-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit
