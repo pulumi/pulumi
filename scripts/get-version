@@ -8,7 +8,7 @@ fi
 
 ## PLEASE NOTE: This script is used primarily for use with homebrew and the "make brew" build target
 ## the logic to determine the version of pulumi at build time is now controlled via
-## https://github.com/pulumi/pulumictl and the `pulumictl get version` command
+## scripts/pulumi-version.sh and the PULUMI_VERSION environment variable.
 
 # Allow version to be set manually when building outside of git repo
 if [ -n "${PULUMI_VERSION+x}" ]; then
