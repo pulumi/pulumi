@@ -1,0 +1,63 @@
+name: Merge
+
+permissions:
+  # To create a draft release.
+  contents: write
+
+on:
+  push:
+    branches:
+      - staging
+      - trying
+    tags-ignore:
+      - "*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  info:
+    name: info
+    uses: ./.github/workflows/ci-info.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+    secrets: inherit
+
+  ci:
+    name: CI
+    needs: [info]
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+
+  prepare-release:
+    name: prepare
+    if: github.ref_name == 'staging' # only on real merges
+    needs: [info, ci]
+    uses: ./.github/workflows/ci-prepare-release.yml
+    permissions:
+      contents: write
+    with:
+      ref: ${{ github.ref }}
+      version: ${{ needs.info.outputs.version }}
+      release-notes: ${{ needs.info.outputs.release-notes }}
+      project: ${{ github.repository }}
+    secrets: inherit
+
+  bors-ok:
+    name: bors-ok
+    needs: [prepare-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
