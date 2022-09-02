@@ -88,20 +88,21 @@
                 "config": {
                     "description": "Config to apply to each stack in the project.",
                     "type": "object",
-                    "properties": {
-                        "description": {
-                            "description": "Description of the config.",
-                            "type": "string"
-                        },
-                        "default": {
-                            "description": "Default value of the config."
-                        },
-                        "secret": {
-                            "description": "Boolean indicating if the configuration is labeled as a secret.",
-                            "type": "boolean"
+                    "additionalProperties": {
+                        "properties": {
+                            "description": {
+                                "description": "Description of the config.",
+                                "type": "string"
+                            },
+                            "default": {
+                                "description": "Default value of the config."
+                            },
+                            "secret": {
+                                "description": "Boolean indicating if the configuration is labeled as a secret.",
+                                "type": "boolean"
+                            }
                         }
-                    },
-                    "additionalProperties": false
+                    }
                 }
             },
             "additionalProperties": false
