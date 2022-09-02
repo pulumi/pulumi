@@ -206,6 +206,8 @@ type ProgramTestOptions struct {
 	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
+	// RequireService indicates that the test must be run against the Pulumi Service
+	RequireService bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
@@ -377,7 +379,9 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
 // We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
 func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+
+	if opts.RequireService && owner != "" {
 		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
 	}
 
@@ -673,25 +677,25 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
 // binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   (+) yarn run build
-//   pulumi init
-//   (*) pulumi login
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi up
-//   pulumi stack export --file stack.json
-//   pulumi stack import --file stack.json
-//   pulumi preview (expected to be empty)
-//   pulumi up (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//	yarn install
+//	yarn link <each opts.Depencies>
+//	(+) yarn run build
+//	pulumi init
+//	(*) pulumi login
+//	pulumi stack init integrationtesting
+//	pulumi config set <each opts.Config>
+//	pulumi config set --secret <each opts.Secrets>
+//	pulumi preview
+//	pulumi up
+//	pulumi stack export --file stack.json
+//	pulumi stack import --file stack.json
+//	pulumi preview (expected to be empty)
+//	pulumi up (expected to be empty)
+//	pulumi destroy --yes
+//	pulumi stack rm --yes integrationtesting
 //
-//   (*) Only if PULUMI_ACCESS_TOKEN is set.
-//   (+) Only if `opts.RunBuild` is true.
+//	(*) Only if PULUMI_ACCESS_TOKEN is set.
+//	(+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -728,6 +732,9 @@ type ProgramTester struct {
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	stackName := opts.GetStackName()
 	maxStepTries := 1
+	if os.Getenv("PULUMI_TEST_USE_SERVICE") == "true" {
+		opts.RequireService = true
+	}
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
@@ -736,6 +743,23 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipExportImport = true
 		opts.SkipEmptyPreviewUpdate = true
 	}
+	if opts.RequireService {
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Fatalf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+	} else {
+		tempDir, err := os.MkdirTemp("", "")
+		if err != nil {
+			t.Fatalf("Failed to create temporary directory: %v", err)
+		}
+		t.Cleanup(func() { os.RemoveAll(tempDir) })
+
+		opts.Env = append(opts.Env,
+			fmt.Sprintf("PULUMI_BACKEND_URL=file://%v", tempDir),
+		)
+	}
+	opts.Env = append(opts.Env, "GOWORK=off")
+
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,

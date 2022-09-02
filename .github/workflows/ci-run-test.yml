@@ -64,6 +64,8 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # Release builds use the service, PR checks and snapshots will use the local backend if possible.
+  PULUMI_TEST_USE_SERVICE: ${{ contains(inputs.version, '-') }}
   PYTHON: python
   TESTPARALLELISM: 5
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
