@@ -9,8 +9,11 @@
 - [codegen/nodejs] Support lazy-loading Node modules.
   [#10538](https://github.com/pulumi/pulumi/pull/10538)
 
-- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against 
+- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against
   the Pulumi Service backend.
   [#10558](https://github.com/pulumi/pulumi/pull/10558)
 
 ### Bug Fixes
+
+- [cli] Fix the "no Pulumi.yaml project file found" error message.
+  [#10592](https://github.com/pulumi/pulumi/pull/10592)
