@@ -4,6 +4,10 @@ name: Download Pulumi Cron
   schedule:
     - cron: 0 8 * * *
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   macos-homebrew-install:
     name: Install Pulumi with Homebrew on macOS
@@ -16,8 +20,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
@@ -28,13 +32,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - run: curl -fsSL https://get.pulumi.com | sh
-      - run: echo "/Users/runner/.pulumi/bin" >> $GITHUB_PATH
+      - run: echo "/Users/runner/.pulumi/bin" >> "${GITHUB_PATH}"
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
-      - run: which pulumi
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+      - run: command -v pulumi
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
@@ -45,7 +49,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Direct Download
-        run: curl -L -o pulumi.tar.gz https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-darwin-x64.tar.gz
+        run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-darwin-x64.tar.gz"
       - run: ls -la
   linux-direct-install:
     name: Install Pulumi via script on Ubuntu
@@ -54,13 +58,13 @@ jobs:
       - name: Remove existing version
         run: sudo rm /usr/local/bin/pulumi
       - run: curl -fsSL https://get.pulumi.com | sh
-      - run: echo "/home/runner/.pulumi/bin" >> $GITHUB_PATH
+      - run: echo "/home/runner/.pulumi/bin" >> "${GITHUB_PATH}"
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
-      - run: which pulumi
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+      - run: command -v pulumi
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
@@ -71,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Direct Download
-        run: curl -L -o pulumi.tar.gz https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-linux-x64.tar.gz
+        run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-linux-x64.tar.gz"
       - run: ls -la
   windows-choco-install:
     name: Install Pulumi with Chocolatey on Windows
@@ -83,8 +87,8 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
@@ -96,14 +100,14 @@ jobs:
     steps:
       - run: '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString("https://get.pulumi.com/install.ps1")) && SET \"PATH=%PATH%;%USERPROFILE%\.pulumi\bin\"'
         shell: pwsh
-      - run: echo "C:\Users\runneradmin\.pulumi\bin" >> $GITHUB_PATH
+      - run: echo "C:/Users/runneradmin/.pulumi/bin" >> "${GITHUB_PATH}"
         shell: bash
       - name: Pulumi Version Details
         id: vars
         shell: bash
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
@@ -135,8 +139,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo ::set-output name=installed-version::$(pulumi version)
-          echo ::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
       - name: Error if incorrect version found
         if: steps.vars.outputs.expected-version != steps.vars.outputs.installed-version
         run: |
