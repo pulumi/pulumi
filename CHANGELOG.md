@@ -147,7 +147,7 @@ CHANGELOG
 
 - [yaml] [Updates Pulumi YAML to v0.5.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.4)
 
-- [java] [Updates Pulumi Java to v0.5.3](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.3)
+- [java] [Updates Pulumi Java to v0.5.4](https://github.com/pulumi/pulumi-java/releases/tag/v0.5.4)
 
 - [cli] `pulumi about` now queries language plugins for information, rather than having hardcoded language logic.
   [#10392](https://github.com/pulumi/pulumi/pull/10392)
