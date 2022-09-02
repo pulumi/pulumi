@@ -2,8 +2,10 @@ package workspace
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -60,116 +62,122 @@ func TestProjectValidation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestProjectUnmarshalJSON(t *testing.T) {
+func TestProjectLoadJSON(t *testing.T) {
 	t.Parallel()
-	var proj Project
+
+	writeAndLoad := func(str string) (*Project, error) {
+		tmp, err := ioutil.TempFile("", "*.json")
+		assert.NoError(t, err)
+		path := tmp.Name()
+		err = ioutil.WriteFile(path, []byte(str), 0777)
+		assert.NoError(t, err)
+		return LoadProject(path)
+	}
 
 	// Test wrong type
-	data := "\"hello\""
-	err := json.Unmarshal([]byte(data), &proj)
-	assert.Equal(t, "expected a JSON object", err.Error())
+	_, err := writeAndLoad("\"hello  \"")
+	assert.Equal(t, "expected an object", err.Error())
 
 	// Test lack of name
-	data = "{}"
-	err = json.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("{}")
 	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
 
 	// Test bad name
-	data = "{\"name\": \"\"}"
-	err = json.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("{\"name\": \"\"}")
 	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
 
 	// Test missing runtime
-	data = "{\"name\": \"project\"}"
-	err = json.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("{\"name\": \"project\"}")
 	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
 
 	// Test other schema errors
-	data = "{\"name\": \"project\", \"runtime\": 4}"
-	err = json.Unmarshal([]byte(data), &proj)
-	expected := `3 errors occurred:
-	* #/runtime: oneOf failed
-	* #/runtime: expected string, but got number
-	* #/runtime: expected object, but got number
+	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": 4}")
+	// These can vary in order, so contains not equals check
+	expected := []string{
+		"3 errors occurred:",
+		"* #/runtime: oneOf failed",
+		"* #/runtime: expected string, but got number",
+		"* #/runtime: expected object, but got number"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
 
-`
-	assert.Equal(t, expected, err.Error())
-
-	data = "{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}"
-	err = json.Unmarshal([]byte(data), &proj)
-	expected = `2 errors occurred:
-	* #/main: expected string, but got object
-	* #/backend: expected string, but got number
-
-`
-	assert.Equal(t, expected, err.Error())
+	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}")
+	expected = []string{
+		"2 errors occurred:",
+		"* #/main: expected string, but got object",
+		"* #/backend: expected string, but got number"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
 
 	// Test success
-	data = "{\"name\": \"project\", \"runtime\": \"test\"}"
-	err = json.Unmarshal([]byte(data), &proj)
+	proj, err := writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\"}")
 	assert.NoError(t, err)
-	assert.Equal(t, "project", proj.Name)
+	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
 }
 
-func TestProjectUnmarshalYAML(t *testing.T) {
+func TestProjectLoadYAML(t *testing.T) {
 	t.Parallel()
-	var proj Project
+
+	writeAndLoad := func(str string) (*Project, error) {
+		tmp, err := ioutil.TempFile("", "*.yaml")
+		assert.NoError(t, err)
+		path := tmp.Name()
+		err = ioutil.WriteFile(path, []byte(str), 0777)
+		assert.NoError(t, err)
+		return LoadProject(path)
+	}
 
 	// Test wrong type
-	data := "\"hello\""
-	err := yaml.Unmarshal([]byte(data), &proj)
-	assert.Equal(t, "expected a YAML object", err.Error())
+	_, err := writeAndLoad("\"hello\"")
+	assert.Equal(t, "expected an object", err.Error())
 
 	// Test bad key
-	data = "4: hello"
-	err = yaml.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("4: hello")
 	assert.Equal(t, "expected only string keys, got '%!s(int=4)'", err.Error())
 
 	// Test nested bad key
-	data = "hello:\n    6: bad"
-	err = yaml.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("hello:\n    6: bad")
 	assert.Equal(t, "expected only string keys, got '%!s(int=6)'", err.Error())
 
 	// Test lack of name
-	data = "{}"
-	err = yaml.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("{}")
 	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
 
 	// Test bad name
-	data = "name:"
-	err = yaml.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("name:")
 	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
 
 	// Test missing runtime
-	data = "name: project"
-	err = yaml.Unmarshal([]byte(data), &proj)
+	_, err = writeAndLoad("name: project")
 	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
 
 	// Test other schema errors
-	data = "name: project\nruntime: 4"
-	err = yaml.Unmarshal([]byte(data), &proj)
-	expected := `3 errors occurred:
-	* #/runtime: oneOf failed
-	* #/runtime: expected string, but got number
-	* #/runtime: expected object, but got number
+	_, err = writeAndLoad("name: project\nruntime: 4")
+	// These can vary in order, so contains not equals check
+	expected := []string{
+		"3 errors occurred:",
+		"* #/runtime: oneOf failed",
+		"* #/runtime: expected string, but got number",
+		"* #/runtime: expected object, but got number"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
 
-`
-	assert.Equal(t, expected, err.Error())
-
-	data = "name: project\nruntime: test\nbackend: 4\nmain: {}"
-	err = yaml.Unmarshal([]byte(data), &proj)
-	expected = `2 errors occurred:
-	* #/main: expected string, but got object
-	* #/backend: expected string, but got number
-
-`
-	assert.Equal(t, expected, err.Error())
+	_, err = writeAndLoad("name: project\nruntime: test\nbackend: 4\nmain: {}")
+	expected = []string{
+		"2 errors occurred:",
+		"* #/main: expected string, but got object",
+		"* #/backend: expected string, but got number"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
 
 	// Test success
-	data = "name: project\nruntime: test"
-	err = json.Unmarshal([]byte(data), &proj)
+	proj, err := writeAndLoad("name: project\nruntime: test")
 	assert.NoError(t, err)
-	assert.Equal(t, "project", proj.Name)
+	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
 }
