@@ -9,8 +9,11 @@
 - [codegen/nodejs] Support lazy-loading Node modules.
   [#10538](https://github.com/pulumi/pulumi/pull/10538)
 
-- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against 
+- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against
   the Pulumi Service backend.
   [#10558](https://github.com/pulumi/pulumi/pull/10558)
+
+- [cli] Use "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/workspace/project.json" to validate loaded project files.
+  [#10596](https://github.com/pulumi/pulumi/pull/10596)
 
 ### Bug Fixes
