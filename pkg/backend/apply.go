@@ -131,9 +131,6 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	} else if countResources(events) == 0 {
 		// This is an update and there are no resources being CREATED
 		fmt.Print(infoPrefix, "There are no resources in your stack(other than the stack resource).\n\n")
-	} else if !hasChanges(events) {
-		// This is an update and there are no resources being UPDATED
-		fmt.Print(infoPrefix, "This update does not contain any changes to resources.\n\n")
 	}
 
 	// Otherwise, ensure the user wants to proceed.
@@ -260,27 +257,6 @@ func countResources(events []engine.Event) int {
 		count++
 	}
 	return count
-}
-
-func hasChanges(events []engine.Event) bool {
-	hasChanges := false
-
-	for _, e := range events {
-		p, ok := e.Payload().(engine.SummaryEventPayload)
-		if !ok {
-			continue
-		}
-		totalChanges := 0
-		for _, numChanges := range p.ResourceChanges {
-			totalChanges += numChanges
-		}
-		numChanges := p.ResourceChanges[deploy.OpSame]
-		if numChanges == totalChanges {
-			continue
-		}
-		hasChanges = true
-	}
-	return hasChanges
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
