@@ -9,11 +9,14 @@
 - [codegen/nodejs] Support lazy-loading Node modules.
   [#10538](https://github.com/pulumi/pulumi/pull/10538)
 
-- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against 
+- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against
   the Pulumi Service backend.
   [#10558](https://github.com/pulumi/pulumi/pull/10558)
 
 ### Bug Fixes
 
+- [cli/refresh] Do not panic when snapshot is `nil`.
+  [#10593](https://github.com/pulumi/pulumi/pull/10593)
+  
 - [sdk/{python,nodejs}] Fix the use of `getOrganization` in policy packs.
   [#10574](https://github.com/pulumi/pulumi/pull/10574)
