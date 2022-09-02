@@ -143,7 +143,7 @@ type Project struct {
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
-func (proj *Project) unmarshal(raw map[string]interface{}) error {
+func validate(raw map[string]interface{}) error {
 	// Couple of manual errors to match Validate
 	name, ok := raw["name"]
 	if !ok {
@@ -183,7 +183,7 @@ func (proj *Project) unmarshal(raw map[string]interface{}) error {
 	}
 	appendError(validationError)
 
-	return errs
+	return err
 }
 
 func (proj *Project) UnmarshalJSON(b []byte) error {
@@ -192,7 +192,11 @@ func (proj *Project) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if obj, ok := raw.(map[string]interface{}); ok {
-		return proj.unmarshal(obj)
+		if err := validate(obj); err != nil {
+			return err
+		}
+
+		return json.Unmarshal(b, proj)
 	}
 	return fmt.Errorf("expected a JSON object")
 }
@@ -231,7 +235,11 @@ func (proj *Project) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		// This cast should be safe because we passed a `map[interface{}]interface{}` to cast and that will
 		// return a `map[string]interface{}` for that input.
-		return proj.unmarshal(result.(map[string]interface{}))
+		if err := validate(result.(map[string]interface{})); err != nil {
+			return err
+		}
+
+		return unmarshal(proj)
 	}
 	return fmt.Errorf("expected a YAML object")
 }

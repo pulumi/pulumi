@@ -104,6 +104,12 @@ func TestProjectUnmarshalJSON(t *testing.T) {
 `
 	assert.Equal(t, expected, err.Error())
 
+	// Test success
+	data = "{\"name\": \"project\", \"runtime\": \"test\"}"
+	err = json.Unmarshal([]byte(data), &proj)
+	assert.NoError(t, err)
+	assert.Equal(t, "project", proj.Name)
+	assert.Equal(t, "test", proj.Runtime.Name())
 }
 
 func TestProjectUnmarshalYAML(t *testing.T) {
@@ -160,4 +166,10 @@ func TestProjectUnmarshalYAML(t *testing.T) {
 `
 	assert.Equal(t, expected, err.Error())
 
+	// Test success
+	data = "name: project\nruntime: test"
+	err = json.Unmarshal([]byte(data), &proj)
+	assert.NoError(t, err)
+	assert.Equal(t, "project", proj.Name)
+	assert.Equal(t, "test", proj.Runtime.Name())
 }
