@@ -671,7 +671,7 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 		}
 
-		maybeAppendEnv("ORGANIZATION", opts.Organization)
+		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
