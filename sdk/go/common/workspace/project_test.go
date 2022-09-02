@@ -69,7 +69,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		tmp, err := ioutil.TempFile("", "*.json")
 		assert.NoError(t, err)
 		path := tmp.Name()
-		err = ioutil.WriteFile(path, []byte(str), 0777)
+		err = ioutil.WriteFile(path, []byte(str), 0600)
 		assert.NoError(t, err)
 		return LoadProject(path)
 	}
@@ -125,7 +125,7 @@ func TestProjectLoadYAML(t *testing.T) {
 		tmp, err := ioutil.TempFile("", "*.yaml")
 		assert.NoError(t, err)
 		path := tmp.Name()
-		err = ioutil.WriteFile(path, []byte(str), 0777)
+		err = ioutil.WriteFile(path, []byte(str), 0600)
 		assert.NoError(t, err)
 		return LoadProject(path)
 	}
