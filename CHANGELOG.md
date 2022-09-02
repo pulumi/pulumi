@@ -1,5 +1,14 @@
-CHANGELOG
-=========
+# Changelog
+
+## 3.40.0-alpha.1662150830 (2022-09-02)
+
+
+### Miscellaneous
+
+- [ci] Migrate to merge queues for more reliable builds
+  [#10580](https://github.com/pulumi/pulumi/pulls/10580)
+  [#10588](https://github.com/pulumi/pulumi/pulls/10588)
+
 
 ## 3.39.1 (2021-09-02)
 
@@ -1639,7 +1648,7 @@ Replaced by 3.33.1 during release process.
 
 - [auto/*] - Fix escaped HTML characters from color directives in event stream.
 
-  E.g. `"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e"` -> `"<{%reset%}>debug: <{%reset%}>"`
+  E.g. `"<{%reset%}>debug: <{%reset%}>"` -> `"<{%reset%}>debug: <{%reset%}>"`
   [#7998](https://github.com/pulumi/pulumi/pull/7998)
 
 - [auto/*] - Allow eliding color directives from event logs by passing `NO_COLOR` env var.
