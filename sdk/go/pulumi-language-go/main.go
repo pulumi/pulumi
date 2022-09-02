@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,7 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	pulumiruntime "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -368,7 +368,7 @@ func runProgram(bin string, env []string) *pulumirpc.RunResponse {
 
 	// If the program ran, but returned an error,
 	// the error message should look as nice as possible.
-	if status == pulumiruntime.ExitStatusLoggedError {
+	if status == constant.ExitStatusLoggedError {
 		// program failed but sent an error to the engine
 		return &pulumirpc.RunResponse{
 			Bail: true,

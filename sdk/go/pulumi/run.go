@@ -24,16 +24,13 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"google.golang.org/grpc"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
-
-const (
-	ExitStatusLoggedError = 213
-)
 
 // A RunOption is used to control the behavior of Run and RunErr.
 type RunOption func(*RunInfo)
@@ -49,15 +46,9 @@ func Run(body RunFunc, opts ...RunOption) {
 
 	if err == ErrPlugins {
 		printRequiredPlugins()
-		os.Exit(ExitStatusLoggedError)
 	}
 
-	// Log the error message
-	if ctx, e := NewContext(context.TODO(), getEnvInfo()); e == nil {
-		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
-		contract.IgnoreError(err)
-	}
-	os.Exit(ExitStatusLoggedError)
+	os.Exit(constant.ExitStatusLoggedError)
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
@@ -92,7 +83,13 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return RunWithContext(ctx, body)
+	err = RunWithContext(ctx, body)
+	// Log the error message
+	if err != nil {
+		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
+		contract.AssertNoError(err)
+	}
+	return err
 }
 
 // RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
