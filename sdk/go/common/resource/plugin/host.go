@@ -185,10 +185,11 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Project string
-	Stack   string
-	Config  map[config.Key]string
-	DryRun  bool
+	Organization string
+	Project      string
+	Stack        string
+	Config       map[config.Key]string
+	DryRun       bool
 }
 
 type pluginLoadRequest struct {

@@ -17,3 +17,6 @@
 
 - [cli/refresh] Do not panic when snapshot is `nil`.
   [#10593](https://github.com/pulumi/pulumi/pull/10593)
+  
+- [sdk/{python,nodejs}] Fix the use of `getOrganization` in policy packs.
+  [#10574](https://github.com/pulumi/pulumi/pull/10574)

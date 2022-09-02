@@ -665,11 +665,13 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 		// using the more general PULUMI_* variants for all languages to avoid special casing
 		// like this, and setting the PULUMI_* variants for Node.js is the first step.
 		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
 			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
 			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
 			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 		}
 
+		maybeAppendEnv("ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
