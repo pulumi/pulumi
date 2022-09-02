@@ -53,8 +53,9 @@ func TestNoLogError(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			// ensure exit status is not emitted by the program
 			errorCount := strings.Count(stderr.String()+stdout.String(), "  error: ")
+
+			// ensure `  error: ` is only being shown once by the program
 			assert.Equal(t, 1, errorCount)
 		},
 	})
