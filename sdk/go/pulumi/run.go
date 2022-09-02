@@ -31,6 +31,10 @@ import (
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
 
+const (
+	ExitStatusLoggedError = 213
+)
+
 // A RunOption is used to control the behavior of Run and RunErr.
 type RunOption func(*RunInfo)
 
@@ -45,7 +49,7 @@ func Run(body RunFunc, opts ...RunOption) {
 
 	if err == ErrPlugins {
 		printRequiredPlugins()
-		os.Exit(0)
+		os.Exit(ExitStatusLoggedError)
 	}
 
 	// Log the error message
@@ -53,7 +57,7 @@ func Run(body RunFunc, opts ...RunOption) {
 		err := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v", err), nil)
 		contract.IgnoreError(err)
 	}
-	os.Exit(1)
+	os.Exit(ExitStatusLoggedError)
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use

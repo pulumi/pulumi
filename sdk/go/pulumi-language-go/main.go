@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiruntime "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -331,37 +332,48 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}, nil
 }
 
-func execProgramCmd(cmd *exec.Cmd, env []string) error {
+func runCmdExit(cmd *exec.Cmd, env []string) (int, error) {
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	err := cmd.Run()
-	if err == nil {
-		// Go program completed successfully
-		return nil
-	}
 
 	// error handling
 	exiterr, ok := err.(*exec.ExitError)
 	if !ok {
-		return errors.Wrapf(err, "command errored unexpectedly")
+		return 0, errors.Wrapf(err, "command errored unexpectedly")
 	}
 
 	// retrieve the status code
 	status, ok := exiterr.Sys().(syscall.WaitStatus)
 	if !ok {
-		return errors.Wrapf(err, "program exited unexpectedly")
+		return 0, errors.Wrapf(err, "program exited unexpectedly")
 	}
 
-	if status.ExitStatus() == 1 {
-		// Exit status 1 occurs when the Run function returns an error
-		// the error is logged and does not require an error message.
+	return status.ExitStatus(), nil
+
+}
+
+func execProgramCmd(cmd *exec.Cmd, env []string) error {
+	status, err := runCmdExit(cmd, env)
+	if err != nil {
+		return err
+	}
+
+	if status == 0 {
 		return nil
 	}
 
-	// If the program ran, but exited with a non-zero error code. This will happen often, since user
-	// errors will trigger this. So, the error message should look as nice as possible.
-	return errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
+	// If the program ran, but returned an error,
+	// the error message should look as nice as possible.
+	if status == pulumiruntime.ExitStatusLoggedError {
+		// program failed but sent an error to the engine
+		return nil
+	}
+
+	// If the program ran, but exited with a non-zero and non-reserved error code.
+	// indicate to the user which exit code the program returned.
+	return errors.Errorf("program exited with non-zero exit code: %d", status)
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
@@ -401,7 +413,9 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		}
 
 		cmd := exec.Command(gobin, "run", cwd)
-		if err := execProgramCmd(cmd, env); err != nil {
+
+		status, err := runCmdExit(cmd, env)
+		if err != nil || status != 0 {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
 			}, nil
