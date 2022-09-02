@@ -15,6 +15,9 @@
 
 ### Bug Fixes
 
+- [cli] Fix the "no Pulumi.yaml project file found" error message.
+  [#10592](https://github.com/pulumi/pulumi/pull/10592)
+
 - [cli/refresh] Do not panic when snapshot is `nil`.
   [#10593](https://github.com/pulumi/pulumi/pull/10593)
   
