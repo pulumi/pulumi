@@ -1,0 +1,118 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      lint:
+        required: false
+        default: true
+        description: "Whether to run lints"
+        type: boolean
+      unit-test:
+        required: false
+        default: true
+        description: "Whether to run unit tests"
+        type: boolean
+      integration-test:
+        required: false
+        default: true
+        description: "Whether to run integration tests"
+        type: boolean
+
+jobs:
+  lint:
+    name: Lint
+    if: inputs.lint
+    uses: ./.github/workflows/ci-lint.yml
+    with:
+      ref: ${{ inputs.ref }}
+
+  # Tests that can run concurrently with builds
+  unit-test:
+    name: Unit Test
+    if: inputs.unit-test
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: true
+      matrix:
+        # TODO: use other OSes
+        # platform: [windows-latest, macos-latest, ubuntu-latest]
+        platform: [ubuntu-latest]
+    uses: ./.github/workflows/ci-unit-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit
+
+  build-goreleaser-prep:
+    name: Build Goreleaser Prep
+    uses: ./.github/workflows/ci-build-goreleaser-prep.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets: inherit
+
+  build-binaries:
+    name: Build Binaries
+    needs: [build-goreleaser-prep]
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: true
+      matrix:
+        os: [linux, windows]
+        arch: [amd64, arm64]
+        build-platform: [ubuntu-latest]
+        include:
+          - os: darwin
+            arch: amd64
+            build-platform: macos-latest
+          - os: darwin
+            arch: arm64
+            build-platform: macos-latest
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      os: ${{ matrix.os }}
+      arch: ${{ matrix.arch }}
+      # TODO: use macos-latest
+      # build-platform: ${{ matrix.build-platform }}
+    secrets: inherit
+
+  build-sdks:
+    name: Build SDKs
+    uses: ./.github/workflows/ci-build-sdks.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+    secrets: inherit
+
+  # Tests that can depend on builds
+  integration-test:
+    name: Integration Test
+    if: inputs.integration-test
+    needs: [build-binaries, build-sdks]
+    strategy:
+      # To avoid tying up macOS runners:
+      fail-fast: true
+      matrix:
+        # TODO: use other OSes
+        # platform: [windows-latest, macos-latest, ubuntu-latest]
+        platform: [ubuntu-latest]
+    uses: ./.github/workflows/ci-integration-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+    secrets: inherit

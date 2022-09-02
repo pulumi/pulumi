@@ -1,0 +1,142 @@
+name: Lint
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  golangci:
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
+    container: golangci/golangci-lint:v1.44
+    name: Lint ${{ matrix.directory }}
+    strategy:
+      fail-fast: true
+      matrix:
+        directory: [ sdk, pkg, tests ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Lint ${{ matrix.directory }}
+        run: |
+          cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+
+  protobuf-lint:
+    name: Check Protobufs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+        # This till display missing pulumictl errors, but it won't prevent the lint from working.
+      - name: Check Protobufs
+        run: |
+          make check-proto
+
+  sdk-lint:
+    name: Lint SDKs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+        python-version: [3.9.x]
+        dotnet-version: [6.0.x]
+        node-version: [14.x]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Set up DotNet ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - run: mkdir -p "${{ runner.temp }}/opt/pulumi/nuget"
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          command -v dotnet
+          dotnet --version
+          dotnet nuget add source "${{ runner.temp }}/opt/pulumi/nuget"
+      - name: Set up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
+      - name: Setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Update path
+        run: |
+          echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
+      - name: Ensure
+        run: |
+          make ensure
+      - name: Lint Node
+        run: |
+          cd sdk/nodejs && make lint
+      - name: Lint Python
+        run: |
+          cd sdk/python && make lint
+      - name: Lint .NET
+        run: |
+          cd sdk/dotnet && make lint
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go cache key
+        env:
+          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - run: |
+          make lint_actions
