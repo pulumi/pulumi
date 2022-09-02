@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -609,9 +609,12 @@ func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, " }")
 }
 
-func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
+func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
+	info := resourceFileInfo{}
+
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
+	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
@@ -627,7 +630,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	// Begin defining the class.
-	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", name, baseType)
+	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", info.resourceClassName, baseType)
 
 	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
@@ -837,14 +840,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
 			err := genInputProps()
 			if err != nil {
-				return err
+				return resourceFileInfo{}, err
 			}
 		} else {
 			// The creation case:
 			fmt.Fprintf(w, "        if (!opts.id) {\n")
 			err := genInputProps()
 			if err != nil {
-				return err
+				return resourceFileInfo{}, err
 			}
 			// The get case:
 			fmt.Fprintf(w, "        } else {\n")
@@ -858,7 +861,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        {\n")
 		err := genInputProps()
 		if err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
 	}
 	var secretProps []string
@@ -1004,16 +1007,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
 		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0); err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
+		info.stateInterfaceName = stateType
 	}
 
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
 	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0); err != nil {
-		return err
+		return resourceFileInfo{}, err
 	}
+	info.resourceArgsInterfaceName = argsType
 
 	// Emit any method types inside a namespace merged with the class, to represent types nested in the class.
 	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
@@ -1054,7 +1059,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	types := &bytes.Buffer{}
 	for _, method := range r.Methods {
 		if err := genMethodTypes(types, method); err != nil {
-			return err
+			return resourceFileInfo{}, err
 		}
 	}
 	typesString := types.String()
@@ -1062,12 +1067,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
 		fmt.Fprintf(w, typesString)
 		fmt.Fprintf(w, "}\n")
+		info.methodsNamespaceName = name
 	}
-	return nil
+	return info, nil
 }
 
-func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
+	info := functionFileInfo{functionName: name}
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1127,18 +1134,22 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
-			return err
+		argsInterfaceName := title(name) + "Args"
+		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
+			return info, err
 		}
+		info.functionArgsInterfaceName = argsInterfaceName
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
-			return err
+		resultInterfaceName := title(name) + "Result"
+		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
+			return info, err
 		}
+		info.functionResultInterfaceName = resultInterfaceName
 	}
 
-	return mod.genFunctionOutputVersion(w, fun)
+	return mod.genFunctionOutputVersion(w, fun, info)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -1161,13 +1172,17 @@ func functionReturnType(fun *schema.Function) string {
 
 // Generates `function ${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
+func (mod *modContext) genFunctionOutputVersion(
+	w io.Writer,
+	fun *schema.Function,
+	info functionFileInfo) (functionFileInfo, error) {
 	if !fun.NeedsOutputVersion() {
-		return nil
+		return info, nil
 	}
 
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
 	var argsig string
@@ -1185,13 +1200,19 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 `, fnOutput, argsig, functionReturnType(fun), originalName)
 	fmt.Fprintf(w, "\n")
 
-	return mod.genPlainType(w,
+	info.functionOutputVersionArgsInterfaceName = argTypeName
+
+	if err := mod.genPlainType(w,
 		argTypeName,
 		fun.Inputs.Comment,
 		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
-		0 /* level */)
+		0 /* level */); err != nil {
+		return info, err
+	}
+
+	return info, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -1527,19 +1548,30 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		var enumsImport string
-		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
-		if containsEnums {
-			enumsImport = ", enums"
+		imports = append(imports, []string{
+			fmt.Sprintf(`import * as inputs from "%s/types/input";`, relRoot),
+			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
+		}...)
+
+		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
+			code := `import * as enums from "%s/types/enums";`
+			if lookupNodePackageInfo(mod.pkg).UseTypeOnlyReferences {
+				code = `import type * as enums from "%s/types/enums";`
+			}
+			imports = append(imports, fmt.Sprintf(code, relRoot))
 		}
-		imports = append(imports, fmt.Sprintf(`import { input as inputs, output as outputs%s } from "%s/types";`, enumsImport, relRoot))
 	}
 
 	if utilities {
-		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
+		imports = append(imports, mod.utilitiesImport())
 	}
 
 	return imports
+}
+
+func (mod *modContext) utilitiesImport() string {
+	relRoot := mod.getRelativePath()
+	return fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot)
 }
 
 func (mod *modContext) genTypes() (string, string, error) {
@@ -1729,13 +1761,42 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs fs) error {
-	files := append([]string(nil), mod.extraSourceFiles...)
+	var files []fileInfo
+	for _, path := range mod.extraSourceFiles {
+		files = append(files, fileInfo{
+			fileType:         otherFileType,
+			pathToNodeModule: path,
+		})
+	}
 
 	modDir := strings.ToLower(mod.mod)
 
-	addFile := func(name, contents string) {
+	addFile := func(fileType fileType, name, contents string) {
 		p := path.Join(modDir, name)
-		files = append(files, p)
+		files = append(files, fileInfo{
+			fileType:         fileType,
+			pathToNodeModule: p,
+		})
+		fs.add(p, []byte(contents))
+	}
+
+	addResourceFile := func(resourceFileInfo resourceFileInfo, name, contents string) {
+		p := path.Join(modDir, name)
+		files = append(files, fileInfo{
+			fileType:         resourceFileType,
+			resourceFileInfo: resourceFileInfo,
+			pathToNodeModule: p,
+		})
+		fs.add(p, []byte(contents))
+	}
+
+	addFunctionFile := func(info functionFileInfo, name, contents string) {
+		p := path.Join(modDir, name)
+		files = append(files, fileInfo{
+			fileType:         functionFileType,
+			functionFileInfo: info,
+			pathToNodeModule: p,
+		})
 		fs.add(p, []byte(contents))
 	}
 
@@ -1771,7 +1832,7 @@ func (mod *modContext) gen(fs fs) error {
 			if err := mod.genConfig(buffer, mod.pkg.Config); err != nil {
 				return err
 			}
-			addFile("vars.ts", buffer.String())
+			addFile(otherFileType, "vars.ts", buffer.String())
 		}
 	}
 
@@ -1788,12 +1849,13 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
-		if err := mod.genResource(buffer, r); err != nil {
+		rinfo, err := mod.genResource(buffer, r)
+		if err != nil {
 			return err
 		}
 
 		fileName := mod.resourceFileName(r)
-		addFile(fileName, buffer.String())
+		addResourceFile(rinfo, fileName, buffer.String())
 	}
 
 	// Functions
@@ -1809,7 +1871,8 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
-		if err := mod.genFunction(buffer, f); err != nil {
+		funInfo, err := mod.genFunction(buffer, f)
+		if err != nil {
 			return err
 		}
 
@@ -1817,7 +1880,7 @@ func (mod *modContext) gen(fs fs) error {
 		if mod.isReservedSourceFileName(fileName) {
 			fileName = camel(tokenToName(f.Token)) + "_.ts"
 		}
-		addFile(fileName, buffer.String())
+		addFunctionFile(funInfo, fileName, buffer.String())
 	}
 
 	if mod.hasEnums() {
@@ -1867,31 +1930,7 @@ func getChildMod(modName string) string {
 }
 
 // genIndex emits an index module, optionally re-exporting other members or submodules.
-func (mod *modContext) genIndex(exports []string) string {
-	w := &bytes.Buffer{}
-
-	var imports []string
-	// Include the SDK import if we'll be registering module resources.
-	if len(mod.resources) != 0 {
-		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
-	}
-	mod.genHeader(w, imports, nil, nil)
-
-	// Export anything flatly that is a direct export rather than sub-module.
-	if len(exports) > 0 {
-		modDir := strings.ToLower(mod.mod)
-		fmt.Fprintf(w, "// Export members:\n")
-		sort.Strings(exports)
-		for _, exp := range exports {
-			rel, err := filepath.Rel(modDir, exp)
-			contract.Assert(err == nil)
-			if path.Base(rel) == "." {
-				rel = path.Dir(rel)
-			}
-			fmt.Fprintf(w, "export * from \"./%s\";\n", strings.TrimSuffix(rel, ".ts"))
-		}
-	}
-
+func (mod *modContext) genIndex(exports []fileInfo) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
@@ -1902,6 +1941,39 @@ func (mod *modContext) genIndex(exports []string) string {
 	if len(mod.types) > 0 {
 		children.Add("input")
 		children.Add("output")
+	}
+
+	w := &bytes.Buffer{}
+
+	var imports []string
+	// Include the SDK import if we'll be registering module resources.
+	if len(mod.resources) != 0 {
+		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
+	} else if len(children) > 0 || len(mod.functions) > 0 {
+		// Even if there are no resources, exports ref utilities.
+		imports = append(imports, mod.utilitiesImport())
+	}
+	mod.genHeader(w, imports, nil, nil)
+
+	// Export anything flatly that is a direct export rather than sub-module.
+	if len(exports) > 0 {
+		fmt.Fprintf(w, "// Export members:\n")
+		sort.SliceStable(exports, func(i, j int) bool {
+			return exports[i].pathToNodeModule < exports[j].pathToNodeModule
+		})
+
+		ll := newLazyLoadGen()
+		modDir := strings.ToLower(mod.mod)
+		for _, exp := range exports {
+			rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
+			contract.Assert(err == nil)
+			if path.Base(rel) == "." {
+				rel = path.Dir(rel)
+			}
+			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
+			ll.genReexport(w, exp, importPath)
+		}
+		ll.genLazyLoads(w)
 	}
 
 	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
@@ -1966,7 +2038,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
 		provider = mod.resources[0]
 	} else {
-		registrations, first := codegen.StringSet{}, true
+		registrations := codegen.StringSet{}
 		for _, r := range mod.resources {
 			if r.IsOverlay {
 				// This resource code is generated by the provider, so no further action is required.
@@ -1980,13 +2052,6 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 			}
 
 			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
-
-			if first {
-				first = false
-				fmt.Fprintf(w, "\n// Import resources to register:\n")
-			}
-			fileName := strings.TrimSuffix(mod.resourceFileName(r), ".ts")
-			fmt.Fprintf(w, "import { %s } from \"./%s\";\n", resourceName(r), fileName)
 		}
 
 		fmt.Fprintf(w, "\nconst _module = {\n")
@@ -2019,7 +2084,6 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	}
 
 	if provider != nil {
-		fmt.Fprintf(w, "\nimport { Provider } from \"./provider\";\n\n")
 		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
 		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
@@ -2558,6 +2622,18 @@ export function getVersion(): string {
 /** @internal */
 export function resourceOptsDefaults(): any {
     return { version: getVersion()%s };
+}
+
+/** @internal */
+export function lazyLoad(exports: any, props: string[], loadModule: any) {
+    for (let property of props) {
+        Object.defineProperty(exports, property, {
+            enumerable: true,
+            get: function() {
+                return loadModule()[property];
+            },
+        });
+    }
 }
 `
 	var pluginDownloadURL string

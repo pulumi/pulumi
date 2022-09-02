@@ -5,11 +5,31 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./argFunction";
-export * from "./otherResource";
-export * from "./provider";
-export * from "./resource";
-export * from "./typeUses";
+export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
+export const argFunction: typeof import("./argFunction").argFunction = null as any;
+export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any;
+
+export { OtherResourceArgs } from "./otherResource";
+export type OtherResource = import("./otherResource").OtherResource;
+export const OtherResource: typeof import("./otherResource").OtherResource = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+export { ResourceArgs } from "./resource";
+export type Resource = import("./resource").Resource;
+export const Resource: typeof import("./resource").Resource = null as any;
+
+export { TypeUsesArgs } from "./typeUses";
+export type TypeUses = import("./typeUses").TypeUses;
+export const TypeUses: typeof import("./typeUses").TypeUses = null as any;
+
+utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
+utilities.lazyLoad(exports, ["OtherResource"], () => require("./otherResource"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
+utilities.lazyLoad(exports, ["TypeUses"], () => require("./typeUses"));
 
 // Export enums:
 export * from "./types/enums";
@@ -20,11 +40,6 @@ import * as types from "./types";
 export {
     types,
 };
-
-// Import resources to register:
-import { OtherResource } from "./otherResource";
-import { Resource } from "./resource";
-import { TypeUses } from "./typeUses";
 
 const _module = {
     version: utilities.getVersion(),
@@ -42,9 +57,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

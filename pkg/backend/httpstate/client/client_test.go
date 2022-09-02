@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,6 +28,17 @@ func newMockServer(statusCode int, message string) *httptest.Server {
 		http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			rw.WriteHeader(statusCode)
 			_, err := rw.Write([]byte(message))
+			if err != nil {
+				return
+			}
+		}))
+}
+
+func newMockServerRequestProcessor(statusCode int, processor func(req *http.Request) string) *httptest.Server {
+	return httptest.NewServer(
+		http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.WriteHeader(statusCode)
+			_, err := rw.Write([]byte(processor(req)))
 			if err != nil {
 				return
 			}
@@ -88,4 +100,33 @@ func TestAPIErrorResponses(t *testing.T) {
 
 		assert.Error(t, defaultErrorErr)
 	})
+}
+
+func TestGzip(t *testing.T) {
+	t.Parallel()
+
+	// test handling non-standard error message
+	gzipCheckServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, req.Header.Get("Content-Encoding"), "gzip")
+		return "{}"
+	})
+	defer gzipCheckServer.Close()
+	client := newMockClient(gzipCheckServer)
+
+	// POST /import
+	_, err := client.ImportStackDeployment(context.Background(), StackIdentifier{}, nil)
+	assert.NoError(t, err)
+
+	// PATCH /checkpoint
+	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{}, nil, "")
+	assert.NoError(t, err)
+
+	// POST /events/batch
+	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{}, apitype.EngineEventBatch{}, "")
+	assert.NoError(t, err)
+
+	// POST /events/batch
+	_, err = client.BulkDecryptValue(context.Background(), StackIdentifier{}, nil)
+	assert.NoError(t, err)
+
 }

@@ -5,12 +5,36 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./cat";
-export * from "./dog";
-export * from "./god";
-export * from "./noRecursive";
-export * from "./provider";
-export * from "./toyStore";
+export { CatArgs } from "./cat";
+export type Cat = import("./cat").Cat;
+export const Cat: typeof import("./cat").Cat = null as any;
+
+export { DogArgs } from "./dog";
+export type Dog = import("./dog").Dog;
+export const Dog: typeof import("./dog").Dog = null as any;
+
+export { GodArgs } from "./god";
+export type God = import("./god").God;
+export const God: typeof import("./god").God = null as any;
+
+export { NoRecursiveArgs } from "./noRecursive";
+export type NoRecursive = import("./noRecursive").NoRecursive;
+export const NoRecursive: typeof import("./noRecursive").NoRecursive = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+export { ToyStoreArgs } from "./toyStore";
+export type ToyStore = import("./toyStore").ToyStore;
+export const ToyStore: typeof import("./toyStore").ToyStore = null as any;
+
+utilities.lazyLoad(exports, ["Cat"], () => require("./cat"));
+utilities.lazyLoad(exports, ["Dog"], () => require("./dog"));
+utilities.lazyLoad(exports, ["God"], () => require("./god"));
+utilities.lazyLoad(exports, ["NoRecursive"], () => require("./noRecursive"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+utilities.lazyLoad(exports, ["ToyStore"], () => require("./toyStore"));
 
 // Export sub-modules:
 import * as types from "./types";
@@ -18,13 +42,6 @@ import * as types from "./types";
 export {
     types,
 };
-
-// Import resources to register:
-import { Cat } from "./cat";
-import { Dog } from "./dog";
-import { God } from "./god";
-import { NoRecursive } from "./noRecursive";
-import { ToyStore } from "./toyStore";
 
 const _module = {
     version: utilities.getVersion(),
@@ -46,9 +63,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
