@@ -104,7 +104,6 @@
                     "additionalProperties": false
                 }
             },
-            "required": ["config"],
             "additionalProperties": false
         },
         "plugins": {
