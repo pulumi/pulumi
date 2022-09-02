@@ -147,6 +147,8 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return result.FromError(err)
+	} else if snap == nil {
+		return nil
 	}
 
 	if showPrompt && cmdutil.Interactive() {
