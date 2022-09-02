@@ -74,3 +74,6 @@ __pycache__
 
 # File targets for make
 *.phony
+
+# Temporary files
+*.tmp

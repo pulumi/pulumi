@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Migrate to merge queues for more reliable builds
