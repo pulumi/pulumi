@@ -437,7 +437,8 @@ func (pc *Client) BulkDecryptValue(ctx context.Context, stack StackIdentifier,
 	ciphertexts [][]byte) (map[string][]byte, error) {
 	req := apitype.BulkDecryptValueRequest{Ciphertexts: ciphertexts}
 	var resp apitype.BulkDecryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp,
+		httpCallOptions{GzipCompress: true}); err != nil {
 		return nil, err
 	}
 
@@ -490,7 +491,8 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 	deployment *apitype.UntypedDeployment) (UpdateIdentifier, error) {
 
 	var resp apitype.ImportStackResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, deployment, &resp); err != nil {
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "import"), nil, deployment, &resp,
+		httpCallOptions{GzipCompress: true}); err != nil {
 		return UpdateIdentifier{}, err
 	}
 

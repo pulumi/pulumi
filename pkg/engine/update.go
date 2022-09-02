@@ -397,10 +397,11 @@ func newUpdateSource(
 		return nil, err
 	}
 	analyzerOpts := plugin.PolicyAnalyzerOptions{
-		Project: proj.Name.String(),
-		Stack:   target.Name.String(),
-		Config:  config,
-		DryRun:  dryRun,
+		Organization: target.Organization.String(),
+		Project:      proj.Name.String(),
+		Stack:        target.Name.String(),
+		Config:       config,
+		DryRun:       dryRun,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {

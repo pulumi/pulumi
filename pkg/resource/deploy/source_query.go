@@ -160,9 +160,10 @@ func runLangPlugin(src *querySource) result.Result {
 		}
 	}
 
-	var name string
+	var name, organization string
 	if src.runinfo.Target != nil {
 		name = string(src.runinfo.Target.Name)
+		organization = string(src.runinfo.Target.Organization)
 	}
 
 	// Now run the actual program.
@@ -177,6 +178,7 @@ func runLangPlugin(src *querySource) result.Result {
 		DryRun:         true,
 		QueryMode:      true,
 		Parallel:       math.MaxInt32,
+		Organization:   organization,
 	})
 
 	// Check if we were asked to Bail.  This a special random constant used for that

@@ -45,6 +45,7 @@ from .invoke import (
 )
 
 from .metadata import (
+    get_organization,
     get_project,
     get_stack,
 )
@@ -117,6 +118,7 @@ __all__ = [
     # invoke
     "InvokeOptions",
     # metadata
+    "get_organization",
     "get_project",
     "get_stack",
     # resource

@@ -468,6 +468,7 @@
             }
         },
         "nodejs": {
+            "optimizeNodeModuleLoading": ["lazy-load-functions", "lazy-load-resources", "use-type-only-enums-references"],
             "dependencies": {
                 "@pulumi/pulumi": "^3.0.0"
             },

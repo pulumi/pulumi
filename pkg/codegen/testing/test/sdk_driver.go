@@ -236,6 +236,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "regress-go-10527",
+		Description: "Regress pulumi/pulumi#10527 affecting Go",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "other-owned",
 		Description: "CSharp rootNamespaces",
 		// We only test in dotnet, because we are testing a change in a dotnet

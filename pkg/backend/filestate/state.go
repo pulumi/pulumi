@@ -126,10 +126,11 @@ func (b *localBackend) getTarget(
 		return nil, err
 	}
 	return &deploy.Target{
-		Name:      stackName,
-		Config:    cfg,
-		Decrypter: dec,
-		Snapshot:  snapshot,
+		Name:         stackName,
+		Organization: "", // filestate has no organizations
+		Config:       cfg,
+		Decrypter:    dec,
+		Snapshot:     snapshot,
 	}, nil
 }
 

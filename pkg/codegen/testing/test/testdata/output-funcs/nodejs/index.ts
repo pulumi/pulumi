@@ -5,17 +5,59 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./funcWithAllOptionalInputs";
-export * from "./funcWithConstInput";
-export * from "./funcWithDefaultValue";
-export * from "./funcWithDictParam";
-export * from "./funcWithEmptyOutputs";
-export * from "./funcWithListParam";
-export * from "./getBastionShareableLink";
-export * from "./getClientConfig";
-export * from "./getIntegrationRuntimeObjectMetadatum";
-export * from "./listStorageAccountKeys";
-export * from "./provider";
+export { FuncWithAllOptionalInputsArgs, FuncWithAllOptionalInputsResult, FuncWithAllOptionalInputsOutputArgs } from "./funcWithAllOptionalInputs";
+export const funcWithAllOptionalInputs: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputs = null as any;
+export const funcWithAllOptionalInputsOutput: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputsOutput = null as any;
+
+export { FuncWithConstInputArgs } from "./funcWithConstInput";
+export const funcWithConstInput: typeof import("./funcWithConstInput").funcWithConstInput = null as any;
+
+export { FuncWithDefaultValueArgs, FuncWithDefaultValueResult, FuncWithDefaultValueOutputArgs } from "./funcWithDefaultValue";
+export const funcWithDefaultValue: typeof import("./funcWithDefaultValue").funcWithDefaultValue = null as any;
+export const funcWithDefaultValueOutput: typeof import("./funcWithDefaultValue").funcWithDefaultValueOutput = null as any;
+
+export { FuncWithDictParamArgs, FuncWithDictParamResult, FuncWithDictParamOutputArgs } from "./funcWithDictParam";
+export const funcWithDictParam: typeof import("./funcWithDictParam").funcWithDictParam = null as any;
+export const funcWithDictParamOutput: typeof import("./funcWithDictParam").funcWithDictParamOutput = null as any;
+
+export { FuncWithEmptyOutputsArgs, FuncWithEmptyOutputsResult, FuncWithEmptyOutputsOutputArgs } from "./funcWithEmptyOutputs";
+export const funcWithEmptyOutputs: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputs = null as any;
+export const funcWithEmptyOutputsOutput: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputsOutput = null as any;
+
+export { FuncWithListParamArgs, FuncWithListParamResult, FuncWithListParamOutputArgs } from "./funcWithListParam";
+export const funcWithListParam: typeof import("./funcWithListParam").funcWithListParam = null as any;
+export const funcWithListParamOutput: typeof import("./funcWithListParam").funcWithListParamOutput = null as any;
+
+export { GetBastionShareableLinkArgs, GetBastionShareableLinkResult, GetBastionShareableLinkOutputArgs } from "./getBastionShareableLink";
+export const getBastionShareableLink: typeof import("./getBastionShareableLink").getBastionShareableLink = null as any;
+export const getBastionShareableLinkOutput: typeof import("./getBastionShareableLink").getBastionShareableLinkOutput = null as any;
+
+export { GetClientConfigResult } from "./getClientConfig";
+export const getClientConfig: typeof import("./getClientConfig").getClientConfig = null as any;
+
+export { GetIntegrationRuntimeObjectMetadatumArgs, GetIntegrationRuntimeObjectMetadatumResult, GetIntegrationRuntimeObjectMetadatumOutputArgs } from "./getIntegrationRuntimeObjectMetadatum";
+export const getIntegrationRuntimeObjectMetadatum: typeof import("./getIntegrationRuntimeObjectMetadatum").getIntegrationRuntimeObjectMetadatum = null as any;
+export const getIntegrationRuntimeObjectMetadatumOutput: typeof import("./getIntegrationRuntimeObjectMetadatum").getIntegrationRuntimeObjectMetadatumOutput = null as any;
+
+export { ListStorageAccountKeysArgs, ListStorageAccountKeysResult, ListStorageAccountKeysOutputArgs } from "./listStorageAccountKeys";
+export const listStorageAccountKeys: typeof import("./listStorageAccountKeys").listStorageAccountKeys = null as any;
+export const listStorageAccountKeysOutput: typeof import("./listStorageAccountKeys").listStorageAccountKeysOutput = null as any;
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+utilities.lazyLoad(exports, ["funcWithAllOptionalInputs","funcWithAllOptionalInputsOutput"], () => require("./funcWithAllOptionalInputs"));
+utilities.lazyLoad(exports, ["funcWithConstInput"], () => require("./funcWithConstInput"));
+utilities.lazyLoad(exports, ["funcWithDefaultValue","funcWithDefaultValueOutput"], () => require("./funcWithDefaultValue"));
+utilities.lazyLoad(exports, ["funcWithDictParam","funcWithDictParamOutput"], () => require("./funcWithDictParam"));
+utilities.lazyLoad(exports, ["funcWithEmptyOutputs","funcWithEmptyOutputsOutput"], () => require("./funcWithEmptyOutputs"));
+utilities.lazyLoad(exports, ["funcWithListParam","funcWithListParamOutput"], () => require("./funcWithListParam"));
+utilities.lazyLoad(exports, ["getBastionShareableLink","getBastionShareableLinkOutput"], () => require("./getBastionShareableLink"));
+utilities.lazyLoad(exports, ["getClientConfig"], () => require("./getClientConfig"));
+utilities.lazyLoad(exports, ["getIntegrationRuntimeObjectMetadatum","getIntegrationRuntimeObjectMetadatumOutput"], () => require("./getIntegrationRuntimeObjectMetadatum"));
+utilities.lazyLoad(exports, ["listStorageAccountKeys","listStorageAccountKeysOutput"], () => require("./listStorageAccountKeys"));
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 // Export sub-modules:
 import * as types from "./types";
@@ -23,9 +65,6 @@ import * as types from "./types";
 export {
     types,
 };
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("mypkg", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

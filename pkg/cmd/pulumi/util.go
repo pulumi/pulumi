@@ -108,6 +108,22 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
+func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) {
+	if backendInstance != nil {
+		return backendInstance, nil
+	}
+
+	url, err := workspace.GetCurrentCloudURL()
+	if err != nil {
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
+	}
+
+	if filestate.IsFileStateBackendURL(url) {
+		return filestate.New(cmdutil.Diag(), url)
+	}
+	return httpstate.Current(ctx, cmdutil.Diag(), url)
+}
+
 func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
@@ -441,10 +457,6 @@ func readProject() (*workspace.Project, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	// Handle failure to find current project.
-	if path == "" {
-		return proj, "", nil
-	}
 
 	return proj, filepath.Dir(path), nil
 }
@@ -452,19 +464,18 @@ func readProject() (*workspace.Project, string, error) {
 // readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
 // the project is successfully detected and read, it is returned along with the path to the project
 // file, which will be used as the root of the project's Pulumi program.
+//
+// If a project is not found while searching and no other error occurs, workspace.ErrProjectNotFound
+// is returned.
 func readProjectWithPath() (*workspace.Project, string, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, "", err
 	}
-
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		logging.Warningf("failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %s"+
-			"continuing with an empty project", pwd, err.Error())
-		return &workspace.Project{}, "", nil
+		return nil, "", err
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {

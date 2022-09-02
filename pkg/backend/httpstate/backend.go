@@ -234,8 +234,8 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	return New(d, cloudURL)
 }
 
-// Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+// Current returns the current cloud backend if one is already logged in.
+func Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -266,71 +266,112 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := os.Getenv(AccessTokenEnvVar)
+
+	if accessToken == "" {
+		// No access token available, this isn't an error per-se but we don't have a backend
+		return nil, nil
+	}
+
+	// If there's already a token from the environment, use it.
+	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
+	contract.IgnoreError(err)
+
+	// Try and use the credentials to see if they are valid.
+	valid, username, organizations, err := IsValidAccessToken(ctx, cloudURL, accessToken)
+	if err != nil {
+		return nil, err
+	} else if !valid {
+		return nil, fmt.Errorf("invalid access token")
+	}
+
+	// Save them.
+	account := workspace.Account{
+		AccessToken:     accessToken,
+		Username:        username,
+		Organizations:   organizations,
+		LastValidatedAt: time.Now(),
+	}
+	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
+		return nil, err
+	}
+
+	return New(d, cloudURL)
+}
+
+// Login logs into the target cloud URL and returns the cloud backend for it.
+func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+
+	current, err := Current(ctx, d, cloudURL)
+	if err != nil {
+		return nil, err
+	}
+	if current != nil {
+		return current, nil
+	}
+
+	cloudURL = ValueOrDefaultURL(cloudURL)
+	var accessToken string
 	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
-	if accessToken != "" {
-		// If there's already a token from the environment, use it.
-		_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
-		contract.IgnoreError(err)
-	} else if !cmdutil.Interactive() {
+	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
 		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
-	} else {
-		// If no access token is available from the environment, and we are interactive, prompt and offer to
-		// open a browser to make it easy to generate and use a fresh token.
-		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
-		line1len := len(line1)
-		line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line1) + "\n")
-		maxlen := line1len
+	}
 
-		line2 := "Run `pulumi login --help` for alternative login options."
-		line2len := len(line2)
-		fmt.Printf(opts.Color.Colorize(line2) + "\n")
-		if line2len > maxlen {
-			maxlen = line2len
-		}
+	// If no access token is available from the environment, and we are interactive, prompt and offer to
+	// open a browser to make it easy to generate and use a fresh token.
+	line1 := "Manage your Pulumi stacks by logging in."
+	line1len := len(line1)
+	line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
+	fmt.Printf(opts.Color.Colorize(line1) + "\n")
+	maxlen := line1len
 
-		// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
-		// don't offer magic log-in or text about where to find your access token.
-		if accountLink == "" {
-			for {
-				if accessToken, err = cmdutil.ReadConsoleNoEcho("Enter your access token"); err != nil {
-					return nil, err
-				}
-				if accessToken != "" {
-					break
-				}
-			}
-		} else {
-			line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
-			line3len := len(line3)
-			line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-			line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-			fmt.Printf(opts.Color.Colorize(line3) + "\n")
-			if line3len > maxlen {
-				maxlen = line3len
-			}
+	line2 := "Run `pulumi login --help` for alternative login options."
+	line2len := len(line2)
+	fmt.Printf(opts.Color.Colorize(line2) + "\n")
+	if line2len > maxlen {
+		maxlen = line2len
+	}
 
-			line4 := "    or hit <ENTER> to log in using your browser"
-			var padding string
-			if pad := maxlen - len(line4); pad > 0 {
-				padding = strings.Repeat(" ", pad)
-			}
-			line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
-
-			if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+	// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
+	// don't offer magic log-in or text about where to find your access token.
+	if accountLink == "" {
+		for {
+			if accessToken, err = cmdutil.ReadConsoleNoEcho("Enter your access token"); err != nil {
 				return nil, err
 			}
-
-			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL, opts)
+			if accessToken != "" {
+				break
 			}
-
-			// Welcome the user since this was an interactive login.
-			WelcomeUser(opts)
 		}
+	} else {
+		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line3len := len(line3)
+		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
+		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Printf(opts.Color.Colorize(line3) + "\n")
+		if line3len > maxlen {
+			maxlen = line3len
+		}
+
+		line4 := "    or hit <ENTER> to log in using your browser"
+		var padding string
+		if pad := maxlen - len(line4); pad > 0 {
+			padding = strings.Repeat(" ", pad)
+		}
+		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
+
+		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+			return nil, err
+		}
+
+		if accessToken == "" {
+			return loginWithBrowser(ctx, d, cloudURL, opts)
+		}
+
+		// Welcome the user since this was an interactive login.
+		WelcomeUser(opts)
 	}
 
 	// Try and use the credentials to see if they are valid.

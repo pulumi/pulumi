@@ -148,6 +148,7 @@ message CallRequest {
     bool dryRun = 10;                // true if we're only doing a dryrun (preview).
     int32 parallel = 11;            // the degree of parallelism for resource operations (<=1 for serial).
     string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
+    string organization = 14;       // the organization of the stack being deployed into.
 }
 
 message CallResponse {
@@ -324,7 +325,8 @@ message ConstructRequest {
     map<string, string> providers = 13;                       // the map of providers to use for this resource's children.
     repeated string aliases = 14;                             // a list of additional URNs that shoud be considered the same.
     repeated string dependencies = 15;                        // a list of URNs that this resource depends on, as observed by the language host.
-    repeated string configSecretKeys = 16; // the configuration keys that have secret values.
+    repeated string configSecretKeys = 16;                    // the configuration keys that have secret values.
+    string organization = 17;                                 // the organization of the stack being deployed into.
 }
 
 message ConstructResponse {
