@@ -1,0 +1,45 @@
+name: Release
+
+permissions:
+  # To create the follow-up PR.
+  contents: write
+  pull-requests: write
+
+on:
+  release:
+    types:
+      - released
+
+concurrency: release
+
+jobs:
+  info:
+    name: Get release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: "${{ fromJSON(steps.version.outputs.version) }}"
+      next_version: "${{ fromJSON(steps.version.outputs.next_version) }}"
+    steps:
+      - uses: actions/checkout@v3
+        # Uses release ref (tag)
+      - name: Gather info
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          PULUMI_VERSION="${TAG#v}" # remove prefix
+
+          ./.github/scripts/set-output version "${PULUMI_VERSION}"
+
+          NEXT_VERSION="$(.github/scripts/get-next-version "${PULUMI_VERSION}")"
+          ./.github/scripts/set-output next_version "${NEXT_VERSION}"
+
+  release:
+    name: Release
+    needs: [info]
+    uses: ./.github/workflows/release.yml
+    with:
+      ref: ${{ github.event.release.tag_name }}
+      version: ${{ needs.info.outputs.version }}
+      next_version: ${{ needs.info.outputs.next_version }}
+      release-notes: ${{ github.event.release.body }}
+    secrets: inherit
