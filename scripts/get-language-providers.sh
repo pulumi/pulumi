@@ -4,11 +4,29 @@ set -eo pipefail
 set -x
 
 get_version() {
-  repo="$1"
+  local repo="$1"
   (
     cd pkg
     GOWORK=off go list -m all | grep "${repo}" | cut -d" " -f2
   )
+}
+
+# Use github credentials for a higher rate limit when possible.
+USE_GH=false
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
+  USE_GH=true
+fi
+
+download_release() {
+  local lang="$1"
+  local tag="$2"
+  local filename="$3"
+
+  if "${USE_GH}"; then
+    gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
+  else
+    curl -OL --fail "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
+  fi
 }
 
 # shellcheck disable=SC2043
@@ -18,13 +36,11 @@ for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yam
   PULUMI_LANG="$2"
   TAG=$(get_version "${REPO}")
 
-  LANG_DIST="goreleaser-lang/${PULUMI_LANG}"
-  mkdir -p "$LANG_DIST"
+  LANG_DIST="$(pwd)/bin"
+  mkdir -p "${LANG_DIST}"
   (
     # Run in a subshell to ensure we don't alter current working directory.
-    cd "${LANG_DIST}"
-
-    rm -rf ./*
+    cd "$(mktemp -d)"
 
     # Currently avoiding a dependency on GH CLI in favor of curl, so
     # that this script works in the context of the Brew formula:
@@ -35,25 +51,31 @@ for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yam
     #
     # gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}"
 
-    for DIST_OS in darwin linux windows; do
-      for i in "amd64 x64" "arm64 arm64"; do
-        set -- $i # treat strings in loop as args
+    for j in "darwin" "linux" "windows .exe"; do
+      set -- $j # treat strings in loop as args
+      DIST_OS="$1"
+      DIST_EXT="${2:-""}"
+
+      for k in "amd64 x64" "arm64 arm64"; do
+        set -- $k # treat strings in loop as args
         DIST_ARCH="$1"
         RENAMED_ARCH="$2" # goreleaser in pulumi/pulumi renames amd64 to x64
 
         ARCHIVE="pulumi-language-${PULUMI_LANG}-${TAG}-${DIST_OS}-${DIST_ARCH}"
 
-        # No consistency on whether Windows archives use .zip or
-        # .tar.gz, try both.
+        OUTDIR="${LANG_DIST}/$DIST_OS-$RENAMED_ARCH"
 
-        curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.tar.gz" \
-          || curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.zip"
-
-        OUTDIR="$DIST_OS-$RENAMED_ARCH"
-
-        mkdir -p $OUTDIR
-        find '.' -name "*-$DIST_OS-$DIST_ARCH.tar.gz" -print0 -exec tar -xzvf {} -C $OUTDIR \;
-        find '.' -name "*-$DIST_OS-$DIST_ARCH.zip" -print0 -exec unzip {} -d $OUTDIR \;
+        mkdir -p "${OUTDIR}"
+        case "${PULUMI_LANG}-${DIST_OS}" in
+          java-windows)
+            download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.zip"
+            unzip -o "${ARCHIVE}.zip" "pulumi-language-${PULUMI_LANG}${DIST_EXT}" -d "${OUTDIR}"
+            ;;
+          *)
+            download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
+            tar -xzvf "${ARCHIVE}.tar.gz" -C "${OUTDIR}" "pulumi-language-${PULUMI_LANG}${DIST_EXT}"
+            ;;
+        esac
       done
     done
   )
