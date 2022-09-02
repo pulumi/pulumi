@@ -3,7 +3,7 @@ LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-do
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 
-DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language dotnet))
+DOTNET_VERSION  := $(shell ../../scripts/pulumi-version.sh dotnet)
 
 TESTPARALLELISM ?= 10
 
@@ -78,5 +78,5 @@ brew::
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
-	find $(PULUMI_NUGET) -name 'Pulumi*.nupkg' \
-		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
+	find '../../artifacts' -name 'sdk-dotnet-*.nupkg' \
+		-execdir dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'

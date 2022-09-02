@@ -247,6 +247,8 @@ func TestStackReferencePython(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -277,6 +279,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -291,6 +295,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 	integration.ProgramTest(t, exporterOpts)
 
 	importerOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
