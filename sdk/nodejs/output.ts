@@ -520,7 +520,7 @@ export function output<T>(val: Input<T>): Output<Unwrap<T>>;
 export function output<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
 export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefined>> {
     const ov = outputRec(val);
-    return Output.isInstance<Unwrap<T>>(ov) ? ov : createSimpleOutput(ov);
+    return (Output.isInstance<Unwrap<T>>(ov) ? ov : createSimpleOutput(ov)) as any;
 }
 
 /**

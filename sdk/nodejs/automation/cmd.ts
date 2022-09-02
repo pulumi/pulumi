@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import execa from "execa";
-
 import { createCommandError } from "./errors";
 
 /** @internal */
