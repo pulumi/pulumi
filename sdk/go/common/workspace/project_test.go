@@ -60,7 +60,7 @@ func TestProjectValidation(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestProjectUnmarshal(t *testing.T) {
+func TestProjectUnmarshalJSON(t *testing.T) {
 	t.Parallel()
 	var proj Project
 
@@ -97,6 +97,62 @@ func TestProjectUnmarshal(t *testing.T) {
 
 	data = "{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}"
 	err = json.Unmarshal([]byte(data), &proj)
+	expected = `2 errors occurred:
+	* #/main: expected string, but got object
+	* #/backend: expected string, but got number
+
+`
+	assert.Equal(t, expected, err.Error())
+
+}
+
+func TestProjectUnmarshalYAML(t *testing.T) {
+	t.Parallel()
+	var proj Project
+
+	// Test wrong type
+	data := "\"hello\""
+	err := yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "expected a YAML object", err.Error())
+
+	// Test bad key
+	data = "4: hello"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "expected only string keys, got '%!s(int=4)'", err.Error())
+
+	// Test nested bad key
+	data = "hello:\n    6: bad"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "expected only string keys, got '%!s(int=6)'", err.Error())
+
+	// Test lack of name
+	data = "{}"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
+
+	// Test bad name
+	data = "name:"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
+
+	// Test missing runtime
+	data = "name: project"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
+
+	// Test other schema errors
+	data = "name: project\nruntime: 4"
+	err = yaml.Unmarshal([]byte(data), &proj)
+	expected := `3 errors occurred:
+	* #/runtime: oneOf failed
+	* #/runtime: expected string, but got number
+	* #/runtime: expected object, but got number
+
+`
+	assert.Equal(t, expected, err.Error())
+
+	data = "name: project\nruntime: test\nbackend: 4\nmain: {}"
+	err = yaml.Unmarshal([]byte(data), &proj)
 	expected = `2 errors occurred:
 	* #/main: expected string, but got object
 	* #/backend: expected string, but got number

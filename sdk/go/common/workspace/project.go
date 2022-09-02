@@ -202,8 +202,36 @@ func (proj *Project) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&raw); err != nil {
 		return err
 	}
-	if obj, ok := raw.(map[string]interface{}); ok {
-		return proj.unmarshal(obj)
+	if obj, ok := raw.(map[interface{}]interface{}); ok {
+		// Cast any map[interface{}] to map[string]
+		var cast func(value interface{}) (interface{}, error)
+		cast = func(value interface{}) (interface{}, error) {
+			if objMap, ok := value.(map[interface{}]interface{}); ok {
+				strMap := make(map[string]interface{})
+				for key, value := range objMap {
+					if strKey, ok := key.(string); ok {
+						innerValue, err := cast(value)
+						if err != nil {
+							return nil, err
+						}
+						strMap[strKey] = innerValue
+					} else {
+						return nil, fmt.Errorf("expected only string keys, got '%s'", key)
+					}
+				}
+				return strMap, nil
+			}
+			return value, nil
+		}
+
+		result, err := cast(obj)
+		if err != nil {
+			return err
+		}
+
+		// This cast should be safe because we passed a `map[interface{}]interface{}` to cast and that will
+		// return a `map[string]interface{}` for that input.
+		return proj.unmarshal(result.(map[string]interface{}))
 	}
 	return fmt.Errorf("expected a YAML object")
 }
