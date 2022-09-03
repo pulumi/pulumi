@@ -14,7 +14,10 @@ PKG_CODEGEN_GO     := github.com/pulumi/pulumi/pkg/v3/codegen/go
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^(${PKG_CODEGEN_NODEJS}|${PKG_CODEGEN_PYTHON})$$')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
-VERSION         := $(shell pulumictl get version)
+VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
+
+$(info    SHELL           = ${SHELL})
+$(info    VERSION         = ${VERSION})
 
 TESTPARALLELISM ?= 10
 
@@ -25,7 +28,7 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 GO_TEST      = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FLAGS)
 GO_TEST_FAST = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
-ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
+ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
 	cd pkg && go mod download
@@ -93,7 +96,7 @@ dist:: build
 brew::
 	./scripts/brew.sh "${PROJECT}"
 
-.PHONY: lint_pkg lint_sdk lint_tests
+.PHONY: lint_%
 lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
 lint_pkg: lint_deps
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
@@ -103,24 +106,41 @@ lint_tests: lint_deps
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
+lint_actions:
+	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.17 \
+	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build:: $(TEST_ALL_DEPS)
+test_build_provider::
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_output_values
+
+preparedir=$(subst test_build_prepare/,,$(word 1,$(subst !, ,$@)))
+test_build_prepare/%:
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh $(preparedir)
+
+test_build_prepare/construct_component_slow:
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_plain
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_unknown
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh component_provider_schema
+
+test_build_prepare/construct_component_error_apply:
 	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_provider
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_unknown
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_resources
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_errors
+
+COMPONENT_TESTS := \
+	construct_component \
+	construct_component_output_values \
+	construct_component_plain \
+	construct_component_unknown \
+	component_provider_schema \
+	construct_component_methods \
+	construct_component_provider \
+	construct_component_methods_unknown \
+	construct_component_methods_resources \
+	construct_component_methods_errors \
+	construct_component_slow \
+	construct_component_error_apply
+
+test_build:: test_build_provider $(COMPONENT_TESTS:%=test_build_prepare/%)
 
 test_all:: test_build test_pkg test_integration
 
