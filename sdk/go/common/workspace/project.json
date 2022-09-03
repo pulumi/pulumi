@@ -85,6 +85,14 @@
                     "description": "Description of the template.",
                     "type": "string"
                 },
+                "quickstart": {
+                    "description": "Quickstart contains optional text to be displayed after template creation.",
+                    "type": "string"
+                },
+                "important": {
+                    "description": "Important indicates the template is important and should be listed by default.",
+                    "type": "boolean"
+                },
                 "config": {
                     "description": "Config to apply to each stack in the project.",
                     "type": "object",
