@@ -78,7 +78,7 @@ process.on("exit", (code: number) => {
 import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
-import * as minimist from "minimist";
+import minimist from "minimist";
 
 function usage(): void {
     console.error(`usage: RUN <engine-address> <program>`);
