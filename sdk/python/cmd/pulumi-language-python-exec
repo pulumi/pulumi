@@ -152,6 +152,8 @@ if __name__ == "__main__":
         exit_code = 0
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
+    except ImportError as e:
+        pulumi.log.error(str(e))
     except Exception:
         error_msg = "Program failed with an unhandled exception:\n" + _get_user_stacktrace(user_program_abspath)
         pulumi.log.error(error_msg)
