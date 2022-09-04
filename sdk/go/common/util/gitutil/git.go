@@ -324,6 +324,18 @@ func parseGistURL(u *url.URL) (string, error) {
 	return resultURL, nil
 }
 
+func parseHostAuth(u *url.URL) string {
+	if u.User == nil {
+		return u.Host
+	}
+	user := u.User.Username()
+	p, ok := u.User.Password()
+	if !ok {
+		return user + "@" + u.Host
+	}
+	return user + ":" + p + "@" + u.Host
+}
+
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
 // For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
 // "https://github.com/pulumi/templates.git" and "templates/javascript".
@@ -359,7 +371,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	// Cleave URI into what comes before and what comes after.
 	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
 		extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
-		resultURL := u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
+		resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + path[:extensionOffset]
 		gitRepoPath := path[extensionOffset:]
 		resultPath := strings.Trim(gitRepoPath, "/")
 		return resultURL, resultPath, nil
@@ -379,7 +391,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		repo = repo + ".git"
 	}
 
-	resultURL := u.Scheme + "://" + u.Host + "/" + owner + "/" + repo
+	resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
 	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
 
 	return resultURL, resultPath, nil
