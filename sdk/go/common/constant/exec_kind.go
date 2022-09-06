@@ -14,4 +14,4 @@ const ExecKindCLI = "cli"
 
 // ExitStatusLoggedError is the exit status to indicate that a pulumi program
 // has failed, but successfully logged an error message to the engine
-const ExitStatusLoggedError = 213
+const ExitStatusLoggedError = 32

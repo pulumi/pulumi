@@ -416,9 +416,18 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		cmd := exec.Command(gobin, "run", cwd)
 
 		status, err := runCmdStatus(cmd, env)
-		if err != nil || status != 0 {
+		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
+			}, nil
+		}
+
+		// `go run` does not return the actual exit status of a program
+		// it only returns 2 non-zero exit statuses {1, 2}
+		// and it emits the exit status to stderr
+		if status != 0 {
+			return &pulumirpc.RunResponse{
+				Bail: true,
 			}, nil
 		}
 
