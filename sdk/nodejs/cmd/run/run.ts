@@ -180,11 +180,8 @@ export function run(
     // all remaining spans in the batch.
     const tracingUrl: string | boolean = argv["tracing"];
     if(typeof tracingUrl === "string" && tracingUrl.length > 0) {
-        console.log(`Tracing Enabled at ${tracingUrl}`);
         tracing.start(tracingUrl);
-        process.on("beforeExit", tracing.stop);
-    } else {
-        console.log("Tracing NOT Enabled");
+        process.on("exit", tracing.stop);
     }
     // Start a new span, which we shutdown at the bottom of this method.
     const span = tracing.newSpan("language-runtime.run");    
