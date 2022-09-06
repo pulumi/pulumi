@@ -39,6 +39,28 @@ func TestNoEmitExitStatus(t *testing.T) {
 	})
 }
 
+// This checks that error logs are not being emitted twice
+func TestNoLogError(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "go-exit-error"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			errorCount := strings.Count(stderr.String()+stdout.String(), "  error: ")
+
+			// ensure `  error: ` is only being shown once by the program
+			assert.Equal(t, 1, errorCount)
+		},
+	})
+}
+
 // This checks that the PULUMI_GO_USE_RUN=true flag is triggering go run by checking the `exit status`
 // string is being emitted. This is a temporary fallback measure in case it breaks users and should
 // not be assumed to be stable.
