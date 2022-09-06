@@ -25,7 +25,7 @@ import * as log from "../../log";
 import * as opentelemetry from "@opentelemetry/api";
 import * as stack from "../../runtime/stack";
 import * as settings from "../../runtime/settings";
-import * as tracing from "../../runtime/tracing";
+import * as tracing from "./tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 

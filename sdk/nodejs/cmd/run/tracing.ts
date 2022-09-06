@@ -13,7 +13,7 @@
 // limitations under the License.
 'use strict';
 
-import * as packageJson from "../package.json";
+import * as packageJson from "../../package.json";
 import * as opentelemetry from "@opentelemetry/api";
 import { Resource } from "@opentelemetry/resources";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
@@ -22,7 +22,7 @@ import { ZipkinExporter } from "@opentelemetry/exporter-zipkin";
 import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
-import * as log from "../log";
+import * as log from "../../log";
 
 let exporter: ZipkinExporter;
 let rootSpan: opentelemetry.Span;

@@ -63,11 +63,11 @@
         "runtime/rpc.ts",
         "runtime/settings.ts",
         "runtime/stack.ts",
-        "runtime/tracing.ts",
 
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
         "cmd/run/run.ts",
+        "cmd/run/tracing.ts",
         "cmd/run-policy-pack/index.ts",
         "cmd/run-policy-pack/run.ts",
 
