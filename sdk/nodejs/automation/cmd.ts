@@ -61,6 +61,9 @@ export async function runPulumiCmd(
         if (exitCode !== 0) {
             throw createCommandError(commandResult);
         }
+        if (onOutput) {
+            onOutput(stdout);
+        }
         return commandResult;
     } catch (err) {
         const error = err as Error;
