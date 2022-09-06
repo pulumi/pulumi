@@ -100,6 +100,7 @@
         "tests/runtime/langhost/run.spec.ts",
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
 
+        "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
 
         "tests_with_mocks/mocks.spec.ts"
