@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
                     # if a language runtime receives a directory, it's the language's responsibility to determine
                     # whether the provided directory has a pulumi program
-                    pulumi.log.error(f"unable to find main python program(__main__.py) in `{user_program_abspath}`")
+                    pulumi.log.error(f"unable to find main python program `__main__.py` in `{user_program_abspath}`")
                     sys.exit(PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE)
                 else:
                     raise e
