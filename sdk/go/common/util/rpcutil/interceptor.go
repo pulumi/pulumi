@@ -35,7 +35,9 @@ func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc
 }
 
 // Like OpenTracingServerInterceptor but for instrumenting streaming gRPC calls.
-func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span, options ...otgrpc.Option) grpc.StreamServerInterceptor {
+func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span,
+	options ...otgrpc.Option) grpc.StreamServerInterceptor {
+
 	// Log full payloads along with trace spans
 	options = append(options, otgrpc.LogPayloads())
 	tracer := opentracing.GlobalTracer()
