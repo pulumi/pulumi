@@ -1,0 +1,21 @@
+on:
+  push:
+    branches: ["mckinstry/repair-linter"]
+
+jobs:
+  lint:
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
+    container: golangci/golangci-lint:v1.48.0
+    name: Lint ${{ matrix.directory }}
+    strategy:
+      matrix:
+        directory: [sdk, pkg, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Go Version
+        run: go version
+      - name: Lint ${{ matrix.directory }}
+        run: |
+          cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
