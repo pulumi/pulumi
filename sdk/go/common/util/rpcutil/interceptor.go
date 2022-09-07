@@ -60,6 +60,18 @@ func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInte
 	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
 }
 
+// Like OpenTracingClientInterceptor but for streaming gRPC calls.
+func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamClientInterceptor {
+	options = append(options,
+		// Log full payloads along with trace spans
+		otgrpc.LogPayloads(),
+		// Do not trace calls to the empty method
+		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
+			return method != ""
+		}))
+	return otgrpc.OpenTracingStreamClientInterceptor(opentracing.GlobalTracer(), options...)
+}
+
 // Wraps an opentracing.Tracer to reparent orphan traces with a given
 // default parent span.
 type reparentingTracer struct {
