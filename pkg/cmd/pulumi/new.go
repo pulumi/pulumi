@@ -30,6 +30,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -340,15 +341,17 @@ options:
 
 	// Install dependencies.
 	if !args.generateOnly {
+		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
-		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, span)
 		if err != nil {
 			return err
 		}
 
-		defer ctx.Close()
+		defer pluginCtx.Close()
 
-		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+		if err := installDependencies(pluginCtx, &proj.Runtime, pwd); err != nil {
 			return err
 		}
 	}
