@@ -11,10 +11,12 @@ run:
 linters:
   enable-all: false
   enable:
-    - deadcode
+    # - durationcheck
     - errcheck
     - goconst
     - gofmt
+    # - goprintffuncname
+    - gomnd
     - gosec
     - gosimple
     - govet
@@ -22,12 +24,21 @@ linters:
     - lll
     - misspell
     - nakedret
+    # - nilnil
     - paralleltest
+    # - prealloc
+    # - predeclared
     - revive
     - structcheck
+    # - tenv
+    # - thelper
     - unconvert
+    # - unparam
     - unused
     - varcheck
+    # - wastedassign
+    # - whitespace
+    # - wrapcheck
   disable:
     - staticcheck # Disabled due to OOM errors in golangci-lint@v1.18.0
     - megacheck # Disabled due to OOM errors in golangci-lint@v1.18.0
