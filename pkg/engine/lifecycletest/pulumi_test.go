@@ -69,6 +69,7 @@ type StepSummary struct {
 }
 
 func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step) bool {
+	t.Helper()
 	assert.Equal(t, len(expected), len(actual))
 	for _, exp := range expected {
 		act := actual[0]
@@ -82,6 +83,7 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 }
 
 func pickURN(t *testing.T, urns []resource.URN, names []string, target string) resource.URN {
+	t.Helper()
 	assert.Equal(t, len(urns), len(names))
 	assert.Contains(t, names, target)
 
@@ -1270,6 +1272,7 @@ type DiffFunc = func(urn resource.URN, id resource.ID,
 	olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error)
 
 func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
+	t.Helper()
 	t.Run(name, func(t *testing.T) {
 		t.Parallel()
 
@@ -1425,6 +1428,7 @@ type Resource struct {
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
+	t.Helper()
 	for _, r := range resources {
 		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{
 			Parent:              r.parent,
@@ -2466,6 +2470,7 @@ type updateContext struct {
 }
 
 func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
+	t.Helper()
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),
@@ -3193,6 +3198,7 @@ func TestProtect(t *testing.T) {
 }
 
 func ExpectDiagMessage(t *testing.T, message string) ValidateFunc {
+	t.Helper()
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
@@ -4952,6 +4958,7 @@ func TestComponentOptionWarnings(t *testing.T) {
 	// This function creates a new language runtime registering a single resource:
 	// a component registered with the provided option.
 	var createRuntimeWithOption = func(t *testing.T, option deploytest.ResourceOptions) plugin.LanguageRuntime {
+		t.Helper()
 		return deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("component", "resA", false, option)
 			assert.NoError(t, err)

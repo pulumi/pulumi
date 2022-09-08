@@ -14,11 +14,13 @@ import (
 )
 
 func Check(t *testing.T, path string, _ codegen.StringSet) {
+	t.Helper()
 	pyCompileCheck(t, filepath.Dir(path))
 }
 
 // Checks generated code for syntax errors with `python -m compile`.
 func pyCompileCheck(t *testing.T, codeDir string) {
+	t.Helper()
 	pythonFiles := []string{}
 	err := filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk

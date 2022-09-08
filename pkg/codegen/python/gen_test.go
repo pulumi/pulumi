@@ -78,6 +78,7 @@ func TestGeneratePackage(t *testing.T) {
 	// environment lazily
 	needsEnv := func(testFn test.CodegenCheck) test.CodegenCheck {
 		return func(t *testing.T, codedir string) {
+			t.Helper()
 			func() {
 				virtualEnvLock.Lock()
 				defer virtualEnvLock.Unlock()
@@ -179,6 +180,7 @@ func buildVirtualEnv(ctx context.Context) error {
 }
 
 func pyTestCheck(t *testing.T, codeDir string) {
+	t.Helper()
 	extraDir := filepath.Join(filepath.Dir(codeDir), "python-extras")
 	if _, err := os.Stat(extraDir); os.IsNotExist(err) {
 		// We won't run any tests since no extra tests were included.

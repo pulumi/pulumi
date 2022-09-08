@@ -1380,6 +1380,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				Kind:              workspace.ResourcePlugin,
 			}},
 			validate: func(t *testing.T, r *resource.State) {
+				t.Helper()
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 					assert.Equal(t, r.Inputs["pluginDownloadURL"].StringValue(), "example.com/default")
@@ -1396,6 +1397,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				Kind:    workspace.ResourcePlugin,
 			}},
 			validate: func(t *testing.T, r *resource.State) {
+				t.Helper()
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					_, hasVersion := r.Inputs["version"]
 					assert.False(t, hasVersion)
@@ -1425,6 +1427,7 @@ func TestProviderVersionAssignment(t *testing.T) {
 				},
 			},
 			validate: func(t *testing.T, r *resource.State) {
+				t.Helper()
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
 					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
 				}

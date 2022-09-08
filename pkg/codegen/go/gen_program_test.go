@@ -30,6 +30,7 @@ func TestGenerateProgram(t *testing.T) {
 			Extension:  "go",
 			OutputFile: "main.go",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				t.Helper()
 				Check(t, path, dependencies, "../../../../../../../sdk")
 			},
 			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -56,6 +57,7 @@ func TestCollectImports(t *testing.T) {
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
+	t.Helper()
 	path := filepath.Join(testdataPath, testFile)
 	contents, err := ioutil.ReadFile(path)
 	require.NoErrorf(t, err, "could not read %v: %v", path, err)

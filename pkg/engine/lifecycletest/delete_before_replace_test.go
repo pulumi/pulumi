@@ -24,6 +24,7 @@ var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G"
 
 func generateComplexTestDependencyGraph(
 	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	t.Helper()
 
 	resType := tokens.Type("pkgA:m:typA")
 

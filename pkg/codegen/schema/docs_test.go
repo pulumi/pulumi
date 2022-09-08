@@ -21,6 +21,7 @@ var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAssertions{
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {
+		t.Helper()
 		shortcodeExpected, shortcodeActual := expected.(*Shortcode), actual.(*Shortcode)
 		return testutil.AssertEqualBytes(t, shortcodeExpected.Name, shortcodeActual.Name)
 	},

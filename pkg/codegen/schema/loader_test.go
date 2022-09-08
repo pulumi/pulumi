@@ -10,6 +10,7 @@ import (
 )
 
 func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
+	b.Helper()
 	cwd, err := os.Getwd()
 	contract.AssertNoError(err)
 	sink := cmdutil.Diag()

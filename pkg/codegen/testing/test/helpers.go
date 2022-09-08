@@ -144,6 +144,7 @@ func (cm *codegenManifest) save(dir string) error {
 
 // ValidateFileEquality compares maps of files for equality.
 func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
+	t.Helper()
 	ok := true
 	for name, file := range expected {
 		_, inActual := actual[name]
@@ -170,6 +171,7 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool
 // file set, so we can continue enjoying golden tests without manually
 // modifying the expected output.
 func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) bool {
+	t.Helper()
 	if os.Getenv("PULUMI_ACCEPT") == "" {
 		return false
 	}
@@ -209,6 +211,7 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 // unit test files. These files are copied from `$dir/$lang-extras`
 // folder if present.
 func CopyExtraFiles(t *testing.T, dir, lang string) {
+	t.Helper()
 	codeDir := filepath.Join(dir, lang)
 	extrasDir := filepath.Join(dir, fmt.Sprintf("%s-extras", lang))
 	gotExtras, err := PathExists(extrasDir)
@@ -261,6 +264,7 @@ func writeFileEnsuringDir(path string, bytes []byte) error {
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
 // are exactly equivalent.
 func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
+	t.Helper()
 	seen := map[string]bool{}
 	for x := range expected {
 		seen[x] = true
@@ -283,6 +287,7 @@ func ValidateFileTransformer(
 	inputFile string,
 	expectedOutputFile string,
 	transformer func(reader io.Reader, writer io.Writer) error) {
+	t.Helper()
 
 	reader, err := os.Open(inputFile)
 	if err != nil {
@@ -322,6 +327,7 @@ func ValidateFileTransformer(
 }
 
 func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	t.Helper()
 	RunCommandWithOptions(t, &integration.ProgramTestOptions{}, name, cwd, exec, args...)
 }
 
@@ -329,6 +335,7 @@ func RunCommandWithOptions(
 	t *testing.T,
 	opts *integration.ProgramTestOptions,
 	name string, cwd string, exec string, args ...string) {
+	t.Helper()
 
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {

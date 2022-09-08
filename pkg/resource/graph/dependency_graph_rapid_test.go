@@ -391,6 +391,7 @@ func showStates(sts []*resource.State) string {
 }
 
 func graphCheck(t *testing.T, check func(*rapid.T, []*resource.State)) {
+	t.Helper()
 	rss := resourceStateSliceGenerator()
 	rapid.Check(t, func(t *rapid.T) {
 		universe := rss.Draw(t, "universe").([]*resource.State)

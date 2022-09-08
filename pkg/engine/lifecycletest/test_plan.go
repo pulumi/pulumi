@@ -209,6 +209,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 }
 
 func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Target {
+	t.Helper()
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -228,6 +229,7 @@ func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Tar
 }
 
 func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
+	t.Helper()
 	assert.NotNil(t, res)
 }
 
@@ -244,6 +246,7 @@ func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
 }
 
 func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
+	t.Helper()
 	project := p.GetProject()
 	snap := snapshot
 	for _, step := range p.Steps {
@@ -289,6 +292,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 
 // resCount is the expected number of resources registered during this test.
 func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
+	t.Helper()
 	return []TestStep{
 		// Initial update
 		{

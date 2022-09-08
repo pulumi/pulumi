@@ -30,6 +30,7 @@ func TestMassageBlobPath(t *testing.T) {
 	t.Parallel()
 
 	testMassagePath := func(t *testing.T, s string, want string) {
+		t.Helper()
 		massaged, err := massageBlobPath(s)
 		assert.NoError(t, err)
 		assert.Equal(t, want, massaged,

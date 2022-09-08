@@ -27,6 +27,7 @@ import (
 )
 
 func getPulumiResources(t *testing.T, path string) *Resource {
+	t.Helper()
 	ctx := context.Background()
 	var checkpoint apitype.CheckpointV3
 	byts, err := ioutil.ReadFile(path)

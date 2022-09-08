@@ -61,6 +61,7 @@ func TestDestroyTarget(t *testing.T) {
 func destroySpecificTargets(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+	t.Helper()
 
 	//             A
 	//    _________|_________
@@ -163,6 +164,7 @@ func TestUpdateTarget(t *testing.T) {
 }
 
 func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool) {
+	t.Helper()
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -278,6 +280,7 @@ func contains(list []string, entry string) bool {
 }
 
 func updateInvalidTarget(t *testing.T) {
+	t.Helper()
 	p := &TestPlan{}
 
 	_, old, program := generateComplexTestDependencyGraph(t, p)
@@ -641,6 +644,8 @@ var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "
 	"I", "J", "K", "L", "M", "N"}
 
 func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
+
+	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 	// Parent-child graph
 	//      A               B
 	//    __|__         ____|____
@@ -662,8 +667,7 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	// I depends on G
 	// K depends on H
 	// N depends on H
-
-	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	t.Helper()
 	resTypeComponent := tokens.Type("pkgA:index:Component")
 	resTypeResource := tokens.Type("pkgA:index:Resource")
 
@@ -794,6 +798,7 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 func destroySpecificTargetsWithChildren(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+	t.Helper()
 
 	p := &TestPlan{}
 

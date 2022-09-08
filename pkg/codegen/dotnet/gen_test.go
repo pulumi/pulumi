@@ -30,6 +30,7 @@ func TestGeneratePackage(t *testing.T) {
 var buildMutex sync.Mutex
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	t.Helper()
 	versionPath := filepath.Join(pwd, "version.txt")
 	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
 		err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
@@ -46,6 +47,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 }
 
 func testGeneratedPackage(t *testing.T, pwd string) {
+	t.Helper()
 	test.RunCommand(t, "dotnet build", pwd, "dotnet", "test")
 }
 

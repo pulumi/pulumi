@@ -56,6 +56,7 @@ func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
 }
 
 func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+	t.Helper()
 	err := baseSnap.VerifyIntegrity()
 	if !assert.NoError(t, err) {
 		t.FailNow()

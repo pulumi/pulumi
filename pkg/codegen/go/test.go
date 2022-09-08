@@ -15,6 +15,7 @@ import (
 )
 
 func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
@@ -45,6 +46,7 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 }
 
 func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)

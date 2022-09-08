@@ -108,6 +108,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 }
 
 func assertNotFoundError(t *testing.T, err error) {
+	t.Helper()
 	msg := err.Error()
 	if strings.Contains(msg, "not found") || strings.Contains(msg, "no such file or directory") {
 		return

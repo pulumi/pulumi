@@ -16,6 +16,7 @@ import (
 )
 
 func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
 	var err error
 	dir := filepath.Dir(path)
 
@@ -71,6 +72,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 }
 
 func TypeCheck(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKPath string) {
+	t.Helper()
 	var err error
 	dir := filepath.Dir(path)
 
@@ -88,6 +90,7 @@ type dep struct {
 }
 
 func (pkg dep) install(t *testing.T, ex, dir string) {
+	t.Helper()
 	args := []string{ex, "add", "package", pkg.Name}
 	if pkg.Version != "" {
 		args = append(args, "--version", pkg.Version)

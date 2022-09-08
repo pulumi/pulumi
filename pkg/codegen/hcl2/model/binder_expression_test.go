@@ -25,6 +25,7 @@ import (
 )
 
 func assertConvertibleFrom(t *testing.T, to, from Type) {
+	t.Helper()
 	assert.NotEqual(t, NoConversion, to.ConversionFrom(from))
 }
 
