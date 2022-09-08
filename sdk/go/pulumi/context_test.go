@@ -82,6 +82,7 @@ func NewLoggingTestResource(
 	name string,
 	input StringInput,
 	opts ...ResourceOption) (*LoggingTestResource, error) {
+	t.Helper()
 
 	resource := &LoggingTestResource{}
 	err := ctx.RegisterComponentResource("test:go:NewLoggingTestResource", name, resource, opts...)
@@ -234,7 +235,8 @@ type Prov struct {
 }
 
 // Invoke the creation
-func (pr *Prov) i(ctx *Context, t *testing.T) ProviderResource {
+func (pr *Prov) i(t *testing.T, ctx *Context) ProviderResource {
+	t.Helper()
 	if pr == nil {
 		return nil
 	}
@@ -253,7 +255,8 @@ type Res struct {
 }
 
 // Invoke the creation
-func (rs *Res) i(ctx *Context, t *testing.T) Resource {
+func (rs *Res) i(t *testing.T, ctx *Context) Resource {
+	t.Helper()
 	if rs == nil {
 		return nil
 	}
@@ -263,7 +266,7 @@ func (rs *Res) i(ctx *Context, t *testing.T) Resource {
 		err = ctx.RegisterResource(rs.t, rs.name, nil, r)
 
 	} else {
-		err = ctx.RegisterResource(rs.t, rs.name, nil, r, Provider(rs.parent.i(ctx, t)))
+		err = ctx.RegisterResource(rs.t, rs.name, nil, r, Provider(rs.parent.i(t, ctx)))
 	}
 	assert.NoError(t, err)
 	return r
@@ -331,10 +334,10 @@ func TestMergeProviders(t *testing.T) {
 				providers := map[string]ProviderResource{}
 				for _, p := range tt.providers {
 					p := p // Move out of loop, for gosec
-					providers[p.t] = p.i(ctx, t)
+					providers[p.t] = p.i(t, ctx)
 				}
 
-				provMap, err := ctx.mergeProviders(tt.t, tt.parent.i(ctx, t), tt.provider.i(ctx, t), providers)
+				provMap, err := ctx.mergeProviders(tt.t, tt.parent.i(t, ctx), tt.provider.i(t, ctx), providers)
 				if err != nil {
 					return err
 				}

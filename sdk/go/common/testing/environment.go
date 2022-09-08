@@ -74,6 +74,7 @@ func WriteYarnRCForTest(root string) error {
 
 // NewGoEnvironment returns a new Environment object, located in a GOPATH temp directory.
 func NewGoEnvironment(t *testing.T) *Environment {
+	t.Helper()
 	testRoot, err := tools.CreateTemporaryGoFolder("test-env")
 	if err != nil {
 		t.Errorf("error creating test directory %s", err)
@@ -89,6 +90,7 @@ func NewGoEnvironment(t *testing.T) *Environment {
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
+	t.Helper()
 	root, err := ioutil.TempDir("", "test-env")
 	assert.NoError(t, err, "creating temp directory")
 	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")

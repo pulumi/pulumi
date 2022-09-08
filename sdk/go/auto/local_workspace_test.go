@@ -1599,6 +1599,7 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assertOutputs := func(t *testing.T, outputs OutputMap) {
+		t.Helper()
 		assert.Equal(t, 4, len(outputs), "expected four outputs")
 		assert.Equal(t, "foo", outputs["exp_static"].Value)
 		assert.False(t, outputs["exp_static"].Secret)

@@ -39,6 +39,7 @@ const (
 
 // TODO[pulumi/pulumi#8647]
 func skipWindows(t *testing.T) {
+	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipped on Windows: TODO handle Windows local paths in URIs")
 	}
@@ -557,6 +558,7 @@ func TestInvalidPathArchive(t *testing.T) {
 }
 
 func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {
+	t.Helper()
 	r, err := arch.Open()
 	assert.Nil(t, err)
 	defer func() {
@@ -628,6 +630,7 @@ perferendis doloribus asperiores repellat…
 }
 
 func assertAssetTextEquals(t *testing.T, asset *Asset, expect string) {
+	t.Helper()
 	blob, err := asset.Read()
 	assert.Nil(t, err)
 	assert.NotNil(t, blob)
@@ -635,6 +638,7 @@ func assertAssetTextEquals(t *testing.T, asset *Asset, expect string) {
 }
 
 func assertAssetBlobEquals(t *testing.T, blob *Blob, expect string) {
+	t.Helper()
 	var text bytes.Buffer
 	n, err := io.Copy(&text, blob)
 	assert.Nil(t, err)

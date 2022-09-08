@@ -47,6 +47,7 @@ var aliasTestCases = []struct {
 	{
 		"parent",
 		func(t *testing.T) Alias {
+			t.Helper()
 			return Alias{
 				Type:   String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
 				Parent: newResource(t, URN("AParent::AParent"), ID("theParent")),
@@ -82,6 +83,7 @@ func TestAliasResolution(t *testing.T) {
 }
 
 func newResource(t *testing.T, urn URN, id ID) Resource {
+	t.Helper()
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.NoError(t, err)
 	return newSimpleCustomResource(ctx, urn, id)

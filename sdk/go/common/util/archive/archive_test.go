@@ -121,6 +121,7 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 }
 
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {
+	t.Helper()
 	doTest := func(prefixPathInsideTar, path string) {
 		tarball, err := archiveContents(prefixPathInsideTar, path, files...)
 		assert.NoError(t, err)
@@ -168,6 +169,7 @@ func archiveContents(prefixPathInsideTar, path string, files ...fileContents) ([
 }
 
 func checkFiles(t *testing.T, prefixPathInsideTar, path string, expected []fileContents, r *tar.Reader) {
+	t.Helper()
 	var expectedFiles []string
 	var actualFiles []string
 

@@ -25,6 +25,7 @@ import (
 )
 
 func chdir(t *testing.T, dir string) {
+	t.Helper()
 	cwd, err := os.Getwd()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Chdir(dir)) // Set directory
@@ -50,6 +51,7 @@ func TestYarnInstall(t *testing.T) {
 }
 
 func testInstall(t *testing.T, expectedBin string, production bool) {
+	t.Helper()
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")

@@ -555,6 +555,7 @@ func init() {
 }
 
 func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps urnSet, output interface{}) {
+	t.Helper()
 	actualValue, actualKnown, actualSecret, actualDeps, err := await(output.(Output))
 	assert.NoError(t, err)
 	assert.Equal(t, value, actualValue)
@@ -593,6 +594,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewStringProperty("hello"),
 			args:  &StringArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, "hello", actual)
 			},
 		},
@@ -601,6 +603,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNullProperty(),
 			args:  &StringArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, "", actual)
 			},
 		},
@@ -624,6 +627,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, "hello", actual)
 			},
 		},
@@ -652,6 +656,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewStringProperty("hello"),
 			args:  &StringPtrArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, stringPtr("hello"), actual)
 			},
 		},
@@ -666,6 +671,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNullProperty(),
 			args:  &StringPtrArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Nil(t, actual)
 			},
 		},
@@ -676,6 +682,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewStringProperty("hello"),
 			args:  &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, String("hello"), actual)
 			},
 		},
@@ -684,6 +691,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.MakeSecret(resource.NewStringProperty("hello")),
 			args:  &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, "hello", true, true, urnSet{}, actual)
 			},
 		},
@@ -696,6 +704,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, "hello", true, true, urnSet{}, actual)
 			},
 		},
@@ -704,6 +713,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewOutputProperty(resource.Output{}),
 			args:  &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, nil, false, false, urnSet{}, actual)
 			},
 		},
@@ -714,6 +724,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, nil, false, true, urnSet{}, actual)
 			},
 		},
@@ -723,6 +734,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps:  urnSet{"fakeURN": struct{}{}},
 			args:  &StringInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, "hello", true, false, urnSet{"fakeURN": struct{}{}}, actual)
 			},
 		},
@@ -733,6 +745,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewStringProperty("hello"),
 			args:  &StringPtrInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, String("hello"), actual)
 			},
 		},
@@ -741,6 +754,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNullProperty(),
 			args:  &StringPtrInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Nil(t, actual)
 			},
 		},
@@ -751,6 +765,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewBoolProperty(true),
 			args:  &BoolInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, Bool(true), actual)
 			},
 		},
@@ -759,6 +774,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.MakeSecret(resource.NewBoolProperty(true)),
 			args:  &BoolInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, true, true, true, urnSet{}, actual)
 			},
 		},
@@ -771,6 +787,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &BoolInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, true, true, true, urnSet{}, actual)
 			},
 		},
@@ -779,6 +796,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewOutputProperty(resource.Output{}),
 			args:  &BoolInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, nil, false, false, urnSet{}, actual)
 			},
 		},
@@ -789,6 +807,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &BoolInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, nil, false, true, urnSet{}, actual)
 			},
 		},
@@ -799,6 +818,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewBoolProperty(true),
 			args:  &BoolPtrInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, Bool(true), actual)
 			},
 		},
@@ -807,6 +827,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNullProperty(),
 			args:  &BoolPtrInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Nil(t, actual)
 			},
 		},
@@ -817,6 +838,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNumberProperty(42),
 			args:  &IntArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, 42, actual)
 			},
 		},
@@ -833,6 +855,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewBoolProperty(true),
 			args:  &BoolEnumInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, BoolEnum(true), actual)
 			},
 		},
@@ -842,6 +865,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNumberProperty(42),
 			args:  &IntEnumInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, IntEnum(42), actual)
 			},
 		},
@@ -851,6 +875,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewNumberProperty(42),
 			args:  &FloatEnumInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, FloatEnum(42), actual)
 			},
 		},
@@ -860,6 +885,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewStringProperty("hello"),
 			args:  &StringEnumInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, StringEnum("hello"), actual)
 			},
 		},
@@ -873,6 +899,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, []string{"hello", "world"}, actual)
 			},
 		},
@@ -886,6 +913,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringArrayInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, StringArray{
 					String("hello"),
 					String("world"),
@@ -904,6 +932,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringArrayInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(StringArray)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -921,6 +950,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &StringMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, map[string]string{
 					"foo": "hello",
 					"bar": "world",
@@ -937,6 +967,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringMapInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, StringMap{
 					"foo": String("hello"),
 					"bar": String("world"),
@@ -955,6 +986,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &StringMapInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -976,6 +1008,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN": struct{}{}},
 			args: &StringMapInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -997,6 +1030,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN1": struct{}{}},
 			args: &StringMapInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1017,6 +1051,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, Nested{Foo: "hi", Bar: 7}, actual)
 			},
 		},
@@ -1059,6 +1094,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedPtrArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &Nested{Foo: "pointer", Bar: 2}, actual)
 			},
 		},
@@ -1078,6 +1114,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &NestedArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, []Nested{
 					{Foo: "1", Bar: 1},
 					{Foo: "2", Bar: 2},
@@ -1100,6 +1137,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, map[string]Nested{
 					"a": {Foo: "3", Bar: 3},
 					"b": {Foo: "4", Bar: 4},
@@ -1116,6 +1154,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedOutputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, Nested{
 					Foo: "hello",
 					Bar: 42,
@@ -1132,6 +1171,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedPtrOutputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, &Nested{
 					Foo: "world",
 					Bar: 100,
@@ -1154,6 +1194,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &NestedArrayOutputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, []Nested{
 					{Foo: "a", Bar: 1},
 					{Foo: "b", Bar: 2},
@@ -1176,6 +1217,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &NestedMapOutputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, map[string]Nested{
 					"a": {Foo: "c", Bar: 3},
 					"b": {Foo: "d", Bar: 4},
@@ -1192,6 +1234,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, []StringInput{
 					String("foo"),
 					String("bar"),
@@ -1206,6 +1249,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1221,6 +1265,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1239,6 +1284,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, []StringInput{
 					String("foo"),
 					String("bar"),
@@ -1257,6 +1303,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1273,6 +1320,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN": struct{}{}},
 			args: &PlainArrayArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1290,6 +1338,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			})),
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, map[string]StringInput{
 					"foo": String("bar"),
 					"baz": String("qux"),
@@ -1304,6 +1353,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1319,6 +1369,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1337,6 +1388,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, map[string]StringInput{
 					"foo": String("bar"),
 					"baz": String("qux"),
@@ -1355,6 +1407,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1371,6 +1424,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN": struct{}{}},
 			args: &PlainMapArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
 				assert.Len(t, v, 2)
@@ -1385,6 +1439,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewObjectProperty(resource.PropertyMap{}),
 			args:  &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyInputArgs{}, actual)
 			},
 		},
@@ -1395,6 +1450,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyInputArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1407,6 +1463,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
@@ -1419,6 +1476,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, nil, false, false, urnSet{}, v.Something)
@@ -1434,6 +1492,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyInputArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1450,6 +1509,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
@@ -1468,6 +1528,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN": struct{}{}},
 			args: &PlainOptionalNestedInputtyInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{"fakeURN": struct{}{}}, v.Something)
@@ -1480,6 +1541,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewObjectProperty(resource.PropertyMap{}),
 			args:  &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyArgs{}, actual)
 			},
 		},
@@ -1490,6 +1552,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1502,6 +1565,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
@@ -1514,6 +1578,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, nil, false, false, urnSet{}, v.Something)
@@ -1529,6 +1594,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, &NestedInputtyArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1545,6 +1611,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
@@ -1563,6 +1630,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			deps: urnSet{"fakeURN": struct{}{}},
 			args: &PlainOptionalNestedInputtyArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, urnSet{"fakeURN": struct{}{}}, v.Something)
@@ -1575,6 +1643,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
 			args:  &AssetArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1585,6 +1654,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
 			args:  &AssetInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1595,6 +1665,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
 			args:  &ArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewFileArchive("path"), actual)
 			},
 		},
@@ -1605,6 +1676,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewArchiveProperty(&resource.Archive{Path: "path"}),
 			args:  &ArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewFileArchive("path"), actual)
 			},
 		},
@@ -1615,6 +1687,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1625,6 +1698,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input: resource.NewAssetProperty(&resource.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveInputArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1647,6 +1721,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			args: &LaunchTemplateArgs{},
 			assert: func(t *testing.T, actual interface{}) {
+				t.Helper()
 				assertOutputEqual(t, &LaunchTemplateOptions{
 					TagSpecifications: []LaunchTemplateTagSpecification{
 						{

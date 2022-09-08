@@ -24,6 +24,7 @@ import (
 )
 
 func assertDeepEqualsIffEmptyDiff(t *testing.T, val1, val2 PropertyValue) {
+	t.Helper()
 	diff := val1.Diff(val2)
 	equals := val1.DeepEquals(val2)
 	assert.Equal(t, diff == nil, equals, "DeepEquals <--> empty diff")
