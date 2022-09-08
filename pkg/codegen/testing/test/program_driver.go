@@ -183,12 +183,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// We have special testing for this case because lambda is a python keyword.
 		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
-	{
-		Directory:   "eks-repro",
-		Description: "Repro for #10466",
-		// There is no reason this use case shouldn't pass all languages
-		Skip: codegen.NewStringSet("nodejs", "python", "go", "dotnet"),
-	},
 }
 
 // Checks that a generated program is correct

@@ -75,7 +75,11 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	propertyName := keyString.AsString()
 	propertyType, hasProperty := t.Properties[propertyName]
 	if !hasProperty {
-		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
+		props := make([]string, 0, len(t.Properties))
+		for k := range t.Properties {
+			props = append(props, k)
+		}
+		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange(), props)}
 	}
 	return propertyType, nil
 }

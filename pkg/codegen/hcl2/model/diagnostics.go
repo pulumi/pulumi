@@ -99,8 +99,8 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "tuple index must be between 0 and %d", tupleLen)
 }
 
-func unknownObjectProperty(name string, indexRange hcl.Range) *hcl.Diagnostic {
-	return errorf(indexRange, "unknown property '%s'", name)
+func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }
 
 func unsupportedReceiverType(receiver Type, indexRange hcl.Range) *hcl.Diagnostic {
