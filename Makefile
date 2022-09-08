@@ -185,6 +185,6 @@ schema-%: curl.ensure jq.ensure
 get_schemas: schema-aws!4.26.0          \
 			 schema-azure-native!1.29.0 \
 			 schema-azure!4.18.0        \
-			 schema-kubernetes!3.7.2    \
+			 schema-kubernetes!3.21.2   \
 			 schema-random!4.2.0        \
-			 schema-eks!0.37.1
+			 schema-eks!0.41.2

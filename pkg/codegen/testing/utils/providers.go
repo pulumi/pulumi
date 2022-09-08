@@ -64,4 +64,5 @@ var (
 	Kubernetes  = NewProviderLoader("kubernetes")
 	Other       = NewProviderLoader("other")
 	Synthetic   = NewProviderLoader("synthetic")
+	Eks         = NewProviderLoader("eks")
 )
