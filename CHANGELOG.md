@@ -1,6 +1,22 @@
 CHANGELOG
 =========
 
+## 3.39.3 (2022-09-07)
+
+### Improvements
+
+- [sdk/python] Improve error message when pulumi-python cannot find a main program.
+  [#10617](https://github.com/pulumi/pulumi/pull/10617)
+
+- [cli] provide info message to user if a pulumi program contains no resources
+  [#10461](https://github.com/pulumi/pulumi/issues/10461)
+
+### Bug Fixes
+
+- [engine/plugins]: Revert change causing third party provider packages to prevent deployment commands (`up`, `preview`, ...)
+  when used with the nodejs runtime. Reverts #10530.
+  [#10650](https://github.com/pulumi/pulumi/pull/10650)
+
 ## 3.39.2 (2022-09-07)
 
 ### Improvements
@@ -40,7 +56,7 @@ CHANGELOG
 
 - [cli/refresh] Do not panic when snapshot is `nil`.
   [#10593](https://github.com/pulumi/pulumi/pull/10593)
-  
+
 - [sdk/{python,nodejs}] Fix the use of `getOrganization` in policy packs.
   [#10574](https://github.com/pulumi/pulumi/pull/10574)
 
@@ -103,7 +119,7 @@ CHANGELOG
 
 - [cli/plugin] `plugin install` now supports a `--checksum` option.
   [#10528](https://github.com/pulumi/pulumi/pull/10528)
-  
+
 - [sdk/{nodejs/python}] Added `getOrganization()` to return the current organization if available.
   [#10504](https://github.com/pulumi/pulumi/pull/10504)
 
@@ -179,7 +195,7 @@ CHANGELOG
 
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
-  
+
 - [sdk/nodejs] Adds warning message when entrypoint resolution is ambiguous
   [#3582](https://github.com/pulumi/pulumi/issues/3582)
 
@@ -198,7 +214,7 @@ CHANGELOG
 - [sdk/python] Deprecate PULUMI_TEST_MODE
   [#10400](https://github.com/pulumi/pulumi/pull/10400)
 
- 
+
 ### Bug Fixes
 
 - [cli] Paginate template options
