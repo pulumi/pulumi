@@ -134,8 +134,8 @@ jobs:
   #        env:
   #          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   lint:
-    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
-    container: golangci/golangci-lint:v1.44
+    # See https://github.com/pulumi/pulumi/issues/10327 for why this is set to v1.47.3
+    container: golangci/golangci-lint:v1.47.3
     name: Lint ${{ matrix.directory }}
     strategy:
       matrix:

@@ -61,8 +61,8 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
 
   go-lint:
-    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
-    container: golangci/golangci-lint:v1.44
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.47.3
+    container: golangci/golangci-lint:v1.47.3
     name: Lint ${{ matrix.directory }}
     strategy:
       matrix:
