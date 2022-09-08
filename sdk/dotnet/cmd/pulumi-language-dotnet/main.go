@@ -568,7 +568,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		executable = host.binary
 	default:
 		// Run from source.
-		args = append(args, "run")
+		args = append(args, "run", "--no-build")
 
 		if req.GetProgram() != "" {
 			args = append(args, req.GetProgram())
