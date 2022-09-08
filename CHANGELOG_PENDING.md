@@ -8,3 +8,6 @@
 
 ### Bug Fixes
 
+- [engine/plugins]: Revert change causing third party provider packages to prevent deployment commands (`up`, `preview`, ...)
+  when used with the nodejs runtime. Reverts #10530.
+  [#10650](https://github.com/pulumi/pulumi/pull/10650)
