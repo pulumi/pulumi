@@ -129,10 +129,11 @@ func main() {
 // dotnetLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type dotnetLanguageHost struct {
-	exec          string
-	engineAddress string
-	tracing       string
-	binary        string
+	exec                 string
+	engineAddress        string
+	tracing              string
+	binary               string
+	dotnetBuildSucceeded bool
 }
 
 func newLanguageHost(exec, engineAddress, tracing string, binary string) pulumirpc.LanguageRuntimeServer {
@@ -433,6 +434,7 @@ func (host *dotnetLanguageHost) DotnetBuild(
 		return err
 	}
 
+	host.dotnetBuildSucceeded = true
 	return nil
 }
 
@@ -568,7 +570,11 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		executable = host.binary
 	default:
 		// Run from source.
-		args = append(args, "run", "--no-build")
+		args = append(args, "run")
+
+		if host.dotnetBuildSucceeded {
+			args = append(args, "--no-build")
+		}
 
 		if req.GetProgram() != "" {
 			args = append(args, req.GetProgram())
