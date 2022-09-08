@@ -18,6 +18,7 @@ var Dirs = []string{
 func Validator(language string) func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	dynamicResName := "pulumi-" + language + ":dynamic:Resource"
 	return func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+		t.Helper()
 		foundRes1 := false
 		foundRes2Child := false
 		foundRes3 := false

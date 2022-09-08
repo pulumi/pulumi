@@ -32,6 +32,7 @@ func TestAccMinimal(t *testing.T) {
 				"secret": "this is my secret message",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				// Simple runtime validation that just ensures the checkpoint was written and read.
 				assert.NotNil(t, stackInfo.Deployment)
 			},
@@ -53,6 +54,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 				"secret": "this is my secret message",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				// Simple runtime validation that just ensures the checkpoint was written and read.
 				assert.NotNil(t, stackInfo.Deployment)
 			},
@@ -121,6 +123,7 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
@@ -139,6 +142,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				for _, res := range stackInfo.Deployment.Resources {
 					if !providers.IsProviderType(res.Type) && res.Parent == "" {
 						assert.Equal(t, stackInfo.RootResource.URN, res.URN,
@@ -154,6 +158,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
+	t.Helper()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -164,6 +169,7 @@ func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
+	t.Helper()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -175,6 +181,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
+	t.Helper()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -185,6 +192,7 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
+	t.Helper()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -196,11 +204,13 @@ func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccFormattable(t *testing.T) {
+	t.Helper()
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
 				assert.False(t, strings.Contains(stdout, "MISSING"))
@@ -214,11 +224,13 @@ func TestAccFormattable(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccFormattable_withLocalState(t *testing.T) {
+	t.Helper()
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "formattable"),
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				// Note that we're abusing this hook to validate stdout. We don't actually care about the checkpoint.
 				stdout := formattableStdout.String()
 				assert.False(t, strings.Contains(stdout, "MISSING"))
@@ -233,6 +245,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccSecrets(t *testing.T) {
+	t.Helper()
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "secrets"),
@@ -244,6 +257,7 @@ func TestAccSecrets(t *testing.T) {
 			},
 			Quick: true,
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				t.Helper()
 				assert.NotNil(t, stackInfo.Deployment.SecretsProviders, "Deployment should have a secrets provider")
 
 				isEncrypted := func(v interface{}) bool {
@@ -324,6 +338,7 @@ func TestAccSecrets(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccNodeCompatTests(t *testing.T) {
+	t.Helper()
 	skipIfNotNode610(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -341,6 +356,7 @@ func TestAccNodeCompatTests(t *testing.T) {
 }
 
 func getCwd(t *testing.T) string {
+	t.Helper()
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.FailNow()
@@ -355,6 +371,7 @@ func getBaseOptions() integration.ProgramTestOptions {
 }
 
 func skipIfNotNode610(t *testing.T) {
+	t.Helper()
 	nodeVer, err := getNodeVersion()
 	if err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
 		t.Skip("Skipping 0.10.0 compat tests, because current node version is not 6.10.X")

@@ -620,6 +620,7 @@ func TestConfigPaths(t *testing.T) {
 
 //nolint:deadcode
 func pathEnv(t *testing.T, path ...string) string {
+	t.Helper()
 	pathEnv := []string{os.Getenv("PATH")}
 	for _, p := range path {
 		absPath, err := filepath.Abs(p)
@@ -638,16 +639,19 @@ func pathEnv(t *testing.T, path ...string) string {
 
 //nolint:deadcode
 func testComponentSlowPathEnv(t *testing.T) string {
+	t.Helper()
 	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
 }
 
 //nolint:deadcode
 func testComponentPlainPathEnv(t *testing.T) string {
+	t.Helper()
 	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
 }
 
 // nolint: unused,deadcode
 func testComponentProviderSchema(t *testing.T, path string) {
+	t.Helper()
 	t.Parallel()
 
 	tests := []struct {
@@ -714,6 +718,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 // Test remote component inputs properly handle unknowns.
 // nolint: unused,deadcode
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
 	t.Parallel()
 
 	const testDir = "construct_component_unknown"
@@ -754,6 +759,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 // Test methods properly handle unknowns.
 // nolint: unused,deadcode
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
 	t.Parallel()
 
 	const testDir = "construct_component_methods_unknown"
@@ -794,6 +800,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 // Test methods that create resources.
 // nolint: unused,deadcode
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
 	t.Parallel()
 
 	const testDir = "construct_component_methods_resources"
@@ -822,6 +829,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				Dependencies: dependencies,
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
 					var hasExpectedResource bool
@@ -845,6 +853,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 // Test failures returned from methods are observed.
 // nolint: unused,deadcode
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
 	t.Parallel()
 
 	const testDir = "construct_component_methods_errors"
@@ -876,6 +885,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 				Stderr:        stderr,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					t.Helper()
 					output := stderr.String()
 					assert.Contains(t, output, expectedError)
 				},
@@ -936,6 +946,7 @@ var previewSummaryRegex = regexp.MustCompile(
 	`{\s+"steps": \[[\s\S]+],\s+"duration": \d+,\s+"changeSummary": {[\s\S]+}\s+}`)
 
 func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output string) {
+	t.Helper()
 	evtJSON := bytes.Buffer{}
 	encoder := json.NewEncoder(&evtJSON)
 	encoder.SetEscapeHTML(false)
@@ -956,6 +967,7 @@ func TestJSONOutput(t *testing.T) {
 		Verbose:      true,
 		JSONOutput:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			output := stdout.String()
 
 			// Check that the previewSummary is present.
@@ -982,6 +994,7 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 		JSONOutput:   true,
 		Env:          []string{"PULUMI_ENABLE_STREAMING_JSON_PREVIEW=1"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			t.Helper()
 			output := stdout.String()
 
 			// Check that the previewSummary is *not* present.
@@ -1024,6 +1037,7 @@ func TestExcludeProtected(t *testing.T) {
 
 // nolint: unused,deadcode
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
+	t.Helper()
 	t.Parallel()
 
 	const testDir = "construct_component_output_values"
@@ -1060,6 +1074,7 @@ func TestProviderDownloadURL(t *testing.T) {
 	t.Parallel()
 
 	validate := func(t *testing.T, stdout []byte) {
+		t.Helper()
 		deployment := &apitype.UntypedDeployment{}
 		err := json.Unmarshal(stdout, deployment)
 		assert.NoError(t, err)
@@ -1118,6 +1133,7 @@ func TestProviderDownloadURL(t *testing.T) {
 // files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
 //nolint:deadcode // The linter doesn't see the uses since the consumers are conditionally compiled tests.
 func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	t.Helper()
 	var foundStdout int
 	var foundStderr int
 	for _, ev := range stack.Events {

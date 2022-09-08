@@ -530,6 +530,7 @@ func TestLocalStateLocking(t *testing.T) {
 // stackFileFormatAsserters returns a function to assert that the current file
 // format is for gzip and plain formats respectively.
 func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName string) (func(), func()) {
+	t.Helper()
 	stacksDir := filepath.Join(".pulumi", "stacks")
 	pathStack := filepath.Join(stacksDir, stackName+".json")
 	pathStackGzip := pathStack + ".gz"
@@ -642,6 +643,7 @@ func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
 }
 
 func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+	t.Helper()
 	assert.False(t, file.IsDir())
 	assert.True(t, file.Size() > 0)
 	split := strings.Split(file.Name(), ".")
