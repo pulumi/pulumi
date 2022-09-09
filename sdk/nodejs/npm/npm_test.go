@@ -57,7 +57,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	t.Cleanup(func() { os.RemoveAll(tempdir) })
 	chdir(t, tempdir)
 
 	// Create a package directory to install dependencies into.
@@ -69,7 +69,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	packageJSON := []byte(`{
 	    "name": "test-package",
 	    "dependencies": {
-	        "@pulumi/pulumi": "^2.0.0"
+	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
 	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0600))

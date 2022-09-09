@@ -18,9 +18,29 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
-func TestGeneratePackage(t *testing.T) {
+// For better CI test to job distribution, we split the test cases into three tests.
+
+var genPkgBatchSize = len(test.PulumiPulumiSDKTests) / 3
+
+func TestGeneratePackageOne(t *testing.T) {
 	t.Parallel()
 
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[0:genPkgBatchSize])
+}
+
+func TestGeneratePackageTwo(t *testing.T) {
+	t.Parallel()
+
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[genPkgBatchSize:2*genPkgBatchSize])
+}
+
+func TestGeneratePackageThree(t *testing.T) {
+	t.Parallel()
+
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[2*genPkgBatchSize:])
+}
+
+func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
@@ -30,7 +50,7 @@ func TestGeneratePackage(t *testing.T) {
 			},
 			"nodejs/test": testGeneratedPackage,
 		},
-		TestCases: test.PulumiPulumiSDKTests,
+		TestCases: testCases,
 	})
 }
 

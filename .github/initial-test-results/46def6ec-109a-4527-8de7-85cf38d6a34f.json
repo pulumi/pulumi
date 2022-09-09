@@ -1,0 +1,7 @@
+{"Time":"2022-09-07T07:42:23.519148449Z","Action":"run","Package":"github.com/pulumi/pulumi/sdk/v3/nodejs/npm","Test":"TestNPMInstall"}
+{"Time":"2022-09-07T07:42:35.294396892Z","Action":"pass","Package":"github.com/pulumi/pulumi/sdk/v3/nodejs/npm","Test":"TestNPMInstall","Elapsed":11.77}
+{"Time":"2022-09-07T07:42:35.294408892Z","Action":"run","Package":"github.com/pulumi/pulumi/sdk/v3/nodejs/npm","Test":"TestYarnInstall"}
+{"Time":"2022-09-07T07:42:44.047127444Z","Action":"pass","Package":"github.com/pulumi/pulumi/sdk/v3/nodejs/npm","Test":"TestYarnInstall","Elapsed":8.75}
+{"Time":"2022-09-07T07:42:44.047839159Z","Action":"pass","Package":"github.com/pulumi/pulumi/sdk/v3/nodejs/npm","Elapsed":20.534}
+{"Time":"2022-09-07T07:42:44.049680499Z","Action":"skip","Package":"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry","Elapsed":0}
+{"Time":"2022-09-07T07:42:44.0496972Z","Action":"skip","Package":"github.com/pulumi/pulumi/sdk/v3/go/common/constant","Elapsed":0}

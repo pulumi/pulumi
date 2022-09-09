@@ -265,6 +265,8 @@ func TestStackReferenceDotnet(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join("stack_reference", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
@@ -297,6 +299,8 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join(d, "dotnet", "step1"),
 		Dependencies: []string{"Pulumi"},
 		Config: map[string]string{
@@ -332,8 +336,11 @@ func TestLargeResourceDotNet(t *testing.T) {
 
 // Test remote component construction in .NET.
 func TestConstructDotnet(t *testing.T) {
-	t.Skip() // TODO[pulumi/pulumi#7355] flaky test
+	// t.Skip() // TODO[pulumi/pulumi#7355] flaky test
 	t.Parallel()
+
+	testDir := "construct_component"
+	runComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -366,7 +373,7 @@ func TestConstructDotnet(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -433,9 +440,12 @@ func TestConstructSlowDotnet(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts := &integration.ProgramTestOptions{
 		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir:          filepath.Join("construct_component_slow", "dotnet"),
+		Dir:          filepath.Join(testDir, "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -454,6 +464,9 @@ func TestConstructSlowDotnet(t *testing.T) {
 // Test remote component construction with prompt inputs.
 func TestConstructPlainDotnet(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -486,7 +499,7 @@ func TestConstructPlainDotnet(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -516,6 +529,9 @@ func TestConstructUnknownDotnet(t *testing.T) {
 func TestConstructMethodsDotnet(t *testing.T) {
 	t.Parallel()
 
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -532,10 +548,10 @@ func TestConstructMethodsDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
-				Dir:          filepath.Join("construct_component_methods", "dotnet"),
+				Dir:          filepath.Join(testDir, "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -558,6 +574,8 @@ func TestConstructProviderDotnet(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{

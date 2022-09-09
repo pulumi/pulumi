@@ -36,21 +36,179 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
+  matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+      - name: Configure Go Cache Key
+        env:
+          CACHE_KEY: "matrix-setup"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3 # only used by gotestsum
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - uses: actions/checkout@v3
+        with:
+          repository: dnephin/gotestsum
+          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+          path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: read-gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
+      - name: build matrix
+        id: matrix
+        env:
+          IS_CI_TEST: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+        run: |
+          # Are we testing the CI system - and all of the release jobs - itself (true)? Or are we in
+          # a regular PR (false).
+          echo "Are we in a ci/test job? ${IS_CI_TEST}"
+
+          echo "::group::Prime test timing data"
+          mkdir -p test-results
+          cp -v .github/initial-test-results/*.json test-results/
+          find test-results -type f -empty -print -delete
+          echo "::endgroup::"
+
+          echo "::group::Test matrix variables"
+          VERSION_SETS_TO_TEST=( "minimum" )
+          PLATFORMS_TO_TEST=( "ubuntu-latest" )
+          BUILD_TARGETS='
+            [{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]
+          '
+          if [ "${IS_CI_TEST}" = "true" ]; then
+            # If we're testing the CI system, we want to test all of the release jobs, and it's OK
+            # to just run everything post-build.
+            UNIT_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              --kind no-op-test  \
+              --platform "${PLATFORMS_TO_TEST[@]}" \
+              --version-set "${VERSION_SETS_TO_TEST[@]}" \
+              -vvv
+            )
+            VERSION_SETS_TO_TEST=( "minimum" "current" )
+            PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
+            BUILD_TARGETS='[
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
+            ]'
+            INTEGRATION_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              --kind all-test \
+              --platform "${PLATFORMS_TO_TEST[@]}" \
+              --version-set "${VERSION_SETS_TO_TEST[@]}" \
+              --partition-module pkg 3 \
+              --partition-module sdk 1 \
+              --partition-module tests 2 \
+              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 6 \
+              -vvv
+            )
+          else
+            UNIT_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              --kind unit-test  \
+              --platform "${PLATFORMS_TO_TEST[@]}" \
+              --version-set "${VERSION_SETS_TO_TEST[@]}" \
+              --partition-module pkg 3 \
+              --partition-module sdk 1 \
+              --partition-module tests 2 \
+              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4 \
+              -vvv
+            )
+            INTEGRATION_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              --kind integration-test \
+              --platform "${PLATFORMS_TO_TEST[@]}" \
+              --version-set "${VERSION_SETS_TO_TEST[@]}" \
+              --partition-module pkg 1 \
+              --partition-module sdk 1 \
+              --partition-module tests 1 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 6 \
+              -vvv
+            )
+          fi
+
+          echo "::endgroup::"
+          echo "::group::Version set variable"
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            --kind version-set \
+            --platform ubuntu-latest \
+            --version-set current
+          )
+          echo "::endgroup::"
+
+          echo "::group::Integration test matrix"
+          echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Unit test matrix"
+          echo "$UNIT_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Version set"
+          echo "$VERSION_SET" | yq -P '.'
+          echo "::endgroup::"
+
+          echo "::group::Set outputs"
+          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
+          ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
+          ./.github/scripts/set-output version-set "${VERSION_SET}"
+          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          echo "::endgroup::"
+    outputs:
+      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
+      unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
+      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
+      build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
+
   ci:
     name: CI
-    needs: [info]
+    needs: [info, matrix]
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      test-platforms: '["ubuntu-latest"]'
-      build-targets: '[{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]'
+      build-targets: ${{ needs.matrix.outputs.build-targets }}
+      integration-test-matrix: ${{ needs.matrix.outputs.integration-test-matrix }}
+      unit-test-matrix: ${{ needs.matrix.outputs.unit-test-matrix }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: true
-      # They said GitHub Actions didn't have ternaries, but I know better:
-      slow-test-cutoff: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') && 9999 || 5 }}
     secrets: inherit
+
+  test-collect-reports:
+    needs: [ci]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
+      - uses: actions/download-artifact@v3
+        with:
+          name: gotestsum-test-results
+          path: test-results
+      - name: List and clean up test results
+        run: |
+          ls -lhR test-results
+          find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
 
   prepare-release:
     name: prepare
@@ -71,7 +229,7 @@ jobs:
   # release:
   #   name: release
   #   if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-  #   needs: [info, prepare-release]
+  #   needs: [info, matrix, prepare-release]
   #   uses: ./.github/workflows/release.yml
   #   permissions:
   #     contents: write
@@ -81,5 +239,6 @@ jobs:
   #     version: ${{ needs.info.outputs.version }}
   #     next-version: ${{ needs.info.outputs.next-version }}
   #     release-notes: ${{ needs.info.outputs.release-notes }}
+  #     version-set: ${{ needs.matrix.outputs.version-set }}
   #     queue-merge: false
   #   secrets: inherit

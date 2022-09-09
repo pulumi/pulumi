@@ -752,16 +752,15 @@ var blockPrefixPat = regexp.MustCompile(`^[[:space:]]*\*`)
 // processBlockComment splits a block comment into mutiple lines, removes comment delimiters, and attempts to remove
 // common comment prefixes from interior lines. For example, the following HCL block comment:
 //
-//     /**
-//      * This is a block comment!
-//      *
-//      * It has multiple lines.
-//      */
+//	/**
+//	 * This is a block comment!
+//	 *
+//	 * It has multiple lines.
+//	 */
 //
 // becomes this set of lines:
 //
-//     []string{" This is a block comment!", "", " It has multiple lines."}
-//
+//	[]string{" This is a block comment!", "", " It has multiple lines."}
 func processBlockComment(text string) []string {
 	lines := strings.Split(text, "\n")
 

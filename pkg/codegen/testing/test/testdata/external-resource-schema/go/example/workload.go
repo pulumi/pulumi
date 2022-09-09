@@ -88,7 +88,7 @@ func (i *Workload) ToWorkloadOutputWithContext(ctx context.Context) WorkloadOutp
 // WorkloadArrayInput is an input type that accepts WorkloadArray and WorkloadArrayOutput values.
 // You can construct a concrete instance of `WorkloadArrayInput` via:
 //
-//          WorkloadArray{ WorkloadArgs{...} }
+//	WorkloadArray{ WorkloadArgs{...} }
 type WorkloadArrayInput interface {
 	pulumi.Input
 
@@ -113,7 +113,7 @@ func (i WorkloadArray) ToWorkloadArrayOutputWithContext(ctx context.Context) Wor
 // WorkloadMapInput is an input type that accepts WorkloadMap and WorkloadMapOutput values.
 // You can construct a concrete instance of `WorkloadMapInput` via:
 //
-//          WorkloadMap{ "key": WorkloadArgs{...} }
+//	WorkloadMap{ "key": WorkloadArgs{...} }
 type WorkloadMapInput interface {
 	pulumi.Input
 

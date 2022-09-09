@@ -50,6 +50,9 @@ heartbeat_str = '💓' if not windows else 'heartbeat'
 
 start_time = datetime.now()
 def heartbeat():
+    if not sys:
+        # occurs during interpreter shutdown
+        return
     print(heartbeat_str, file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
     sys.stdout.flush()
     sys.stderr.flush()
@@ -69,8 +72,7 @@ if shutil.which('gotestsum') is not None:
         os.mkdir(str(test_results_dir))
 
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
-    junit_file = str(test_results_dir.joinpath(f'{test_run}.xml'))
-    args = ['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--rerun-fails=2', '--packages', pkgs, '--'] + \
+    args = ['gotestsum', '--jsonfile', json_file, '--rerun-fails=2', '--packages', pkgs, '--'] + \
         opts
 
     print(' '.join(args))
@@ -81,3 +83,8 @@ else:
     print(' '.join(args))
     if not dryrun:
         sp.check_call(args, shell=False)
+
+timer.cancel()
+# ensure that we exit with a good status code, in case we race on the write in the timer. rarely the
+# python runtime will shut down, closing sys.stderr and crashing with a write to a closed sys.stderr
+exit(0)

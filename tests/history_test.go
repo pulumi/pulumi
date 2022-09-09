@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -86,8 +86,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.ImportDirectory("integration/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
-		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
 		// Update the history-test stack.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.

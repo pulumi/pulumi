@@ -18,7 +18,7 @@ type TaskDefinitionContainerDefinition struct {
 // TaskDefinitionContainerDefinitionInput is an input type that accepts TaskDefinitionContainerDefinitionArgs and TaskDefinitionContainerDefinitionOutput values.
 // You can construct a concrete instance of `TaskDefinitionContainerDefinitionInput` via:
 //
-//          TaskDefinitionContainerDefinitionArgs{...}
+//	TaskDefinitionContainerDefinitionArgs{...}
 type TaskDefinitionContainerDefinitionInput interface {
 	pulumi.Input
 
@@ -54,11 +54,11 @@ func (i TaskDefinitionContainerDefinitionArgs) ToTaskDefinitionContainerDefiniti
 // TaskDefinitionContainerDefinitionPtrInput is an input type that accepts TaskDefinitionContainerDefinitionArgs, TaskDefinitionContainerDefinitionPtr and TaskDefinitionContainerDefinitionPtrOutput values.
 // You can construct a concrete instance of `TaskDefinitionContainerDefinitionPtrInput` via:
 //
-//          TaskDefinitionContainerDefinitionArgs{...}
+//	        TaskDefinitionContainerDefinitionArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type TaskDefinitionContainerDefinitionPtrInput interface {
 	pulumi.Input
 
@@ -87,7 +87,7 @@ func (i *taskDefinitionContainerDefinitionPtrType) ToTaskDefinitionContainerDefi
 // TaskDefinitionContainerDefinitionMapInput is an input type that accepts TaskDefinitionContainerDefinitionMap and TaskDefinitionContainerDefinitionMapOutput values.
 // You can construct a concrete instance of `TaskDefinitionContainerDefinitionMapInput` via:
 //
-//          TaskDefinitionContainerDefinitionMap{ "key": TaskDefinitionContainerDefinitionArgs{...} }
+//	TaskDefinitionContainerDefinitionMap{ "key": TaskDefinitionContainerDefinitionArgs{...} }
 type TaskDefinitionContainerDefinitionMapInput interface {
 	pulumi.Input
 

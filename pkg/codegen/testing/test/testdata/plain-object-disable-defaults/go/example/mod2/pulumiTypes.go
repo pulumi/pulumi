@@ -20,7 +20,7 @@ type Typ struct {
 // TypInput is an input type that accepts TypArgs and TypOutput values.
 // You can construct a concrete instance of `TypInput` via:
 //
-//          TypArgs{...}
+//	TypArgs{...}
 type TypInput interface {
 	pulumi.Input
 
@@ -57,11 +57,11 @@ func (i TypArgs) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 // TypPtrInput is an input type that accepts TypArgs, TypPtr and TypPtrOutput values.
 // You can construct a concrete instance of `TypPtrInput` via:
 //
-//          TypArgs{...}
+//	        TypArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type TypPtrInput interface {
 	pulumi.Input
 
