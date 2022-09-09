@@ -151,6 +151,7 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.4.2
+	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.6.0
 	github.com/pulumi/pulumi-yaml v0.5.5
@@ -181,6 +182,7 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/creack/pty v1.1.17 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
+	github.com/evanphx/json-patch v0.5.2 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect

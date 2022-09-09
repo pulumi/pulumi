@@ -2,10 +2,10 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	jpatch "github.com/evanphx/json-patch/v5"
+	jpatch2 "github.com/mattbaird/jsonpatch"
 	"pgregory.net/rapid"
 )
 
@@ -60,7 +60,53 @@ func TestRFC7396PatchTurnaround(t *testing.T) {
 			return c
 		},
 	}
+	checkTurnaroundThoroughly(t, sys)
+}
 
+func TestRFC6902PatchTurnaround(t *testing.T) {
+	t.Skip("Detected failures")
+
+	// With RFC6902, evanphx/json-patch does not support the diff operation,
+	// so this system tries to use mattbaird/jsonpatch for the diff.
+	sys := jsonPatchSystem{
+		diff: func(original, modified []byte) []byte {
+			operations, err := jpatch2.CreatePatch(original, modified)
+			if err != nil {
+				panic(err)
+			}
+			var jsonPatch []json.RawMessage
+			for _, op := range operations {
+				jsonPatch = append(jsonPatch, json.RawMessage(op.Json()))
+			}
+			p, err := json.Marshal(jsonPatch)
+			if err != nil {
+				panic(err)
+			}
+			return p
+		},
+		patch: func(original, patch []byte) []byte {
+			p, err := jpatch.DecodePatch(patch)
+			if err != nil {
+				panic(err)
+			}
+			r, err := p.Apply(original)
+			if err != nil {
+				panic(err)
+			}
+			return r
+		},
+		canonicalize: func(json []byte) []byte {
+			c, err := canonicalizeJson(json)
+			if err != nil {
+				panic(err)
+			}
+			return c
+		},
+	}
+	checkTurnaroundThoroughly(t, sys)
+}
+
+func checkTurnaroundThoroughly(t *testing.T, sys jsonPatchSystem) {
 	t.Run("general-3", func(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			maxHeight := 3
@@ -70,6 +116,7 @@ func TestRFC7396PatchTurnaround(t *testing.T) {
 			checkTurnaround(t, g.genJsonObject(maxHeight), sys)
 		})
 	})
+
 	t.Run("restricted-3", func(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			maxHeight := 3
@@ -96,10 +143,6 @@ func checkTurnaround(t *rapid.T, j *rapid.Generator, sys jsonPatchSystem) {
 	patch := sys.diff(original, modified)
 
 	t.Logf("patch         = %v", string(patch))
-
-	fmt.Printf("original = %v\n", string(original))
-	fmt.Printf("modified = %v\n", string(modified))
-	fmt.Printf("patch    = %v\n", string(patch))
 
 	reconstructed := sys.patch(original, patch)
 	reconstructedNorm := sys.canonicalize(reconstructed)
