@@ -572,6 +572,9 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		// Run from source.
 		args = append(args, "run")
 
+		// If we are certain the project has been built,
+		// passing a --no-build flag to dotnet run results in
+		// up to 1s time savings.
 		if host.dotnetBuildSucceeded {
 			args = append(args, "--no-build")
 		}
