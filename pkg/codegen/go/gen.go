@@ -3692,16 +3692,26 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Types
-		if len(pkg.types) > 0 {
+		for types, i := pkg.types, 0; len(types) > 0; i++ {
 			// 500 types corresponds to approximately 5M or 40_000 lines of code.
+			const CHUNK_SIZE = 500
+			chunk := types
+			if len(chunk) > CHUNK_SIZE {
+				chunk = chunk[:CHUNK_SIZE]
+			}
+			types = types[len(chunk):]
+
 			buffer := &bytes.Buffer{}
-			err := generateTypes(buffer, pkg, pkg.types)
+			err := generateTypes(buffer, pkg, chunk)
 			if err != nil {
 				return nil, err
 			}
 
-			typePath := "pulumiTypes.go"
-			setFile(path.Join(mod, typePath), buffer.String())
+			typePath := "pulumiTypes"
+			if i != 0 {
+				typePath = fmt.Sprintf("%s%d", typePath, i)
+			}
+			setFile(path.Join(mod, typePath+".go"), buffer.String())
 		}
 
 		// Utilities
@@ -3773,10 +3783,9 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType) err
 		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 	}
 
-	// 500 types corresponds to approximately 5M or 40_000 lines of code.
 	pkg.genHeader(w, goImports, importsAndAliases)
 
-	for _, t := range pkg.types {
+	for _, t := range types {
 		if err := pkg.genType(w, t); err != nil {
 			return err
 		}
@@ -3785,7 +3794,7 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType) err
 
 	typeNames := pkg.genNestedCollectionTypes(w, collectionTypes)
 
-	pkg.genTypeRegistrations(w, pkg.types, typeNames...)
+	pkg.genTypeRegistrations(w, types, typeNames...)
 	return nil
 }
 
