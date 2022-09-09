@@ -31,6 +31,8 @@ type rapidJsonOpts struct {
 	intGen *rapid.Generator
 	// Generator override for double values.
 	float64Gen *rapid.Generator
+	// Generator override for boolean values.
+	boolGen *rapid.Generator
 }
 
 func (opts rapidJsonOpts) StringGen() *rapid.Generator {
@@ -57,6 +59,14 @@ func (opts rapidJsonOpts) F64Gen() *rapid.Generator {
 	return strG
 }
 
+func (opts rapidJsonOpts) BoolGen() *rapid.Generator {
+	strG := opts.boolGen
+	if strG == nil {
+		strG = rapid.Bool()
+	}
+	return strG
+}
+
 type rapidJsonGen struct {
 	opts rapidJsonOpts
 }
@@ -73,8 +83,7 @@ func (g *rapidJsonGen) genJsonNonNullValue(maxHeight int) *rapid.Generator {
 	}
 
 	options := []*rapid.Generator{
-		rapid.Just(json.RawMessage(`true`)),
-		rapid.Just(json.RawMessage(`false`)),
+		g.opts.BoolGen().Map(func(x bool) json.RawMessage { return g.marshal(x) }),
 		g.opts.StringGen().Map(func(x string) json.RawMessage { return g.marshal(x) }),
 		g.opts.IntGen().Map(func(x int) json.RawMessage { return g.marshal(x) }),
 		g.opts.F64Gen().Map(func(x float64) json.RawMessage { return g.marshal(x) }),
@@ -102,7 +111,7 @@ func (g *rapidJsonGen) genJsonObject(maxHeight int) *rapid.Generator {
 	}
 
 	return rapid.MapOf(keyGen, valGen).
-		Map(func(x map[string]interface{}) json.RawMessage { return g.marshal(x) })
+		Map(func(x map[string]json.RawMessage) json.RawMessage { return g.marshal(x) })
 }
 
 func (g *rapidJsonGen) genJsonArray(maxHeight int) *rapid.Generator {
