@@ -924,6 +924,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 // is aliased, returning that alias if available.
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
+	mod = strings.Split(mod, "/")[0]
 	if !ok {
 		return mod
 	}
