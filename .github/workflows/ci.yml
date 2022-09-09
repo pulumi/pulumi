@@ -24,21 +24,6 @@ on:
         default: false
         required: false
         type: boolean
-      unit-test:
-        required: false
-        default: true
-        description: "Whether to run unit tests"
-        type: boolean
-      integration-test:
-        required: false
-        default: true
-        description: "Whether to run integration tests"
-        type: boolean
-      test-platforms:
-        required: false
-        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
-        description: "Platforms to test"
-        type: string
       build-targets:
         required: false
         default: |
@@ -52,11 +37,70 @@ on:
           ]
         description: "Build targets to produce"
         type: string
-      slow-test-cutoff:
+      version-set:
         required: false
-        default: 9999
-        description: "Run tests that take less than this many minutes"
-        type: number
+        description: "Set of language versions to use for builds, lints, releases, etc."
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "dotnet": "6.0.x",
+            "go": "1.18.x",
+            "nodejs": "14.x",
+            "python": "3.9.x"
+          }
+
+      unit-test-matrix:
+        required: false
+        description: Unit test matrix to run
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "test-suite": [
+              {
+                "name": "Hello World",
+                "command": "echo \"Hello, World!\""
+              },
+            ],
+            "platform": [
+              "ubuntu-latest"
+            ],
+            "version-set": [
+              {
+                "dotnet": "6.0.x",
+                "go": "1.18.x",
+                "nodejs": "14.x",
+                "python": "3.9.x"
+              }
+            ]
+          }
+      integration-test-matrix:
+        required: false
+        description: Integration test matrix to run
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "test-suite": [
+              {
+                "name": "Hello World",
+                "command": "echo \"Hello, World!\""
+              },
+            ],
+            "platform": [
+              "ubuntu-latest"
+            ],
+            "version-set": [
+              {
+                "dotnet": "6.0.x",
+                "go": "1.18.x",
+                "nodejs": "14.x",
+                "python": "3.9.x"
+              }
+            ]
+          }
+
 
 jobs:
   lint:
@@ -65,11 +109,11 @@ jobs:
     uses: ./.github/workflows/ci-lint.yml
     with:
       ref: ${{ inputs.ref }}
+      version-set: ${{ inputs.version-set }}
 
   workaround:
-    # As of 2022-09-01, using inputs in matrices below result in "waiting for
-    # pending jobs" or failures starting them. This job is a workaround to avoid
-    # that.
+    # As of 2022-09-01, using inputs in matrices below result in "waiting for pending jobs" or
+    # failures starting them. This job is a workaround to avoid that.
     #
     # See: https://github.com/pulumi/pulumi/actions/runs/2976429676
     #
@@ -77,29 +121,12 @@ jobs:
     name: workaround
     runs-on: ubuntu-latest
     outputs:
-      test-platforms: ${{ inputs.test-platforms }}
+      # This job has only a trivial step and regurgitates workflow inputs as job outputs.
       build-targets: ${{ inputs.build-targets }}
+      integration-test-matrix: ${{ inputs.integration-test-matrix }}
+      unit-test-matrix: ${{ inputs.unit-test-matrix }}
     steps:
       - run: echo "OK"
-
-  # Tests that can run concurrently with builds
-  unit-test:
-    name: unit test
-    needs: [workaround]
-    if: inputs.unit-test
-    strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
-      matrix:
-        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
-    uses: ./.github/workflows/ci-unit-test.yml
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      platform: ${{ matrix.platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
-    secrets: inherit
 
   build-goreleaser-prep:
     name: goreleaser prep
@@ -109,7 +136,7 @@ jobs:
     secrets: inherit
 
   build-binaries:
-    name: build binaries
+    name: Build binaries
     needs: [workaround, build-goreleaser-prep]
     strategy:
       # To avoid tying up macOS runners:
@@ -124,33 +151,66 @@ jobs:
       os: ${{ matrix.target.os }}
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
+      version-set: ${{ inputs.version-set }}
     secrets: inherit
 
   build-sdks:
-    name: build SDKs
+    name: Build SDKs
     uses: ./.github/workflows/ci-build-sdks.yml
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
+      version-set: ${{ inputs.version-set }}
     secrets: inherit
 
-  # Tests that can depend on builds
-  integration-test:
-    name: integration test
-    if: inputs.integration-test
-    needs: [workaround, build-binaries, build-sdks]
+  # Tests that can run concurrently with builds.
+  unit-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name: It changes this:
+    #   CI / Unit Test (cd sdk/dotnet && make dotnet_test, cd sdk/dotnet && make dotnet_test, macos-latest, mi... / sdk/dotnet dotnet_test on macos-latest/current
+    #   (See: https://github.com/pulumi/pulumi/runs/8241055084?check_suite_focus=true#logs)
+    # To this:
+    #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
+    name: Unit Test${{ matrix.platform && '' }}
+    needs: [workaround]
     strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
-      matrix:
-        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
-    uses: ./.github/workflows/ci-integration-test.yml
+      fail-fast: ${{ contains(needs.workaround.outputs.unit-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.workaround.outputs.unit-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
       platform: ${{ matrix.platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
-      slow-test-cutoff: ${{ inputs.slow-test-cutoff }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: false
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  # Tests that depend on builds
+  integration-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Integration Test${{ matrix.platform && '' }}
+    needs: [workaround, build-binaries, build-sdks]
+    strategy:
+      fail-fast: ${{ contains(needs.workaround.outputs.integration-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.workaround.outputs.integration-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true # TODO: set to true here
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit

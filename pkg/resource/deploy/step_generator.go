@@ -1166,14 +1166,14 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Step {
 //
 // The algorithm for decomposing a poset into antichains is:
 //  1. While there exist elements in the poset,
-//    1a. There must exist at least one "maximal" element of the poset. Let E_max be those elements.
-//    2a. Remove all elements E_max from the poset. E_max is an antichain.
-//    3a. Goto 1.
+//     1a. There must exist at least one "maximal" element of the poset. Let E_max be those elements.
+//     2a. Remove all elements E_max from the poset. E_max is an antichain.
+//     3a. Goto 1.
 //
 // Translated to our dependency graph:
 //  1. While the set of condemned resources is not empty:
-//    1a. Remove all resources with no outgoing edges from the graph and add them to the current antichain.
-//    2a. Goto 1.
+//     1a. Remove all resources with no outgoing edges from the graph and add them to the current antichain.
+//     2a. Goto 1.
 //
 // The resulting list of antichains is a list of list of steps that can be safely executed in parallel. Since we must
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and

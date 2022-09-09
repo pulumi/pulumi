@@ -16,10 +16,10 @@
 // boundaries, including service APIs, plugins, and file formats.  As a result, we must consider the versioning impacts
 // for each change we make to types within this package.  In general, this means the following:
 //
-//     1) DO NOT take anything away
-//     2) DO NOT change processing rules
-//     3) DO NOT make optional things required
-//     4) DO make anything new be optional
+//  1. DO NOT take anything away
+//  2. DO NOT change processing rules
+//  3. DO NOT make optional things required
+//  4. DO make anything new be optional
 //
 // In the event that this is not possible, a breaking change is implied.  The preferred approach is to never make
 // breaking changes.  If that isn't possible, the next best approach is to support both the old and new formats
@@ -231,12 +231,12 @@ type ResourceV1 struct {
 }
 
 // ResourceV2 is the second version of the Resource API type. It absorbs a few breaking changes:
-//   1. The deprecated `Defaults` field is removed because it is not used anywhere,
-//   2. It adds an additional bool field, "External", which reflects whether or not this resource
-//      exists because of a call to `ReadResource`. This is motivated by a need to store
-//      resources that Pulumi does not own in the deployment.
-//   3. It adds an additional string field, "Provider", that is a reference to a first-class provider
-//      associated with this resource.
+//  1. The deprecated `Defaults` field is removed because it is not used anywhere,
+//  2. It adds an additional bool field, "External", which reflects whether or not this resource
+//     exists because of a call to `ReadResource`. This is motivated by a need to store
+//     resources that Pulumi does not own in the deployment.
+//  3. It adds an additional string field, "Provider", that is a reference to a first-class provider
+//     associated with this resource.
 //
 // Migrating from ResourceV1 to ResourceV2 involves:
 //  1. Dropping the `Defaults` field (it should be empty anyway)
@@ -275,14 +275,14 @@ type ResourceV2 struct {
 }
 
 // ResourceV3 is the third version of the Resource API type. It absorbs a few breaking changes:
-//   1. It adds a map from input property names to the dependencies that affect that input property. This is used to
-//      improve the precision of delete-before-create operations.
-//   2. It adds a new boolean field, `PendingReplacement`, that marks resources that have been deleted as part of a
-//      delete-before-create operation but have not yet been recreated.
+//  1. It adds a map from input property names to the dependencies that affect that input property. This is used to
+//     improve the precision of delete-before-create operations.
+//  2. It adds a new boolean field, `PendingReplacement`, that marks resources that have been deleted as part of a
+//     delete-before-create operation but have not yet been recreated.
 //
 // Migrating from ResourceV2 to ResourceV3 involves:
-//   1. Populating the map from input property names to dependencies by assuming that every dependency listed in
-//      `Dependencies` affects every input property.
+//  1. Populating the map from input property names to dependencies by assuming that every dependency listed in
+//     `Dependencies` affects every input property.
 type ResourceV3 struct {
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`

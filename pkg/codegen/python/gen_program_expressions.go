@@ -1,4 +1,4 @@
-//nolint: goconst
+// nolint: goconst
 package python
 
 import (

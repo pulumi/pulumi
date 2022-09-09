@@ -69,6 +69,7 @@ jobs:
         with:
           path: pulumi
           ref: ${{ env.PR_COMMIT_SHA }}
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
       - name: Check out pulumi-aws
         uses: actions/checkout@v2
         with:
@@ -79,6 +80,7 @@ jobs:
         with:
           repository: pulumi/pulumi-kubernetes
           path: pulumi-kubernetes
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
       - name: Check out docs
         uses: actions/checkout@v2
         with:

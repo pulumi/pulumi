@@ -17,7 +17,7 @@ type TopLevel struct {
 // TopLevelInput is an input type that accepts TopLevelArgs and TopLevelOutput values.
 // You can construct a concrete instance of `TopLevelInput` via:
 //
-//          TopLevelArgs{...}
+//	TopLevelArgs{...}
 type TopLevelInput interface {
 	pulumi.Input
 
@@ -52,11 +52,11 @@ func (i TopLevelArgs) ToTopLevelPtrOutputWithContext(ctx context.Context) TopLev
 // TopLevelPtrInput is an input type that accepts TopLevelArgs, TopLevelPtr and TopLevelPtrOutput values.
 // You can construct a concrete instance of `TopLevelPtrInput` via:
 //
-//          TopLevelArgs{...}
+//	        TopLevelArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type TopLevelPtrInput interface {
 	pulumi.Input
 

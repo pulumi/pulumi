@@ -52,7 +52,6 @@ on:
             "python": "3.9.x"
           }
 
-
 env:
   PULUMI_VERSION: ${{ inputs.version }}
   GITHUB_REF: ${{ inputs.ref }}
@@ -152,43 +151,48 @@ jobs:
       queue-merge: false
     secrets: inherit
 
-  dispatch:
-    name: ${{ matrix.job.name }}
-    if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
-    runs-on: ubuntu-latest
-    needs: [pr]
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Templates Smoke Test
-            run-command: pulumictl dispatch -r pulumi/templates -c trigger-cron "${PULUMI_VERSION}"
-          - name: Update Templates Version
-            run-command: pulumictl dispatch -r pulumi/templates -c update-templates "${PULUMI_VERSION}"
-          - name: Examples Templates Version
-            run-command: pulumictl dispatch -r pulumi/examples -c smoke-test-cli "${PULUMI_VERSION}"
-          - name: Chocolatey Update
-            run-command: pulumictl create choco-deploy "${PULUMI_VERSION}"
-          - name: Winget Update
-            run-command: pulumictl winget-deploy
-          # CAUTION: This command builds *and* automatically merges the docs PR to update the
-          # latest-version route, causing the CLI to prompt updates to the next version.
 
-          # - name: Build Package Docs run-command: pulumictl create cli-docs-build "${PULUMI_VERSION}"
-          - name: Homebrew
-            run-command: pulumictl create homebrew-bump "${PULUMI_VERSION}" "$(git rev-parse HEAD)"
-          - name: Docker containers
-            run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.32
-          cache: enable
-      - name: Repository Dispatch
-        run: ${{ matrix.job.run-command }}
+  # DISABLE ALL DISPATCH JOBS UNTIL THEY CAN BE CHECKED FOR SAFETY.
+  #
+  # NOT ALL TARGETS ALLOW A PRERELEASE BUILD.
+
+  # dispatch:
+  #   name: ${{ matrix.job.name }}
+  #   if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
+  #   runs-on: ubuntu-latest
+  #   needs: [pr]
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       job:
+  #         - name: Templates Smoke Test
+  #           run-command: pulumictl dispatch -r pulumi/templates -c trigger-cron "${PULUMI_VERSION}"
+  #         - name: Update Templates Version
+  #           run-command: pulumictl dispatch -r pulumi/templates -c update-templates "${PULUMI_VERSION}"
+  #         - name: Examples Templates Version
+  #           run-command: pulumictl dispatch -r pulumi/examples -c smoke-test-cli "${PULUMI_VERSION}"
+  #         - name: Chocolatey Update
+  #           run-command: pulumictl create choco-deploy "${PULUMI_VERSION}"
+  #         - name: Winget Update
+  #           run-command: pulumictl winget-deploy
+  #         # CAUTION: This command builds *and* automatically merges the docs PR to update the
+  #         # latest-version route, causing the CLI to prompt updates to the next version.
+
+  #         # - name: Build Package Docs run-command: pulumictl create cli-docs-build "${PULUMI_VERSION}"
+  #         - name: Homebrew
+  #           run-command: pulumictl create homebrew-bump "${PULUMI_VERSION}" "$(git rev-parse HEAD)"
+  #         - name: Docker containers
+  #           run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
+  #   steps:
+  #     - name: Checkout Repo
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: ${{ inputs.ref }}
+  #     - name: Install Pulumictl
+  #       uses: jaxxstorm/action-install-gh-release@v1.7.1
+  #       with:
+  #         repo: pulumi/pulumictl
+  #         tag: v0.0.32
+  #         cache: enable
+  #     - name: Repository Dispatch
+  #       run: ${{ matrix.job.run-command }}

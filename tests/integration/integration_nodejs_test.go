@@ -160,6 +160,8 @@ func TestProjectMain(t *testing.T) {
 // TestStackProjectName ensures we can read the Pulumi stack and project name from within the program.
 func TestStackProjectName(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          "stack_project_name",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
@@ -603,6 +605,8 @@ func TestStackReferenceNodeJS(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join("stack_reference", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
@@ -688,6 +692,8 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join(d, "nodejs", "step1"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
@@ -719,7 +725,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
-		CloudURL:   "file://~",
+		CloudURL:   integration.NewBackendURL(t),
 		NoParallel: true, // mutates environment variables
 	}
 
@@ -804,7 +810,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	}
 
 	localTestOptions := testOptions.With(integration.ProgramTestOptions{
-		CloudURL: "file://~",
+		CloudURL: integration.NewBackendURL(t),
 	})
 
 	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
@@ -863,6 +869,9 @@ func TestConstructNode(t *testing.T) {
 	}
 	t.Parallel()
 
+	testDir := "construct_component"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -886,7 +895,7 @@ func TestConstructNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructNode(t, test.expectedResourceCount, pathEnv))
 		})
@@ -948,9 +957,13 @@ func TestConstructSlowNode(t *testing.T) {
 	pathEnv := testComponentSlowPathEnv(t)
 
 	var opts *integration.ProgramTestOptions
+
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts = &integration.ProgramTestOptions{
 		Env:          []string{pathEnv},
-		Dir:          filepath.Join("construct_component_slow", "nodejs"),
+		Dir:          filepath.Join(testDir, "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -969,6 +982,9 @@ func TestConstructSlowNode(t *testing.T) {
 // Test remote component construction with prompt inputs.
 func TestConstructPlainNode(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -993,7 +1009,7 @@ func TestConstructPlainNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainNode(t, test.expectedResourceCount, pathEnv))
 		})
@@ -1022,6 +1038,9 @@ func TestConstructUnknownNode(t *testing.T) {
 func TestConstructMethodsNode(t *testing.T) {
 	t.Parallel()
 
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -1038,10 +1057,10 @@ func TestConstructMethodsNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
-				Dir:          filepath.Join("construct_component_methods", "nodejs"),
+				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1068,6 +1087,8 @@ func TestConstructProviderNode(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -1131,6 +1152,8 @@ func TestConstructNodeErrorApply(t *testing.T) {
 
 	dir := "construct_component_error_apply"
 	componentDir := "testcomponent"
+
+	runComponentSetup(t, dir)
 
 	stderr := &bytes.Buffer{}
 	expectedError := "intentional error from within an apply"

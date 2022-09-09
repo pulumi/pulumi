@@ -98,7 +98,7 @@ func (i *ToyStore) ToToyStoreOutputWithContext(ctx context.Context) ToyStoreOutp
 // ToyStoreArrayInput is an input type that accepts ToyStoreArray and ToyStoreArrayOutput values.
 // You can construct a concrete instance of `ToyStoreArrayInput` via:
 //
-//          ToyStoreArray{ ToyStoreArgs{...} }
+//	ToyStoreArray{ ToyStoreArgs{...} }
 type ToyStoreArrayInput interface {
 	pulumi.Input
 
@@ -123,7 +123,7 @@ func (i ToyStoreArray) ToToyStoreArrayOutputWithContext(ctx context.Context) Toy
 // ToyStoreMapInput is an input type that accepts ToyStoreMap and ToyStoreMapOutput values.
 // You can construct a concrete instance of `ToyStoreMapInput` via:
 //
-//          ToyStoreMap{ "key": ToyStoreArgs{...} }
+//	ToyStoreMap{ "key": ToyStoreArgs{...} }
 type ToyStoreMapInput interface {
 	pulumi.Input
 

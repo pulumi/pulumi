@@ -2268,36 +2268,38 @@ type objectProperty struct {
 //
 // Directly invalid:
 //
-//     type T struct {
-//         Invalid T
-//     }
+//	type T struct {
+//	    Invalid T
+//	}
 //
 // Indirectly invalid:
 //
-//     type T struct {
-//         Invalid S
-//     }
+//	type T struct {
+//	    Invalid S
+//	}
 //
-//     type S struct {
-//         Invalid T
-//     }
+//	type S struct {
+//	    Invalid T
+//	}
 //
 // In order to avoid generating invalid struct types, we replace all references to types involved in a cyclical
 // definition with *T. The examples above therefore become:
 //
 // (1)
-//     type T struct {
-//         Valid *T
-//     }
+//
+//	type T struct {
+//	    Valid *T
+//	}
 //
 // (2)
-//     type T struct {
-//         Valid *S
-//     }
 //
-//     type S struct {
-//         Valid *T
-//     }
+//	type T struct {
+//	    Valid *S
+//	}
+//
+//	type S struct {
+//	    Valid *T
+//	}
 //
 // We do this using a rewriter that turns all fields involved in reference cycles into optional fields.
 func rewriteCyclicField(rewritten codegen.Set, path []objectProperty, op objectProperty) {

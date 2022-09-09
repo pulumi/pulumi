@@ -18,7 +18,7 @@ type Sandwich struct {
 // SandwichInput is an input type that accepts SandwichArgs and SandwichOutput values.
 // You can construct a concrete instance of `SandwichInput` via:
 //
-//          SandwichArgs{...}
+//	SandwichArgs{...}
 type SandwichInput interface {
 	pulumi.Input
 

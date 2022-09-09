@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
@@ -108,8 +109,10 @@ func (e *Environment) SetBackend(backend string) {
 
 // SetEnvVars appends to the list of environment variables.
 // According to https://pkg.go.dev/os/exec#Cmd.Env:
-//     If Env contains duplicate environment keys, only the last
-//     value in the slice for each duplicate key is used.
+//
+//	If Env contains duplicate environment keys, only the last
+//	value in the slice for each duplicate key is used.
+//
 // So later values take precedence.
 func (e *Environment) SetEnvVars(env ...string) {
 	e.Env = append(e.Env, env...)
@@ -152,8 +155,15 @@ func (e *Environment) PathExists(p string) bool {
 	return err == nil
 }
 
+var YarnInstallMutex sync.Mutex
+
 // RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
+	// We don't want to time out on yarn installs.
+	if cmd == "yarn" {
+		YarnInstallMutex.Lock()
+		defer YarnInstallMutex.Unlock()
+	}
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {

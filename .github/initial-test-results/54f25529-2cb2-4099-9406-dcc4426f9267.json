@@ -1,0 +1,15 @@
+{"Time":"2022-09-07T07:43:07.078560149Z","Action":"run","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestRunCommandLog"}
+{"Time":"2022-09-07T07:43:07.07872645Z","Action":"pause","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestRunCommandLog"}
+{"Time":"2022-09-07T07:43:07.07873005Z","Action":"run","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestSanitizedPkg"}
+{"Time":"2022-09-07T07:43:07.07873975Z","Action":"pause","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestSanitizedPkg"}
+{"Time":"2022-09-07T07:43:07.07874785Z","Action":"run","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestDepRootCalc"}
+{"Time":"2022-09-07T07:43:07.07875845Z","Action":"pause","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestDepRootCalc"}
+{"Time":"2022-09-07T07:43:07.07876145Z","Action":"cont","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestRunCommandLog"}
+{"Time":"2022-09-07T07:43:07.078973852Z","Action":"cont","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestDepRootCalc"}
+{"Time":"2022-09-07T07:43:07.078998252Z","Action":"pass","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestDepRootCalc","Elapsed":0}
+{"Time":"2022-09-07T07:43:07.079002252Z","Action":"cont","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestSanitizedPkg"}
+{"Time":"2022-09-07T07:43:07.118677733Z","Action":"pass","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestSanitizedPkg","Elapsed":0}
+{"Time":"2022-09-07T07:43:07.118706933Z","Action":"cont","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestRunCommandLog"}
+{"Time":"2022-09-07T07:43:07.118840234Z","Action":"pass","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Test":"TestRunCommandLog","Elapsed":0.04}
+{"Time":"2022-09-07T07:43:07.120558946Z","Action":"pass","Package":"github.com/pulumi/pulumi/pkg/v3/testing/integration","Elapsed":0.081}
+{"Time":"2022-09-07T07:43:07.126396088Z","Action":"skip","Package":"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils","Elapsed":0}

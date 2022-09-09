@@ -206,6 +206,8 @@ type ProgramTestOptions struct {
 	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
+	// RequireService indicates that the test must be run against the Pulumi Service
+	RequireService bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
@@ -377,7 +379,9 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
 // We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
 func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+
+	if opts.RequireService && owner != "" {
 		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
 	}
 
@@ -620,9 +624,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
-	}
+	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.DisableCheckpointBackupsEnvVar))
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {
@@ -673,25 +675,25 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
 // binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   (+) yarn run build
-//   pulumi init
-//   (*) pulumi login
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi up
-//   pulumi stack export --file stack.json
-//   pulumi stack import --file stack.json
-//   pulumi preview (expected to be empty)
-//   pulumi up (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//	yarn install
+//	yarn link <each opts.Depencies>
+//	(+) yarn run build
+//	pulumi init
+//	(*) pulumi login
+//	pulumi stack init integrationtesting
+//	pulumi config set <each opts.Config>
+//	pulumi config set --secret <each opts.Secrets>
+//	pulumi preview
+//	pulumi up
+//	pulumi stack export --file stack.json
+//	pulumi stack import --file stack.json
+//	pulumi preview (expected to be empty)
+//	pulumi up (expected to be empty)
+//	pulumi destroy --yes
+//	pulumi stack rm --yes integrationtesting
 //
-//   (*) Only if PULUMI_ACCESS_TOKEN is set.
-//   (+) Only if `opts.RunBuild` is true.
+//	(*) Only if PULUMI_ACCESS_TOKEN is set.
+//	(+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -728,6 +730,9 @@ type ProgramTester struct {
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	stackName := opts.GetStackName()
 	maxStepTries := 1
+	if os.Getenv("PULUMI_TEST_USE_SERVICE") == "true" {
+		opts.RequireService = true
+	}
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
@@ -736,12 +741,30 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipExportImport = true
 		opts.SkipEmptyPreviewUpdate = true
 	}
+	if opts.RequireService {
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+	} else if opts.CloudURL == "" {
+		opts.CloudURL = NewBackendURL(t)
+	}
+
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
 		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
 	}
+}
+
+// NewBackendURL creates a temporary backend directory which will clean up on test exit.
+func NewBackendURL(t *testing.T) string {
+	tempDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Failed to create temporary directory: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	return fmt.Sprintf("file://%s", filepath.ToSlash(tempDir))
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
@@ -915,6 +938,12 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 }
 
 func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
+	// Yarn will time out if multiple processes are trying to install packages at the same time.
+	pulumi_testing.YarnInstallMutex.Lock()
+	defer pulumi_testing.YarnInstallMutex.Unlock()
+	pt.t.Log("acquired yarn install lock")
+	defer pt.t.Log("released yarn install lock")
+
 	cmd, err := pt.yarnCmd(args)
 	if err != nil {
 		return err
@@ -1764,10 +1793,10 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
-		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
 			return "", "", err
 		}
-		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
 			return "", "", err
 		}
 	}
