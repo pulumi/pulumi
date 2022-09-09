@@ -621,8 +621,11 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, sm.persister.SecretsManager(), resources, operations)
 }
 
+var SaveSnapshotCount = 0
+
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
+	SaveSnapshotCount++
 	snap, err := sm.snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
@@ -660,7 +663,6 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 
 	go func() {
 		// True if we have elided writes since the last actual write.
-		hasElidedWrites := false
 
 		// Service each mutation request in turn.
 	serviceLoop:
@@ -669,23 +671,15 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 			case request := <-mutationRequests:
 				var err error
 				if request.mutator() {
-					err = manager.saveSnapshot()
-					hasElidedWrites = false
-				} else {
-					hasElidedWrites = true
+					//err = manager.saveSnapshot()
 				}
 				request.result <- err
 			case <-cancel:
 				break serviceLoop
 			}
 		}
-
-		// If we still have elided writes once the channel has closed, flush the snapshot.
-		var err error
-		if hasElidedWrites {
-			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-			err = manager.saveSnapshot()
-		}
+		fmt.Println("saving snapshot")
+		err := manager.saveSnapshot()
 		done <- err
 	}()
 
