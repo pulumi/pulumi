@@ -183,7 +183,7 @@ func ExampleGitRepo() {
 	// we'll compile a the program into an executable with the name "examplesBinary"
 	binName := "examplesBinary"
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 		// this call back will get executed post-clone to allow for additional program setup
 		Setup: func(ctx context.Context, workspace Workspace) error {
@@ -213,7 +213,7 @@ func ExampleGitRepo_personalAccessToken() {
 	token, _ := os.LookupEnv("PERSONAL_ACCESS_TOKEN")
 
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 		Auth: &GitAuth{
 			PersonalAccessToken: token,
@@ -266,7 +266,7 @@ func ExampleGitRepo_usernameAndPassword() {
 	stackName := FullyQualifiedStackName("myOrg", pName, "myStack")
 
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 		Auth: &GitAuth{
 			// This will use a username and password combination for the private repo
@@ -852,7 +852,7 @@ func ExampleNewStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL: "https://github.com/AaronFriel/test-repo.git",
 		// the subdirectory relative to the root of the repo
 		ProjectPath: "goproj",
 		// this call back will get executed post-clone to allow for additional program setup
@@ -883,7 +883,7 @@ func ExampleUpsertStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL: "https://github.com/AaronFriel/test-repo.git",
 		// the subdirectory relative to the root of the repo
 		ProjectPath: "goproj",
 		// this call back will get executed post-clone to allow for additional program setup
@@ -914,7 +914,7 @@ func ExampleSelectStackRemoteSource() {
 	binName := "examplesBinary"
 	// a description of the git repo to clone
 	repo := GitRepo{
-		URL: "https://github.com/pulumi/test-repo.git",
+		URL: "https://github.com/AaronFriel/test-repo.git",
 		// the subdirectory relative to the root of the repo
 		ProjectPath: "goproj",
 		// this call back will get executed post-clone to allow for additional program setup

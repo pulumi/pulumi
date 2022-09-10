@@ -208,7 +208,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
     if partition_module.partitions == 1:
         pkgs = " ".join(go_packages)
         return [{
-            "name": f"Go {partition_module.module_dir}",
+            "name": f"{partition_module.module_dir}",
             "command": f'make PKGS="{pkgs}" gotestsum/{partition_module.module_dir}'
         }]
 
@@ -252,7 +252,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
             print(test_command, file=sys.stderr)
         test_suites.append(
             {
-                "name": f"Go {partition_module.module_dir} {idx_str}/{partition_module.partitions}",
+                "name": f"{partition_module.module_dir} {idx_str}/{partition_module.partitions}",
                 "command": test_command,
             }
         )
@@ -324,7 +324,7 @@ def run_gotestsum_ci_matrix_single_package(
 
         test_suites.append(
             {
-                "name": f"Go {partition_pkg.package_dir} {idx_str}/{partition_pkg.partitions}",
+                "name": f"{partition_pkg.package_dir} {idx_str}/{partition_pkg.partitions}",
                 "command": test_command,
             }
         )

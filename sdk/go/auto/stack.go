@@ -25,7 +25,7 @@
 //
 //  2. Programs fetched from a Git URL (NewStackRemoteSource)
 //     stack, err := NewStackRemoteSource(ctx, "myOrg/myProj/myStack", GitRepo{
-//     URL:         "https://github.com/pulumi/test-repo.git",
+//     URL:         "https://github.com/AaronFriel/test-repo.git",
 //     ProjectPath: filepath.Join("project", "path", "repo", "root", "relative"),
 //     })
 //
