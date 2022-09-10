@@ -111,7 +111,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a Pulumi.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a PulumiPolicy.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func LoadTemplate(path string) (Template, error) {
 func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	var existing []string
 	if err := walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
+		func(entry os.DirEntry, source string, dest string) error {
 			if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
 				existing = append(existing, filepath.Base(dest))
 			}
@@ -476,8 +476,8 @@ func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
 
 	return walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
-			if info.IsDir() {
+		func(entry os.DirEntry, source string, dest string) error {
+			if entry.IsDir() {
 				// Create the destination directory.
 				return os.Mkdir(dest, 0700)
 			}
@@ -670,28 +670,28 @@ func getValidProjectName(name string) string {
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
 func walkFiles(sourceDir string, destDir string, projectName string,
-	actionFn func(info os.FileInfo, source string, dest string) error) error {
+	actionFn func(entry os.DirEntry, source string, dest string) error) error {
 
 	contract.Require(sourceDir != "", "sourceDir")
 	contract.Require(destDir != "", "destDir")
 	contract.Require(actionFn != nil, "actionFn")
 
-	infos, err := ioutil.ReadDir(sourceDir)
+	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return err
 	}
-	for _, info := range infos {
-		name := info.Name()
+	for _, entry := range entries {
+		name := entry.Name()
 		source := filepath.Join(sourceDir, name)
 		dest := filepath.Join(destDir, name)
 
-		if info.IsDir() {
+		if entry.IsDir() {
 			// Ignore the .git directory.
 			if name == GitDir {
 				continue
 			}
 
-			if err := actionFn(info, source, dest); err != nil {
+			if err := actionFn(entry, source, dest); err != nil {
 				return err
 			}
 
@@ -707,7 +707,7 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 			// The file name may contain a placeholder for project name: replace it with the actual value.
 			newDest := transform(dest, projectName, "")
 
-			if err := actionFn(info, source, newDest); err != nil {
+			if err := actionFn(entry, source, newDest); err != nil {
 				return err
 			}
 		}
@@ -734,7 +734,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 	message := fmt.Sprintf("template '%s' not found", templateName)
 
 	// Attempt to read the directory to offer suggestions.
-	infos, err := ioutil.ReadDir(templateDir)
+	entries, err := os.ReadDir(templateDir)
 	if err != nil {
 		contract.IgnoreError(err)
 		return errors.New(message)
@@ -744,10 +744,10 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 	suggestions := []string{}
 	const minDistance = 2
 	op := levenshtein.DefaultOptions
-	for _, info := range infos {
-		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(info.Name()), op)
+	for _, entry := range entries {
+		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(entry.Name()), op)
 		if distance <= minDistance {
-			suggestions = append(suggestions, info.Name())
+			suggestions = append(suggestions, entry.Name())
 		}
 	}
 

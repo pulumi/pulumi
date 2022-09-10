@@ -357,7 +357,7 @@ func TestStackBackups(t *testing.T) {
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
-		files, err := ioutil.ReadDir(backupDir)
+		files, err := os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
@@ -373,7 +373,7 @@ func TestStackBackups(t *testing.T) {
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.
-		files, err = ioutil.ReadDir(backupDir)
+		files, err = os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
@@ -561,9 +561,14 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName s
 		}
 		if t.Failed() {
 			fmt.Printf("Stacks dir state at time of failure (gzip: %t):\n", gzip)
-			files, _ := ioutil.ReadDir(e.CWD + "/" + stacksDir)
+			files, _ := os.ReadDir(e.CWD + "/" + stacksDir)
 			for _, file := range files {
-				fmt.Println(file.Name(), file.Size())
+				fi, err := file.Info()
+				if err != nil {
+					fmt.Printf("failed to read file info: %s\n", file.Name())
+					continue
+				}
+				fmt.Println(fi.Name(), fi.Size())
 			}
 		}
 	}
@@ -623,7 +628,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	assert.Equal(t, 5, len(history), "Stack history doesn't match reality")
 }
 
-func getFileNames(infos []os.FileInfo) []string {
+func getFileNames(infos []os.DirEntry) []string {
 	var result []string
 	for _, i := range infos {
 		result = append(result, i.Name())
@@ -631,8 +636,8 @@ func getFileNames(infos []os.FileInfo) []string {
 	return result
 }
 
-func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
-	var result []os.FileInfo
+func filterOutAttrsFiles(files []os.DirEntry) []os.DirEntry {
+	var result []os.DirEntry
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".attrs" {
 			result = append(result, f)
@@ -641,9 +646,11 @@ func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
 	return result
 }
 
-func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, before int64, after int64) {
 	assert.False(t, file.IsDir())
-	assert.True(t, file.Size() > 0)
+	fi, err := file.Info()
+	assert.NoError(t, err)
+	assert.True(t, fi.Size() > 0)
 	split := strings.Split(file.Name(), ".")
 	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])

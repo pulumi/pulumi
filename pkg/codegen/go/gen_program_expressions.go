@@ -1119,7 +1119,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 var functionPackages = map[string][]string{
 	"join":             {"strings"},
 	"mimeType":         {"mime", "path"},
-	"readDir":          {"io/ioutil"},
+	"readDir":          {"os"},
 	"readFile":         {"io/ioutil"},
 	"filebase64":       {"io/ioutil", "encoding/base64"},
 	"toBase64":         {"encoding/base64"},

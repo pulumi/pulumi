@@ -15,7 +15,6 @@
 package codegen
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -123,7 +122,7 @@ func SortedKeys(m interface{}) []string {
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to
 // target that use-case.
 func CleanDir(dirPath string, exclusions StringSet) error {
-	subPaths, err := ioutil.ReadDir(dirPath)
+	subPaths, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
 	}

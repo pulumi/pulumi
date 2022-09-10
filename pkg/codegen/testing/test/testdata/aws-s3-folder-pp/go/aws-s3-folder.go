@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
@@ -21,7 +21,7 @@ func main() {
 			return err
 		}
 		siteDir := "www"
-		files0, err := ioutil.ReadDir(siteDir)
+		files0, err := os.ReadDir(siteDir)
 		if err != nil {
 			return err
 		}
