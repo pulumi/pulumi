@@ -3,7 +3,7 @@
 Programmatic infrastructure.
 
 ## Godocs
-See the full godocs for the most extensive and up to date information including full examples coverage: 
+See the full godocs for the most extensive and up to date information including full examples coverage:
 
 https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/auto?tab=doc
 
@@ -31,7 +31,7 @@ In addition to fine-grained building blocks, Automation API provides three out o
 2. Programs fetched from a Git URL (NewStackRemoteSource)
 ```go
 	stack, err := NewStackRemoteSource(ctx, "myOrg/myProj/myStack", GitRepo{
-		URL:         "https:github.com/pulumi/test-repo.git",
+		URL:         "https:github.com/AaronFriel/test-repo.git",
 		ProjectPath: filepath.Join("project", "path", "repo", "root", "relative"),
     })
 ```

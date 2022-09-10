@@ -75,6 +75,7 @@ jobs:
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
       - name: Check out pulumi-kubernetes
         uses: actions/checkout@v2
         with:

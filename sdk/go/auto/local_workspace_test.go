@@ -442,7 +442,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/AaronFriel/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -459,7 +459,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		},
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 	}
 
@@ -541,7 +541,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/AaronFriel/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -558,7 +558,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		},
 	}
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 	}
 
@@ -640,7 +640,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/AaronFriel/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -658,7 +658,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	binName := "examplesBinary"
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
@@ -753,7 +753,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/AaronFriel/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -771,7 +771,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	binName := "examplesBinary"
 	repo := GitRepo{
-		URL:         "https://github.com/pulumi/test-repo.git",
+		URL:         "https://github.com/AaronFriel/test-repo.git",
 		ProjectPath: "goproj",
 		Setup: func(ctx context.Context, workspace Workspace) error {
 			cmd := exec.Command("go", "build", "-o", binName, "main.go")
