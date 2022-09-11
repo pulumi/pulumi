@@ -82,71 +82,54 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Test matrix variables"
+          UNIT_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind unit-test \
+            --platform ubuntu-latest \
+            --version-set current \
+            --partition-module pkg 3 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+          )
+
           VERSION_SETS_TO_TEST=( "minimum" )
           PLATFORMS_TO_TEST=( "ubuntu-latest" )
           BUILD_TARGETS='
             [{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]
           '
           if [ "${IS_CI_TEST}" = "true" ]; then
-            # If we're testing the CI system, we want to test all of the release jobs, and it's OK
-            # to just run everything post-build.
-            UNIT_TEST_MATRIX="[]"
+            # If we're testing the CI system, we want to test all platforms and version sets.
             VERSION_SETS_TO_TEST=( "minimum" "current" )
-            PLATFORMS_TO_TEST=( "windows-latest" )
+            PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
             BUILD_TARGETS='[
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
             ]'
-            # PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
-            # BUILD_TARGETS='[
-            #   { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
-            #   { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
-            #   { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
-            #   { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-            #   { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
-            #   { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
-            # ]'
-            INTEGRATION_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              --kind all-test \
-              --platform "${PLATFORMS_TO_TEST[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              --partition-module pkg 3 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4 \
-              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 6 \
-              -vvv
-            )
-          else
-            UNIT_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              --kind unit-test  \
-              --platform "${PLATFORMS_TO_TEST[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              --partition-module pkg 3 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4 \
-              -vvv
-            )
-            INTEGRATION_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              --kind integration-test \
-              --platform "${PLATFORMS_TO_TEST[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              --partition-module pkg 1 \
-              --partition-module sdk 1 \
-              --partition-module tests 1 \
-              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 6 \
-              -vvv
-            )
           fi
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind integration-test \
+            --platform "${PLATFORMS_TO_TEST[@]}" \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+          )
 
           echo "::endgroup::"
           echo "::group::Version set variable"
           VERSION_SET=$(./scripts/get-job-matrix.py \
-            --kind version-set \
-            --platform ubuntu-latest \
+            generate-version-set \
             --version-set current
           )
           echo "::endgroup::"
