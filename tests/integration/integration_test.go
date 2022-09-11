@@ -82,7 +82,8 @@ func TestStackTagValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid name (spaces, parens, etc.)")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
+		assert.Contains(t, stderr,
+			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
