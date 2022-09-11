@@ -291,7 +291,7 @@ func (b *localBackend) ValidateStackName(stackName string) error {
 
 	validNameRegex := regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
 	if !validNameRegex.MatchString(stackName) {
-		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, or periods")
+		return errors.New("stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
 	}
 
 	return nil
