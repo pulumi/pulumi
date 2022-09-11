@@ -92,15 +92,19 @@ jobs:
             # to just run everything post-build.
             UNIT_TEST_MATRIX="[]"
             VERSION_SETS_TO_TEST=( "minimum" "current" )
-            PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
+            PLATFORMS_TO_TEST=( "windows-latest" )
             BUILD_TARGETS='[
-              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
-              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
-              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
             ]'
+            # PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
+            # BUILD_TARGETS='[
+            #   { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+            #   { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+            #   { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+            #   { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+            #   { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+            #   { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
+            # ]'
             INTEGRATION_TEST_MATRIX=$(
               ./scripts/get-job-matrix.py \
               --kind all-test \
