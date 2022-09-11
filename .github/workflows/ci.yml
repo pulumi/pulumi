@@ -173,6 +173,7 @@ jobs:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
     name: Unit Test${{ matrix.platform && '' }}
     needs: [workaround]
+    if: ${{ needs.workaround.outputs.unit-test-matrix != '[]' && needs.workaround.outputs.unit-test-matrix != '' }}
     strategy:
       fail-fast: ${{ contains(needs.workaround.outputs.unit-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.workaround.outputs.unit-test-matrix) }}

@@ -90,13 +90,7 @@ jobs:
           if [ "${IS_CI_TEST}" = "true" ]; then
             # If we're testing the CI system, we want to test all of the release jobs, and it's OK
             # to just run everything post-build.
-            UNIT_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              --kind no-op-test  \
-              --platform "${PLATFORMS_TO_TEST[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              -vvv
-            )
+            UNIT_TEST_MATRIX="[]"
             VERSION_SETS_TO_TEST=( "minimum" "current" )
             PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
             BUILD_TARGETS='[

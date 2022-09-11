@@ -12,6 +12,6 @@ do
 
         go get -u github.com/pulumi/pulumi/sdk/v3
         go get -u github.com/pulumi/pulumi/pkg/v3
-        go mod tidy -compat=1.17
+        go mod tidy -go=1.18 -compat=1.18
     )
 done

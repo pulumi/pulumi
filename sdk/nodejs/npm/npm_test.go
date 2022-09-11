@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,6 +77,8 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
+	pulumi_testing.YarnInstallMutex.Lock()
+	defer pulumi_testing.YarnInstallMutex.Unlock()
 	bin, err := Install(context.Background(), pkgdir, production, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBin, bin)

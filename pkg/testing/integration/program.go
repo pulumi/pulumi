@@ -2137,11 +2137,7 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	// tidy to resolve all transitive dependencies including from local dependencies above.
-	args := []string{goBin, "mod", "tidy"}
-	if strings.HasPrefix(runtime.Version(), "go1.17") {
-		args = append(args, "-compat=1.17")
-	}
-	err = pt.runCommand("go-mod-tidy", args, cwd)
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy", "-compat=1.18"}, cwd)
 	if err != nil {
 		return err
 	}
