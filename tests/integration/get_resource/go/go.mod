@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/tests/get_resource
 
-go 1.17
+go 1.18
 
 require (
 	github.com/pulumi/pulumi-random/sdk/v4 v4.8.2

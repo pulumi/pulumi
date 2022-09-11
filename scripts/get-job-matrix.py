@@ -27,7 +27,6 @@ VersionSet = Dict[str, str]
 class JobKind(str, Enum):
     """Output kinds supported with this utility."""
 
-    NOOP = "no-op-test"
     INTEGRATION_TEST = "integration-test"
     UNIT_TEST = "unit-test"
     ALL_TEST = "all-test"
@@ -96,7 +95,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimal",
     "dotnet": "6.0.x",
-    "go": "1.17.x",
+    "go": "1.18.x",
     "nodejs": "14.x",
     "python": "3.9.x",
 }
@@ -349,15 +348,6 @@ def get_matrix(
             )
 
         return version_sets[0]
-    elif kind == JobKind.NOOP:
-        return {
-            "test-suite": [{
-                "name": "noop",
-                "command": "echo Hello World",
-            }],
-            "platform": platforms,
-            "version-set": version_sets,
-        }
     elif kind == JobKind.INTEGRATION_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS
     elif kind == JobKind.UNIT_TEST:

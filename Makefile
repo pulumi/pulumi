@@ -20,6 +20,7 @@ $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
 
 TESTPARALLELISM ?= 10
+PKG_PARALLELISM ?= 2
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
