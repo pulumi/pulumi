@@ -11,6 +11,7 @@ Uses `gotestsum tool ci-matrix` to divide up Go packages into partitions to redu
 
 
 import argparse
+import itertools
 import json
 import os
 import subprocess as sp
@@ -18,7 +19,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pprint import pformat
-from typing import Dict, List, Optional, Set, TypedDict, Union
+from typing import Any, Dict, List, Optional, Set, TypedDict, Union
 
 global_verbosity = 0
 
@@ -30,7 +31,6 @@ class JobKind(str, Enum):
     INTEGRATION_TEST = "integration-test"
     UNIT_TEST = "unit-test"
     ALL_TEST = "all-test"
-    VERSION_SET = "version-set"
 
 
 @dataclass
@@ -113,7 +113,7 @@ def run_list_packages(module_dir: str) -> Set[str]:
     """Runs go list on pkg, sdk, and tests"""
     try:
         cmd = sp.run(
-            ["go", "list", "-find", "./..."],
+            ["go", "list", "-tags", "all", "-find", "./..."],
             cwd=module_dir,
             check=True,
             capture_output=True,
@@ -339,16 +339,9 @@ def get_matrix(
     platforms: List[str],
     version_sets: List[VersionSet],
     fast: bool = False,
-) -> Union[VersionSet, Matrix]:
+) -> Matrix:
     """Compute a job matrix"""
-    if kind == JobKind.VERSION_SET:
-        if len(version_sets) != 1:
-            raise Exception(
-                f"Exactly one version set must be specified (received {len(version_sets)}) for build and lint."
-            )
-
-        return version_sets[0]
-    elif kind == JobKind.INTEGRATION_TEST:
+    if kind == JobKind.INTEGRATION_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
@@ -392,9 +385,63 @@ def get_matrix(
     }
 
 
-def main():
-    """Execute command as a script"""
-    parser = argparse.ArgumentParser()
+def get_version_sets(args: argparse.Namespace):
+    """Read version set arguments into valid sets"""
+    version_sets: List[VersionSet] = []
+    for named_version_set in args.version_set:
+        if named_version_set == "minimum":
+            version_sets.append(MINIMUM_SUPPORTED_VERSION_SET)
+        elif named_version_set == "current":
+            version_sets.append(CURRENT_VERSION_SET)
+        else:
+            raise argparse.ArgumentError(argument=None, message=f"Unknown version set {named_version_set}")
+
+    for version_arg in args.versions or []:
+        this_set = {**MINIMUM_SUPPORTED_VERSION_SET}
+        version_arg = version_arg.split(",")
+        for version in version_arg:
+            lang, version = version.split("=")
+            if lang not in ["dotnet", "go", "node", "python"]:
+                raise argparse.ArgumentError(argument=None, message=f"Unknown language {lang}")
+            this_set[lang] = version
+
+        version_sets.append(this_set)
+
+    return version_sets
+
+def generate_version_set(args: argparse.Namespace):
+    version_sets = get_version_sets(args)
+    if len(version_sets) != 1:
+        raise argparse.ArgumentError(
+            argument=None,
+            message=f"Exactly one version set must be specified (received {len(version_sets)}) for build and lint."
+        )
+
+    print(json.dumps(version_sets[0]))
+
+def generate_matrix(args: argparse.Namespace):
+    partition_modules: List[PartitionModule] = []
+    for mod_dir, partitions in args.partition_module:
+        # mod_dir, partitions = arg
+        partition_modules.append(PartitionModule(mod_dir, int(partitions)))
+
+    partition_packages: List[PartitionPackage] = []
+    for pkg, pkg_dir, partitions in args.partition_package:
+        partition_packages.append(PartitionPackage(pkg, pkg_dir, int(partitions)))
+
+    version_sets = get_version_sets(args)
+
+    print(json.dumps(get_matrix(
+        kind=args.kind,
+        platforms=args.platform,
+        fast=args.fast,
+        partition_modules=partition_modules,
+        partition_packages=partition_packages,
+        version_sets=version_sets,
+    )))
+
+def add_generate_matrix_args(parser: argparse.ArgumentParser):
+    parser.set_defaults(func=generate_matrix)
 
     parser.add_argument(
         "--kind",
@@ -459,68 +506,79 @@ def main():
         ),
     )
 
-    parser.add_argument("-v", "--verbosity", action="count", default=0)
+def add_version_set_args(parser: argparse.ArgumentParser):
     parser.add_argument(
-        "--pretty", action="store_true", default=False, help="Pretty-print the matrix"
+        "--version-set",
+        action="store",
+        nargs="*",
+        default=["minimum"],
+        choices=["minimum", "current"],
+        help="Named set of versions to use. Defaults to minimum supported versions. Available sets: minimum, current",
     )
+    default_versions = ",".join(
+        [f"{lang}={version}" for lang, version in MINIMUM_SUPPORTED_VERSION_SET.items()]
+    )
+    parser.add_argument(
+        "--versions",
+        action="store",
+        type=str,
+        nargs="*",
+        help=(
+            "Set of language versions to use, in the form of lang=version,lang=version. "
+            + "Spaces separate distinct sets, creating separate sets of jobs. Prefer using .x or semver ranges. "
+            + " For supported version strings, see, e.g., www.github.com/actions/setup-go for each language. "
+            + "Languages not included in a set use the default."
+            + f"Defaults: {default_versions}."
+        ),
+    )
+    parser.set_defaults(func=generate_version_set)
+
+def combine_matrices(args: argparse.Namespace):
+    matrix_includes = []
+    for json_obj in args.matrices:
+        matrix: Dict[str, List[Any]] = json.loads(json_obj)
+
+        keys = list(matrix.keys())
+
+        combinations = list(itertools.product(*matrix.values()))
+
+        for combination in combinations:
+            include = dict(zip(keys, combination))
+            matrix_includes.append(include)
+
+    print(json.dumps({
+        "include": matrix_includes
+    }))
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate job and version matrices")
+    parser.add_argument("-v", "--verbosity", action="count", default=0, help="logging verbosity, specify multiple times for higher levels, i.e.: -vvv")
+
+    subparsers = parser.add_subparsers()
+    gen_matrix_parser = subparsers.add_parser("generate-matrix",
+        help="Generate a matrix of jobs.")
+    add_generate_matrix_args(gen_matrix_parser)
+
+    version_set_parser = subparsers.add_parser("generate-version-set",
+        help="Generate a version set only.")
+    add_version_set_args(version_set_parser)
+
+    combine_matrices_parser = subparsers.add_parser("combine-matrices",
+        help="Combine one or more matrices, computing all combinations of each and generating a list of includes.")
+    combine_matrices_parser.add_argument("matrices", nargs=argparse.REMAINDER)
+    combine_matrices_parser.set_defaults(func=combine_matrices)
+
 
     args = parser.parse_args()
+
+    if not hasattr(args, 'func'):
+        parser.print_help()
+        sys.exit(1)
 
     global global_verbosity  # pylint: disable=global-statement
     global_verbosity = args.verbosity
 
-    partition_modules: List[PartitionModule] = []
-    for mod_dir, partitions in args.partition_module:
-        # mod_dir, partitions = arg
-        partition_modules.append(PartitionModule(mod_dir, int(partitions)))
-
-
-    partition_packages: List[PartitionPackage] = []
-    for pkg, pkg_dir, partitions in args.partition_package:
-        partition_packages.append(PartitionPackage(pkg, pkg_dir, int(partitions)))
-
-    version_sets = get_version_sets(parser, args)
-
-    matrix = get_matrix(
-        kind=args.kind,
-        platforms=args.platform,
-        fast=args.fast,
-        partition_modules=partition_modules,
-        partition_packages=partition_packages,
-        version_sets=version_sets,
-    )
-    if args.pretty:
-        json_matrix = json.dumps(matrix, indent=2)
-    else:
-        json_matrix = json.dumps(matrix)
-
-    print(json_matrix)
-
-
-def get_version_sets(parser: argparse.ArgumentParser, args: argparse.Namespace):
-    """Read version set arguments into valid sets"""
-    version_sets: List[VersionSet] = []
-    for named_version_set in args.version_set:
-        if named_version_set == "minimum":
-            version_sets.append(MINIMUM_SUPPORTED_VERSION_SET)
-        elif named_version_set == "current":
-            version_sets.append(CURRENT_VERSION_SET)
-        else:
-            parser.error(f"Unknown version set {named_version_set}")
-
-    for version_arg in args.versions or []:
-        this_set = {**MINIMUM_SUPPORTED_VERSION_SET}
-        version_arg = version_arg.split(",")
-        for version in version_arg:
-            lang, version = version.split("=")
-            if lang not in ["dotnet", "go", "node", "python"]:
-                parser.error(f"Unknown language {lang}")
-            this_set[lang] = version
-
-        version_sets.append(this_set)
-
-    return version_sets
-
+    args.func(args)
 
 if __name__ == "__main__":
     main()
