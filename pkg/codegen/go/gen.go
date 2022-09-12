@@ -3692,6 +3692,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Types
+		sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
+		for k := range knownTypes {
+			sortedKnownTypes = append(sortedKnownTypes, k)
+		}
+		sort.Slice(sortedKnownTypes, func(i, j int) bool {
+			return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
+		})
+
 		for types, i := pkg.types, 0; len(types) > 0; i++ {
 			// 500 types corresponds to approximately 5M or 40_000 lines of code.
 			const chunkSize = 500
@@ -3702,7 +3710,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			types = types[len(chunk):]
 
 			buffer := &bytes.Buffer{}
-			err := generateTypes(buffer, pkg, chunk)
+			err := generateTypes(buffer, pkg, chunk, sortedKnownTypes)
 			if err != nil {
 				return nil, err
 			}
@@ -3745,30 +3753,15 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	return files, nil
 }
 
-func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType) error {
+func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType, knownTypes []schema.Type) error {
 	hasOutputs, importsAndAliases := false, map[string]string{}
 	for _, t := range types {
 		pkg.getImports(t, importsAndAliases)
 		hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
 	}
 
-	knownTypes := map[schema.Type]struct{}{}
-	for _, t := range types {
-		if _, ok := pkg.typeDetails[t]; ok {
-			knownTypes[t] = struct{}{}
-		}
-	}
-
-	sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
-	for k := range knownTypes {
-		sortedKnownTypes = append(sortedKnownTypes, k)
-	}
-	sort.Slice(sortedKnownTypes, func(i, j int) bool {
-		return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
-	})
-
 	collectionTypes := map[string]*nestedTypeInfo{}
-	for _, t := range sortedKnownTypes {
+	for _, t := range knownTypes {
 		pkg.collectNestedCollectionTypes(collectionTypes, t)
 	}
 
@@ -3789,7 +3782,6 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType) err
 		if err := pkg.genType(w, t); err != nil {
 			return err
 		}
-		delete(knownTypes, t)
 	}
 
 	typeNames := pkg.genNestedCollectionTypes(w, collectionTypes)
