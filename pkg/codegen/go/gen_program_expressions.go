@@ -184,8 +184,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					"Unsafe enum conversions from type %s not implemented yet: %s => %s",
 					from.Type(), from, to))
 			}
-			enumTag := fmt.Sprintf("%s.%s",
-				tokenToModule(to.Token), tokenToName(to.Token))
+			pkg, mod, typ, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
+			mod = g.getModOrAlias(pkg, mod, mod)
+			enumTag := fmt.Sprintf("%s.%s", mod, typ)
 			if isOutput {
 				g.Fgenf(w,
 					"%.v.ApplyT(func(x *%[3]s) %[2]s { return %[2]s(*x) }).(%[2]sOutput)",
