@@ -86,7 +86,7 @@ jobs:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
@@ -98,14 +98,14 @@ jobs:
           command -v tar
           tar --version
       - name: "Windows parallelism reduction"
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
           echo "TESTPARALLELISM=5" >> "${GITHUB_ENV}"
           echo "PKG_PARALLELISM=1" >> "${GITHUB_ENV}"
       - name: "macOS use coreutils"
-        if: runner.os == 'macOS'
+        if: ${{ runner.os == 'macOS' }}
         run: |
           set -x
           brew install coreutils
@@ -121,13 +121,13 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "$GITHUB_ENV"
       - name: Enable code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
       # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
       - name: Configure Windows pagefile
         uses: aaronfriel/action-configure-pagefile@v2.0-beta.1
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         with:
           minimum-size: 4GB
           maximum-size: 4GB
@@ -143,7 +143,7 @@ jobs:
           cache: true
           cache-dependency-path: '*/go.sum'
       - name: Prime Go cache
-        if: steps.setup-go.outputs.cache-hit != 'true'
+        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
         # Compile every test to ensure we populate a good cache entry.
         run: |
           ( cd sdk && go test -run "_________" ./... )
@@ -219,13 +219,13 @@ jobs:
 
       # Integration test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v2
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           echo "Checking contents of $PWD/artifacts/cli"
           find "$PWD/artifacts/cli"
@@ -251,14 +251,14 @@ jobs:
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
       - name: Download Pulumi .NET NuGet packages
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v2
         with:
           name: artifacts-dotnet-sdk
           # path set to match PULUMI_LOCAL_NUGET
           path: ${{ github.workspace }}/nuget
       - name: Add NuGet packages as a local NuGet source
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           command -v dotnet
           dotnet --version
@@ -267,7 +267,7 @@ jobs:
           echo "SOURCE=$SOURCE"
           dotnet nuget add source "$SOURCE"
       - name: Inspect downloaded artifacts
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
           find "$PULUMI_LOCAL_NUGET"
@@ -308,17 +308,17 @@ jobs:
         if: ${{ steps.test.outputs.TEST_SUCCESS == 'false' }}
         run: exit 1
       - name: Convert Node coverage data
-        if: inputs.platform != 'windows-latest'
+        if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
       - name: Merge Go coverage data
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
           rm ./coverage/*.cov || true
       - name: Upload code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         uses: codecov/codecov-action@v3
         with:
           directory: coverage
@@ -326,7 +326,7 @@ jobs:
           fail_ci_if_error: false
           verbose: true
       - name: Summarize Test Time by Package
-        if: always()
+        if: ${{ always() }}
         env:
           RUNNER_OS: ${{ runner.os }}
         run: |
@@ -342,12 +342,12 @@ jobs:
 
           goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Individual Test
-        if: always()
+        if: ${{ always() }}
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100 || \
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi
       - name: Upload artifacts
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v2
         with:
           name: gotestsum-test-results

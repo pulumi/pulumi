@@ -44,7 +44,7 @@ jobs:
 
   prepare-release:
     name: prepare
-    if: github.ref_name == 'staging' # only on real merges
+    if: ${{ github.ref_name == 'staging' }} # only on real merges
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:

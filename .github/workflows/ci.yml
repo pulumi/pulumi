@@ -19,6 +19,11 @@ on:
         default: true
         description: "Whether to run lints"
         type: boolean
+      test:
+        required: false
+        default: true
+        description: "Whether to run tests"
+        type: boolean
       enable-coverage:
         description: "Collects coverage stats; requires cov-enabled builds"
         default: false
@@ -105,7 +110,7 @@ on:
 jobs:
   lint:
     name: lint
-    if: inputs.lint
+    if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
     with:
       ref: ${{ inputs.ref }}
@@ -173,7 +178,7 @@ jobs:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
     name: Unit Test${{ matrix.platform && '' }}
     needs: [workaround]
-    if: ${{ needs.workaround.outputs.unit-test-matrix != '[]' && needs.workaround.outputs.unit-test-matrix != '' }}
+    if: ${{ inputs.test && needs.workaround.outputs.unit-test-matrix != '[]' && needs.workaround.outputs.unit-test-matrix != '' }}
     strategy:
       fail-fast: ${{ contains(needs.workaround.outputs.unit-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.workaround.outputs.unit-test-matrix) }}
@@ -198,6 +203,7 @@ jobs:
     # appearing in the rendered title of the job name. See: unit test.
     name: Integration Test${{ matrix.platform && '' }}
     needs: [workaround, build-binaries, build-sdks]
+    if: ${{ inputs.test && needs.workaround.outputs.integration-test-matrix != '[]' && needs.workaround.outputs.integration-test-matrix != '' }}
     strategy:
       fail-fast: ${{ contains(needs.workaround.outputs.integration-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.workaround.outputs.integration-test-matrix) }}
