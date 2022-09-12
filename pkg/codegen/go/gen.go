@@ -3694,10 +3694,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Types
 		for types, i := pkg.types, 0; len(types) > 0; i++ {
 			// 500 types corresponds to approximately 5M or 40_000 lines of code.
-			const CHUNK_SIZE = 500
+			const chunkSize = 500
 			chunk := types
-			if len(chunk) > CHUNK_SIZE {
-				chunk = chunk[:CHUNK_SIZE]
+			if len(chunk) > chunkSize {
+				chunk = chunk[:chunkSize]
 			}
 			types = types[len(chunk):]
 
