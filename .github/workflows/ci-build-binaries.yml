@@ -52,7 +52,7 @@ jobs:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |

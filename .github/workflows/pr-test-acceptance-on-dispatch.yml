@@ -30,7 +30,7 @@ jobs:
 
   comment-notification:
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch'
+    if: ${{ github.event_name == 'repository_dispatch' }}
     permissions:
       contents: read
       pull-requests: write

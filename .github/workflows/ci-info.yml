@@ -12,6 +12,17 @@ on:
         default: true
         description: "Is this a snapshot release?"
         type: boolean
+      test-mode:
+        required: false
+        default: "full"
+        description: "CI mode to use: none, fast, or full. Fast only runs tests on Linux amd64. Full required build-mode is full."
+        # This implication holds because we need full builds to test full builds.
+        type: string
+      build-mode:
+        required: false
+        default: "full"
+        description: "CI build targets to create: fast or full. Fast only builds for Linux amd64."
+        type: string
     outputs:
       version:
         description: "Version to produce"
@@ -22,6 +33,18 @@ on:
       release-notes:
         description: "Release notes for CHANGELOG"
         value: ${{ jobs.info.outputs.release-notes }}
+      integration-test-matrix:
+        description: "CI workflow matrix for integration tests"
+        value: ${{ jobs.matrix.outputs.integration-test-matrix }}
+      unit-test-matrix:
+        description: "CI workflow matrix for unit tests"
+        value: ${{ jobs.matrix.outputs.unit-test-matrix }}
+      version-set:
+        description: "CI workflow dependencies to use, e.g.: go-version: 1.19.x"
+        value: ${{ jobs.matrix.outputs.version-set }}
+      build-targets:
+        description: "CI build targets, e.g.: linux amd64"
+        value: ${{ jobs.matrix.outputs.build-targets }}
 
 permissions:
   contents: read
@@ -79,7 +102,7 @@ jobs:
           CHANGELOG="$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "${{ fromJSON(steps.version.outputs.version) }}")"
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
-        if: (!inputs.is-snapshot)
+        if: ${{ !inputs.is-snapshot }}
         run: |
           PULUMI_VERSION="${{ fromJSON(steps.version.outputs.version) }}"
 
@@ -104,3 +127,131 @@ jobs:
           if $ERROR; then
             exit 1;
           fi
+
+  matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go Cache Key
+        env:
+          CACHE_KEY: "matrix-setup"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3 # only used by gotestsum
+        with:
+          go-version: 1.19.x
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - uses: actions/checkout@v3
+        with:
+          repository: dnephin/gotestsum
+          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+          path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: read-gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
+      - name: build matrix
+        id: matrix
+        env:
+          TEST_MODE: ${{ inputs.test-mode }}
+          BUILD_FAST: ${{ inputs.build-mode }}
+        run: |
+          # Are we testing the CI system - and all of the release jobs - itself (true)? Or are we in
+          # a regular PR (false).
+          echo "Are we in a ci/test job? ${IS_FAST}"
+
+          echo "::group::Prime test timing data"
+          mkdir -p test-results
+          cp -v .github/initial-test-results/*.json test-results/
+          find test-results -type f -empty -print -delete
+          echo "::endgroup::"
+
+          echo "::group::Test matrix variables"
+          VERSION_SETS_TO_TEST=( "minimum" )
+          PLATFORMS_TO_TEST=( "ubuntu-latest" )
+          BUILD_TARGETS='[
+            { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }
+          ]'
+          if [ "${BUILD_MODE}" = "full" ]; then
+            BUILD_TARGETS='[
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
+            ]'
+          fi
+          if [ "${TEST_MODE}" = "full" ]; then
+            # If we're testing the CI system, we want to test all platforms and version sets.
+            VERSION_SETS_TO_TEST=( "minimum" "current" )
+            PLATFORMS_TO_TEST=( "ubuntu-latest" "windows-latest" "macos-latest" )
+          fi
+
+          if [ "${TEST_MODE}" = "none" ]; then
+            UNIT_TEST_MATRIX=''
+            INTEGRATION_TEST_MATRIX=''
+          else
+            UNIT_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              -vvv \
+              generate-matrix \
+              --kind unit-test \
+              --platform ubuntu-latest \
+              --version-set current \
+              --partition-module pkg 3 \
+              --partition-module sdk 1 \
+              --partition-module tests 2 \
+              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+            )
+
+            INTEGRATION_TEST_MATRIX=$(
+              ./scripts/get-job-matrix.py \
+              -vvv \
+              generate-matrix \
+              --kind integration-test \
+              --platform "${PLATFORMS_TO_TEST[@]}" \
+              --version-set "${VERSION_SETS_TO_TEST[@]}" \
+              --partition-module pkg 1 \
+              --partition-module sdk 1 \
+              --partition-module tests 2 \
+              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+            )
+          fi
+          echo "::endgroup::"
+          echo "::group::Version set variable"
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set current
+          )
+          echo "::endgroup::"
+
+          echo "::group::Integration test matrix"
+          echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Unit test matrix"
+          echo "$UNIT_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Version set"
+          echo "$VERSION_SET" | yq -P '.'
+          echo "::endgroup::"
+
+          echo "::group::Set outputs"
+          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
+          ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
+          ./.github/scripts/set-output version-set "${VERSION_SET}"
+          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          echo "::endgroup::"
+    outputs:
+      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
+      unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
+      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
+      build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
