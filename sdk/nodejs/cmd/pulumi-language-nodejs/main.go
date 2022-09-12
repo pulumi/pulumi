@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -713,9 +713,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	ctx := server.Context()
-
-	tracingSpan, _ := opentracing.StartSpanFromContext(ctx, "npm-install")
+	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
 	defer tracingSpan.Finish()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
