@@ -17,6 +17,7 @@ package backend
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"time"
@@ -621,11 +622,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	return deploy.NewSnapshot(manifest, sm.persister.SecretsManager(), resources, operations)
 }
 
-var SaveSnapshotCount = 0
-
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
-	SaveSnapshotCount++
 	snap, err := sm.snap().NormalizeURNReferences()
 	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
@@ -640,6 +638,26 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	}
 	return nil
 }
+
+func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	hasIntegrity := true
+	for {
+		select {
+		case request := <-mutationRequests:
+			request.mutator()
+			request.result <- nil
+		case <-sm.cancel:
+			if !hasIntegrity {
+				fmt.Println("warning snapshot integrity compromised, run `pulumi refresh`")
+				return
+			}
+			done <- sm.saveSnapshot()
+			return
+		}
+	}
+}
+
+const experimentalSnapshotManagerFlag = "PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER"
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
 // and base snapshot.
@@ -662,7 +680,16 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 	}
 
 	go func() {
+		unsafeEnabled := os.Getenv(experimentalSnapshotManagerFlag) != ""
+		if unsafeEnabled {
+			// this codepath skips writing back snapshots
+			// on all mutations. It uses internal state
+			manager.unsafeServiceLoop(mutationRequests, done)
+			return
+		}
+
 		// True if we have elided writes since the last actual write.
+		hasElidedWrites := false
 
 		// Service each mutation request in turn.
 	serviceLoop:
@@ -671,15 +698,23 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 			case request := <-mutationRequests:
 				var err error
 				if request.mutator() {
-					//err = manager.saveSnapshot()
+					err = manager.saveSnapshot()
+					hasElidedWrites = false
+				} else {
+					hasElidedWrites = true
 				}
 				request.result <- err
 			case <-cancel:
 				break serviceLoop
 			}
 		}
-		fmt.Println("saving snapshot")
-		err := manager.saveSnapshot()
+
+		// If we still have elided writes once the channel has closed, flush the snapshot.
+		var err error
+		if hasElidedWrites {
+			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+			err = manager.saveSnapshot()
+		}
 		done <- err
 	}()
 
