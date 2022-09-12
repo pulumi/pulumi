@@ -126,7 +126,7 @@ func checkTurnaroundThoroughly(t *testing.T, sys jsonPatchSystem) {
 				float64Gen: rapid.Float64Range(1.0, 1.0),
 				boolGen: rapid.Bool().
 					Map(func(x interface{}) bool { return x.(bool) }),
-				noNullValuesInObjects: true,
+				// noNullValuesInObjects: true,
 			}}
 			checkTurnaround(t, g.genJsonObject(maxHeight), sys)
 		})

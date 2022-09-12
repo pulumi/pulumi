@@ -73,7 +73,10 @@ type rapidJsonGen struct {
 
 func (g *rapidJsonGen) genJsonValue(maxHeight int) *rapid.Generator {
 	return rapid.OneOf(
-		rapid.Just(json.RawMessage(`null`)),
+		rapid.Just(json.RawMessage(`null`)).
+			Map(func(x interface{}) json.RawMessage {
+				return x.(json.RawMessage)
+			}),
 		g.genJsonNonNullValue(maxHeight))
 }
 
@@ -120,7 +123,7 @@ func (g *rapidJsonGen) genJsonArray(maxHeight int) *rapid.Generator {
 	}
 	elemGen := g.genJsonValue(maxHeight - 1)
 	return rapid.SliceOf(elemGen).
-		Map(func(x []interface{}) json.RawMessage { return g.marshal(x) })
+		Map(func(x []json.RawMessage) json.RawMessage { return g.marshal(x) })
 }
 
 func (rapidJsonGen) marshal(x interface{}) json.RawMessage {
