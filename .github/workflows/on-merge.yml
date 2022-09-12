@@ -40,6 +40,11 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
+      ####### default values:
+      # test-mode: full
+      # build-mode: full
+      # lint: true
+      # enable-coverage: false
     secrets: inherit
 
   prepare-release:

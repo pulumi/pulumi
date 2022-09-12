@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet,java,python,yaml
+  description: Fix foo bar baz

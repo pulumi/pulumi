@@ -16,8 +16,10 @@ INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
+ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
+endif
 
 TESTPARALLELISM ?= 10
 PKG_PARALLELISM ?= 2
@@ -188,3 +190,7 @@ get_schemas: schema-aws!4.26.0          \
 			 schema-kubernetes!3.7.2    \
 			 schema-random!4.2.0        \
 			 schema-eks!0.37.1
+
+.PHONY: changelog
+changelog:
+	go run github.com/aaronfriel/go-change@v0.1.0 create
