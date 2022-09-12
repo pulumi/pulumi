@@ -14,7 +14,7 @@ resources with the Pulumi engine.
 
 #### URNs
 
-Each resource registered with the Pulumi engine is logically identified by its
+Each resource registered with the Pulumi engine is logically identified by its 
 uniform resource name (URN). A resource's URN is derived from the its type, parent type,
 and user-supplied name. Within the scope of a resource-related provider method
 ([`Check`](#check), [`Diff`](#diff), [`Create`](#create), [`Read`](#read),
@@ -33,7 +33,7 @@ string  = (* any sequence of unicode code points that does not contain "::" *) ;
 qualified type name = [ parent type "$" ] type ;
 parent type         = type ;
 
-type       = package ":" [ module ] ":" type name ;
+type       = package ":" [ module ":" ] type name ;
 package    = identifier ;
 module     = identifier ;
 type name  = identifier ;
@@ -69,7 +69,7 @@ with a connection to the Pulumi engine.
 
 ### Data Exchange Types
 
-The values exchanged between Pulumi resource providers and the Pulumi engine are a
+The values exchanged between Pulumi resource providers and the Pulumi engine are a 
 superset of the values expressible in JSON.
 
 Pulumi supports the following data types:
@@ -83,9 +83,9 @@ Pulumi supports the following data types:
 - [`Asset`](#assets-and-archives), which represents a blob
 - [`Archive`](#assets-and-archives), which represents a map from strings to `Asset`s or
   `Archive`s
-- [`ResourceReference`](#resource-references), which represents a reference to a [Pulumi
+- [`ResourceReference`](#resource-references), which represents a reference to a [Pulumi 
   resource](#resources)
-- [`Unknown`](#unknowns), which represents a value whose type and concrete value are not
+- [`Unknown`](#unknowns), which represents a value whose type and concrete value are not 
   known
 - [`Secret`](#secrets), which demarcates a value whose contents are sensitive
 
@@ -107,9 +107,9 @@ all that is necessary to uniquely identify a resource is its URN, a `ResourceRef
 also carries the resource's ID (if it is a [custom resource](#custom-resources)) and the
 version of the provider that manages the resource. If the contents of the referenced
 resource must be inspected, the reference must be resolved by invoking the `getResource`
-function of the engine's builtin provider. Note that this is only possible if there is a
+function of the engine's builtin provider. Note that this is only possible if there is a 
 connection to the engine's resource monitor, e.g. within the scope of a call to `Construct`.
-This implies that resource references may not be resolved within calls to other
+This implies that resource references may not be resolved within calls to other 
 provider methods. Therefore, configuration values, custom resources and provider functions
 should not rely on the ability to resolve resource references, and should instead treat
 resource references  as either their ID (if present) or URN. If the ID is present and
@@ -124,7 +124,7 @@ that cannot be determined until the resource is actually created or updated.
 
 #### Secrets
 
-A `Secret` represents a value whose contents are sensitive. Values of this type are
+A `Secret` represents a value whose contents are sensitive. Values of this type are 
 merely wrappers around the sensitive value. A provider should take care not to leak a
 secret value, and should wrap any resource output values that are always sensitive in a
 `Secret`. [Functions](#functions) must not accept or return secret values.
