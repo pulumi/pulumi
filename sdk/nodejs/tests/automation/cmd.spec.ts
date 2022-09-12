@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,19 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import * as sinon from "sinon";
 import { runPulumiCmd } from "../../automation";
 import { asyncTest } from "../util";
 
 describe("automation/cmd", () => {
     it("calls onOutput when provided to runPulumiCmd", asyncTest(async () => {
-        const spy = sinon.spy();
-        await runPulumiCmd(["version"], ".", {}, spy);
-
-        assert.ok(spy.calledOnce);
-        assert.strictEqual(spy.firstCall.firstArg, spy.lastCall.lastArg);
+        let output = "";
+        let numCalls = 0;
+        await runPulumiCmd(["--help"], ".", {}, (data: string) => {
+            output += data;
+            numCalls += 1;
+        });
+        assert.ok(numCalls > 0, `expected numCalls > 0, got ${numCalls}`);
+        assert.match(output, new RegExp("Usage[:]"));
+        assert.match(output, new RegExp("[-][-]verbose"));
     }));
 });
-

@@ -12,7 +12,10 @@
         "pretty": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+
+        // Forward compatibility with TypeScript latest
+        "useUnknownInCatchVariables": false,
     },
     "files": [
         "index.ts",

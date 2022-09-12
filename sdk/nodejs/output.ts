@@ -216,11 +216,11 @@ This function may throw in a future version of @pulumi/pulumi.`;
         };
 
         return new Proxy(this, {
-            get: (obj, prop: keyof T) => {
+            get: (obj, prop: string | Symbol, receiver: any) => {
                 // Recreate the prototype walk to ensure we find any actual members defined directly
                 // on `Output<T>`.
                 for (let o = obj; o; o = Object.getPrototypeOf(o)) {
-                    if (o.hasOwnProperty(prop)) {
+                    if (typeof prop == 'string' && o.hasOwnProperty(prop)) {
                         return (<any>o)[prop];
                     }
                 }
@@ -270,7 +270,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
                 // Else for *any other* property lookup, succeed the lookup and return a lifted
                 // `apply` on the underlying `Output`.
                 return (<any>obj.apply)((ob: any) => {
-                    if (ob === undefined || ob === null) {
+                    if (ob === undefined || ob === null || typeof prop !== 'string') {
                         return undefined;
                     }
                     else if (isUnknown(ob)) {

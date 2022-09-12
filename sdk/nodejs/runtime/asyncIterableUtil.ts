@@ -64,7 +64,7 @@ export class PushableAsyncIterable<T> implements AsyncIterable<T | undefined> {
                 }
                 this.nextQueue.push(resolve);
             } else {
-                resolve(this.bufferedData.shift());
+                resolve(this.bufferedData.shift() ?? closeValue);
             }
         });
     }

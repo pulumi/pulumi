@@ -827,13 +827,16 @@ export function listResourceOutputs<U extends Resource>(
     }
 
     return query
-        .from(
+    .from(
+            // @ts-ignore
             invoke("pulumi:pulumi:readStackResourceOutputs", {
                 stackName: stackName || getStack(),
             }).then<any[]>(({ outputs }) => utils.values(outputs)),
         )
-        .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
-        return { ...outputs, __pulumiType: typ };
+            // @ts-ignore
+            .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
+            // @ts-ignore
+            return { ...outputs, __pulumiType: typ };
     })
         .filter(typeFilter);
 }

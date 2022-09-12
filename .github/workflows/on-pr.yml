@@ -34,8 +34,6 @@ jobs:
     with:
       ref: ${{ github.ref }}
       is-snapshot: true
-      test-mode: none
-      build-mode: fast
     secrets: inherit
 
   ci:
@@ -47,33 +45,11 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      build-targets: ${{ needs.info.outputs.build-targets }}
-      integration-test-matrix: ${{ needs.info.outputs.integration-test-matrix }}
-      unit-test-matrix: ${{ needs.info.outputs.unit-test-matrix }}
-      version-set: ${{ needs.info.outputs.version-set }}
-      lint: false
-      test: false
+      test-mode: fast
+      build-mode: fast
+      lint: true
       enable-coverage: true
     secrets: inherit
-
-  test-collect-reports:
-    needs: [ci]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/cache@v3
-        with:
-          path: test-results
-          key: gotestsum-timing-${{ github.run_number }}
-          restore-keys: gotestsum-timing-
-      - uses: actions/download-artifact@v3
-        with:
-          name: gotestsum-test-results
-          path: test-results
-      - name: List and clean up test results
-        run: |
-          ls -lhR test-results
-          find test-results -mindepth 1 -name '*.json' -mtime +7 -delete
 
   prepare-release:
     name: prepare

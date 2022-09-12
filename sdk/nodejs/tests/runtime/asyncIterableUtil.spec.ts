@@ -63,7 +63,7 @@ describe("PushableAsyncIterable", () => {
         asyncTest(async () => {
             const queue = new PushableAsyncIterable<number>();
             const queueIter = queue[Symbol.asyncIterator]();
-            const terminates = new Promise(async resolve => {
+            const terminates = new Promise<void>(async resolve => {
                 assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
                 assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
                 assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });

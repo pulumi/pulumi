@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: ci
+  description: Implement bors
