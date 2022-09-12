@@ -344,12 +344,12 @@ options:
 		span := opentracing.SpanFromContext(ctx)
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
-			projinfo, 
-			nil, 
-			cmdutil.Diag(), 
-			cmdutil.Diag(), 
-			false, 
-			span
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			false,
+			span,
 		)
 		if err != nil {
 			return err
