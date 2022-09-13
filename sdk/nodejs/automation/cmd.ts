@@ -56,11 +56,23 @@ export async function runPulumiCmd(
     const env = { ...process.env, ...additionalEnv };
 
     try {
-        const { stdout, stderr, exitCode } = await execa("pulumi", args, { env, cwd });
+        const proc = execa("pulumi", args, { env, cwd });
+
+        if (onOutput && proc.stdout) {
+            proc.stdout!.on("data", (data: any) => {
+                if (data && data.toString) {
+                    data = data.toString();
+                }
+                onOutput(data);
+            });
+        }
+
+        const { stdout, stderr, exitCode } = await proc;
         const commandResult = new CommandResult(stdout, stderr, exitCode);
         if (exitCode !== 0) {
             throw createCommandError(commandResult);
         }
+
         return commandResult;
     } catch (err) {
         const error = err as Error;

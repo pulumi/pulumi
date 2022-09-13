@@ -26,14 +26,15 @@ If you are running in a virtualenv, you must run pip install -r requirements.txt
 # use exit code 32 to signal to the language host that an error message was displayed to the user
 PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE = 32
 
+def get_abs_module_path(mod_path):
+    path, ext = os.path.splitext(mod_path)
+    if not ext:
+        path = os.path.join(path, '__main__')
+    return os.path.abspath(path)
+
+
 def _get_user_stacktrace(user_program_abspath: str) -> str:
     '''grabs the current stacktrace and truncates it to show the only stacks pertaining to a user's program'''
-    def get_abs_module_path(mod_path):
-        path, ext = os.path.splitext(mod_path)
-        if not ext:
-            path = os.path.join(path, '__main__')
-        return os.path.abspath(path)
-
     tb = traceback.extract_tb(sys.exc_info()[2])
 
     for frame_index, frame in enumerate(tb):
@@ -146,8 +147,35 @@ if __name__ == "__main__":
     try:
         # record the location of the user's program to return user tracebacks
         user_program_abspath = os.path.abspath(args.PROGRAM)
+        def run():
+            try:
+                return runpy.run_path(args.PROGRAM, run_name='__main__')
+            except ImportError as e:
+                # detect if the main pulumi python program does not exist
+                stack_modules = [f.filename for f in traceback.extract_tb(e.__traceback__)]
+                unique_modules = set(module for module in stack_modules)
+                last_module_name = stack_modules[-1]
 
-        coro = pulumi.runtime.run_in_stack(lambda: runpy.run_path(args.PROGRAM, run_name='__main__'))
+                # we identify a missing program error if
+                # 1. the only modules in the stack trace are
+                #   - `pulumi-language-python-exec`
+                #   - `runpy`
+                # 2. the last function in the stack trace is in the `runpy` module
+                if unique_modules == {
+                            __file__, # the language runtime itself
+                            runpy.__file__,
+                        } and last_module_name == runpy.__file__ :
+                    # this error will only be hit when the user provides a directory
+                    # the engine has a check to determine if the `main` file exists and will fail early
+
+                    # if a language runtime receives a directory, it's the language's responsibility to determine
+                    # whether the provided directory has a pulumi program
+                    pulumi.log.error(f"unable to find main python program `__main__.py` in `{user_program_abspath}`")
+                    sys.exit(PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE)
+                else:
+                    raise e
+
+        coro = pulumi.runtime.run_in_stack(run)
         loop.run_until_complete(coro)
         exit_code = 0
     except pulumi.RunError as e:

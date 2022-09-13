@@ -25,6 +25,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
+// This checks that error logs are not being emitted twice
+func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "missing-main"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure `  error: ` is only being shown once by the program
+			assert.NotContains(t, stdout.String()+stderr.String(), "Traceback")
+		},
+	})
+}
+
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
