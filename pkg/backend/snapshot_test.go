@@ -250,6 +250,59 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
 }
 
+// This test checks that we only write the Checkpoint once whether or not there
+// are important changes
+func TestWriteCheckpointOnceUnsafe(t *testing.T) {
+	t.Setenv(experimentalSnapshotManagerFlag, "1")
+
+	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
+	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
+
+	resourceP := NewResource("a-unique-urn-resource-p")
+	resourceA := NewResource("a-unique-urn-resource-a")
+
+	snap := NewSnapshot([]*resource.State{
+		provider,
+		resourceP,
+		resourceA,
+	})
+
+	manager, sp := MockSetup(t, snap)
+
+	// Generate a same for the provider.
+	provUpdated := NewResource(string(provider.URN))
+	provUpdated.Custom, provUpdated.Type = true, provider.Type
+	provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+	mutation, err := manager.BeginMutation(provSame)
+	assert.NoError(t, err)
+	_, _, err = provSame.Apply(false)
+	assert.NoError(t, err)
+	err = mutation.End(provSame, true)
+	assert.NoError(t, err)
+
+	pUpdated := NewResource(string(resourceP.URN))
+	pUpdated.Protect = !resourceP.Protect
+	pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
+	mutation, err = manager.BeginMutation(pSame)
+	assert.NoError(t, err)
+	err = mutation.End(pSame, true)
+	assert.NoError(t, err)
+
+	// The engine generates a Same for b. Because this is a meaningful change, the snapshot is written:
+	aUpdated := NewResource(string(resourceA.URN))
+	aUpdated.Protect = !resourceA.Protect
+	aSame := deploy.NewSameStep(nil, nil, resourceA, aUpdated)
+	mutation, err = manager.BeginMutation(aSame)
+	assert.NoError(t, err)
+	err = mutation.End(aSame, true)
+	assert.NoError(t, err)
+
+	err = manager.Close()
+	assert.NoError(t, err)
+
+	assert.Len(t, sp.SavedSnapshots, 1)
+}
+
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
 // that the snapshot is written.
 func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
