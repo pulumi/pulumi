@@ -3692,52 +3692,34 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Types
-		if len(pkg.types) > 0 {
-			hasOutputs, importsAndAliases := false, map[string]string{}
-			for _, t := range pkg.types {
-				pkg.getImports(t, importsAndAliases)
-				hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
-			}
+		sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
+		for k := range knownTypes {
+			sortedKnownTypes = append(sortedKnownTypes, k)
+		}
+		sort.Slice(sortedKnownTypes, func(i, j int) bool {
+			return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
+		})
 
-			sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
-			for k := range knownTypes {
-				sortedKnownTypes = append(sortedKnownTypes, k)
+		for types, i := pkg.types, 0; len(types) > 0; i++ {
+			// 500 types corresponds to approximately 5M or 40_000 lines of code.
+			const chunkSize = 500
+			chunk := types
+			if len(chunk) > chunkSize {
+				chunk = chunk[:chunkSize]
 			}
-			sort.Slice(sortedKnownTypes, func(i, j int) bool {
-				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
-			})
-
-			collectionTypes := map[string]*nestedTypeInfo{}
-			for _, t := range sortedKnownTypes {
-				pkg.collectNestedCollectionTypes(collectionTypes, t)
-			}
-
-			// All collection types have Outputs
-			if len(collectionTypes) > 0 {
-				hasOutputs = true
-			}
-
-			var goImports []string
-			if hasOutputs {
-				goImports = []string{"context", "reflect"}
-				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-			}
+			types = types[len(chunk):]
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, goImports, importsAndAliases)
-
-			for _, t := range pkg.types {
-				if err := pkg.genType(buffer, t); err != nil {
-					return nil, err
-				}
-				delete(knownTypes, t)
+			err := generateTypes(buffer, pkg, chunk, sortedKnownTypes)
+			if err != nil {
+				return nil, err
 			}
 
-			types := pkg.genNestedCollectionTypes(buffer, collectionTypes)
-
-			pkg.genTypeRegistrations(buffer, pkg.types, types...)
-
-			setFile(path.Join(mod, "pulumiTypes.go"), buffer.String())
+			typePath := "pulumiTypes"
+			if i != 0 {
+				typePath = fmt.Sprintf("%s%d", typePath, i)
+			}
+			setFile(path.Join(mod, typePath+".go"), buffer.String())
 		}
 
 		// Utilities
@@ -3769,6 +3751,43 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	return files, nil
+}
+
+func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType, knownTypes []schema.Type) error {
+	hasOutputs, importsAndAliases := false, map[string]string{}
+	for _, t := range types {
+		pkg.getImports(t, importsAndAliases)
+		hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
+	}
+
+	collectionTypes := map[string]*nestedTypeInfo{}
+	for _, t := range knownTypes {
+		pkg.collectNestedCollectionTypes(collectionTypes, t)
+	}
+
+	// All collection types have Outputs
+	if len(collectionTypes) > 0 {
+		hasOutputs = true
+	}
+
+	var goImports []string
+	if hasOutputs {
+		goImports = []string{"context", "reflect"}
+		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+	}
+
+	pkg.genHeader(w, goImports, importsAndAliases)
+
+	for _, t := range types {
+		if err := pkg.genType(w, t); err != nil {
+			return err
+		}
+	}
+
+	typeNames := pkg.genNestedCollectionTypes(w, collectionTypes)
+
+	pkg.genTypeRegistrations(w, types, typeNames...)
+	return nil
 }
 
 func allResourcesAreOverlays(resources []*schema.Resource) bool {

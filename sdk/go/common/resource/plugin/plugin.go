@@ -121,6 +121,7 @@ func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
 		"127.0.0.1:"+port,
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {

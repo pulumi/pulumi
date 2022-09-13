@@ -939,6 +939,7 @@ func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 			return path.Base(info.ImportBasePath)
 		}
 	}
+	mod = strings.Split(mod, "/")[0]
 	return mod
 }
 
