@@ -118,8 +118,8 @@ func TestSamesWithOtherMeaningfulChangesUnsafe(t *testing.T) {
 	t.Setenv(experimentalSnapshotManagerFlag, "1")
 	t.Parallel()
 
-	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
-	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
+	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgB::provider")
+	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgB", "id"
 
 	resourceP := NewResource("a-unique-urn-resource-p")
 	resourceA := NewResource("a-unique-urn-resource-a")
@@ -128,7 +128,7 @@ func TestSamesWithOtherMeaningfulChangesUnsafe(t *testing.T) {
 
 	// Change the "custom" bit.
 	changes = append(changes, NewResource(string(resourceA.URN)))
-	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgB::provider::id"
 
 	// Change the parent.
 	changes = append(changes, NewResource(string(resourceA.URN)))
@@ -188,11 +188,11 @@ func TestSamesWithOtherMeaningfulChangesUnsafe(t *testing.T) {
 	}
 
 	// Set up a second provider and change the resource's provider reference.
-	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
-	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgA", "id2"
+	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgB::provider2")
+	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgB", "id2"
 
 	resourceA.Custom, resourceA.ID, resourceA.Provider =
-		true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+		true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgB::provider::id"
 
 	snap = NewSnapshot([]*resource.State{
 		provider,
@@ -201,7 +201,7 @@ func TestSamesWithOtherMeaningfulChangesUnsafe(t *testing.T) {
 	})
 
 	changes = []*resource.State{NewResource(string(resourceA.URN))}
-	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2::id2"
+	changes[0].Custom, changes[0].Provider = true, "urn:pulumi:foo::bar::pulumi:providers:pkgB::provider2::id2"
 
 	for _, c := range changes {
 		manager, sp := MockSetup(t, snap)
