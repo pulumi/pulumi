@@ -169,18 +169,27 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
+function tracingIsEnabled(tracingUrl: string | boolean): boolean {    
+    if(typeof tracingUrl !== "string") {
+        return false
+    }
+    const experimental = process.env["PULUMI_EXPERIMENTAL"] ?? "";
+    const nonzeroLength = tracingUrl.length > 0;
+    const experimentalEnabled = experimental.length > 0;
+    return nonzeroLength && experimentalEnabled;
+}
+
 /** @internal */
 export function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
-
+    const tracingUrl: string | boolean = argv["tracing"];
     // Start tracing. Before exiting, gracefully shutdown tracing, exporting 
     // all remaining spans in the batch.
-    const tracingUrl: string | boolean = argv["tracing"];
-    if(typeof tracingUrl === "string" && tracingUrl.length > 0) {
-        tracing.start(tracingUrl);
+   if(tracingIsEnabled(tracingUrl)) {
+        tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
         process.on("exit", tracing.stop);
     }
     // Start a new span, which we shutdown at the bottom of this method.
