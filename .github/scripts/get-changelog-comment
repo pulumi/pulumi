@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+>&2 echo "::group::Get changelog comment"
+trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+
+# Get the changelog as it would rendered on a pull request comment.
+
+PREVIOUS_VERSION="$1"
+CHANGELOG_REQUIRED="${2:-"true"}"
+PULL_REQUEST_NUMBER="${3}"
+
+CHANGELOG=$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "[uncommitted]" --filter-open-pr-number "${PULL_REQUEST_NUMBER}")
+if [ -n "${CHANGELOG}" ]; then
+  echo -n "${CHANGELOG}" || true
+else
+  echo -n "n/a"
+  if [ "${CHANGELOG_REQUIRED}" != "false" ]; then
+    >&2 echo "::error::Changelog not present"
+    exit 1
+  fi
+fi

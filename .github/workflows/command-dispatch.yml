@@ -3,6 +3,8 @@ on:
   issue_comment:
     types: [created]
 
+# Enables maintainers with "write" permission to trigger jobs on external pull requests.
+
 jobs:
   command-dispatch:
     runs-on: ubuntu-latest
@@ -17,7 +19,5 @@ jobs:
           repository: pulumi/pulumi
           commands: |
             run-acceptance-tests
-            run-integration-tests
             run-docs-gen
             run-codegen
-            auto-rebase

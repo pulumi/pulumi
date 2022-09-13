@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Create URL to the run output
         id: vars
-        run: echo ::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+        run: echo "::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Update with Result
         uses: peter-evans/create-or-update-comment@v2
         with:
@@ -38,7 +38,7 @@ jobs:
     steps:
       - name: Create URL to the run output
         id: vars
-        run: echo ::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+        run: echo "::set-output name=run-url::$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Update with Result
         uses: peter-evans/create-or-update-comment@v2
         with:
