@@ -640,17 +640,12 @@ func (sm *SnapshotManager) saveSnapshot() error {
 }
 
 func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
-	hasIntegrity := true
 	for {
 		select {
 		case request := <-mutationRequests:
 			request.mutator()
 			request.result <- nil
 		case <-sm.cancel:
-			if !hasIntegrity {
-				fmt.Println("warning snapshot integrity compromised, run `pulumi refresh`")
-				return
-			}
 			done <- sm.saveSnapshot()
 			return
 		}

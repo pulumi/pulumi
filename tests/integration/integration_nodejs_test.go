@@ -1313,3 +1313,18 @@ func TestTSConfigOption(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
 }
+
+func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("unsafe_snapshot_tests", "bad_resource"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		Env:           []string{"PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER=1"},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, a provider, and the Stack
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 1000+3, len(stackInfo.Deployment.Resources))
+		},
+	})
+}
