@@ -208,3 +208,7 @@ get_schemas: schema-aws!4.26.0          \
 			 schema-kubernetes!3.7.2    \
 			 schema-random!4.2.0        \
 			 schema-eks!0.37.1
+
+.PHONY: changelog
+changelog:
+	go run github.com/aaronfriel/go-change@v0.1.0 create
