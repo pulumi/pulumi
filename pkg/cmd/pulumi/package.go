@@ -95,15 +95,19 @@ func schemaFromSchemaSource(ctx context.Context, packageSource string) (*schema.
 		return bind(spec)
 	}
 
-	info, err := os.Stat(packageSource)
 	var version *semver.Version
 	pkg := packageSource
-	if s := strings.SplitN(pkg, "@", 1); len(s) == 2 {
-		// TODO: parse out version, updating
-		panic(s[1])
+	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
+		pkg = s[0]
+		v, err := semver.ParseTolerant(s[1])
+		if err != nil {
+			return nil, fmt.Errorf("VERSION must be valid semver: %w", err)
+		}
+		version = &v
 	}
+	info, err := os.Stat(pkg)
 	if os.IsNotExist(err) {
-		if strings.ContainsRune(packageSource, filepath.Separator) {
+		if strings.ContainsRune(pkg, filepath.Separator) {
 			// We infer that we were given a file path, so we assume that this is a file.
 			// The file was not found, so we exit.
 			return nil, err
