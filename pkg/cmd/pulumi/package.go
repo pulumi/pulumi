@@ -59,7 +59,8 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	pCtx, err := plugin.NewContext(nil, nil, nil, nil, wd, nil, false, nil)
+	sink := cmdutil.Diag()
+	pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
 	if err != nil {
 		return nil, err
 	}
