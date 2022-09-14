@@ -54,6 +54,35 @@
     },
     "defaults": ["name"]
   },
+  "functions":{
+    "configstation::funcWithAllOptionalInputs": {
+       "description": "Check codegen of functions with all optional inputs.",
+       "inputs": {
+         "type": "object",
+         "properties": {
+           "a": {
+            "type": "string",
+            "description": "Property A"
+           },
+           "b": {
+            "type": "string",
+            "description": "Property B"
+           }
+         }
+       },
+       "outputs": {
+         "properties": {
+           "r": {
+             "type": "string"
+           }
+         },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  },
   "types": {
     "configstation:config:sandwich": {
       "properties": {

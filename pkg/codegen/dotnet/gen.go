@@ -1138,13 +1138,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if fun.Outputs != nil {
 			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
 			if shouldLiftReturn {
-				returnType = fmt.Sprintf("Pulumi.Output<%s>",
+				returnType = fmt.Sprintf("global::Pulumi.Output<%s>",
 					mod.typeString(fun.Outputs.Properties[0].Type, "", false, false, false))
 
 				fieldName := mod.propertyName(fun.Outputs.Properties[0])
 				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
 			} else {
-				returnType = fmt.Sprintf("Pulumi.Output%s", typeParameter)
+				returnType = fmt.Sprintf("global::Pulumi.Output%s", typeParameter)
 			}
 		}
 
@@ -1180,7 +1180,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
-		fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
+		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
 			typeParameter, fun.Token, argsParamRef, lift)
 	}
 	for _, method := range r.Methods {
@@ -1380,7 +1380,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
 		typeParameter, argsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithDefaults());\n",
+	fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithDefaults());\n",
 		typeParameter, fun.Token, argsParamRef)
 
 	// Emit the Output method if needed.
@@ -1459,7 +1459,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	printComment(w, fun.Comment, "        ")
 	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
 		className, outputArgsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
+	fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
 		className, fun.Token, outputArgsParamRef)
 	return nil
 }
