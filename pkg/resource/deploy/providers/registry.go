@@ -246,11 +246,11 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 // Check validates the configuration for a particular provider resource.
 //
 // The particulars of Check are a bit subtle for a few reasons:
-// - we need to load the provider for the package indicated by the type name portion provider resource's URN in order
-//   to check its config
-// - we need to keep the newly-loaded provider around in case we need to diff its config
-// - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
-//   (we would normally configure the provider in Create or Update).
+//   - we need to load the provider for the package indicated by the type name portion provider resource's URN in order
+//     to check its config
+//   - we need to keep the newly-loaded provider around in case we need to diff its config
+//   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
+//     (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 

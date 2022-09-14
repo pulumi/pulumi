@@ -755,9 +755,12 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 
 // Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
 // if the CWD is not in a Pulumi project,
-//     does not contradict
+//
+//	does not contradict
+//
 // if the project name in Pulumi.yaml is "foo".
-//     a stack with a name of foo/bar/foo should not work.
+//
+//	a stack with a name of foo/bar/foo should not work.
 func currentProjectContradictsWorkspace(stack client.StackIdentifier) bool {
 	projPath, err := workspace.DetectProjectPath()
 	if err != nil {
