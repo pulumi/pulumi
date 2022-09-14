@@ -90,6 +90,7 @@
   },
   "language": {
     "csharp": {
+      "rootNamespace": "Configstation.Pulumi",
       "packageReferences": {
         "Pulumi": "3.12"
       }
