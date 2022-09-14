@@ -59,6 +59,7 @@ func compileProgramCwd(buildID string, outfile string) (string, error) {
 	}
 
 	if outfile == "" {
+		// If no outfile is supplied, write the Go binary to a temporary file.
 		f, err := os.CreateTemp("", fmt.Sprintf("pulumi-go.%s.*", buildID))
 		if err != nil {
 			return "", errors.Wrap(err, "unable to create go program temp file")
@@ -452,6 +453,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "error in compiling Go")
 	}
 	if host.buildTarget == "" {
+		// If there is no specified buildTarget, delete the temporary program after running it.
 		defer os.Remove(program)
 	}
 
