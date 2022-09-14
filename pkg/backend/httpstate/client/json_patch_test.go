@@ -2,10 +2,12 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	jpatch "github.com/evanphx/json-patch/v5"
 	jpatch2 "github.com/mattbaird/jsonpatch"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"pgregory.net/rapid"
 )
 
@@ -27,6 +29,45 @@ func canonicalizeJson(jsonData []byte) ([]byte, error) {
 		return nil, err
 	}
 	return canonical, nil
+}
+
+func TestTextDiffTurnaround(t *testing.T) {
+	canonicalize := func(json []byte) []byte {
+		c, err := canonicalizeJson(json)
+		if err != nil {
+			panic(err)
+		}
+		return c
+	}
+	diff := func(original, modified []byte) []byte {
+		dmp := diffmatchpatch.New()
+		patches := dmp.PatchMake(
+			string(canonicalize(original)),
+			string(canonicalize(modified)),
+		)
+		return []byte(dmp.PatchToText(patches))
+	}
+	patch := func(original, patch []byte) []byte {
+		dmp := diffmatchpatch.New()
+		patches, err := dmp.PatchFromText(string(patch))
+		if err != nil {
+			panic(err)
+		}
+		patched, applies := dmp.PatchApply(patches,
+			string(canonicalize(original)))
+		for i, a := range applies {
+			if !a {
+				panic(fmt.Errorf("Patch %d failed", i))
+			}
+		}
+		return []byte(patched)
+	}
+	sys := jsonPatchSystem{
+		diff:         diff,
+		patch:        patch,
+		canonicalize: canonicalize,
+	}
+	checkTurnaroundThoroughly(t, sys)
 }
 
 func TestRFC7396PatchTurnaround(t *testing.T) {

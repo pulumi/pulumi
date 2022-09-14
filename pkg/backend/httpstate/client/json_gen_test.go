@@ -92,6 +92,7 @@ func (g *rapidJsonGen) genJsonNonNullValue(maxHeight int) *rapid.Generator {
 		g.opts.StringGen().Map(func(x string) json.RawMessage { return g.marshal(x) }),
 		g.opts.IntGen().Map(func(x int) json.RawMessage { return g.marshal(x) }),
 		g.opts.F64Gen().Map(func(x float64) json.RawMessage { return g.marshal(x) }),
+		g.genExampleStruct(),
 	}
 
 	if maxHeight > 1 {
@@ -133,10 +134,25 @@ func (g *rapidJsonGen) genJsonArray(maxHeight int) *rapid.Generator {
 		Map(func(x []json.RawMessage) json.RawMessage { return g.marshal(x) })
 }
 
+func (g *rapidJsonGen) genExampleStruct() *rapid.Generator {
+	return g.opts.IntGen().Map(func(i int) json.RawMessage {
+		return g.marshal(rapidJsonExampleStruct{
+			A: i,
+			B: i,
+		})
+	})
+}
+
 func (rapidJsonGen) marshal(x interface{}) json.RawMessage {
 	bytes, err := json.Marshal(x)
 	if err != nil {
 		panic(err)
 	}
 	return bytes
+}
+
+// Example struct where field order is not alphabetic.
+type rapidJsonExampleStruct struct {
+	B int `json:"b"`
+	A int `json:"a"`
 }
