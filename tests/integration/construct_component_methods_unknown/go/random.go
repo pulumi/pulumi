@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 // Exposes the Random resource from the testprovider.
 // Requires running `make test_build` and having the built provider on PATH.
