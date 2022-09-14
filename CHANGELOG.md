@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.40.0 (2022-09-14)
+
+### Bug fixes
+
+- [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
+   [#10691](https://github.com/pulumi/pulumi/pull/10691)
+
+### Miscellaneous
+
+- [ci] Miscellaneous improvements to release process.
+
 ## 3.39.4 (2022-09-14)
 
 
