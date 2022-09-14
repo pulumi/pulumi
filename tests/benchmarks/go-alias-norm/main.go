@@ -1,4 +1,6 @@
 // Stress-test the engine handling many resources with many aliases.
+//go:build !all
+// +build !all
 
 package main
 

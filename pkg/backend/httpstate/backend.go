@@ -706,7 +706,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/", handler)
-	contract.IgnoreError(http.Serve(l, mux))
+	contract.IgnoreError(http.Serve(l, mux)) // nolint gosec
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path

@@ -388,7 +388,7 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 		var cloneErr error
 		for _, ref := range refAttempts {
 			// Attempt the clone. If it succeeds, break
-			cloneErr = gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
+			cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
 			if cloneErr == nil {
 				break
 			}
