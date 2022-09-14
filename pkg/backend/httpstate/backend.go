@@ -234,8 +234,30 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	return New(d, cloudURL)
 }
 
+// LoginManager provides a slim wrapper around functions related to backend logins.
+type LoginManager interface {
+	// Current returns the current cloud backend if one is already logged in.
+	Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error)
+
+	// Login logs into the target cloud URL and returns the cloud backend for it.
+	Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error)
+}
+
+// NewLoginManager returns a LoginManager for handling backend logins.
+func NewLoginManager() LoginManager {
+	return newLoginManager()
+}
+
+// newLoginManager creates a new LoginManager for handling logins. It is a variable instead of a regular
+// function so it can be set to a different implementation at runtime, if necessary.
+var newLoginManager = func() LoginManager {
+	return defaultLoginManager{}
+}
+
+type defaultLoginManager struct{}
+
 // Current returns the current cloud backend if one is already logged in.
-func Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -299,9 +321,10 @@ func Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func (m defaultLoginManager) Login(
+	ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
 
-	current, err := Current(ctx, d, cloudURL)
+	current, err := m.Current(ctx, d, cloudURL)
 	if err != nil {
 		return nil, err
 	}
