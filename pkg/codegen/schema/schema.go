@@ -53,7 +53,7 @@ const (
 	jsonType    primitiveType = 8
 )
 
-//nolint: goconst
+// nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
 	case boolType:
@@ -417,18 +417,19 @@ type Resource struct {
 // For example, if you have the following resource struct:
 //
 // Resource A {
-// Properties: {
-// 	 Object B {
-// 	   Object D: {
-// 	     ReplaceOnChanges: true
-// 	     }
-// 	   Object F: {}
-//     }
-// 	 Object C {
-// 	   ReplaceOnChanges: true
-// 	   }
-//   }
-// }
+//
+//	Properties: {
+//		 Object B {
+//		   Object D: {
+//		     ReplaceOnChanges: true
+//		     }
+//		   Object F: {}
+//	    }
+//		 Object C {
+//		   ReplaceOnChanges: true
+//		   }
+//	  }
+//	}
 //
 // A.ReplaceOnChanges() == [[B, D], [C]]
 func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {

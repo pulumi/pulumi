@@ -78,7 +78,7 @@ func (i *StaticPage) ToStaticPageOutputWithContext(ctx context.Context) StaticPa
 // StaticPageArrayInput is an input type that accepts StaticPageArray and StaticPageArrayOutput values.
 // You can construct a concrete instance of `StaticPageArrayInput` via:
 //
-//          StaticPageArray{ StaticPageArgs{...} }
+//	StaticPageArray{ StaticPageArgs{...} }
 type StaticPageArrayInput interface {
 	pulumi.Input
 
@@ -103,7 +103,7 @@ func (i StaticPageArray) ToStaticPageArrayOutputWithContext(ctx context.Context)
 // StaticPageMapInput is an input type that accepts StaticPageMap and StaticPageMapOutput values.
 // You can construct a concrete instance of `StaticPageMapInput` via:
 //
-//          StaticPageMap{ "key": StaticPageArgs{...} }
+//	StaticPageMap{ "key": StaticPageArgs{...} }
 type StaticPageMapInput interface {
 	pulumi.Input
 

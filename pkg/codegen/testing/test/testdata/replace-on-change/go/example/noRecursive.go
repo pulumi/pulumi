@@ -92,7 +92,7 @@ func (i *NoRecursive) ToNoRecursiveOutputWithContext(ctx context.Context) NoRecu
 // NoRecursiveArrayInput is an input type that accepts NoRecursiveArray and NoRecursiveArrayOutput values.
 // You can construct a concrete instance of `NoRecursiveArrayInput` via:
 //
-//          NoRecursiveArray{ NoRecursiveArgs{...} }
+//	NoRecursiveArray{ NoRecursiveArgs{...} }
 type NoRecursiveArrayInput interface {
 	pulumi.Input
 
@@ -117,7 +117,7 @@ func (i NoRecursiveArray) ToNoRecursiveArrayOutputWithContext(ctx context.Contex
 // NoRecursiveMapInput is an input type that accepts NoRecursiveMap and NoRecursiveMapOutput values.
 // You can construct a concrete instance of `NoRecursiveMapInput` via:
 //
-//          NoRecursiveMap{ "key": NoRecursiveArgs{...} }
+//	NoRecursiveMap{ "key": NoRecursiveArgs{...} }
 type NoRecursiveMapInput interface {
 	pulumi.Input
 

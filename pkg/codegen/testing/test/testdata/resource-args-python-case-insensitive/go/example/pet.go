@@ -89,7 +89,7 @@ func (i *Pet) ToPetOutputWithContext(ctx context.Context) PetOutput {
 // PetArrayInput is an input type that accepts PetArray and PetArrayOutput values.
 // You can construct a concrete instance of `PetArrayInput` via:
 //
-//          PetArray{ PetArgs{...} }
+//	PetArray{ PetArgs{...} }
 type PetArrayInput interface {
 	pulumi.Input
 
@@ -114,7 +114,7 @@ func (i PetArray) ToPetArrayOutputWithContext(ctx context.Context) PetArrayOutpu
 // PetMapInput is an input type that accepts PetMap and PetMapOutput values.
 // You can construct a concrete instance of `PetMapInput` via:
 //
-//          PetMap{ "key": PetArgs{...} }
+//	PetMap{ "key": PetArgs{...} }
 type PetMapInput interface {
 	pulumi.Input
 
