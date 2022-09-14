@@ -78,29 +78,29 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        if: matrix.language == 'python'
+        if: ${{ matrix.language == 'python' }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache-dependency-path: sdk/python/requirements.txt
       - name: Install Python deps
-        if: matrix.language == 'python'
+        if: ${{ matrix.language == 'python' }}
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        if: matrix.language == 'dotnet'
+        if: ${{ matrix.language == 'dotnet' }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        if: matrix.language == 'nodejs'
+        if: ${{ matrix.language == 'nodejs' }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           registry-url: https://registry.npmjs.org
           always-auth: true
       - name: Download release artifacts
-        if: matrix.language != 'go'
+        if: ${{ matrix.language != 'go' }}
         run: |
           mkdir -p artifacts
           gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
