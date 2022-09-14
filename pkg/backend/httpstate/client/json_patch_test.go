@@ -31,14 +31,15 @@ func canonicalizeJson(jsonData []byte) ([]byte, error) {
 	return canonical, nil
 }
 
-func TestTextDiffTurnaround(t *testing.T) {
-	canonicalize := func(json []byte) []byte {
-		c, err := canonicalizeJson(json)
-		if err != nil {
-			panic(err)
-		}
-		return c
+func canonicalize(json []byte) []byte {
+	c, err := canonicalizeJson(json)
+	if err != nil {
+		panic(err)
 	}
+	return c
+}
+
+func TestTextDiffTurnaround(t *testing.T) {
 	diff := func(original, modified []byte) []byte {
 		dmp := diffmatchpatch.New()
 		patches := dmp.PatchMake(
@@ -94,15 +95,9 @@ func TestRFC7396PatchTurnaround(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			return r
+			return canonicalize(r)
 		},
-		canonicalize: func(json []byte) []byte {
-			c, err := canonicalizeJson(json)
-			if err != nil {
-				panic(err)
-			}
-			return c
-		},
+		canonicalize: canonicalize,
 	}
 	checkTurnaroundThoroughly(t, sys)
 }
@@ -139,15 +134,9 @@ func TestRFC6902PatchTurnaround(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			return r
+			return canonicalize(r)
 		},
-		canonicalize: func(json []byte) []byte {
-			c, err := canonicalizeJson(json)
-			if err != nil {
-				panic(err)
-			}
-			return c
-		},
+		canonicalize: canonicalize,
 	}
 	checkTurnaroundThoroughly(t, sys)
 }
@@ -185,21 +174,16 @@ func checkTurnaround(t *rapid.T, j *rapid.Generator, sys jsonPatchSystem) {
 	original := j.Draw(t, "original").(json.RawMessage)
 	modified := j.Draw(t, "modified").(json.RawMessage)
 
-	t.Logf("original      = %v", string(original))
-	t.Logf("modified      = %v", string(modified))
-
 	patch := sys.diff(original, modified)
-
-	t.Logf("patch         = %v", string(patch))
-
 	reconstructed := sys.patch(original, patch)
-	reconstructedNorm := sys.canonicalize(reconstructed)
 
-	t.Logf("reconstructed = %v", string(reconstructedNorm))
+	t.Logf("original               = %v", string(original))
+	t.Logf("modified               = %v", string(modified))
+	t.Logf("canonicalize(modified) = %v", string(sys.canonicalize(modified)))
+	t.Logf("patch                  = %v", string(patch))
+	t.Logf("reconstructed          = %v", string(reconstructed))
 
-	modifiedNorm := sys.canonicalize(modified)
-
-	if string(reconstructedNorm) != string(modifiedNorm) {
+	if string(reconstructed) != string(sys.canonicalize(modified)) {
 		t.Fatalf("patch.Apply() did not match")
 	}
 }
