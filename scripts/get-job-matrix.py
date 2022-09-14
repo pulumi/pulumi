@@ -77,16 +77,16 @@ class MakefileTest(TypedDict):
     eta: int
 
 MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
-    {"name": "sdk/dotnet test_auto", "run": "cd sdk/dotnet && make test_auto", "eta": 5},
-    {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && make test_auto", "eta": 3},
-    {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && make unit_tests", "eta": 4},
-    {"name": "sdk/python test_auto", "run": "cd sdk/python && make test_auto", "eta": 6},
-    {"name": "sdk/python test_fast", "run": "cd sdk/python && make test_fast", "eta": 3},
+    {"name": "sdk/dotnet test_auto", "run": "cd sdk/dotnet && ../../scripts/retry make test_auto", "eta": 5},
+    {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && ../../scripts/retry make test_auto", "eta": 3},
+    {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && ../../scripts/retry make unit_tests", "eta": 4},
+    {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
+    {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
 ]
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
-    {"name": "sdk/dotnet dotnet_test", "run": "cd sdk/dotnet && make dotnet_test", "eta": 3},
-    {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && make sxs_tests", "eta": 3},
+    {"name": "sdk/dotnet dotnet_test", "run": "cd sdk/dotnet && ../../scripts/retry make dotnet_test", "eta": 3},
+    {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
 ]
 
 ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
@@ -208,7 +208,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
         pkgs = " ".join(go_packages)
         return [{
             "name": f"{partition_module.module_dir}",
-            "command": f'make PKGS="{pkgs}" gotestsum/{partition_module.module_dir}'
+            "command": f'./scripts/retry make PKGS="{pkgs}" gotestsum/{partition_module.module_dir}'
         }]
 
     gotestsum_matrix_args = [
@@ -246,7 +246,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
     for idx, include in enumerate(matrix_jobs):
         idx_str = f"{idx+1}".zfill(buckets_len)
 
-        test_command = f'PKGS="{include["packages"]}" make gotestsum/{partition_module.module_dir}'
+        test_command = f'PKGS="{include["packages"]}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
         test_suites.append(
@@ -317,7 +317,7 @@ def run_gotestsum_ci_matrix_single_package(
         test_list = test_list.replace("$'", ")$")
 
         env=f'PKGS="{include["packages"]}" OPTS="{test_list}"'
-        test_command = f'{env} make gotestsum/{partition_pkg.package_dir}'
+        test_command = f'{env} ./scripts/retry make gotestsum/{partition_pkg.package_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
 

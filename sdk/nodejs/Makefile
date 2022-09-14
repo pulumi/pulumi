@@ -5,7 +5,6 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scrip
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-TESTPARALLELISM ?= 10
 TEST_FAST_TIMEOUT := 2m
 
 ifeq ($(DEBUG),"true")

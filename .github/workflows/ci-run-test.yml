@@ -65,7 +65,7 @@ env:
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   PYTHON: python
-  TESTPARALLELISM: 8
+  GO_TEST_PARALLELISM: 8
   PKG_PARALLELISM: 2
   PULUMI_TEST_RETRIES: 2
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
@@ -102,8 +102,8 @@ jobs:
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
-          echo "TESTPARALLELISM=5" >> "${GITHUB_ENV}"
-          echo "PKG_PARALLELISM=1" >> "${GITHUB_ENV}"
+          echo "GO_TEST_PARALLELISM=5" >> "${GITHUB_ENV}"
+          echo "GO_TEST_PKG_PARALLELISM=1" >> "${GITHUB_ENV}"
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |

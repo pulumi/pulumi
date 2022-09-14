@@ -9,8 +9,6 @@ ifeq ($(DEBUG),"true")
 $(info    DOTNET_VERSION  = $(DOTNET_VERSION))
 endif
 
-TESTPARALLELISM ?= 10
-
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
