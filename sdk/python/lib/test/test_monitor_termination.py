@@ -27,7 +27,7 @@ from .helpers import raises
 # Verify that when the monitor becomes unavailable (via
 # unavailable_mocks), programs fail with a `RunError` and do not hang.
 @raises(pulumi.RunError)
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(10)
 @pulumi.runtime.test
 def test_resource_registration_does_not_hang_when_monitor_unavailable(unavailable_mocks):
     MyCustom('mycustom', {'inprop': 'hello'})
