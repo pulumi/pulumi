@@ -67,12 +67,12 @@ func TestRFC7396PatchTurnaround(t *testing.T) {
 }
 
 func TestRFC6902PatchTurnaround(t *testing.T) {
-	t.Skip("Detected failures")
 
 	// With RFC6902, evanphx/json-patch does not support the diff operation,
 	// so this system tries to use mattbaird/jsonpatch for the diff.
 	sys := jsonPatchSystem{
 		noNullValuesInObjects: true,
+		noNullValuesInArrays:  true,
 		diff: func(original, modified []byte) []byte {
 			operations, err := jpatch2.CreatePatch(original, modified)
 			if err != nil {
@@ -126,12 +126,13 @@ func checkTurnaroundThoroughly(t *testing.T, sys jsonPatchSystem) {
 		rapid.Check(t, func(t *rapid.T) {
 			maxHeight := 3
 			g := &rapidJsonGen{rapidJsonOpts{
-				stringGen:  rapid.StringMatching("a|b"),
-				intGen:     rapid.IntRange(1, 1),
-				float64Gen: rapid.Float64Range(1.0, 1.0),
+				noNullValuesInObjects: sys.noNullValuesInObjects,
+				noNullValuesInArrays:  sys.noNullValuesInArrays,
+				stringGen:             rapid.StringMatching("a|b"),
+				intGen:                rapid.IntRange(1, 1),
+				float64Gen:            rapid.Float64Range(1.0, 1.0),
 				boolGen: rapid.Bool().
 					Map(func(x interface{}) bool { return x.(bool) }),
-				noNullValuesInObjects: true,
 			}}
 			checkTurnaround(t, g.genJsonObject(maxHeight), sys)
 		})
