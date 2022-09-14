@@ -19,8 +19,6 @@ VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pu
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
 
-TESTPARALLELISM ?= 10
-
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)

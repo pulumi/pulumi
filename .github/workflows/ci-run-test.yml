@@ -79,7 +79,10 @@ env:
   PULUMI_TEST_ORG: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   PYTHON: python
-  TESTPARALLELISM: 5
+  GO_TEST_PARALLELISM: 8
+  GO_TEST_PKG_PARALLELISM: 2
+  GO_TEST_SHUFFLE: off
+  PULUMI_TEST_RETRIES: 2
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
@@ -110,6 +113,21 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
+      - name: "Windows parallelism reduction"
+        if: ${{ runner.os == 'Windows' }}
+        env:
+          TOOL_BIN: ${{ runner.temp }}/tar-bin
+        run: |
+          echo "GO_TEST_PARALLELISM=5" >> "${GITHUB_ENV}"
+          echo "GO_TEST_PKG_PARALLELISM=1" >> "${GITHUB_ENV}"
+      - name: "macOS use coreutils"
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          set -x
+          brew install coreutils
+          echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
+          command -v bash
+          bash --version
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
