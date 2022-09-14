@@ -24,7 +24,7 @@ describe("automation/cmd", () => {
             output += data;
             numCalls += 1;
         });
-        assert.ok(numCalls > 1, `expected numCalls > 1, got ${numCalls}`);
+        assert.ok(numCalls > 0, `expected numCalls > 0, got ${numCalls}`);
         assert.match(output, new RegExp("Usage[:]"));
         assert.match(output, new RegExp("[-][-]verbose"));
     }));
