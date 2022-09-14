@@ -10,6 +10,10 @@ on:
         required: true
         description: "GitHub ref to use"
         type: string
+      version-set:
+        required: true
+        description: "Version matrix to use"
+        type: string
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -18,22 +22,17 @@ jobs:
   golangci:
     # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
     container: golangci/golangci-lint:v1.47.3
-    name: lint ${{ matrix.directory }}
-    strategy:
-      fail-fast: true
-      matrix:
-        directory: [ sdk, pkg, tests ]
+    name: Lint Go
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
-      - name: Lint ${{ matrix.directory }}
-        run: |
-          cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+      - name: Lint
+        run: make lint
 
   protobuf-lint:
-    name: check protobufs
+    name: Lint Protobufs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,49 +44,35 @@ jobs:
           make check-proto
 
   sdk-lint:
-    name: lint SDKs
+    name: Lint SDKs
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: [1.17.x]
-        python-version: [3.9.x]
-        dotnet-version: [6.0.x]
-        node-version: [14.x]
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
-      - name: Configure Go cache key
-        env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
-      - name: Set up Python ${{ matrix.python-version }}
+          go-version: ${{ fromJson(inputs.version-set).go }}
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v3
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
-      - name: Set up DotNet ${{ matrix.dotnet-version }}
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - run: mkdir -p "${{ runner.temp }}/opt/pulumi/nuget"
       - name: Add NuGet packages as a local NuGet source
         run: |
           command -v dotnet
           dotnet --version
           dotnet nuget add source "${{ runner.temp }}/opt/pulumi/nuget"
-      - name: Set up Node ${{ matrix.node-version }}
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
           cache-dependency-path: sdk/nodejs/package.json
       - name: Install Python deps
@@ -120,23 +105,15 @@ jobs:
           cd sdk/dotnet && make lint
 
   actionlint:
-    name: actionlint
+    name: Lint GHA
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
-      - name: Configure Go cache key
-        env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          go-version: ${{ fromJson(inputs.version-set).go }}
       - run: |
           make lint_actions
