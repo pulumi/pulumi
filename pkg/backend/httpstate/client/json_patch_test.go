@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -25,10 +26,13 @@ func canonicalizeJson(jsonData json.RawMessage) (json.RawMessage, error) {
 	if err := json.Unmarshal(jsonData, &m); err != nil {
 		return nil, err
 	}
-	canonical, err := json.Marshal(m)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", " ")
+	if err := enc.Encode(m); err != nil {
 		return nil, err
 	}
+	canonical := buf.Bytes()
 	return canonical, nil
 }
 
