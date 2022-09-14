@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
@@ -23,35 +24,45 @@ func TestDestroyTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, subset := range subsets {
+		subset := subset
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
 		if len(subset) <= 3 {
-			destroySpecificTargets(t, subset, true, /*targetDependents*/
-				func(urns []resource.URN, deleted map[resource.URN]bool) {})
+			t.Run(fmt.Sprintf("%v", subset), func(t *testing.T) {
+				t.Parallel()
+
+				destroySpecificTargets(t, subset, true, /*targetDependents*/
+					func(urns []resource.URN, deleted map[resource.URN]bool) {})
+			})
 		}
 	}
 
-	destroySpecificTargets(
-		t, []string{"A"}, true, /*targetDependents*/
-		func(urns []resource.URN, deleted map[resource.URN]bool) {
-			// when deleting 'A' we expect A, B, C, D, E, F, G, H, I, J, K, and L to be deleted
-			names := complexTestDependencyGraphNames
-			assert.Equal(t, map[resource.URN]bool{
-				pickURN(t, urns, names, "A"): true,
-				pickURN(t, urns, names, "B"): true,
-				pickURN(t, urns, names, "C"): true,
-				pickURN(t, urns, names, "D"): true,
-				pickURN(t, urns, names, "E"): true,
-				pickURN(t, urns, names, "F"): true,
-				pickURN(t, urns, names, "G"): true,
-				pickURN(t, urns, names, "H"): true,
-				pickURN(t, urns, names, "I"): true,
-				pickURN(t, urns, names, "J"): true,
-				pickURN(t, urns, names, "K"): true,
-				pickURN(t, urns, names, "L"): true,
-			}, deleted)
-		})
+	t.Run("destroy root", func(t *testing.T) {
+		t.Parallel()
+
+		destroySpecificTargets(
+			t, []string{"A"}, true, /*targetDependents*/
+			func(urns []resource.URN, deleted map[resource.URN]bool) {
+				// when deleting 'A' we expect A, B, C, D, E, F, G, H, I, J, K, and L to be deleted
+				names := complexTestDependencyGraphNames
+				assert.Equal(t, map[resource.URN]bool{
+					pickURN(t, urns, names, "A"): true,
+					pickURN(t, urns, names, "B"): true,
+					pickURN(t, urns, names, "C"): true,
+					pickURN(t, urns, names, "D"): true,
+					pickURN(t, urns, names, "E"): true,
+					pickURN(t, urns, names, "F"): true,
+					pickURN(t, urns, names, "G"): true,
+					pickURN(t, urns, names, "H"): true,
+					pickURN(t, urns, names, "I"): true,
+					pickURN(t, urns, names, "J"): true,
+					pickURN(t, urns, names, "K"): true,
+					pickURN(t, urns, names, "L"): true,
+				}, deleted)
+			})
+	})
 
 	destroySpecificTargets(
 		t, []string{"A"}, false, /*targetDependents*/
@@ -145,11 +156,17 @@ func TestUpdateTarget(t *testing.T) {
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, subset := range subsets {
+		subset := subset
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
 		if len(subset) <= 3 {
-			updateSpecificTargets(t, subset, false /*targetDependents*/)
+			t.Run(fmt.Sprintf("update %v", subset), func(t *testing.T) {
+				t.Parallel()
+
+				updateSpecificTargets(t, subset, false /*targetDependents*/)
+			})
 		}
 	}
 

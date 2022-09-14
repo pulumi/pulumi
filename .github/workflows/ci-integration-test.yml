@@ -56,58 +56,58 @@ jobs:
       fail-fast: false
       matrix:
         test-suite:
-          - run: cd sdk/dotnet && make dotnet_test
+          - run: cd sdk/dotnet && ../../scripts/retry make dotnet_test
             eta: 3
-          - run: cd sdk/dotnet && make test_auto
+          - run: cd sdk/dotnet && ../../scripts/retry make test_auto
             eta: 5
-          - run: cd sdk/dotnet && make test_go
+          - run: cd sdk/dotnet && ../../scripts/retry make test_go
             eta: 2
 
-          - run: cd sdk/go && make test_auto
+          - run: cd sdk/go && ../../scripts/retry make test_auto
             eta: 8
-          - run: cd sdk/go && make test_fast
+          - run: cd sdk/go && ../../scripts/retry make test_fast
             eta: 3
 
-          - run: cd sdk/nodejs && make sxs_tests
+          - run: cd sdk/nodejs && ../../scripts/retry make sxs_tests
             eta: 3
-          - run: cd sdk/nodejs && make test_auto
+          - run: cd sdk/nodejs && ../../scripts/retry make test_auto
             eta: 3
-          - run: cd sdk/nodejs && make test_go
+          - run: cd sdk/nodejs && ../../scripts/retry make test_go
             eta: 2
-          - run: cd sdk/nodejs && make unit_tests
+          - run: cd sdk/nodejs && ../../scripts/retry make unit_tests
             eta: 4
 
-          - run: cd sdk/python && make test_auto
+          - run: cd sdk/python && ../../scripts/retry make test_auto
             eta: 6
-          - run: cd sdk/python && make test_fast
+          - run: cd sdk/python && ../../scripts/retry make test_fast
             eta: 3
-          - run: cd sdk/python && make test_go
+          - run: cd sdk/python && ../../scripts/retry make test_go
             eta: 3
 
-          - run: make test_pkg_nodejs
+          - run: ./scripts/retry make test_pkg_nodejs
             eta: 20
 
-          - run: make test_pkg_python
+          - run: ./scripts/retry make test_pkg_python
             eta: 2
-          - run: make test_pkg_rest
+          - run: ./scripts/retry make test_pkg_rest
             eta: 10
 
-          - run: make test_integration_dotnet
+          - run: ./scripts/retry make test_integration_dotnet
             eta: 6
             require-build: true
-          - run: make test_integration_go
+          - run: ./scripts/retry make test_integration_go
             eta: 6
             require-build: true
-          - run: make test_integration_nodejs
+          - run: ./scripts/retry make test_integration_nodejs
             eta: 9
             require-build: true
-          - run: make test_integration_python
+          - run: ./scripts/retry make test_integration_python
             eta: 10
             require-build: true
-          - run: make test_integration_rest
+          - run: ./scripts/retry make test_integration_rest
             eta: 5
             require-build: true
-          - run: make test_integration_subpkgs
+          - run: ./scripts/retry make test_integration_subpkgs
             eta: 15
             require-build: true
     uses: ./.github/workflows/ci-run-test.yml

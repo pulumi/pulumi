@@ -16,3 +16,6 @@
   once at the end of the process execution. This restores behavior
   that regressed since 3.39.0.
   [#10678](https://github.com/pulumi/pulumi/pull/10678)
+
+- [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
+  [#10691](https://github.com/pulumi/pulumi/pull/10691)

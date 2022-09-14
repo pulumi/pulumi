@@ -7,8 +7,6 @@ DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../script
 
 $(info    DOTNET_VERSION  = $(DOTNET_VERSION))
 
-TESTPARALLELISM ?= 10
-
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running

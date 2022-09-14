@@ -42,4 +42,5 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       next-version: ${{ needs.info.outputs.next-version }}
       release-notes: ${{ github.event.release.body }}
+      run-dispatch-commands: true
     secrets: inherit
