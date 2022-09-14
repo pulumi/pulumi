@@ -118,7 +118,7 @@ jobs:
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
-          echo "GO_TEST_PARALLELISM=5" >> "${GITHUB_ENV}"
+          echo "GO_TEST_PARALLELISM=4" >> "${GITHUB_ENV}"
           echo "GO_TEST_PKG_PARALLELISM=1" >> "${GITHUB_ENV}"
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
