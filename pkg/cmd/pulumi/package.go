@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -39,14 +41,8 @@ Subcommands of this command are useful to package authors during development.`,
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newSchemaCheckCommand())
+	cmd.AddCommand(newExtractSchemaCommand())
 	return cmd
-}
-
-type invalidPackageSource struct {
-	message    string
-	source     string
-	underlying error
 }
 
 // schemaFromPackageSource takes a schema source and returns its associated schema. A
@@ -55,12 +51,27 @@ type invalidPackageSource struct {
 //
 //		FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 //
-func schemaFromSchemaSource(packageSource string, loader schema.Loader) (*schema.Package, error) {
+func schemaFromSchemaSource(ctx context.Context, packageSource string) (*schema.Package, error) {
 	var spec schema.PackageSpec
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	pCtx, err := plugin.NewContext(nil, nil, nil, nil, wd, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		// TODO, should use the loader, but that doesn't look available.
-		// Probably needs to alter schema.BindSpec to accept a loader.
-		panic("unimplemented")
+		var loader schema.Loader
+
+		pkg, diags, err := schema.BindSpec(spec, loader)
+		if err != nil {
+			return nil, err
+		}
+		if diags.HasErrors() {
+			return nil, diags
+		}
+		return pkg, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
 		f, err := ioutil.ReadFile(packageSource)
@@ -89,20 +100,44 @@ func schemaFromSchemaSource(packageSource string, loader schema.Loader) (*schema
 	pkg := packageSource
 	if s := strings.SplitN(pkg, "@", 1); len(s) == 2 {
 		// TODO: parse out version, updating
+		panic(s[1])
 	}
 	if os.IsNotExist(err) {
 		if strings.ContainsRune(packageSource, filepath.Separator) {
 			// We infer that we were given a file path, so we assume that this is a file.
 			// The file was not found, so we exit.
-			return schema.PackageSpec{}, &invalidPackageSource{
-				message:    "",
-				source:     packageSource,
-				underlying: err,
-			}
+			return nil, err
+		}
+		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil)
+		if err != nil {
+			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		pkg, err := loader.LoadPackage(pkg, version)
-
+		return schema.NewPluginLoader(host).LoadPackage(pkg, version)
+	} else if err != nil {
+		return nil, err
+	}
+	// We were given a path to a binary, so invoke that.
+	if info.Mode()&0111 == 0 {
+		return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 	}
 
+	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	p, err := plugin.NewProviderFromPath(host, pCtx, pkg)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Close()
+	bytes, err := p.GetSchema(0)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(bytes, &spec)
+	if err != nil {
+		return nil, err
+	}
+	return bind(spec)
 }

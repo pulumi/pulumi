@@ -1,0 +1,63 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/spf13/cobra"
+)
+
+func newExtractSchemaCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get-schema",
+		Args:  cmdutil.ExactArgs(1),
+		Short: "Get the schema.json from a package",
+		Long: `Get the schema.json from a package.
+
+You can specify a package by giving a path to the binary or by naming the package.`,
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			source := args[0]
+			ctx := context.Background()
+
+			pkg, err := schemaFromSchemaSource(ctx, source)
+			if err != nil {
+				return err
+			}
+			spec, err := pkg.MarshalSpec()
+			if err != nil {
+				return err
+			}
+			bytes, err := json.MarshalIndent(spec, "", "  ")
+			if err != nil {
+				return err
+			}
+			bytes = append(bytes, '\n')
+			n, err := os.Stdout.Write(bytes)
+			if err != nil {
+				return err
+			}
+			if len(bytes) != n {
+				return fmt.Errorf("only wrote %d/%d bytes of the schema", len(bytes), n)
+			}
+			return nil
+		}),
+	}
+	return cmd
+}
