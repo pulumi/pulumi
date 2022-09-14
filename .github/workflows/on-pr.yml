@@ -46,10 +46,20 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      test-mode: fast
-      build-mode: fast
+      test-mode: full
+      build-mode: >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && 'full'
+          || 'fast'
+        }}
       test-version-sets: current
-      test-platforms: ubuntu-latest
+      test-platforms: >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && 'ubuntu-latest windows-latest macos-latest'
+          || 'ubuntu-latest'
+        }}
       enable-coverage: true
     secrets: inherit
 
