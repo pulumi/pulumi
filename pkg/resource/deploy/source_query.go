@@ -293,10 +293,10 @@ func newQueryResourceMonitor(
 // queryResmon is a pulumirpc.ResourceMonitor that is meant to run in Pulumi's "query mode". It
 // performs two critical functions:
 //
-// 1. Disallows all resource operations. `queryResmon` intercepts all resource operations and
-//    returns an error instead of allowing them to proceed.
-// 2. Services requests for stack snapshots. This is primarily to allow us to allow queries across
-//    stack snapshots.
+//  1. Disallows all resource operations. `queryResmon` intercepts all resource operations and
+//     returns an error instead of allowing them to proceed.
+//  2. Services requests for stack snapshots. This is primarily to allow us to allow queries across
+//     stack snapshots.
 type queryResmon struct {
 	builtins         *builtinProvider    // provides builtins such as `getStack`.
 	providers        ProviderSource      // the provider source itself.

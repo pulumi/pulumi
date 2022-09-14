@@ -1558,9 +1558,9 @@ func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *se
 }
 
 // getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:
-//  * if found as an ambient plugin, nil and the path to the executable
-//  * if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
-//  * an error in all other cases.
+//   - if found as an ambient plugin, nil and the path to the executable
+//   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
+//   - an error in all other cases.
 func getPluginInfoAndPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin) (*PluginInfo, string, error) {
