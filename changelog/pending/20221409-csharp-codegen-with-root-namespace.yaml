@@ -1,0 +1,4 @@
+changes:
+- type: bug
+  scope: codegen/dotnet
+  description: Ensure that references to Pulumi.Config are prefixed with global modifier in case users specify the root namespace to be Something.Pulumi
