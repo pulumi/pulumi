@@ -23,8 +23,10 @@ import (
 
 // Configures random JSON generation.
 type rapidJsonOpts struct {
-	// If true, disallows objects with null values {"foo": null}.
+	// If true, disallows objects with null values {"foo": null, ..}.
 	noNullValuesInObjects bool
+	// If true, disallows arrays with null values  [.., null, ..].
+	noNullValuesInArrays bool
 	// Generator override for object keys and string values.
 	stringGen *rapid.Generator
 	// Generator override for int values.
@@ -121,7 +123,12 @@ func (g *rapidJsonGen) genJsonArray(maxHeight int) *rapid.Generator {
 	if maxHeight <= 1 {
 		panic("maxHeight <= 1")
 	}
+
 	elemGen := g.genJsonValue(maxHeight - 1)
+	if g.opts.noNullValuesInArrays {
+		elemGen = g.genJsonNonNullValue(maxHeight - 1)
+	}
+
 	return rapid.SliceOf(elemGen).
 		Map(func(x []json.RawMessage) json.RawMessage { return g.marshal(x) })
 }

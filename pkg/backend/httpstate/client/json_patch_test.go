@@ -10,9 +10,11 @@ import (
 )
 
 type jsonPatchSystem struct {
-	diff         func(original, modified []byte) []byte
-	patch        func(original, patch []byte) []byte
-	canonicalize func(json []byte) []byte
+	diff                  func(original, modified []byte) []byte
+	patch                 func(original, patch []byte) []byte
+	canonicalize          func(json []byte) []byte
+	noNullValuesInObjects bool
+	noNullValuesInArrays  bool
 }
 
 func canonicalizeJson(jsonData []byte) ([]byte, error) {
@@ -38,6 +40,7 @@ func TestRFC7396PatchTurnaround(t *testing.T) {
 	// drop during transport.
 
 	sys := jsonPatchSystem{
+		noNullValuesInObjects: true,
 		diff: func(original, modified []byte) []byte {
 			p, err := jpatch.CreateMergePatch(original, modified)
 			if err != nil {
@@ -69,6 +72,7 @@ func TestRFC6902PatchTurnaround(t *testing.T) {
 	// With RFC6902, evanphx/json-patch does not support the diff operation,
 	// so this system tries to use mattbaird/jsonpatch for the diff.
 	sys := jsonPatchSystem{
+		noNullValuesInObjects: true,
 		diff: func(original, modified []byte) []byte {
 			operations, err := jpatch2.CreatePatch(original, modified)
 			if err != nil {
@@ -111,7 +115,8 @@ func checkTurnaroundThoroughly(t *testing.T, sys jsonPatchSystem) {
 		rapid.Check(t, func(t *rapid.T) {
 			maxHeight := 3
 			g := &rapidJsonGen{rapidJsonOpts{
-				noNullValuesInObjects: true,
+				noNullValuesInObjects: sys.noNullValuesInObjects,
+				noNullValuesInArrays:  sys.noNullValuesInArrays,
 			}}
 			checkTurnaround(t, g.genJsonObject(maxHeight), sys)
 		})
@@ -126,7 +131,7 @@ func checkTurnaroundThoroughly(t *testing.T, sys jsonPatchSystem) {
 				float64Gen: rapid.Float64Range(1.0, 1.0),
 				boolGen: rapid.Bool().
 					Map(func(x interface{}) bool { return x.(bool) }),
-				// noNullValuesInObjects: true,
+				noNullValuesInObjects: true,
 			}}
 			checkTurnaround(t, g.genJsonObject(maxHeight), sys)
 		})
