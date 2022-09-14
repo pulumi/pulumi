@@ -908,8 +908,9 @@ func TestDestroyStackRef(t *testing.T) {
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -1134,8 +1135,9 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	assert.Equal(t, 11, foundStderr)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphrasePrompting(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
