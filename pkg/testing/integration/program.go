@@ -938,6 +938,12 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 }
 
 func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
+	// Yarn will time out if multiple processes are trying to install packages at the same time.
+	pulumi_testing.YarnInstallMutex.Lock()
+	defer pulumi_testing.YarnInstallMutex.Unlock()
+	pt.t.Log("acquired yarn install lock")
+	defer pt.t.Log("released yarn install lock")
+
 	cmd, err := pt.yarnCmd(args)
 	if err != nil {
 		return err
@@ -1787,10 +1793,10 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
-		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
 			return "", "", err
 		}
-		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
 			return "", "", err
 		}
 	}
