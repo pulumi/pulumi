@@ -265,6 +265,8 @@ func TestStackReferenceDotnet(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join("stack_reference", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
@@ -297,6 +299,8 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 	d := "stack_reference_secrets"
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir:          filepath.Join(d, "dotnet", "step1"),
 		Dependencies: []string{"Pulumi"},
 		Config: map[string]string{

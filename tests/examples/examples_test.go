@@ -54,7 +54,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 				assert.NotNil(t, stackInfo.Deployment)
 			},
 			RunBuild: true,
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -85,7 +85,7 @@ func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 				"simple:config:x": "1",
 				"simple:config:y": "1",
 			},
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -106,7 +106,7 @@ func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -143,7 +143,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 					}
 				}
 			},
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -164,7 +164,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -185,7 +185,7 @@ func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)
@@ -222,7 +222,7 @@ func TestAccFormattable_withLocalState(t *testing.T) {
 			},
 			Stdout:   &formattableStdout,
 			Stderr:   &formattableStderr,
-			CloudURL: "file://~",
+			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)

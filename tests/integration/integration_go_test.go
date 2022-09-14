@@ -450,6 +450,8 @@ func TestStackReferenceGo(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
