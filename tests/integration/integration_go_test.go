@@ -663,7 +663,7 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -879,7 +879,7 @@ func TestAboutGo(t *testing.T) {
 	stdout, _ := e.RunCommand("pulumi", "about", "-t")
 
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
+	assert.Contains(t, stdout, "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructOutputValuesGo(t *testing.T) {
