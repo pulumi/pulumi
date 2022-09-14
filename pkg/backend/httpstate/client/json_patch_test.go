@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 
 	jpatch "github.com/evanphx/json-patch/v5"
@@ -14,12 +15,12 @@ import (
 type jsonPatchSystem struct {
 	diff                  func(original, modified []byte) []byte
 	patch                 func(original, patch []byte) []byte
-	canonicalize          func(json []byte) []byte
+	canonicalize          func(json json.RawMessage) json.RawMessage
 	noNullValuesInObjects bool
 	noNullValuesInArrays  bool
 }
 
-func canonicalizeJson(jsonData []byte) ([]byte, error) {
+func canonicalizeJson(jsonData json.RawMessage) (json.RawMessage, error) {
 	var m interface{}
 	if err := json.Unmarshal(jsonData, &m); err != nil {
 		return nil, err
@@ -31,12 +32,30 @@ func canonicalizeJson(jsonData []byte) ([]byte, error) {
 	return canonical, nil
 }
 
-func canonicalize(json []byte) []byte {
+func canonicalize(json json.RawMessage) json.RawMessage {
 	c, err := canonicalizeJson(json)
 	if err != nil {
 		panic(err)
 	}
 	return c
+}
+
+func TestCanonicalizePreservesDeepEqual(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		maxHeight := 3
+		g := &rapidJsonGen{rapidJsonOpts{}}
+		x := g.genJsonValue(maxHeight).Draw(t, "x").(json.RawMessage)
+		var a, b interface{}
+		if err := json.Unmarshal(canonicalize(x), &a); err != nil {
+			t.Fatalf("json.Unmarshal failed: %v", err)
+		}
+		if err := json.Unmarshal(x, &b); err != nil {
+			t.Fatalf("json.Unmarshal failed: %v", err)
+		}
+		if !reflect.DeepEqual(a, b) {
+			t.Fatalf("Does not turnaround")
+		}
+	})
 }
 
 func TestTextDiffTurnaround(t *testing.T) {
