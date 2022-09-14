@@ -1,4 +1,4 @@
-name: Unit Test
+name: Test
 
 permissions:
   contents: read
@@ -18,55 +18,39 @@ on:
         description: "OS to run tests on, e.g.: ubuntu-latest"
         required: true
         type: string
-      go-version:
-        description: Version of the Go toolchain for the build
-        default: "1.17.x"
-        required: false
+
+      test-name:
+        description: "Name of the test to run"
+        required: true
         type: string
-      python-version:
-        description: Version of the Python toolchain for the build
-        default: "3.9.x"
-        required: false
-        type: string
-      node-version:
-        description: Version of the Node toolchain for the build
-        default: "14.x"
-        required: false
-        type: string
-      dotnet-version:
-        description: "Version of the .NET toolchain for the build"
-        default: "6.0.x"
-        required: false
-        type: string
-      enable-coverage:
-        description: "Collects coverage stats; requires cov-enabled builds"
-        default: false
-        required: false
-        type: boolean
-      run-command:
+      test-command:
         description: Test command to run
         required: true
         type: string
-      require-build:
-        description: Whether to build SDKs
-        required: false
-        default: false
-        type: boolean
       is-integration-test:
         description: Whether to download and install build artifacts
         required: false
         default: false
         type: boolean
-      slow-test-cutoff:
+      enable-coverage:
+        description: "Collects coverage stats; requires cov-enabled builds"
+        default: false
         required: false
-        default: 9999
-        description: "Run tests that take less than this many minutes"
-        type: number
-      eta:
+        type: boolean
+
+      version-set:
         required: false
-        default: 0
-        description: "Estimated time to run test"
-        type: number
+        description: "Set of language versions to use for builds, lints, releases, etc."
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "dotnet": "6.0.x",
+            "go": "1.18.x",
+            "nodejs": "14.x",
+            "python": "3.9.x"
+          }
+
 
 defaults:
   run:
@@ -91,8 +75,7 @@ env:
 
 jobs:
   test:
-    name: ${{ inputs.run-command }}
-    if: inputs.eta <= inputs.slow-test-cutoff
+    name: ${{ inputs.test-name }}
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
@@ -104,7 +87,7 @@ jobs:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
@@ -139,58 +122,49 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "$GITHUB_ENV"
       - name: Enable code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
       # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
       - name: Configure Windows pagefile
         uses: aaronfriel/action-configure-pagefile@v2.0-beta.1
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         with:
           minimum-size: 4GB
           maximum-size: 4GB
           disk-root: "D:"
-      - name: Configure Go cache key
+      - name: Configure Go Cache Key
         env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         id: setup-go
         with:
-          go-version: ${{ inputs.go-version }}
+          go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          cache-dependency-path: '*/go.sum'
       - name: Prime Go cache
-        if: steps.setup-go.outputs.cache-hit != 'true'
+        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
         # Compile every test to ensure we populate a good cache entry.
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
-      - name: Set up Python ${{ inputs.python-version }}
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v3
         with:
-          python-version: ${{ inputs.python-version }}
+          python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
-      - name: Set up DotNet ${{ inputs.dotnet-version }}
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: ${{ inputs.dotnet-version }}
-      - name: Set up Node ${{ inputs.node-version }}
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
-          cache-dependency-path: sdk/nodejs/package.json
-      - name: Uninstall pre-installed Pulumi (windows)
-        if: inputs.platform == 'windows-latest'
-        run: |
-          if command -v pulumi.exe; then
-            echo "Deleting pulumi"
-            rm -rf "$(command -v pulumi.exe)/../pulumi*"
-          fi
+          cache-dependency-path: sdk/nodejs/*.json
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -226,15 +200,33 @@ jobs:
         id: goenv
         run: |
           echo "::set-output name=CLI-TARGET::$(go env GOOS)-$(go env GOARCH)"
-        # Integration test only steps:
+
+      # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
+      # Pulumi install, and integration tests must only test the version built by CI.
+      - name: Rmove Pre-installed Pulumi
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          EXT=""
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            EXT=".exe"
+          fi
+
+          if command -v "pulumi${EXT}"; then
+            PULUMI_INSTALL_DIR=$(dirname "$(command -v "pulumi${EXT}")")
+            echo "Deleting Pulumi"
+            rm -v "$PULUMI_INSTALL_DIR"/pulumi*
+          fi
+
+      # Integration test only steps:
       - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v2
         with:
           name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
           path: artifacts/cli
       - name: Install Pulumi Go Binaries
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           echo "Checking contents of $PWD/artifacts/cli"
           find "$PWD/artifacts/cli"
@@ -260,14 +252,14 @@ jobs:
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
       - name: Download Pulumi .NET NuGet packages
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         uses: actions/download-artifact@v2
         with:
           name: artifacts-dotnet-sdk
           # path set to match PULUMI_LOCAL_NUGET
           path: ${{ github.workspace }}/nuget
       - name: Add NuGet packages as a local NuGet source
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           command -v dotnet
           dotnet --version
@@ -276,7 +268,7 @@ jobs:
           echo "SOURCE=$SOURCE"
           dotnet nuget add source "$SOURCE"
       - name: Inspect downloaded artifacts
-        if: inputs.is-integration-test
+        if: ${{ inputs.is-integration-test }}
         run: |
           echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
           find "$PULUMI_LOCAL_NUGET"
@@ -304,29 +296,27 @@ jobs:
         run: |
           cd sdk/python
           make build_package
-      - name: build tests
-        if: inputs.require-build
-        run: make test_build -j10
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Set PULUMI_ACCEPT if version-set is not current
+        if: ${{ fromJson(inputs.version-set).name != 'current' }}
+        run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: run tests
-        run: ${{ inputs.run-command }}
+        id: test
+        run: ${{ inputs.test-command }}
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
-        if: inputs.platform != 'windows-latest'
+        if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
       - name: Merge Go coverage data
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
           rm ./coverage/*.cov || true
       - name: Upload code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         uses: codecov/codecov-action@v3
         with:
           directory: coverage
@@ -335,12 +325,28 @@ jobs:
           verbose: true
       - name: Summarize Test Time by Package
         continue-on-error: true
+        env:
+          RUNNER_OS: ${{ runner.os }}
         run: |
           mkdir -p test-results
           touch test-results/empty.json # otherwise goteststats fails below when no files match
+          # Remove output lines, they make analysis slower & could leak logs:
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # It's just another case of BSD sed, GNU sed.
+            sed -i '' -e '/"Action":"output"/d' ./test-results/*.json
+          else
+            sed -i'' -e '/"Action":"output"/d' ./test-results/*.json
+          fi
+
           goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Individual Test
         continue-on-error: true
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100 || \
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi
+      - name: Upload artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: gotestsum-test-results
+          path: test-results/*.json

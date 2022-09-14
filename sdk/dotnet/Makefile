@@ -5,7 +5,9 @@ PROJECT_PKGS    := $(shell go list ./cmd...)
 
 DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh dotnet))
 
+ifeq ($(DEBUG),"true")
 $(info    DOTNET_VERSION  = $(DOTNET_VERSION))
+endif
 
 include ../../build/common.mk
 

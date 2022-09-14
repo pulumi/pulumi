@@ -4,8 +4,10 @@ set -euo pipefail
 
 ROOT=$(dirname "${0}")/../..
 
->&2 echo "::group::Get version"
-trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+if [ -n "${CI:-""}" ]; then
+  >&2 echo "::group::Get version"
+  trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+fi
 
 # Remove whitespace, this is our version:
 tr -d '[:space:]' < "${ROOT}/.version"

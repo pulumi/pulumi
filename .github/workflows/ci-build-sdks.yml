@@ -14,21 +14,20 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      python-version:
-        description: 'Version of the Python toolchain for the build'
-        default: '3.9.x'
+
+      version-set:
         required: false
+        description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
-      node-version:
-        description: 'Version of the Node toolchain for the build'
-        default: '14.x'
-        required: false
-        type: string
-      dotnet-version:
-        description: 'Version of the .NET toolchain for the build'
-        default: '6.0.x'
-        required: false
-        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "dotnet": "6.0.x",
+            "go": "1.18.x",
+            "nodejs": "14.x",
+            "python": "3.9.x"
+          }
+
 
 defaults:
   run:
@@ -51,10 +50,10 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
-      - name: Set up Python ${{ inputs.python-version }}
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
         uses: actions/setup-python@v3
         with:
-          python-version: ${{ inputs.python-version }}
+          python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
       - name: Build Pulumi Python SDK wheel
@@ -88,12 +87,12 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
-      - name: Set up Node ${{ inputs.node-version }}
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
-          cache-dependency-path: sdk/nodejs/package.json
+          cache-dependency-path: sdk/nodejs/*.json
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -138,10 +137,10 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
-      - name: Set up DotNet ${{ inputs.dotnet-version }}
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
         uses: actions/setup-dotnet@v2
         with:
-          dotnet-version: ${{ inputs.dotnet-version }}
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Build the .NET SDK package
         run: |
           cd sdk/dotnet
