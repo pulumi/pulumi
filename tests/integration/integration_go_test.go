@@ -52,6 +52,7 @@ func TestNoEmitExitStatus(t *testing.T) {
 		Stderr:        stderr,
 		ExpectFailure: true,
 		Quick:         true,
+		SkipRefresh:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// ensure exit status is not emitted by the program
 			assert.NotContains(t, stderr.String(), "exit status")
@@ -95,6 +96,7 @@ func TestGoRunEnvFlag(t *testing.T) {
 		Stderr:        stderr,
 		ExpectFailure: true,
 		Quick:         true,
+		SkipRefresh:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// ensure exit status IS emitted by the program as it indicates `go run` was used
 			assert.Contains(t, stderr.String(), "exit status")
@@ -504,6 +506,9 @@ func TestLargeResourceGo(t *testing.T) {
 func TestConstructGo(t *testing.T) {
 	t.Parallel()
 
+	testDir := "construct_component"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -535,7 +540,7 @@ func TestConstructGo(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
 	}
@@ -603,9 +608,12 @@ func TestConstructSlowGo(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts := &integration.ProgramTestOptions{
 		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "go"),
+		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
@@ -626,6 +634,9 @@ func TestConstructSlowGo(t *testing.T) {
 // Test remote component construction with prompt inputs.
 func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -658,7 +669,7 @@ func TestConstructPlainGo(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -688,6 +699,9 @@ func TestConstructUnknownGo(t *testing.T) {
 func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
 
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 		env          []string
@@ -705,10 +719,10 @@ func TestConstructMethodsGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env: append(test.env, pathEnv),
-				Dir: filepath.Join("construct_component_methods", "go"),
+				Dir: filepath.Join(testDir, "go"),
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
@@ -737,6 +751,8 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{

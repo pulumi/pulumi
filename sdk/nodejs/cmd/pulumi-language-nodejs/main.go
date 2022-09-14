@@ -340,7 +340,7 @@ type packageJSON struct {
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
-// resource provider plugin.  If it does, thre strings are returned, the plugin name, and its semantic version and
+// resource provider plugin.  If it does, three strings are returned, the plugin name, and its semantic version and
 // an optional server that can be used to download the plugin (this may be empty, in which case the "default" location
 // should be used).
 func getPackageInfo(info packageJSON) (bool, string, string, string, error) {
@@ -366,21 +366,30 @@ func getPluginName(info packageJSON) (string, error) {
 		return info.Pulumi.Name, nil
 	}
 
-	// Otherwise, derive it from the top-level package name.
+	// Otherwise, derive it from the top-level package name,
+	// only if it has @pulumi scope, otherwise fail.
 	name := info.Name
 	if name == "" {
 		return "", errors.New("missing expected \"name\" property")
 	}
 
-	// If the name has a @pulumi scope, we will just use its simple name.  Otherwise, we use the fullly scoped name.
+	// If the name has a @pulumi scope, we will just use its simple name.  Otherwise, we use the fully scoped name.
 	// We do trim the leading @, however, since Pulumi resource providers do not use the same NPM convention.
 	if strings.Index(name, "@pulumi/") == 0 {
 		return name[strings.IndexRune(name, '/')+1:], nil
 	}
-	if strings.IndexRune(name, '@') == 0 {
-		return name[1:], nil
-	}
-	return name, nil
+
+	// if the package name does not start with @pulumi it means that it is a third-party package
+	// third-party packages _MUST_ have the plugin name in package.json in the pulumi section
+	// {
+	//    "name": "@third-party-package"
+	//    "pulumi": {
+	//        "name": "<plugin name>"
+	//    }
+	// }
+
+	return "", errors.Errorf("Missing property \"name\" for the third-party plugin '%v' "+
+		"inside package.json under the \"pulumi\" section.", name)
 }
 
 // getPluginVersion takes a parsed package.json file and returns the semantic version of the Pulumi plugin.

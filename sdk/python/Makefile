@@ -12,7 +12,6 @@ PYENVSRC := $(PYENV)/src
 BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 

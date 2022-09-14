@@ -23,7 +23,7 @@ import (
 
 var tarball = map[string][]byte{
 	"PulumiPlugin.yaml": []byte("runtime: nodejs\n"),
-	"package.json":      []byte(`{"name":"test","dependencies":{"@pulumi/pulumi":"^2.0.0"}}`),
+	"package.json":      []byte(`{"name":"test","dependencies":{"@pulumi/pulumi":"latest"}}`),
 }
 
 func TestNodeNPMInstall(t *testing.T) {

@@ -14,7 +14,7 @@ if [[ "${PREVIOUS_VERSION}" = *-*.* ]]; then
   VERSION="${PREVIOUS_VERSION%.*}.$((${PREVIOUS_VERSION##*.} + 1))"
 else
   IFS=. read -r major minor rest <<< "${PREVIOUS_VERSION}"
-  VERSION="TAG=${major}.$((minor + 1)).0"
+  VERSION="${major}.$((minor + 1)).0"
 fi
 
 echo -n "$VERSION"

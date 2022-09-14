@@ -26,6 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -651,6 +653,8 @@ func testComponentPlainPathEnv(t *testing.T) string {
 func testComponentProviderSchema(t *testing.T, path string) {
 	t.Parallel()
 
+	runComponentSetup(t, "component_provider_schema")
+
 	tests := []struct {
 		name          string
 		env           []string
@@ -718,6 +722,8 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	t.Parallel()
 
 	const testDir = "construct_component_unknown"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -758,6 +764,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	t.Parallel()
 
 	const testDir = "construct_component_methods_unknown"
+	runComponentSetup(t, testDir)
 	tests := []struct {
 		componentDir string
 	}{
@@ -773,6 +780,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 	for _, test := range tests {
 		test := test
+
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -792,12 +800,56 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
+func runComponentSetup(t *testing.T, testDir string) {
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
+
+	setupFilename, err := filepath.Abs("component_setup.sh")
+	contract.AssertNoError(err)
+	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
+	setupFilename = filepath.ToSlash(setupFilename)
+	lockfile := filepath.Join(testDir, ".lock")
+	mutex := fsutil.NewFileMutex(lockfile)
+	defer func() {
+		assert.NoError(t, mutex.Unlock())
+	}()
+
+	lockWait := make(chan struct{}, 1)
+	go func() {
+		for {
+			if err := mutex.Lock(); err != nil {
+				time.Sleep(1 * time.Second)
+				continue
+			} else {
+				break
+			}
+		}
+
+		cmd := exec.Command("bash", setupFilename)
+		cmd.Dir = testDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
+		}
+		lockWait <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(10 * time.Minute):
+		t.Fatalf("timed out waiting for lock on %s", lockfile)
+	case <-lockWait:
+		// waited for lock
+	}
+}
+
 // Test methods that create resources.
 // nolint: unused,deadcode
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
 	t.Parallel()
 
 	const testDir = "construct_component_methods_resources"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -849,6 +901,8 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	t.Parallel()
 
 	const testDir = "construct_component_methods_errors"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -908,8 +962,9 @@ func TestDestroyStackRef(t *testing.T) {
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -1028,6 +1083,8 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 	t.Parallel()
 
 	const testDir = "construct_component_output_values"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -1134,8 +1191,9 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	assert.Equal(t, 11, foundStderr)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestPassphrasePrompting(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {

@@ -3,7 +3,6 @@ LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh go))
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
-TESTPARALLELISM  ?= 10
 
 $(info    VERSION         = $(VERSION))
 
