@@ -21,6 +21,26 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
+// This checks that the buildTarget option for Pulumi Go programs does build a binary.
+func TestBuildTarget(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(filepath.Join("go", "go-build-target"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "go-build-target-test-stack")
+	e.RunCommand("pulumi", "stack", "select", "go-build-target-test-stack")
+	e.RunCommand("pulumi", "preview")
+	_, err := os.Stat(filepath.Join(e.RootPath, "a.out"))
+	assert.NoError(t, err)
+}
+
 // This checks that the Exit Status artifact from Go Run is not being produced
 func TestNoEmitExitStatus(t *testing.T) {
 	stderr := &bytes.Buffer{}
