@@ -1,5 +1,32 @@
-CHANGELOG
-=========
+# Changelog
+
+## 3.39.4 (2022-09-14)
+
+
+### Improvements
+
+- [provider/go]: Added support for token authentication in the go providers which use git.
+  [#10628](https://github.com/pulumi/pulumi/pull/10628)
+
+- [codegen/go] Chunk the `pulumiTypes.go` file to reduce max file size.
+  [#10666](https://github.com/pulumi/pulumi/pull/10666)
+
+### Bug Fixes
+
+- Fix invalid resource type on `pulumi convert` to Go
+  [#10670](https://github.com/pulumi/pulumi/pull/10670)
+
+- [auto/nodejs] `onOutput` is now called incrementally as the
+  underyling Pulumi process produces data, instead of being called
+  once at the end of the process execution. This restores behavior
+  that regressed since 3.39.0.
+  [#10678](https://github.com/pulumi/pulumi/pull/10678)
+
+### Miscellaneous
+
+- [ci] Migrate to merge queues for more reliable builds
+  [#10644](https://github.com/pulumi/pulumi/pulls/10644)
+
 
 ## 3.39.3 (2022-09-07)
 
@@ -1670,7 +1697,7 @@ Replaced by 3.33.1 during release process.
 
 - [auto/*] - Fix escaped HTML characters from color directives in event stream.
 
-  E.g. `"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e"` -> `"<{%reset%}>debug: <{%reset%}>"`
+  E.g. `"<{%reset%}>debug: <{%reset%}>"` -> `"<{%reset%}>debug: <{%reset%}>"`
   [#7998](https://github.com/pulumi/pulumi/pull/7998)
 
 - [auto/*] - Allow eliding color directives from event logs by passing `NO_COLOR` env var.
