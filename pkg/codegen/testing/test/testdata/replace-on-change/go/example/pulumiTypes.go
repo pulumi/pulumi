@@ -18,7 +18,7 @@ type Chew struct {
 // ChewInput is an input type that accepts ChewArgs and ChewOutput values.
 // You can construct a concrete instance of `ChewInput` via:
 //
-//          ChewArgs{...}
+//	ChewArgs{...}
 type ChewInput interface {
 	pulumi.Input
 
@@ -54,11 +54,11 @@ func (i ChewArgs) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput 
 // ChewPtrInput is an input type that accepts ChewArgs, ChewPtr and ChewPtrOutput values.
 // You can construct a concrete instance of `ChewPtrInput` via:
 //
-//          ChewArgs{...}
+//	        ChewArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ChewPtrInput interface {
 	pulumi.Input
 
@@ -156,7 +156,7 @@ type Laser struct {
 // LaserInput is an input type that accepts LaserArgs and LaserOutput values.
 // You can construct a concrete instance of `LaserInput` via:
 //
-//          LaserArgs{...}
+//	LaserArgs{...}
 type LaserInput interface {
 	pulumi.Input
 
@@ -194,11 +194,11 @@ func (i LaserArgs) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutp
 // LaserPtrInput is an input type that accepts LaserArgs, LaserPtr and LaserPtrOutput values.
 // You can construct a concrete instance of `LaserPtrInput` via:
 //
-//          LaserArgs{...}
+//	        LaserArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type LaserPtrInput interface {
 	pulumi.Input
 
@@ -319,7 +319,7 @@ type Rec struct {
 // RecInput is an input type that accepts RecArgs and RecOutput values.
 // You can construct a concrete instance of `RecInput` via:
 //
-//          RecArgs{...}
+//	RecArgs{...}
 type RecInput interface {
 	pulumi.Input
 
@@ -354,11 +354,11 @@ func (i RecArgs) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
 // RecPtrInput is an input type that accepts RecArgs, RecPtr and RecPtrOutput values.
 // You can construct a concrete instance of `RecPtrInput` via:
 //
-//          RecArgs{...}
+//	        RecArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type RecPtrInput interface {
 	pulumi.Input
 
@@ -455,7 +455,7 @@ type Toy struct {
 // ToyInput is an input type that accepts ToyArgs and ToyOutput values.
 // You can construct a concrete instance of `ToyInput` via:
 //
-//          ToyArgs{...}
+//	ToyArgs{...}
 type ToyInput interface {
 	pulumi.Input
 
@@ -493,11 +493,11 @@ func (i ToyArgs) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput {
 // ToyPtrInput is an input type that accepts ToyArgs, ToyPtr and ToyPtrOutput values.
 // You can construct a concrete instance of `ToyPtrInput` via:
 //
-//          ToyArgs{...}
+//	        ToyArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ToyPtrInput interface {
 	pulumi.Input
 
@@ -526,7 +526,7 @@ func (i *toyPtrType) ToToyPtrOutputWithContext(ctx context.Context) ToyPtrOutput
 // ToyArrayInput is an input type that accepts ToyArray and ToyArrayOutput values.
 // You can construct a concrete instance of `ToyArrayInput` via:
 //
-//          ToyArray{ ToyArgs{...} }
+//	ToyArray{ ToyArgs{...} }
 type ToyArrayInput interface {
 	pulumi.Input
 
@@ -551,7 +551,7 @@ func (i ToyArray) ToToyArrayOutputWithContext(ctx context.Context) ToyArrayOutpu
 // ToyMapInput is an input type that accepts ToyMap and ToyMapOutput values.
 // You can construct a concrete instance of `ToyMapInput` via:
 //
-//          ToyMap{ "key": ToyArgs{...} }
+//	ToyMap{ "key": ToyArgs{...} }
 type ToyMapInput interface {
 	pulumi.Input
 

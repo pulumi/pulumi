@@ -197,15 +197,15 @@ func typeRank(t schema.Type) int {
 //
 // The first-order ranking is:
 //
-//   bool < int < number < string < archive < asset < json < token < array < map < object < union < any
+//	bool < int < number < string < archive < asset < json < token < array < map < object < union < any
 //
 // Additional rules apply to composite types of the same kind:
-// - array(T) is simpler than array(U) if T is simpler than U
-// - map(T) is simpler than map(U) if T is simpler than U
-// - object({ ... }) is simpler than object({ ... }) if the former has a greater number of required properties that are
-//   simpler than the latter's required properties
-// - union(...) is simpler than union(...) if the former's simplest element type is simpler than the latter's simplest
-//   element type
+//   - array(T) is simpler than array(U) if T is simpler than U
+//   - map(T) is simpler than map(U) if T is simpler than U
+//   - object({ ... }) is simpler than object({ ... }) if the former has a greater number of required properties that
+//     are simpler than the latter's required properties
+//   - union(...) is simpler than union(...) if the former's simplest element type is simpler than the latter's simplest
+//     element type
 func simplerType(t, u schema.Type) bool {
 	tRank, uRank := typeRank(t), typeRank(u)
 	if tRank < uRank {

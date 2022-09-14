@@ -25,7 +25,7 @@ type HelmReleaseSettings struct {
 // HelmReleaseSettingsInput is an input type that accepts HelmReleaseSettingsArgs and HelmReleaseSettingsOutput values.
 // You can construct a concrete instance of `HelmReleaseSettingsInput` via:
 //
-//          HelmReleaseSettingsArgs{...}
+//	HelmReleaseSettingsArgs{...}
 type HelmReleaseSettingsInput interface {
 	pulumi.Input
 
@@ -66,11 +66,11 @@ func (i HelmReleaseSettingsArgs) ToHelmReleaseSettingsPtrOutputWithContext(ctx c
 // HelmReleaseSettingsPtrInput is an input type that accepts HelmReleaseSettingsArgs, HelmReleaseSettingsPtr and HelmReleaseSettingsPtrOutput values.
 // You can construct a concrete instance of `HelmReleaseSettingsPtrInput` via:
 //
-//          HelmReleaseSettingsArgs{...}
+//	        HelmReleaseSettingsArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type HelmReleaseSettingsPtrInput interface {
 	pulumi.Input
 
@@ -202,7 +202,7 @@ type KubeClientSettings struct {
 // KubeClientSettingsInput is an input type that accepts KubeClientSettingsArgs and KubeClientSettingsOutput values.
 // You can construct a concrete instance of `KubeClientSettingsInput` via:
 //
-//          KubeClientSettingsArgs{...}
+//	KubeClientSettingsArgs{...}
 type KubeClientSettingsInput interface {
 	pulumi.Input
 
@@ -242,11 +242,11 @@ func (i KubeClientSettingsArgs) ToKubeClientSettingsPtrOutputWithContext(ctx con
 // KubeClientSettingsPtrInput is an input type that accepts KubeClientSettingsArgs, KubeClientSettingsPtr and KubeClientSettingsPtrOutput values.
 // You can construct a concrete instance of `KubeClientSettingsPtrInput` via:
 //
-//          KubeClientSettingsArgs{...}
+//	        KubeClientSettingsArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type KubeClientSettingsPtrInput interface {
 	pulumi.Input
 
@@ -381,7 +381,7 @@ type LayeredType struct {
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
 // You can construct a concrete instance of `LayeredTypeInput` via:
 //
-//          LayeredTypeArgs{...}
+//	LayeredTypeArgs{...}
 type LayeredTypeInput interface {
 	pulumi.Input
 
@@ -426,11 +426,11 @@ func (i LayeredTypeArgs) ToLayeredTypePtrOutputWithContext(ctx context.Context) 
 // LayeredTypePtrInput is an input type that accepts LayeredTypeArgs, LayeredTypePtr and LayeredTypePtrOutput values.
 // You can construct a concrete instance of `LayeredTypePtrInput` via:
 //
-//          LayeredTypeArgs{...}
+//	        LayeredTypeArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type LayeredTypePtrInput interface {
 	pulumi.Input
 
@@ -601,7 +601,7 @@ type Typ struct {
 // TypInput is an input type that accepts TypArgs and TypOutput values.
 // You can construct a concrete instance of `TypInput` via:
 //
-//          TypArgs{...}
+//	TypArgs{...}
 type TypInput interface {
 	pulumi.Input
 
@@ -639,11 +639,11 @@ func (i TypArgs) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 // TypPtrInput is an input type that accepts TypArgs, TypPtr and TypPtrOutput values.
 // You can construct a concrete instance of `TypPtrInput` via:
 //
-//          TypArgs{...}
+//	        TypArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type TypPtrInput interface {
 	pulumi.Input
 
