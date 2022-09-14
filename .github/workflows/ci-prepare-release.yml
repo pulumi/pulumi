@@ -40,7 +40,6 @@ env:
 jobs:
   sign:
     name: sign
-    if: false # TODO: Enable this job after signing key is configured.
     runs-on: ubuntu-latest
 
     steps:
@@ -80,9 +79,11 @@ jobs:
 
       - name: Sign checksums
         working-directory: artifacts
+        # Requires a signing key to be configured.
+        if: false
         shell: bash
         env:
-          RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
+          # RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
           version: ${{ inputs.version }}
         run: |
           set -u
@@ -110,7 +111,7 @@ jobs:
 
   publish:
     name: release
-    # needs: [sign]
+    needs: [sign]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
