@@ -183,6 +183,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// We have special testing for this case because lambda is a python keyword.
 		Skip: codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "discriminated-union",
+		Description: "Discriminated Unions for choosing an input type",
+		Skip:        codegen.NewStringSet("go"),
+		// Blocked on go: TODO[pulumi/pulumi#10834]
+	},
 }
 
 // Checks that a generated program is correct
