@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -41,7 +40,10 @@ Subcommands of this command are useful to package authors during development.`,
 		Args: cmdutil.NoArgs,
 	}
 
-	cmd.AddCommand(newExtractSchemaCommand())
+	cmd.AddCommand(
+		newExtractSchemaCommand(),
+		newGenSdkCommand(),
+	)
 	return cmd
 }
 
@@ -51,7 +53,7 @@ Subcommands of this command are useful to package authors during development.`,
 //
 //		FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 //
-func schemaFromSchemaSource(ctx context.Context, packageSource string) (*schema.Package, error) {
+func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	wd, err := os.Getwd()
 	if err != nil {

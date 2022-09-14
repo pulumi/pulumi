@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -26,17 +25,16 @@ import (
 
 func newExtractSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-schema",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "get-schema <schema_source>",
+		Args:  cobra.ExactArgs(1),
 		Short: "Get the schema.json from a package",
 		Long: `Get the schema.json from a package.
 
-You can specify a package by giving a path to the binary or by naming the package.`,
+<schema_source> can be a package name or the path to a plugin binary.`,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			source := args[0]
-			ctx := context.Background()
 
-			pkg, err := schemaFromSchemaSource(ctx, source)
+			pkg, err := schemaFromSchemaSource(source)
 			if err != nil {
 				return err
 			}
