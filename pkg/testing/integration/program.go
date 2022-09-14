@@ -2160,8 +2160,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	// tidy to resolve all transitive dependencies including from local dependencies above
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	// tidy to resolve all transitive dependencies including from local dependencies above.
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy", "-compat=1.18"}, cwd)
 	if err != nil {
 		return err
 	}
