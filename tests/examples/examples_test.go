@@ -4,14 +4,11 @@ package examples
 
 import (
 	"bytes"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -322,24 +319,6 @@ func TestAccSecrets(t *testing.T) {
 	integration.ProgramTest(t, &test)
 }
 
-//nolint:paralleltest // uses parallel programtest
-func TestAccNodeCompatTests(t *testing.T) {
-	skipIfNotNode610(t)
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "compat/v0.10.0/minimal"),
-			Config: map[string]string{
-				"name": "Pulumi",
-			},
-			Secrets: map[string]string{
-				"secret": "this is my secret message",
-			},
-			RunBuild: true,
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
 func getCwd(t *testing.T) string {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -352,23 +331,4 @@ func getBaseOptions() integration.ProgramTestOptions {
 	return integration.ProgramTestOptions{
 		Dependencies: []string{"@pulumi/pulumi"},
 	}
-}
-
-func skipIfNotNode610(t *testing.T) {
-	nodeVer, err := getNodeVersion()
-	if err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {
-		t.Skip("Skipping 0.10.0 compat tests, because current node version is not 6.10.X")
-	}
-}
-
-func getNodeVersion() (semver.Version, error) {
-	var buf bytes.Buffer
-
-	nodeVersionCmd := exec.Command("node", "--version")
-	nodeVersionCmd.Stdout = &buf
-	if err := nodeVersionCmd.Run(); err != nil {
-		return semver.Version{}, fmt.Errorf("running node --version: %w", err)
-	}
-
-	return semver.ParseTolerant(buf.String())
 }
