@@ -28,6 +28,7 @@
 //     URL:         "https://github.com/pulumi/test-repo.git",
 //     ProjectPath: filepath.Join("project", "path", "repo", "root", "relative"),
 //     })
+//
 //  3. Programs defined as a function alongside your Automation API code (NewStackInlineSource)
 //     stack, err := NewStackInlineSource(ctx, "myOrg/myProj/myStack", func(pCtx *pulumi.Context) error {
 //     bucket, err := s3.NewBucket(pCtx, "bucket", nil)

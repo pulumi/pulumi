@@ -748,6 +748,8 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	t.Skip() // TODO: This test relies on Pulumi v2!
+
 	t.Parallel()
 
 	if runtime.GOOS == windows {
