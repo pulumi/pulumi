@@ -467,6 +467,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Quick {
 		opts.Quick = overrides.Quick
 	}
+	if overrides.RequireService {
+		opts.RequireService = overrides.RequireService
+	}
 	if overrides.PreviewCommandlineFlags != nil {
 		opts.PreviewCommandlineFlags = append(opts.PreviewCommandlineFlags, overrides.PreviewCommandlineFlags...)
 	}
