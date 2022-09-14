@@ -9,20 +9,6 @@ import * as enums from "../types/enums";
 /**
  * Configuration filters
  */
-export interface ConfigurationFiltersArgs {
-    /**
-     * Filters specific to product
-     */
-    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[]>;
-    /**
-     * Product hierarchy information
-     */
-    hierarchyInformation: pulumi.Input<inputs.HierarchyInformationArgs>;
-}
-
-/**
- * Configuration filters
- */
 export interface ConfigurationFilters {
     /**
      * Filters specific to product
@@ -32,6 +18,20 @@ export interface ConfigurationFilters {
      * Product hierarchy information
      */
     hierarchyInformation: inputs.HierarchyInformation;
+}
+
+/**
+ * Configuration filters
+ */
+export interface ConfigurationFiltersArgs {
+    /**
+     * Filters specific to product
+     */
+    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[]>;
+    /**
+     * Product hierarchy information
+     */
+    hierarchyInformation: pulumi.Input<inputs.HierarchyInformationArgs>;
 }
 
 /**
