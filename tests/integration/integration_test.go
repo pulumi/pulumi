@@ -801,6 +801,9 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 }
 
 func runComponentSetup(t *testing.T, testDir string) {
+	ptesting.YarnInstallMutex.Lock()
+	defer ptesting.YarnInstallMutex.Unlock()
+
 	setupFilename, err := filepath.Abs("component_setup.sh")
 	contract.AssertNoError(err)
 	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
