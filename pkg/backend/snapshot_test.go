@@ -251,7 +251,8 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 }
 
 // This test checks that we only write the Checkpoint once whether or not there
-// are important changes
+// are important changes when the `PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER` envvar
+// is provided
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	t.Setenv(experimentalSnapshotManagerFlag, "1")
 
@@ -280,6 +281,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	err = mutation.End(provSame, true)
 	assert.NoError(t, err)
 
+	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
 	pUpdated := NewResource(string(resourceP.URN))
 	pUpdated.Protect = !resourceP.Protect
 	pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
@@ -288,7 +290,7 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	err = mutation.End(pSame, true)
 	assert.NoError(t, err)
 
-	// The engine generates a Same for b. Because this is a meaningful change, the snapshot is written:
+	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
 	aUpdated := NewResource(string(resourceA.URN))
 	aUpdated.Protect = !resourceA.Protect
 	aSame := deploy.NewSameStep(nil, nil, resourceA, aUpdated)
@@ -297,9 +299,13 @@ func TestWriteCheckpointOnceUnsafe(t *testing.T) {
 	err = mutation.End(aSame, true)
 	assert.NoError(t, err)
 
+	// a `Close()` call is required to write back the snapshots.
+	// It is called in all of the references to SnapshotManager.
 	err = manager.Close()
 	assert.NoError(t, err)
 
+	// DEFAULT behavior would cause more than 1 snapshot to be written,
+	// but the provided flag should only create 1 Snapshot
 	assert.Len(t, sp.SavedSnapshots, 1)
 }
 

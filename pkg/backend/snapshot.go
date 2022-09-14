@@ -639,6 +639,9 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	return nil
 }
 
+// unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
+// SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
+// cause a Snapshot to be serialized to the user's state backend.
 func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
 	for {
 		select {
@@ -677,8 +680,10 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 	go func() {
 		unsafeEnabled := os.Getenv(experimentalSnapshotManagerFlag) != ""
 		if unsafeEnabled {
-			// this codepath skips writing back snapshots
-			// on all mutations. It uses internal state
+			// This codepath skips writing back snapshots on all mutations.
+			// The final snapshot is written back when `SnapshotManager.Close()` is called.
+			// This trades reliability for speed and can cause state to be lost if Close()
+			// is not called or successful.
 			manager.unsafeServiceLoop(mutationRequests, done)
 			return
 		}
