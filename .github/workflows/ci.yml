@@ -27,8 +27,7 @@ on:
       test-mode:
         required: false
         default: "full"
-        description: "CI mode to use: none, fast, or full. Fast only runs tests on Linux amd64. Full required build-mode is full."
-        # This implication holds because we need full builds to test full builds.
+        description: "Tests to run: none or full."
         type: string
       test-version-sets:
         required: false
