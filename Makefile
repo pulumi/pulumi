@@ -116,34 +116,8 @@ lint_actions:
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build_provider::
+test_build::
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-
-preparedir=$(subst test_build_prepare/,,$(word 1,$(subst !, ,$@)))
-test_build_prepare/%:
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh $(preparedir)
-
-test_build_prepare/construct_component_slow:
-	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-
-test_build_prepare/construct_component_error_apply:
-	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-
-COMPONENT_TESTS := \
-	construct_component \
-	construct_component_output_values \
-	construct_component_plain \
-	construct_component_unknown \
-	component_provider_schema \
-	construct_component_methods \
-	construct_component_provider \
-	construct_component_methods_unknown \
-	construct_component_methods_resources \
-	construct_component_methods_errors \
-	construct_component_slow \
-	construct_component_error_apply
-
-test_build:: test_build_provider $(COMPONENT_TESTS:%=test_build_prepare/%)
 
 test_all:: test_build test_pkg test_integration
 
