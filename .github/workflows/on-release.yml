@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
-      next_version: "${{ fromJSON(steps.version.outputs.next_version) }}"
+      next-version: "${{ fromJSON(steps.version.outputs.next-version) }}"
     steps:
       - uses: actions/checkout@v3
         # Uses release ref (tag)
@@ -31,7 +31,7 @@ jobs:
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
 
           NEXT_VERSION="$(.github/scripts/get-next-version "${PULUMI_VERSION}")"
-          ./.github/scripts/set-output next_version "${NEXT_VERSION}"
+          ./.github/scripts/set-output next-version "${NEXT_VERSION}"
 
   release:
     name: release
@@ -40,6 +40,6 @@ jobs:
     with:
       ref: ${{ github.event.release.tag_name }}
       version: ${{ needs.info.outputs.version }}
-      next_version: ${{ needs.info.outputs.next_version }}
+      next-version: ${{ needs.info.outputs.next-version }}
       release-notes: ${{ github.event.release.body }}
     secrets: inherit
