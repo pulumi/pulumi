@@ -488,6 +488,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
+	fmt.Printf("mod: %v, importbasepath: %v\n", mod, info.ImportBasePath)
 
 	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
 	// namespaceless invokes "aws:index:..."
@@ -519,6 +520,9 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 			}
 		} else {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
+			if info.ImportBasePath != "" {
+				imp = fmt.Sprintf("%s/%s", info.ImportBasePath, modSplit[0])
+			}
 		}
 	}
 	return fmt.Sprintf("%q", imp)
