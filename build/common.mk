@@ -104,7 +104,7 @@ PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 #     make GO_TEST_OPTIONS="-short -test.v" test_fast
 GO_TEST_OPTIONS :=
 
-GO_TEST_FLAGS = -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+GO_TEST_FLAGS = -count=1 -cover -tags=all -timeout 1h ${GO_TEST_OPTIONS}
 GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
 GOPROXY = 'https://proxy.golang.org'
 

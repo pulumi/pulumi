@@ -16,10 +16,13 @@ INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
+ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
+endif
 
 TESTPARALLELISM ?= 10
+PKG_PARALLELISM ?= 2
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -175,6 +178,11 @@ test_integration_subpkgs:
 	@cd tests && $(GO_TEST) $(TESTS_PKGS)
 
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
+
+# Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
+.PHONY: gotestsum/%
+gotestsum/%: test_build
+	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::
 	./scripts/tidy.sh

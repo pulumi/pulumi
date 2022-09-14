@@ -5,7 +5,9 @@ TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./comm
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
 TESTPARALLELISM  ?= 10
 
+ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
+endif
 
 include ../../build/common.mk
 

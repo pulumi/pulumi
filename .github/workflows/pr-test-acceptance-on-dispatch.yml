@@ -30,7 +30,7 @@ jobs:
 
   comment-notification:
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch'
+    if: ${{ github.event_name == 'repository_dispatch' }}
     permissions:
       contents: read
       pull-requests: write
@@ -45,20 +45,6 @@ jobs:
           body: |
             Please view the results of the acceptance tests [Here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-  changelog-comment:
-    name: changelog preview
-    permissions:
-      contents: read
-      pull-requests: write
-    uses: pulumi/pulumi/.github/workflows/on-pr-changelog.yml@master
-    with:
-      ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
-      base-ref: origin/${{ github.event.client_payload.pull_request.base.ref }}
-      pr-number: ${{ github.event.client_payload.pull_request.number }}
-      changelog-required: ${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-
   ci:
     name: CI
     needs: [info]
@@ -68,10 +54,11 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
       version: ${{ needs.info.outputs.version }}
-      test-platforms: '["ubuntu-latest"]'
-      build-targets: '[{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]'
+      lint: false
+      test-mode: fast
+      build-mode: fast
+      test-version-sets: current
+      test-platforms: ubuntu-latest
       enable-coverage: true
-      # They said GitHub Actions didn't have ternaries, but I know better:
-      slow-test-cutoff: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') && 9999 || 5 }}
     secrets:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

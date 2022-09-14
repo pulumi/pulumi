@@ -40,17 +40,9 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
-      - name: Configure Go cache key
-        env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          go-version: 1.19.x # only used by changelog tool
       - name: Changelog
         id: changelog
         env:
