@@ -1,4 +1,7 @@
 changes:
-- type: chore
+- type: feat
   scope: ci
-  description: Enables running program tests against local workspace
+  description: >
+    Improves first-time contributor developer experience and reduces test execution time by
+    defaulting `integration.ProgramTest` to a filestate backend. Tests that require running against
+    a service should set `RequireService` to `true`.

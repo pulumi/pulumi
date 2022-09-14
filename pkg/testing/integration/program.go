@@ -745,11 +745,13 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts.SkipEmptyPreviewUpdate = true
 	}
 	if opts.RequireService {
+		// This token is set in CI jobs, so this escape hatch is here to enable a smooth local dev
+		// experience, i.e.: running "make" and not seeing many failures due to a missing token.
 		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 		}
 	} else if opts.CloudURL == "" {
-		opts.CloudURL = NewBackendURL(t)
+		opts.CloudURL = MakeTempBackend(t)
 	}
 
 	return &ProgramTester{
@@ -760,8 +762,8 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	}
 }
 
-// NewBackendURL creates a temporary backend directory which will clean up on test exit.
-func NewBackendURL(t *testing.T) string {
+// MakeTempBackend creates a temporary backend directory which will clean up on test exit.
+func MakeTempBackend(t *testing.T) string {
 	tempDir, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)

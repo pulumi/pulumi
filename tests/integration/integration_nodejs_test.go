@@ -725,7 +725,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
-		CloudURL:   integration.NewBackendURL(t),
+		CloudURL:   integration.MakeTempBackend(t),
 		NoParallel: true, // mutates environment variables
 	}
 
@@ -810,7 +810,7 @@ func TestCloudSecretProvider(t *testing.T) {
 	}
 
 	localTestOptions := testOptions.With(integration.ProgramTestOptions{
-		CloudURL: integration.NewBackendURL(t),
+		CloudURL: integration.MakeTempBackend(t),
 	})
 
 	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
