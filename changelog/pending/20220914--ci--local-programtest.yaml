@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Enables running program tests against local workspace
