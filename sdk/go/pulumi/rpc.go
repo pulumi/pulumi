@@ -359,8 +359,8 @@ func marshalInputImpl(v interface{},
 			if err != nil {
 				return resource.PropertyValue{}, nil, err
 			}
-			contract.Assert(known)
-			contract.Assert(!secretURN)
+			contract.Assertf(known, "URN must be known")
+			contract.Assertf(!secretURN, "URN must not be secret")
 
 			if custom, ok := v.(CustomResource); ok {
 				id, _, secretID, err := custom.ID().awaitID(context.Background())
