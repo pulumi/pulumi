@@ -309,7 +309,7 @@ func marshalInputImpl(v interface{},
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
-		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Pointer && val.IsNil() {
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && val.IsNil() {
 			// Here we round trip through a reflect.Value to catch fat pointers of the
 			// form
 			//
