@@ -334,11 +334,13 @@ jobs:
           fail_ci_if_error: false
           verbose: true
       - name: Summarize Test Time by Package
+        continue-on-error: true
         run: |
           mkdir -p test-results
           touch test-results/empty.json # otherwise goteststats fails below when no files match
           goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Individual Test
+        continue-on-error: true
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100 || \
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi
