@@ -10,7 +10,7 @@ changes:
     `PULUMI_EXPERIMENTAL=true` to be set.
 
     Using the feature introduces risk that in the case of network
-    disconnect or Pulumi state edits will be lost and may require
+    disconnect or crash state edits will be lost and may require
     manual recovery. When this risk is acceptable, using the feature
     can speed up Pulumi deployments.
 
