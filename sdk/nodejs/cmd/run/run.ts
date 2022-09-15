@@ -68,7 +68,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
 function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
-    const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");    
+    const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");
     const emptyConfig = {};
     try {
         const npmRcPath = path.join(projectRoot, ".npmrc");
@@ -169,9 +169,9 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
-function tracingIsEnabled(tracingUrl: string | boolean): boolean {    
+function tracingIsEnabled(tracingUrl: string | boolean): boolean {
     if(typeof tracingUrl !== "string") {
-        return false
+        return false;
     }
     const experimental = process.env["PULUMI_EXPERIMENTAL"] ?? "";
     const nonzeroLength = tracingUrl.length > 0;
@@ -186,14 +186,14 @@ export function run(
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
     const tracingUrl: string | boolean = argv["tracing"];
-    // Start tracing. Before exiting, gracefully shutdown tracing, exporting 
+    // Start tracing. Before exiting, gracefully shutdown tracing, exporting
     // all remaining spans in the batch.
-   if(tracingIsEnabled(tracingUrl)) {
+    if(tracingIsEnabled(tracingUrl)) {
         tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
         process.on("exit", tracing.stop);
     }
     // Start a new span, which we shutdown at the bottom of this method.
-    const span = tracing.newSpan("language-runtime.run");    
+    const span = tracing.newSpan("language-runtime.run");
 
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
@@ -292,7 +292,7 @@ ${errMsg}`);
                 `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
-        
+
         span.addEvent(`uncaughtError: ${err}`);
         reportLoggedError(err);
     };
@@ -335,7 +335,7 @@ ${defaultMessage}`);
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
 
         // Create a new span for the execution of the user program.
-        const runProgramSpan = tracing.newSpan("language-runtime.runProgram");    
+        const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
 
         try {
             const projectRoot = projectRootFromProgramPath(program);
@@ -429,7 +429,7 @@ ${defaultMessage}`);
             runProgramSpan.end();
         }
     };
-    
+
     // Construct a `Stack` resource to represent the outputs of the program.
     const stackOutputs = stack.runInPulumiStack(runProgram);
     span.end();
