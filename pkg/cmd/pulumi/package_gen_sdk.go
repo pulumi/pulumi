@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -101,7 +100,7 @@ func genSDK(language, out string, pkg *schema.Package) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(path, v, 0600)
+		err = os.WriteFile(path, v, 0600)
 		if err != nil {
 			return err
 		}

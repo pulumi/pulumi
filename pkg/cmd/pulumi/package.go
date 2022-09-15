@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,7 +76,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return pkg, nil
 	}
 	if ext := filepath.Ext(packageSource); ext == ".yaml" || ext == ".yml" {
-		f, err := ioutil.ReadFile(packageSource)
+		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +86,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		}
 		return bind(spec)
 	} else if ext == ".json" {
-		f, err := ioutil.ReadFile(packageSource)
+		f, err := os.ReadFile(packageSource)
 		if err != nil {
 			return nil, err
 		}
