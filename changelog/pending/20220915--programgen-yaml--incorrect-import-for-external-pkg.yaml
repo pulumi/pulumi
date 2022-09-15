@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/yaml
+  description: Fix incorrect import for non-pulumi owned package on convert
