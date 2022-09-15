@@ -28,7 +28,7 @@ from .test_local_workspace import stack_namer, test_path
 compilation_error_project = "compilation_error"
 runtime_error_project = "runtime_error"
 
-
+@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
 class TestErrors(unittest.TestCase):
     def test_inline_runtime_error_python(self):
         project_name = "inline_runtime_error_python"

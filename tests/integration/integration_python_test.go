@@ -267,6 +267,8 @@ func TestStackReferencePython(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -297,6 +299,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -311,6 +315,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 	integration.ProgramTest(t, exporterOpts)
 
 	importerOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -598,6 +604,10 @@ func TestPythonStackTruncate(t *testing.T) {
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -629,7 +639,7 @@ func TestConstructPython(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -698,9 +708,12 @@ func TestConstructSlowPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts := &integration.ProgramTestOptions{
 		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "python"),
+		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -721,6 +734,10 @@ func TestConstructSlowPython(t *testing.T) {
 // Test remote component construction with prompt inputs.
 func TestConstructPlainPython(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -752,7 +769,7 @@ func TestConstructPlainPython(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -783,6 +800,10 @@ func TestConstructUnknownPython(t *testing.T) {
 // Test methods on remote components.
 func TestConstructMethodsPython(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -799,10 +820,10 @@ func TestConstructMethodsPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env: []string{pathEnv},
-				Dir: filepath.Join("construct_component_methods", "python"),
+				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
@@ -829,7 +850,10 @@ func TestConstructMethodsErrorsPython(t *testing.T) {
 
 func TestConstructProviderPython(t *testing.T) {
 	t.Parallel()
+
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{

@@ -19,8 +19,6 @@ VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pu
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
 
-TESTPARALLELISM ?= 10
-
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
@@ -113,34 +111,8 @@ lint_actions:
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build_provider::
+test_build::
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-
-preparedir=$(subst test_build_prepare/,,$(word 1,$(subst !, ,$@)))
-test_build_prepare/%:
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh $(preparedir)
-
-test_build_prepare/construct_component_slow:
-	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-
-test_build_prepare/construct_component_error_apply:
-	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-
-COMPONENT_TESTS := \
-	construct_component \
-	construct_component_output_values \
-	construct_component_plain \
-	construct_component_unknown \
-	component_provider_schema \
-	construct_component_methods \
-	construct_component_provider \
-	construct_component_methods_unknown \
-	construct_component_methods_resources \
-	construct_component_methods_errors \
-	construct_component_slow \
-	construct_component_error_apply
-
-test_build:: test_build_provider $(COMPONENT_TESTS:%=test_build_prepare/%)
 
 test_all:: test_build test_pkg test_integration
 
@@ -208,3 +180,7 @@ get_schemas: schema-aws!4.26.0          \
 			 schema-kubernetes!3.7.2    \
 			 schema-random!4.2.0        \
 			 schema-eks!0.37.1
+
+.PHONY: changelog
+changelog:
+	go run github.com/aaronfriel/go-change@v0.1.0 create

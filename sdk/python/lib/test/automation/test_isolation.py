@@ -18,6 +18,7 @@
 # operations.
 
 import asyncio
+import os
 import pytest
 import sys
 import typing
@@ -77,7 +78,7 @@ async def async_stack_up(stack):
 async def async_stack_destroy(stack):
     return stack.destroy()
 
-
+@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
 @pytest.mark.asyncio
 async def test_parallel_updates():
     first_stack_name = f"stack-{uuid.uuid4()}"
@@ -88,7 +89,7 @@ async def test_parallel_updates():
     stack_destroy_responses = await asyncio.gather(*[async_stack_destroy(stack) for stack in stacks])
     assert all({stack_response.summary.result == "succeeded" for stack_response in stack_destroy_responses})
 
-
+@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
 @pytest.mark.skipif(
     sys.platform == 'win32',
     reason="TODO[pulumi/pulumi#8716] fails on Windows")

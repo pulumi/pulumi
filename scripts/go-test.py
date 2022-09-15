@@ -31,6 +31,13 @@ cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
 if cov is not None:
     args = args + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
 
+test_parallelism = int(os.environ.get("GO_TEST_PARALLELISM", "8"))
+pkg_parallelism = int(os.environ.get("GO_TEST_PKG_PARALLELISM", "2"))
+# TODO: https://github.com/pulumi/pulumi/issues/10699
+# Enable running tests with -shuffle on.
+shuffle = os.environ.get("GO_TEST_SHUFFLE", "off")
+args = ['-parallel', str(test_parallelism), '-p', str(pkg_parallelism), "-shuffle", shuffle] + args
+
 if integration_test_subset:
     print(f"Using test subset: {integration_test_subset}")
     args += ['-run', INTEGRATION_TESTS[integration_test_subset]]
