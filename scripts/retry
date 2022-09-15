@@ -30,7 +30,7 @@ run_tests() {
         attempts=$((attempts + 1))
 
         export GO_TEST_PARALLELISM=$((GO_TEST_PARALLELISM <= 2 ? 1 : GO_TEST_PARALLELISM / 2))
-        export GO_TEST_PKG_PARALLELISM=$((GO_TEST_PARALLELISM <= 2 ? 1 : GO_TEST_PKG_PARALLELISM / 2))
+        export GO_TEST_PKG_PARALLELISM=$((GO_TEST_PKG_PARALLELISM <= 2 ? 1 : GO_TEST_PKG_PARALLELISM / 2))
         export GO_TEST_SHUFFLE="off"
     done
 

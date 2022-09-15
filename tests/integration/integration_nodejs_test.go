@@ -1336,3 +1336,25 @@ func TestTSConfigOption(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
 }
+
+// This tests that despite an exception, that the snapshot is still written.
+func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("unsafe_snapshot_tests", "bad_resource"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Env:          []string{"PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER=1"},
+		Quick:        true,
+		// The program throws an exception and 1 resource fails to be created.
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains the 1003 other resources that were created
+			// - stack
+			// - provider
+			// - `base` resource
+			// - 1000 resources(via a for loop)
+			// - NOT a resource that failed to be created dependent on the `base` resource output
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 3+1000, len(stackInfo.Deployment.Resources))
+		},
+	})
+}
