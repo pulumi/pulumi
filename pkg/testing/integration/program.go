@@ -536,14 +536,32 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PipenvBin != "" {
 		opts.PipenvBin = overrides.PipenvBin
 	}
+	if overrides.DotNetBin != "" {
+		opts.DotNetBin = overrides.DotNetBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.UseAutomaticVirtualEnv {
+		opts.UseAutomaticVirtualEnv = overrides.UseAutomaticVirtualEnv
 	}
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
 	}
+	if overrides.PreviewCompletedHook != nil {
+		opts.PreviewCompletedHook = overrides.PreviewCompletedHook
+	}
+	if overrides.JSONOutput {
+		opts.JSONOutput = overrides.JSONOutput
+	}
+	if overrides.ExportStateValidator != nil {
+		opts.ExportStateValidator = overrides.ExportStateValidator
+	}
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
+	}
+	if overrides.LocalDependencies != nil {
+		opts.LocalDependencies = append(opts.LocalDependencies, overrides.LocalDependencies...)
 	}
 	return opts
 }
