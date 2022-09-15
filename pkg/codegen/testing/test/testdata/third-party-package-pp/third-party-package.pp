@@ -6,7 +6,7 @@ resource Question "other:module:Object" {
     answer = 42
 }
 
-resource Question2 "other:module/subModule:Object" {
+resource Question2 "other:module/sub:Object" {
     answer = 24
 }
 

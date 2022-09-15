@@ -20,7 +20,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = module.NewObject(ctx, "Question2", &module.ObjectArgs{
+		_, err = module.sub.NewObject(ctx, "Question2", &module.ObjectArgs{
 			Answer: pulumi.Float64(24),
 		})
 		if err != nil {

@@ -17,7 +17,7 @@
 				}
 			}
 		},
-		"other:module/subModule:Object": {
+		"other:module/sub:Object": {
 			"inputProperties": {
 				"answer": {
 					"type": "number"
