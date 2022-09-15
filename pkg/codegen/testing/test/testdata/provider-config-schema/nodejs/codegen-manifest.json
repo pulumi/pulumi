@@ -3,6 +3,7 @@
     "README.md",
     "config/index.ts",
     "config/vars.ts",
+    "funcWithAllOptionalInputs.ts",
     "index.ts",
     "package.json",
     "provider.ts",
