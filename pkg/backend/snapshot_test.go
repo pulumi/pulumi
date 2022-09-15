@@ -250,13 +250,14 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
 }
 
-// This test checks that we only write the Checkpoint once whether or not there
-// are important changes when the `PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER` envvar
-// is provided
+// This test checks that we only write the Checkpoint once whether or
+// not there are important changes when asked to via
+// pulumiSkipCheckpointsEnvVar.
 //
 //nolint:paralleltest // mutates environment variables
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
-	t.Setenv(experimentalSnapshotManagerFlag, "1")
+	t.Setenv("PULUMI_EXPERIMENTAL", "1")
+	t.Setenv(pulumiSkipCheckpointsEnvVar, "1")
 
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")
 	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgUnsafe", "id"
