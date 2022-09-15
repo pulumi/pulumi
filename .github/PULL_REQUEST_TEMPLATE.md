@@ -15,7 +15,7 @@ Fixes # (issue)
 <!--- 
 User-facing changes require a CHANGELOG entry.
 -->
-- [ ] I have updated the [CHANGELOG-PENDING](https://github.com/pulumi/pulumi/blob/master/CHANGELOG_PENDING.md) file with my change
+- [ ] I have run `make changelog` and committed the `changelog/pending/<file>` documenting my change
 <!--
 If the change(s) in this PR is a modification of an existing call to the Pulumi Service,
 then the service should honor older versions of the CLI where this change would not exist.
