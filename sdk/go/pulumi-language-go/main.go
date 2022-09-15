@@ -47,7 +47,10 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func compileProgramCwd(buildID string, outfile string) (string, error) {
+// This function takes a file target to specify where to compile to.
+// If `outfile` is "", the binary is compiled to a new temporary file.
+// This function returns the path of the file that was produced.
+func compileProgramCwd(outfile string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", errors.Wrap(err, "unable to get current working directory")
@@ -60,7 +63,7 @@ func compileProgramCwd(buildID string, outfile string) (string, error) {
 
 	if outfile == "" {
 		// If no outfile is supplied, write the Go binary to a temporary file.
-		f, err := os.CreateTemp("", fmt.Sprintf("pulumi-go.%s.*", buildID))
+		f, err := os.CreateTemp("", "pulumi-go.*")
 		if err != nil {
 			return "", errors.Wrap(err, "unable to create go program temp file")
 		}
@@ -448,7 +451,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgramCwd(req.GetProject(), host.buildTarget)
+	program, err := compileProgramCwd(host.buildTarget)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in compiling Go")
 	}
