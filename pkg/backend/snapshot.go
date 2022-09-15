@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -687,8 +688,6 @@ func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationReque
 	}
 }
 
-const experimentalSnapshotManagerFlag = "PULUMI_EXPERIMENTAL_SNAPSHOT_MANAGER"
-
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
 // and base snapshot.
 //
@@ -710,10 +709,12 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 	}
 
 	serviceLoop := manager.defaultServiceLoop
-	unsafeEnabled := os.Getenv(experimentalSnapshotManagerFlag) != ""
-	if unsafeEnabled {
+
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) &&
+		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_CHECKPOINTS")) {
 		serviceLoop = manager.unsafeServiceLoop
 	}
+
 	go serviceLoop(mutationRequests, done)
 
 	return manager
