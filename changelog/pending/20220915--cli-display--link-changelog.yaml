@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Adds link to master CHANGELOG.md in the version upgrade message.
