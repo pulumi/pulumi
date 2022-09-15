@@ -309,6 +309,15 @@ func marshalInputImpl(v interface{},
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Pointer && val.IsNil() {
+			// Here we round trip through a reflect.Value to catch fat pointers of the
+			// form
+			//
+			// 	<SomeType><nil value>
+			//
+			// This prevents calling methods on nil pointers when we cast to an interface
+			// (like `Resource`)
+			return resource.PropertyValue{}, nil, nil
 		}
 
 		// Look for some well known types.
