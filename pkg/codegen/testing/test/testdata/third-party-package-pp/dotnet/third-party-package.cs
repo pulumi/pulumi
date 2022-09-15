@@ -14,6 +14,11 @@ return await Deployment.RunAsync(() =>
         Answer = 42,
     });
 
+	var Question2 = new Other.Module.Object("Question2", new()
+	{
+		Answer = 24,
+	});
+
     var Provider = new Other.Provider("Provider", new()
     {
         ObjectProp = 

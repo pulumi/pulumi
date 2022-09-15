@@ -6,6 +6,10 @@ resource Question "other:module:Object" {
     answer = 42
 }
 
+resource Question2 "other:module/subModule:Object" {
+    answer = 24
+}
+
 resource Provider "pulumi:providers:other" {
    objectProp = {
         prop1 = "foo"
