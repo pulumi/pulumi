@@ -1,0 +1,20 @@
+changes:
+- type: feat
+  scope: backend
+  description: |
+    Adds a flag `PULUMI_SKIP_CHECKPOINTS=true` that makes Pulumi skip
+    saving state checkpoints as it modifies resources and only save
+    the final state of a deployment.
+
+    This is an experimental feature that also requires
+    `PULUMI_EXPERIMENTAL=true` to be set.
+
+    Using the feature introduces risk that in the case of network
+    disconnect or Pulumi state edits will be lost and may require
+    manual recovery. When this risk is acceptable, using the feature
+    can speed up Pulumi deployments.
+
+    See also:
+
+      - [Checkpoints](https://www.pulumi.com/docs/intro/concepts/state/#checkpoints)
+      - [#10668](https://github.com/pulumi/pulumi/issues/10668)
