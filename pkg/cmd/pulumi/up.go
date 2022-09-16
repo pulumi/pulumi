@@ -111,23 +111,28 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
-		targetURNs := []resource.URN{}
-		snap, err := s.Snapshot(ctx)
-		if err != nil {
-			return result.FromError(err)
-		}
-		for _, t := range targets {
-			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
-		}
+		targetURNs, replaceURNs := []resource.URN{}, []resource.URN{}
 
-		replaceURNs := []resource.URN{}
-		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
-		}
+		if len(targets)+len(replaces)+len(targetReplaces) > 0 {
+			// This call to s.Snapshot adds latency s.Update below will call s.Snapshot again, presumably
+			// with the same result. Refactoring this or introducing a cache is a little tricky. For now:
+			// only call Snapshot twice if targets, replaces, or targetReplaces require it.
+			snap, err := s.Snapshot(ctx)
+			if err != nil {
+				return result.FromError(err)
+			}
+			for _, t := range targets {
+				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
+			}
 
-		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
-			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+			for _, r := range replaces {
+				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
+			}
+
+			for _, tr := range targetReplaces {
+				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+			}
 		}
 
 		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
