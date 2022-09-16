@@ -12,7 +12,19 @@
         },
         "description": {
             "description": "Description of the project.",
-            "type": "string"
+            "type": ["string", "null"]
+        },
+        "author": {
+            "description": "Author is an optional author that created this project.",
+            "type": ["string", "null"]
+        },
+        "website": {
+            "description": "Website is an optional website for additional info about this project.",
+            "type": ["string", "null"]
+        },
+        "license": {
+            "description": "License is the optional license governing this project's usage.",
+            "type": ["string", "null"]
         },
         "runtime": {
             "title": "ProjectRuntimeInfo",
@@ -42,20 +54,20 @@
         },
         "main": {
             "description": "Path to the Pulumi program. The default is the working directory.",
-            "type": "string"
+            "type": ["string", "null"]
         },
         "config": {
             "description": "Config directory relative to the location of Pulumi.yaml.",
-            "type": "string",
+            "type": ["string", "null"],
             "deprecated": true
         },
         "stackConfigDir": {
             "description": "Config directory location relative to the location of Pulumi.yaml.",
-            "type": "string"
+            "type": ["string", "null"]
         },
         "backend": {
             "description": "Backend of the project.",
-            "type": "object",
+            "type": ["object", "null"],
             "properties": {
                 "url": {
                     "description": "URL is optional field to explicitly set backend url",
@@ -66,7 +78,7 @@
         },
         "options": {
             "description": "Additional project options.",
-            "type": "object",
+            "type": ["object", "null"],
             "properties": {
                 "refresh": {
                     "description": "Boolean indicating whether to refresh the state before performing a Pulumi operation.",
@@ -79,35 +91,35 @@
         "template": {
             "title": "ProjectTemplate",
             "description": "ProjectTemplate is a Pulumi project template manifest.",
-            "type": "object",
+            "type": ["object", "null"],
             "properties": {
                 "description": {
                     "description": "Description of the template.",
-                    "type": "string"
+                    "type": ["string", "null"]
                 },
                 "quickstart": {
                     "description": "Quickstart contains optional text to be displayed after template creation.",
-                    "type": "string"
+                    "type":["string", "null"]
                 },
                 "important": {
                     "description": "Important indicates the template is important and should be listed by default.",
-                    "type": "boolean"
+                    "type": ["boolean", "null"]
                 },
                 "config": {
                     "description": "Config to apply to each stack in the project.",
-                    "type": "object",
+                    "type": ["object", "null"],
                     "additionalProperties": {
                         "properties": {
                             "description": {
                                 "description": "Description of the config.",
-                                "type": "string"
+                                "type": ["string", "null"]
                             },
                             "default": {
                                 "description": "Default value of the config."
                             },
                             "secret": {
                                 "description": "Boolean indicating if the configuration is labeled as a secret.",
-                                "type": "boolean"
+                                "type": ["boolean", "null"]
                             }
                         }
                     }

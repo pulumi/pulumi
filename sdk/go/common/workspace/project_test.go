@@ -169,8 +169,8 @@ func TestProjectLoadYAML(t *testing.T) {
 	_, err = writeAndLoad("name: project\nruntime: test\nbackend: 4\nmain: {}")
 	expected = []string{
 		"2 errors occurred:",
-		"* #/main: expected string, but got object",
-		"* #/backend: expected object, but got number"}
+		"* #/main: expected string or null, but got object",
+		"* #/backend: expected object or null, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -180,4 +180,10 @@ func TestProjectLoadYAML(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
+
+	// Test null optionals should work
+	proj, err = writeAndLoad("name: project\nruntime: test\ndescription:\nmain: null\nbackend:\n")
+	assert.NoError(t, err)
+	assert.Nil(t, proj.Description)
+	assert.Equal(t, "", proj.Main)
 }

@@ -1,4 +1,4 @@
-module go-build
+module go-exit-error
 
 go 1.17
 
