@@ -45,7 +45,7 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      test-platforms: '["ubuntu-latest"]'
+      test-platforms: '["windows-8core-2022"]'
       build-targets: '[{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]'
       enable-coverage: true
       # They said GitHub Actions didn't have ternaries, but I know better:
