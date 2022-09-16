@@ -183,4 +183,4 @@ get_schemas: schema-aws!4.26.0          \
 
 .PHONY: changelog
 changelog:
-	go run github.com/aaronfriel/go-change@v0.1.0 create
+	go run github.com/aaronfriel/go-change@v0.1.1 create

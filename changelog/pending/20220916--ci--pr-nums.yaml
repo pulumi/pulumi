@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Fix PR numbers rendering multiple times in release notes
