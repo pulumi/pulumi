@@ -54,9 +54,9 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
       version: ${{ needs.info.outputs.version }}
-      lint: false
-      test-mode: fast
-      build-mode: fast
+      lint: true
+      build-all-targets: false
       test-version-sets: current
-      test-platforms: ubuntu-latest
+      integration-test-platforms: ubuntu-latest
+      smoke-test-platforms: ''
       enable-coverage: true

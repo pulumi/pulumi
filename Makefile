@@ -114,10 +114,7 @@ lint_actions:
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build::
-	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-
-test_all:: test_build test_pkg test_integration
+test_all:: test_pkg test_integration
 
 test_pkg_nodejs: get_schemas
 # this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
@@ -153,7 +150,7 @@ test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integ
 
 # Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
 .PHONY: gotestsum/%
-gotestsum/%: test_build
+gotestsum/%:
 	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::

@@ -38,7 +38,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
-        # This till display missing pulumictl errors, but it won't prevent the lint from working.
       - name: Check Protobufs
         run: |
           make check-proto

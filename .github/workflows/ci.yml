@@ -14,29 +14,29 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      build-mode:
+      build-all-targets:
         required: false
-        default: "full"
-        description: "CI build targets to create: fast or full. Fast only builds for Linux amd64."
-        type: string
+        default: true
+        description: "Build targets to produce, false builds only for Linux amd64."
+        type: boolean
       lint:
         required: false
         default: true
         description: "Whether to run lints"
         type: boolean
-      test-mode:
-        required: false
-        default: "full"
-        description: "Tests to run: none or full."
-        type: string
       test-version-sets:
         required: false
         default: minimum current
-        description: Version sets on which to run integration tests, as a space delimited list
+        description: Version sets on which to run integration tests
         type: string
-      test-platforms:
+      integration-test-platforms:
         required: false
-        default: ubuntu-latest windows-latest macos-latest
+        default: ubuntu-latest
+        description: Platforms on which to run integration tests, as a space delimited list
+        type: string
+      smoke-test-platforms:
+        required: false
+        default: windows-latest macos-latest
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
@@ -79,10 +79,10 @@ jobs:
       - name: build matrix
         id: matrix
         env:
-          TEST_MODE: ${{ inputs.test-mode }}
-          BUILD_MODE: ${{ inputs.build-mode }}
+          BUILD_ALL_TARGETS: ${{ inputs.build-all-targets }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
-          TEST_PLATFORMS: ${{ inputs.test-platforms }}
+          INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
+          INPUT_SMOKE_TEST_PLATFORMS: ${{ inputs.smoke-test-platforms }}
         run: |
           echo "::group::Prime test timing data"
           mkdir -p test-results
@@ -90,12 +90,13 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Test matrix variables"
-          readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p TEST_VERSION_SETS;
-          readarray -td' ' PLATFORMS_TO_TEST < <(echo -n "$TEST_PLATFORMS"); declare -p TEST_PLATFORMS;
+          readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
+          readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
+          readarray -td' ' SMOKE_PLATFORMS < <(echo -n "$INPUT_SMOKE_TEST_PLATFORMS"); declare -p SMOKE_PLATFORMS;
           BUILD_TARGETS='[
             { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }
           ]'
-          if [ "${BUILD_MODE}" = "full" ]; then
+          if [ "${BUILD_ALL_TARGETS}" = "true" ]; then
             BUILD_TARGETS='[
               { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
@@ -106,37 +107,47 @@ jobs:
             ]'
           fi
 
-          if [ "${TEST_MODE}" = "none" ]; then
-            UNIT_TEST_MATRIX=''
-            INTEGRATION_TEST_MATRIX=''
-          else
-            UNIT_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              -vvv \
-              generate-matrix \
-              --kind unit-test \
-              --platform ubuntu-latest \
-              --version-set current \
-              --partition-module pkg 3 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
-            )
+          UNIT_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind unit-test \
+            --platform ubuntu-latest \
+            --version-set current \
+            --partition-module pkg 3 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+          )
 
-            INTEGRATION_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              -vvv \
-              generate-matrix \
-              --kind integration-test \
-              --platform "${PLATFORMS_TO_TEST[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              --partition-module pkg 1 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
-            )
-          fi
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind integration-test \
+            --platform "${INTEGRATION_PLATFORMS[@]}" \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+          )
+
+          SMOKE_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind smoke-test \
+            --tags all smoke \
+            --platform "${SMOKE_PLATFORMS[@]}" \
+            --version-set current \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 1 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+          )
           echo "::endgroup::"
+
           echo "::group::Version set variable"
           VERSION_SET=$(./scripts/get-job-matrix.py \
             generate-version-set \
@@ -144,25 +155,30 @@ jobs:
           )
           echo "::endgroup::"
 
+          echo "::group::Unit test matrix"
+          echo "$UNIT_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
           echo "::group::Integration test matrix"
           echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
           echo "::endgroup::"
-          echo "::group::Unit test matrix"
-          echo "$UNIT_TEST_MATRIX" | yq -P '.'
+          echo "::group::Smoke test matrix"
+          echo "$SMOKE_TEST_MATRIX" | yq -P '.'
           echo "::endgroup::"
           echo "::group::Version set"
           echo "$VERSION_SET" | yq -P '.'
           echo "::endgroup::"
 
           echo "::group::Set outputs"
-          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
           ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
+          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
+          ./.github/scripts/set-output smoke-test-matrix "${SMOKE_TEST_MATRIX}"
           ./.github/scripts/set-output version-set "${VERSION_SET}"
           ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
           echo "::endgroup::"
     outputs:
-      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
       unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
+      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
+      smoke-test-matrix: "${{ fromJson(steps.matrix.outputs.smoke-test-matrix) }}"
       version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
       build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
 
@@ -214,7 +230,7 @@ jobs:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
     name: Unit Test${{ matrix.platform && '' }}
     needs: [matrix]
-    if: ${{ needs.matrix.outputs.unit-test-matrix != '[]' && needs.matrix.outputs.unit-test-matrix != '' }}
+    if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.matrix.outputs.unit-test-matrix) }}
@@ -239,7 +255,7 @@ jobs:
     # appearing in the rendered title of the job name. See: unit test.
     name: Integration Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
-    if: ${{ needs.matrix.outputs.integration-test-matrix != '[]' && needs.matrix.outputs.integration-test-matrix != '' }}
+    if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.integration-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.matrix.outputs.integration-test-matrix) }}
@@ -258,9 +274,34 @@ jobs:
       version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit
 
+  # Tests that depend on builds, but a smaller subset against Windows & MacOS platforms.
+  smoke-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Smoke Test${{ matrix.platform && '' }}
+    needs: [matrix, build-binaries, build-sdks]
+    if: ${{ needs.matrix.outputs.smoke-test-matrix != '{}' }}
+    strategy:
+      fail-fast: ${{ contains(needs.matrix.outputs.smoke-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.matrix.outputs.smoke-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true # TODO: set to true here
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
   test-collect-reports:
-    needs: [unit-test, integration-test]
-    if: ${{ always() && inputs.test-mode != 'none' }}
+    needs: [unit-test, integration-test, smoke-test]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v3
