@@ -1235,6 +1235,28 @@ describe("rpc", () => {
                 );
             },
         },
+        "unusual_alias_names": {
+            program: path.join(base, "070.unusual_alias_names"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "large_alias_counts": {
+            program: path.join(base, "071.large_alias_counts"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+    /** Skipping this test case as it requires limiting the alias multiplication which occurs */
+    // "large_alias_lineage_chains": {
+        // program: path.join(base, "072.large_alias_lineage_chains"),
+        // expectResourceCount: 1,
+        // registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+        // return { urn: makeUrn(t, name), id: undefined, props: undefined };
+        // },
+    // }
     };
 
     for (const casename of Object.keys(cases)) {
