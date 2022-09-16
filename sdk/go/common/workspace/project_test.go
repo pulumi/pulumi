@@ -118,7 +118,8 @@ func TestProjectLoadJSON(t *testing.T) {
 	assert.Equal(t, "test", proj.Runtime.Name())
 
 	// Test null optionals should work
-	proj, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"description\": null, \"main\": null, \"backend\": null}")
+	proj, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", " +
+		"\"description\": null, \"main\": null, \"backend\": null}")
 	assert.NoError(t, err)
 	assert.Nil(t, proj.Description)
 	assert.Equal(t, "", proj.Main)
