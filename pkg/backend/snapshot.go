@@ -17,6 +17,7 @@ package backend
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"time"
@@ -26,9 +27,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
+
+// Experimental flag to skip saving state checkpoints and only save
+// the final deployment. See #10668.
+const pulumiSkipCheckpointsEnvVar = "PULUMI_SKIP_CHECKPOINTS"
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
@@ -638,6 +644,54 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	return nil
 }
 
+// defaultServiceLoop saves a Snapshot whenever a mutation occurs
+func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	// True if we have elided writes since the last actual write.
+	hasElidedWrites := false
+
+	// Service each mutation request in turn.
+serviceLoop:
+	for {
+		select {
+		case request := <-mutationRequests:
+			var err error
+			if request.mutator() {
+				err = sm.saveSnapshot()
+				hasElidedWrites = false
+			} else {
+				hasElidedWrites = true
+			}
+			request.result <- err
+		case <-sm.cancel:
+			break serviceLoop
+		}
+	}
+
+	// If we still have elided writes once the channel has closed, flush the snapshot.
+	var err error
+	if hasElidedWrites {
+		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+		err = sm.saveSnapshot()
+	}
+	done <- err
+}
+
+// unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
+// SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
+// cause a Snapshot to be serialized to the user's state backend.
+func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	for {
+		select {
+		case request := <-mutationRequests:
+			request.mutator()
+			request.result <- nil
+		case <-sm.cancel:
+			done <- sm.saveSnapshot()
+			return
+		}
+	}
+}
+
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
 // and base snapshot.
 //
@@ -658,36 +712,14 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		done:             done,
 	}
 
-	go func() {
-		// True if we have elided writes since the last actual write.
-		hasElidedWrites := false
+	serviceLoop := manager.defaultServiceLoop
 
-		// Service each mutation request in turn.
-	serviceLoop:
-		for {
-			select {
-			case request := <-mutationRequests:
-				var err error
-				if request.mutator() {
-					err = manager.saveSnapshot()
-					hasElidedWrites = false
-				} else {
-					hasElidedWrites = true
-				}
-				request.result <- err
-			case <-cancel:
-				break serviceLoop
-			}
-		}
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) &&
+		cmdutil.IsTruthy(os.Getenv(pulumiSkipCheckpointsEnvVar)) {
+		serviceLoop = manager.unsafeServiceLoop
+	}
 
-		// If we still have elided writes once the channel has closed, flush the snapshot.
-		var err error
-		if hasElidedWrites {
-			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-			err = manager.saveSnapshot()
-		}
-		done <- err
-	}()
+	go serviceLoop(mutationRequests, done)
 
 	return manager
 }

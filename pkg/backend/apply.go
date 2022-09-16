@@ -125,6 +125,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, nil
 	}
 
+	infoPrefix := "\b" + op.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
+	if kind != apitype.UpdateUpdate {
+		// If not an update, we can skip displaying warnings
+	} else if countResources(events) == 0 {
+		// This is an update and there are no resources being CREATED
+		fmt.Print(infoPrefix, "There are no resources in your stack(other than the stack resource).\n\n")
+	}
+
 	// Otherwise, ensure the user wants to proceed.
 	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
@@ -228,6 +236,27 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	}
 	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
 	return changes, res
+}
+
+func countResources(events []engine.Event) int {
+	count := 0
+
+	for _, e := range events {
+		if e.Type != engine.ResourcePreEvent {
+			continue
+		}
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+
+		if !ok {
+			continue
+		}
+
+		if p.Metadata.Type.String() == "pulumi:pulumi:Stack" {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {

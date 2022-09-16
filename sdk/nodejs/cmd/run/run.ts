@@ -22,8 +22,10 @@ import * as ini from "ini";
 import * as semver from "semver";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
+import * as opentelemetry from "@opentelemetry/api";
 import * as stack from "../../runtime/stack";
 import * as settings from "../../runtime/settings";
+import * as tracing from "./tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
 
@@ -66,6 +68,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
 function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
+    const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");
     const emptyConfig = {};
     try {
         const npmRcPath = path.join(projectRoot, ".npmrc");
@@ -77,10 +80,13 @@ function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
         // Use ini to parse the contents of the .npmrc file
         // This is what node does as described in the npm docs
         // https://docs.npmjs.com/cli/v8/configuring-npm/npmrc#comments
-        return ini.parse(npmRc);
+        const parseResult = ini.parse(npmRc);
+        rcSpan.end();
+        return parseResult;
     } catch {
         // .npmrc file exists but we couldn't read or parse it
         // user out of luck here
+        rcSpan.end();
         return emptyConfig;
     }
 }
@@ -163,12 +169,32 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     return;
 }
 
+function tracingIsEnabled(tracingUrl: string | boolean): boolean {
+    if(typeof tracingUrl !== "string") {
+        return false;
+    }
+    const experimental = process.env["PULUMI_EXPERIMENTAL"] ?? "";
+    const nonzeroLength = tracingUrl.length > 0;
+    const experimentalEnabled = experimental.length > 0;
+    return nonzeroLength && experimentalEnabled;
+}
+
 /** @internal */
 export function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
+    const tracingUrl: string | boolean = argv["tracing"];
+    // Start tracing. Before exiting, gracefully shutdown tracing, exporting
+    // all remaining spans in the batch.
+    if(tracingIsEnabled(tracingUrl)) {
+        tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
+        process.on("exit", tracing.stop);
+    }
+    // Start a new span, which we shutdown at the bottom of this method.
+    const span = tracing.newSpan("language-runtime.run");
+
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -187,6 +213,7 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
+    span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
@@ -266,6 +293,7 @@ ${errMsg}`);
 ${defaultMessage}`);
         }
 
+        span.addEvent(`uncaughtError: ${err}`);
         reportLoggedError(err);
     };
 
@@ -279,6 +307,7 @@ ${defaultMessage}`);
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.
     if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+        span.addEvent("Missing tsconfig file");
         return new Promise(() => {
             const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
             e.stack = undefined;
@@ -304,6 +333,10 @@ ${defaultMessage}`);
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+
+        // Create a new span for the execution of the user program.
+        const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
+
         try {
             const projectRoot = projectRootFromProgramPath(program);
             const packageObject = packageObjectFromProjectRoot(projectRoot);
@@ -362,6 +395,7 @@ ${defaultMessage}`);
                         `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
                     ];
 
+                    runProgramSpan.addEvent("Incompatible Node version");
                     throw new Error(errorMessage.join("\n"));
                 }
             }
@@ -373,7 +407,7 @@ ${defaultMessage}`);
             const invokeResult = programExport instanceof Function
                 ? programExport()
                 : programExport;
-
+            runProgramSpan.end();
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
@@ -385,13 +419,19 @@ ${defaultMessage}`);
             // Give a better error message, if we can.
             const errorCode = (<any>e).code;
             if (errorCode === "MODULE_NOT_FOUND") {
+                runProgramSpan.addEvent("Module Load Failure.");
                 reportModuleLoadFailure(program, e);
             }
 
             throw e;
         }
+        finally {
+            runProgramSpan.end();
+        }
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    return stack.runInPulumiStack(runProgram);
+    const stackOutputs = stack.runInPulumiStack(runProgram);
+    span.end();
+    return stackOutputs;
 }

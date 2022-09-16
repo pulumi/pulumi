@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -331,31 +332,54 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}, nil
 }
 
-func execProgramCmd(cmd *exec.Cmd, env []string) error {
+func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	err := cmd.Run()
-	if err == nil {
-		// Go program completed successfully
-		return nil
-	}
 
 	// error handling
 	exiterr, ok := err.(*exec.ExitError)
 	if !ok {
-		return errors.Wrapf(err, "command errored unexpectedly")
+		return 0, errors.Wrapf(err, "command errored unexpectedly")
 	}
 
 	// retrieve the status code
 	status, ok := exiterr.Sys().(syscall.WaitStatus)
 	if !ok {
-		return errors.Wrapf(err, "program exited unexpectedly")
+		return 0, errors.Wrapf(err, "program exited unexpectedly")
 	}
 
-	// If the program ran, but exited with a non-zero error code. This will happen often, since user
-	// errors will trigger this.  So, the error message should look as nice as possible.
-	return errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
+	return status.ExitStatus(), nil
+}
+
+func runProgram(bin string, env []string) *pulumirpc.RunResponse {
+	cmd := exec.Command(bin)
+	status, err := runCmdStatus(cmd, env)
+	if err != nil {
+		return &pulumirpc.RunResponse{
+			Error: err.Error(),
+		}
+	}
+
+	if status == 0 {
+		return &pulumirpc.RunResponse{}
+	}
+
+	// If the program ran, but returned an error,
+	// the error message should look as nice as possible.
+	if status == constant.ExitStatusLoggedError {
+		// program failed but sent an error to the engine
+		return &pulumirpc.RunResponse{
+			Bail: true,
+		}
+	}
+
+	// If the program ran, but exited with a non-zero and non-reserved error code.
+	// indicate to the user which exit code the program returned.
+	return &pulumirpc.RunResponse{
+		Error: fmt.Sprintf("program exited with non-zero exit code: %d", status),
+	}
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
@@ -369,20 +393,15 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// the user can explicitly opt in to using a binary executable by specifying
 	// runtime.options.binary in the Pulumi.yaml
-	program := host.binary
-	if program != "" {
-		bin, err := executable.FindExecutable(program)
+	if host.binary != "" {
+		bin, err := executable.FindExecutable(host.binary)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to find '%s' executable", program)
+			return nil, errors.Wrapf(err, "unable to find '%s' executable", host.binary)
 		}
-		cmd := exec.Command(bin)
-		if err := execProgramCmd(cmd, env); err != nil {
-			return &pulumirpc.RunResponse{Error: err.Error()}, nil
-		}
-		return &pulumirpc.RunResponse{}, nil
+		return runProgram(bin, env), nil
 	}
 
-	// feature flag to enable old behavior and use `go run`
+	// feature flag to enable deprecated old behavior and use `go run`
 	if os.Getenv("PULUMI_GO_USE_RUN") != "" {
 		gobin, err := executable.FindExecutable("go")
 		if err != nil {
@@ -395,9 +414,20 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		}
 
 		cmd := exec.Command(gobin, "run", cwd)
-		if err := execProgramCmd(cmd, env); err != nil {
+
+		status, err := runCmdStatus(cmd, env)
+		if err != nil {
 			return &pulumirpc.RunResponse{
 				Error: err.Error(),
+			}, nil
+		}
+
+		// `go run` does not return the actual exit status of a program
+		// it only returns 2 non-zero exit statuses {1, 2}
+		// and it emits the exit status to stderr
+		if status != 0 {
+			return &pulumirpc.RunResponse{
+				Bail: true,
 			}, nil
 		}
 
@@ -407,18 +437,13 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err = compileProgramCwd(req.GetProject())
+	program, err := compileProgramCwd(req.GetProject())
 	if err != nil {
 		return nil, errors.Wrap(err, "error in compiling Go")
 	}
 	defer os.Remove(program)
 
-	cmd := exec.Command(program)
-	if err := execProgramCmd(cmd, env); err != nil {
-		return &pulumirpc.RunResponse{Error: err.Error()}, nil
-	}
-
-	return &pulumirpc.RunResponse{}, nil
+	return runProgram(program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional

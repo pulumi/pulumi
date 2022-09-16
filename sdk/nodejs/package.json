@@ -11,6 +11,13 @@
     "dependencies": {
         "@grpc/grpc-js": "~1.3.8",
         "@logdna/tail-file": "^2.0.6",
+        "@opentelemetry/api": "^1.2.0",
+        "@opentelemetry/exporter-zipkin": "^1.6.0",
+        "@opentelemetry/instrumentation-grpc": "^0.32.0",
+        "@opentelemetry/resources": "^1.6.0",
+        "@opentelemetry/sdk-trace-base": "^1.6.0",
+        "@opentelemetry/sdk-trace-node": "^1.6.0",
+        "@opentelemetry/semantic-conventions": "^1.6.0",
         "@pulumi/query": "^0.3.0",
         "execa": "^5.1.0",
         "google-protobuf": "^3.5.0",
@@ -23,7 +30,7 @@
         "semver": "^6.1.0",
         "source-map-support": "^0.5.6",
         "ts-node": "^7.0.1",
-        "typescript": "~3.7.3",
+        "typescript": "~3.8.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -35,6 +42,7 @@
         "@types/normalize-package-data": "^2.4.0",
         "@types/read-package-tree": "^5.2.0",
         "@types/semver": "^5.5.0",
+        "@types/sinon": "^10.0.13",
         "@types/split2": "^2.1.6",
         "@typescript-eslint/eslint-plugin": "^4.29.0",
         "@typescript-eslint/parser": "^4.29.0",
@@ -43,7 +51,8 @@
         "eslint-plugin-import": "^2.23.4",
         "mocha": "^9.0.0",
         "mockpackage": "file:tests/mockpackage",
-        "nyc": "^15.1.0"
+        "nyc": "^15.1.0",
+        "sinon": "^14.0.0"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"

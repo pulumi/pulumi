@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Use "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/workspace/project.json" to validate loaded project files.

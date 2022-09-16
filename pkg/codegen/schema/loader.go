@@ -207,6 +207,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 	if err != nil {
 		return nil, nil, err
 	}
+	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", pkg)
 
 	if version == nil {
 		version = pluginInfo.Version

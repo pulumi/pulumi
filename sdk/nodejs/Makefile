@@ -1,12 +1,13 @@
 PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
-VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language javascript))
+VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh javascript))
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-TESTPARALLELISM ?= 10
 TEST_FAST_TIMEOUT := 2m
+
+$(info    VERSION         = $(VERSION))
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -110,5 +111,5 @@ brew::
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
-publish:: build_package
+publish::
 	bash -c ../../scripts/publish_npm.sh

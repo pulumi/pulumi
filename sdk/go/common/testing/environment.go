@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
@@ -152,8 +153,15 @@ func (e *Environment) PathExists(p string) bool {
 	return err == nil
 }
 
+var YarnInstallMutex sync.Mutex
+
 // RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
+	// We don't want to time out on yarn installs.
+	if cmd == "yarn" {
+		YarnInstallMutex.Lock()
+		defer YarnInstallMutex.Unlock()
+	}
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
