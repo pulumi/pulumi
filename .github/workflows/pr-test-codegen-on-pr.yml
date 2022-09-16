@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  # Only the 'changelog-comment' job should use this permission.
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

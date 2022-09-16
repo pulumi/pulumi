@@ -73,5 +73,4 @@ jobs:
       enable-coverage: true
       # They said GitHub Actions didn't have ternaries, but I know better:
       slow-test-cutoff: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') && 9999 || 5 }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: {}

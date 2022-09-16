@@ -10,32 +10,12 @@ on:
 
 permissions:
   contents: read
-  # Only the 'changelog-comment' job should use this permission.
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  comment-notification:
-    if: github.event_name == 'repository_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create URL to the run output
-        id: vars
-        run: echo "::set-output name=run-url::https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-      - name: Update with Result
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
-          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
-          body: |
-            Please view the results of the Docs Generation Tests [Here][1]
-
-            [1]: ${{ steps.vars.outputs.run-url }}
-
   ci-codegen:
     name: CI Codegen
     if: github.event_name == 'pull_request'
