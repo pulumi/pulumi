@@ -46,19 +46,19 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      test-mode: full
-      build-mode: >- # No newlines or trailing newline.
+      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+      test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'full'
-          || 'fast'
+          && 'minimum current'
+          || 'current'
         }}
-      test-version-sets: current
-      test-platforms: >- # No newlines or trailing newline.
+      integration-test-platforms: ubuntu-latest
+      smoke-test-platforms: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'ubuntu-latest windows-latest macos-latest'
-          || 'ubuntu-latest'
+          && 'macos-latest windows-latest'
+          || ''
         }}
       enable-coverage: true
     secrets: inherit

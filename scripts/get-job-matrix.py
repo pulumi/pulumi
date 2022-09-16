@@ -29,6 +29,7 @@ class JobKind(str, Enum):
     """Output kinds supported with this utility."""
 
     INTEGRATION_TEST = "integration-test"
+    SMOKE_TEST = "smoke-test"
     UNIT_TEST = "unit-test"
     ALL_TEST = "all-test"
 
@@ -64,9 +65,9 @@ INTEGRATION_TEST_PACKAGES = {
 }
 
 
-def is_integration_test(pkg: str) -> bool:
-    """Returns true if the package is an integration test"""
-    return (
+def is_unit_test(pkg: str) -> bool:
+    """Checks if the package is a unit test"""
+    return not (
         pkg.startswith("github.com/pulumi/pulumi/tests")
         or pkg in INTEGRATION_TEST_PACKAGES
     )
@@ -109,11 +110,11 @@ CURRENT_VERSION_SET = {
 }
 
 
-def run_list_packages(module_dir: str) -> Set[str]:
+def run_list_packages(module_dir: str, tags: List[str]) -> Set[str]:
     """Runs go list on pkg, sdk, and tests"""
     try:
         cmd = sp.run(
-            ["go", "list", "-tags", "all", "-find", "./..."],
+            ["go", "list", "-tags", " ".join(tags), "-find", "./..."],
             cwd=module_dir,
             check=True,
             capture_output=True,
@@ -123,7 +124,7 @@ def run_list_packages(module_dir: str) -> Set[str]:
         raise Exception("Failed to list packages in module, usually this implies a Go compilation error. Check that `make lint` succeeds.") from err
     return set(cmd.stdout.split())
 
-def run_list_tests(pkg_dir: str) -> List[str]:
+def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
     """Runs `go test --list` on a given package."""
 
     # This Go command is finnicky. It must be run from the directory queried as a '.' path argument,
@@ -150,7 +151,7 @@ def run_list_tests(pkg_dir: str) -> List[str]:
     # no Go files in /home/friel/c/github.com/pulumi/pulumi
     # ```
     cmd = sp.run(
-        ["go", "test", "-tags", "all", "--list", "."],
+        ["go", "test", "-tags", " ".join(tags), "--list", "."],
         check=True,
         cwd=pkg_dir,
         capture_output=True,
@@ -198,7 +199,7 @@ Matrix = TypedDict("Matrix", {
 })
 
 
-def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule) -> List[TestSuite]:
+def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule, tags: List[str]) -> List[TestSuite]:
     """Runs `gotestsum tool ci-matrix` to compute Go test partitions"""
     script_dir = os.path.dirname(os.path.realpath(__file__))
     test_reports_dir = os.path.join(script_dir, "..", "test-results")
@@ -208,7 +209,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
         pkgs = " ".join(go_packages)
         return [{
             "name": f"{partition_module.module_dir}",
-            "command": f'./scripts/retry make PKGS="{pkgs}" gotestsum/{partition_module.module_dir}'
+            "command": f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{pkgs}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
         }]
 
     gotestsum_matrix_args = [
@@ -246,7 +247,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
     for idx, include in enumerate(matrix_jobs):
         idx_str = f"{idx+1}".zfill(buckets_len)
 
-        test_command = f'PKGS="{include["packages"]}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
+        test_command = f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{include["packages"]}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
         test_suites.append(
@@ -260,7 +261,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
 
 
 def run_gotestsum_ci_matrix_single_package(
-    partition_pkg: PartitionPackage, tests: List[str]
+    partition_pkg: PartitionPackage, tests: List[str], tags: List[str]
 ) -> List[TestSuite]:
     """Runs `gotestsum tool ci-matrix` to compute Go test partitions for a single package"""
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -317,6 +318,7 @@ def run_gotestsum_ci_matrix_single_package(
         test_list = test_list.replace("$'", ")$")
 
         env=f'PKGS="{include["packages"]}" OPTS="{test_list}"'
+        env=f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{include["packages"]}" OPTS="{test_list}"'
         test_command = f'{env} ./scripts/retry make gotestsum/{partition_pkg.package_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
@@ -334,6 +336,7 @@ def run_gotestsum_ci_matrix_single_package(
 # pylint: disable=too-many-arguments
 def get_matrix(
     kind: JobKind,
+    tags: List[str],
     partition_modules: List[PartitionModule],
     partition_packages: List[PartitionPackage],
     platforms: List[str],
@@ -345,6 +348,8 @@ def get_matrix(
         makefile_tests = MAKEFILE_INTEGRATION_TESTS
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
+    elif kind == JobKind.SMOKE_TEST:
+        makefile_tests = []
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
     else:
@@ -361,22 +366,22 @@ def get_matrix(
     partitioned_packages = {part.package for part in partition_packages}
 
     for item in partition_modules:
-        go_packages = run_list_packages(item.module_dir)
+        go_packages = run_list_packages(item.module_dir, tags)
         go_packages = set(go_packages) - partitioned_packages
 
-        if kind == JobKind.INTEGRATION_TEST:
-            go_packages = {pkg for pkg in go_packages if is_integration_test(pkg)}
+        if kind == JobKind.INTEGRATION_TEST or kind == JobKind.SMOKE_TEST:
+            go_packages = {pkg for pkg in go_packages if not is_unit_test(pkg)}
         elif kind == JobKind.UNIT_TEST:
-            go_packages = {pkg for pkg in go_packages if not is_integration_test(pkg)}
+            go_packages = {pkg for pkg in go_packages if is_unit_test(pkg)}
         elif kind == JobKind.ALL_TEST:
             pass
 
-        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item)
+        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags)
 
     for item in partition_packages:
-        pkg_tests = run_list_tests(item.package_dir)
+        pkg_tests = run_list_tests(item.package_dir, tags)
 
-        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests)
+        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
 
     return {
         "test-suite": test_suites,
@@ -431,14 +436,21 @@ def generate_matrix(args: argparse.Namespace):
 
     version_sets = get_version_sets(args)
 
-    print(json.dumps(get_matrix(
+    matrix = get_matrix(
         kind=args.kind,
         platforms=args.platform,
         fast=args.fast,
+        tags=args.tags,
         partition_modules=partition_modules,
         partition_packages=partition_packages,
         version_sets=version_sets,
-    )))
+    )
+
+    if not matrix["platform"] or not matrix["test-suite"] or not matrix["version-set"]:
+        print('{}') # Empty output because one of the vectors is empty.
+        return
+
+    print(json.dumps(matrix))
 
 def add_generate_matrix_args(parser: argparse.ArgumentParser):
     parser.set_defaults(func=generate_matrix)
@@ -470,6 +482,13 @@ def add_generate_matrix_args(parser: argparse.ArgumentParser):
         + "Must specify a package name, the directory containing the package, "
         + "and the number of partitions to divide the tests into. Tests added "
         + "are automatically excluded from modules.",
+    )
+    parser.add_argument(
+        "--tags",
+        action="store",
+        nargs="*",
+        default=["all"],
+        help="Go build tags",
     )
 
     parser.add_argument(
