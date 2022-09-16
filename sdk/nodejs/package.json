@@ -11,6 +11,13 @@
     "dependencies": {
         "@grpc/grpc-js": "~1.3.8",
         "@logdna/tail-file": "^2.0.6",
+        "@opentelemetry/api": "^1.2.0",
+        "@opentelemetry/exporter-zipkin": "^1.6.0",
+        "@opentelemetry/instrumentation-grpc": "^0.32.0",
+        "@opentelemetry/resources": "^1.6.0",
+        "@opentelemetry/sdk-trace-base": "^1.6.0",
+        "@opentelemetry/sdk-trace-node": "^1.6.0",
+        "@opentelemetry/semantic-conventions": "^1.6.0",
         "@pulumi/query": "^0.3.0",
         "execa": "^5.1.0",
         "google-protobuf": "^3.5.0",
