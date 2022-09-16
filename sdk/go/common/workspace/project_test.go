@@ -105,8 +105,8 @@ func TestProjectLoadJSON(t *testing.T) {
 	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"backend\": 4, \"main\": {}}")
 	expected = []string{
 		"2 errors occurred:",
-		"* #/main: expected string, but got object",
-		"* #/backend: expected object, but got number"}
+		"* #/main: expected string or null, but got object",
+		"* #/backend: expected object or null, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -116,6 +116,12 @@ func TestProjectLoadJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
+
+	// Test null optionals should work
+	proj, err = writeAndLoad("{\"name\": \"project\", \"runtime\": \"test\", \"description\": null, \"main\": null, \"backend\": null}")
+	assert.NoError(t, err)
+	assert.Nil(t, proj.Description)
+	assert.Equal(t, "", proj.Main)
 }
 
 func TestProjectLoadYAML(t *testing.T) {
