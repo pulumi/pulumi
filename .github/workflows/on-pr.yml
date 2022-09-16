@@ -53,12 +53,18 @@ jobs:
           && 'full'
           || 'fast'
         }}
-      test-version-sets: current
-      test-platforms: >- # No newlines or trailing newline.
+      test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'ubuntu-latest windows-latest macos-latest'
-          || 'ubuntu-latest'
+          && 'current'
+          || 'minimum current'
+        }}
+      integration-test-platforms: ubuntu-latest
+      smoke-test-platforms: >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && 'macos-latest windows-latest'
+          || ''
         }}
       enable-coverage: true
     secrets: inherit

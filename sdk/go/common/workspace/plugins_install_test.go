@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build nodejs || python || all
-// +build nodejs python all
 
 package workspace
 

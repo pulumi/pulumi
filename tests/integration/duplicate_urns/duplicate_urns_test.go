@@ -1,6 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.
-//go:build nodejs || all
-// +build nodejs all
+//go:build (nodejs || all) && !smoke
 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
