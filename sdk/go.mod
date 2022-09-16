@@ -52,6 +52,7 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0 // indirect
 )
 
 require (

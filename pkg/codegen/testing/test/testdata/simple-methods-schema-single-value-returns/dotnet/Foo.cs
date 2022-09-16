@@ -36,8 +36,8 @@ namespace Pulumi.Example
             return merged;
         }
 
-        public Pulumi.Output<string> GetKubeconfig(FooGetKubeconfigArgs? args = null)
-            => Pulumi.Deployment.Instance.Call<FooGetKubeconfigResult>("example::Foo/getKubeconfig", args ?? new FooGetKubeconfigArgs(), this).Apply(v => v.Kubeconfig);
+        public global::Pulumi.Output<string> GetKubeconfig(FooGetKubeconfigArgs? args = null)
+            => global::Pulumi.Deployment.Instance.Call<FooGetKubeconfigResult>("example::Foo/getKubeconfig", args ?? new FooGetKubeconfigArgs(), this).Apply(v => v.Kubeconfig);
     }
 
     public sealed class FooArgs : global::Pulumi.ResourceArgs

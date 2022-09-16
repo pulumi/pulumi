@@ -39,17 +39,17 @@ namespace Pulumi.Example
         /// <summary>
         /// A description of bar.
         /// </summary>
-        public Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
-            => Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
+        public global::Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
+            => global::Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
 
         public void Baz()
-            => Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
+            => global::Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
 
         /// <summary>
         /// Do something with something else
         /// </summary>
-        public Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
-            => Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
+        public global::Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
+            => global::Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
     }
 
     public sealed class FooArgs : global::Pulumi.ResourceArgs

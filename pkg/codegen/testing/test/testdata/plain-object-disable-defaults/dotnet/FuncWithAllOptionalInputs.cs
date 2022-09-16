@@ -16,13 +16,13 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Task<FuncWithAllOptionalInputsResult> InvokeAsync(FuncWithAllOptionalInputsArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
     }
 
 
