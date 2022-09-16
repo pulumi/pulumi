@@ -46,18 +46,12 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       lint: true
-      test-mode: full
-      build-mode: >- # No newlines or trailing newline.
-        ${{
-          contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'full'
-          || 'fast'
-        }}
+      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'current'
-          || 'minimum current'
+          && 'minimum current'
+          || 'current'
         }}
       integration-test-platforms: ubuntu-latest
       smoke-test-platforms: >- # No newlines or trailing newline.

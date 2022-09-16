@@ -14,21 +14,16 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      build-mode:
+      build-all-targets:
         required: false
-        default: "full"
-        description: "CI build targets to create: fast or full. Fast only builds for Linux amd64."
-        type: string
+        default: true
+        description: "Build targets to produce, false builds only for Linux amd64."
+        type: boolean
       lint:
         required: false
         default: true
         description: "Whether to run lints"
         type: boolean
-      test-mode:
-        required: false
-        default: "full"
-        description: "Tests to run: none or full."
-        type: string
       test-version-sets:
         required: false
         default: minimum current
@@ -84,8 +79,7 @@ jobs:
       - name: build matrix
         id: matrix
         env:
-          TEST_MODE: ${{ inputs.test-mode }}
-          BUILD_MODE: ${{ inputs.build-mode }}
+          BUILD_ALL_TARGETS: ${{ inputs.build-all-targets }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_SMOKE_TEST_PLATFORMS: ${{ inputs.smoke-test-platforms }}
@@ -103,7 +97,7 @@ jobs:
           BUILD_TARGETS='[
             { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }
           ]'
-          if [ "${BUILD_MODE}" = "full" ]; then
+          if [ "${BUILD_ALL_TARGETS}" = "true" ]; then
             BUILD_TARGETS='[
               { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
@@ -114,50 +108,46 @@ jobs:
             ]'
           fi
 
-          if [ "${TEST_MODE}" = "none" ]; then
-            UNIT_TEST_MATRIX=''
-            INTEGRATION_TEST_MATRIX=''
-          else
-            UNIT_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              -vvv \
-              generate-matrix \
-              --kind unit-test \
-              --platform ubuntu-latest \
-              --version-set current \
-              --partition-module pkg 3 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
-            )
+          UNIT_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind unit-test \
+            --platform ubuntu-latest \
+            --version-set current \
+            --partition-module pkg 3 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+          )
 
-            INTEGRATION_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              -vvv \
-              generate-matrix \
-              --kind integration-test \
-              --platform "${INTEGRATION_PLATFORMS[@]}" \
-              --version-set "${VERSION_SETS_TO_TEST[@]}" \
-              --partition-module pkg 1 \
-              --partition-module sdk 1 \
-              --partition-module tests 2 \
-              --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
-            )
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind integration-test \
+            --platform "${INTEGRATION_PLATFORMS[@]}" \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+          )
 
-            SMOKE_TEST_MATRIX=$(
-              ./scripts/get-job-matrix.py \
-              -vvv \
-              generate-matrix \
-              --kind smoke-test \
-              --tags all smoke \
-              --platform "${SMOKE_PLATFORMS[@]}" \
-              --version-set current \
-              --partition-module pkg 1 \
-              --partition-module sdk 1 \
-              --partition-module tests 1
-            )
-          fi
+          SMOKE_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind smoke-test \
+            --tags all smoke \
+            --platform "${SMOKE_PLATFORMS[@]}" \
+            --version-set current \
+            --partition-module pkg 2 \
+            --partition-module sdk 2 \
+            --partition-module tests 2
+          )
           echo "::endgroup::"
+
           echo "::group::Version set variable"
           VERSION_SET=$(./scripts/get-job-matrix.py \
             generate-version-set \
@@ -317,8 +307,8 @@ jobs:
     secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test]
-    if: ${{ always() && inputs.test-mode != 'none' }}
+    needs: [unit-test, integration-test, smoke-test]
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v3

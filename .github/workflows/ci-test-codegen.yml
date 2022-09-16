@@ -41,14 +41,6 @@ jobs:
           python-version: 3.9.x
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.32
-          cache: enable
       - name: Check out source code
         uses: actions/checkout@v3
         with:

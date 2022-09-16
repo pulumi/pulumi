@@ -199,7 +199,7 @@ Matrix = TypedDict("Matrix", {
 })
 
 
-def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule) -> List[TestSuite]:
+def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: PartitionModule, tags: List[str]) -> List[TestSuite]:
     """Runs `gotestsum tool ci-matrix` to compute Go test partitions"""
     script_dir = os.path.dirname(os.path.realpath(__file__))
     test_reports_dir = os.path.join(script_dir, "..", "test-results")
@@ -209,7 +209,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
         pkgs = " ".join(go_packages)
         return [{
             "name": f"{partition_module.module_dir}",
-            "command": f'./scripts/retry make PKGS="{pkgs}" gotestsum/{partition_module.module_dir}'
+            "command": f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{pkgs}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
         }]
 
     gotestsum_matrix_args = [
@@ -247,7 +247,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
     for idx, include in enumerate(matrix_jobs):
         idx_str = f"{idx+1}".zfill(buckets_len)
 
-        test_command = f'PKGS="{include["packages"]}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
+        test_command = f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{include["packages"]}" ./scripts/retry make gotestsum/{partition_module.module_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
         test_suites.append(
@@ -261,7 +261,7 @@ def run_gotestsum_ci_matrix_packages(go_packages: List[str], partition_module: P
 
 
 def run_gotestsum_ci_matrix_single_package(
-    partition_pkg: PartitionPackage, tests: List[str]
+    partition_pkg: PartitionPackage, tests: List[str], tags: List[str]
 ) -> List[TestSuite]:
     """Runs `gotestsum tool ci-matrix` to compute Go test partitions for a single package"""
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -318,6 +318,7 @@ def run_gotestsum_ci_matrix_single_package(
         test_list = test_list.replace("$'", ")$")
 
         env=f'PKGS="{include["packages"]}" OPTS="{test_list}"'
+        env=f'GO_TEST_TAGS="{" ".join(tags)}" PKGS="{include["packages"]}" OPTS="{test_list}"'
         test_command = f'{env} ./scripts/retry make gotestsum/{partition_pkg.package_dir}'
         if global_verbosity >= 1:
             print(test_command, file=sys.stderr)
@@ -375,12 +376,12 @@ def get_matrix(
         elif kind == JobKind.ALL_TEST:
             pass
 
-        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item)
+        test_suites += run_gotestsum_ci_matrix_packages(list(go_packages), item, tags)
 
     for item in partition_packages:
         pkg_tests = run_list_tests(item.package_dir, tags)
 
-        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests)
+        test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
 
     return {
         "test-suite": test_suites,
