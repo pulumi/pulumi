@@ -25,6 +25,9 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Create URL to the run output
+        id: vars
+        run: echo "::set-output name=run-url::https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
       - name: Update with Result
         uses: peter-evans/create-or-update-comment@v2
         with:
