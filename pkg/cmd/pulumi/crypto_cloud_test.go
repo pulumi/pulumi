@@ -51,8 +51,7 @@ func TestSecretsproviderOverride(t *testing.T) {
 
 	t.Run("without override", func(t *testing.T) {
 		opener.wantURL = "test://bar"
-		os.Setenv("PULUMI_SECRETS_PROVIDER", "test://bar")
-		t.Cleanup(func() { os.Unsetenv("PULUMI_SECRETS_PROVIDER") })
+		t.Setenv("PULUMI_SECRETS_PROVIDER", "test://bar")
 
 		// Last argument here shouldn't matter anymore, since it gets overriden
 		// by the env var. Both calls should succeed.
