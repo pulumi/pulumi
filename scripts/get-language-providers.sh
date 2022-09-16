@@ -3,6 +3,8 @@
 set -eo pipefail
 set -x
 
+LOCAL="${1:-"false"}"
+
 get_version() {
   local repo="$1"
   (
@@ -60,6 +62,11 @@ for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yam
         set -- $k # treat strings in loop as args
         DIST_ARCH="$1"
         RENAMED_ARCH="$2" # goreleaser in pulumi/pulumi renames amd64 to x64
+
+        # if TARGET is set and DIST_OS-DIST_ARCH does not match, skip
+        if [ "${LOCAL}" = "local" ] && [ "$(go env GOOS)-$(go env GOARCH)" != "${DIST_OS}-${DIST_ARCH}" ]; then
+            continue
+        fi
 
         ARCHIVE="pulumi-language-${PULUMI_LANG}-${TAG}-${DIST_OS}-${DIST_ARCH}"
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Populates ./bin directories for use by goreleaser.
 rm -rf ./bin
+
+LOCAL="${1:-"false"}"
 
 COMMIT_TIME=$(git log -n1 --pretty='format:%cd' --date=format:'%Y%m%d%H%M')
 
@@ -10,6 +14,10 @@ install_file () {
     shift
 
     for OS in "$@"; do # for each argument after the first:
+        # if LOCAL == "true" and `go env goos` is not equal to the OS, skip it
+        if [ "${LOCAL}" = "local" ] && [ "$(go env GOOS)" != "${OS}" ]; then
+            continue
+        fi
         DESTDIR="bin/${OS}"
         mkdir -p "${DESTDIR}"
         dest=$(basename "${src}")
@@ -36,5 +44,5 @@ install_file sdk/python/dist/pulumi-python3-shim.cmd                        wind
 install_file sdk/python/cmd/pulumi-language-python-exec          linux darwin windows
 
 # Get pulumi-watch binaries
-./scripts/get-pulumi-watch.sh
-./scripts/get-language-providers.sh
+./scripts/get-pulumi-watch.sh "${LOCAL}"
+./scripts/get-language-providers.sh "${LOCAL}"
