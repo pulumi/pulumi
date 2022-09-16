@@ -1,5 +1,102 @@
-CHANGELOG
-=========
+# Changelog
+
+## 3.40.0 (2022-09-14)
+
+### Bug fixes
+
+- [engine] Plugin resolution now automatically installs any missing plugins as they are encountered.
+   [#10691](https://github.com/pulumi/pulumi/pull/10691)
+
+### Miscellaneous
+
+- [ci] Miscellaneous improvements to release process.
+
+## 3.39.4 (2022-09-14)
+
+
+### Improvements
+
+- [provider/go]: Added support for token authentication in the go providers which use git.
+  [#10628](https://github.com/pulumi/pulumi/pull/10628)
+
+- [codegen/go] Chunk the `pulumiTypes.go` file to reduce max file size.
+  [#10666](https://github.com/pulumi/pulumi/pull/10666)
+
+### Bug Fixes
+
+- Fix invalid resource type on `pulumi convert` to Go
+  [#10670](https://github.com/pulumi/pulumi/pull/10670)
+
+- [auto/nodejs] `onOutput` is now called incrementally as the
+  underyling Pulumi process produces data, instead of being called
+  once at the end of the process execution. This restores behavior
+  that regressed since 3.39.0.
+  [#10678](https://github.com/pulumi/pulumi/pull/10678)
+
+### Miscellaneous
+
+- [ci] Migrate to merge queues for more reliable builds
+  [#10644](https://github.com/pulumi/pulumi/pulls/10644)
+
+
+## 3.39.3 (2022-09-07)
+
+### Improvements
+
+- [sdk/python] Improve error message when pulumi-python cannot find a main program.
+  [#10617](https://github.com/pulumi/pulumi/pull/10617)
+
+- [cli] provide info message to user if a pulumi program contains no resources
+  [#10461](https://github.com/pulumi/pulumi/issues/10461)
+
+### Bug Fixes
+
+- [engine/plugins]: Revert change causing third party provider packages to prevent deployment commands (`up`, `preview`, ...)
+  when used with the nodejs runtime. Reverts #10530.
+  [#10650](https://github.com/pulumi/pulumi/pull/10650)
+
+## 3.39.2 (2022-09-07)
+
+### Improvements
+
+- [sdk/go] Pulumi Go programs, on failure, now log a single error message.
+  [#10347](https://github.com/pulumi/pulumi/pull/10347)
+
+- [sdk/nodejs] Updated the vendored version of TypeScript in the NodeJS SDK and runtime from v3.7.3 to v3.8.3
+  [#10618](https://github.com/pulumi/pulumi/pull/10618)
+
+### Bug Fixes
+
+- [sdk/nodejs] Calls onOutput in runPulumiCmd
+  [#10631](https://github.com/pulumi/pulumi/pull/10631)
+
+## 3.39.1 (2022-09-02)
+
+### Improvements
+
+- [cli] Display outputs last in diff view.
+  [#10535](https://github.com/pulumi/pulumi/pull/10535)
+
+- [sdk/python] Dropped support for Python 3.6.
+  [#10529](https://github.com/pulumi/pulumi/pull/10529)
+
+- [codegen/nodejs] Support lazy-loading Node modules.
+  [#10538](https://github.com/pulumi/pulumi/pull/10538)
+
+- [cli/backend] Gzip compress HTTPS payloads for `pulumi import` and secret decryption against
+  the Pulumi Service backend.
+  [#10558](https://github.com/pulumi/pulumi/pull/10558)
+
+### Bug Fixes
+
+- [cli] Fix the "no Pulumi.yaml project file found" error message.
+  [#10592](https://github.com/pulumi/pulumi/pull/10592)
+
+- [cli/refresh] Do not panic when snapshot is `nil`.
+  [#10593](https://github.com/pulumi/pulumi/pull/10593)
+
+- [sdk/{python,nodejs}] Fix the use of `getOrganization` in policy packs.
+  [#10574](https://github.com/pulumi/pulumi/pull/10574)
 
 ## 3.39.0 (2022-09-01)
 
@@ -60,7 +157,7 @@ CHANGELOG
 
 - [cli/plugin] `plugin install` now supports a `--checksum` option.
   [#10528](https://github.com/pulumi/pulumi/pull/10528)
-  
+
 - [sdk/{nodejs/python}] Added `getOrganization()` to return the current organization if available.
   [#10504](https://github.com/pulumi/pulumi/pull/10504)
 
@@ -136,7 +233,7 @@ CHANGELOG
 
 - [sdk/python] Support optional default parameters in pulumi.Config
   [#10344](https://github.com/pulumi/pulumi/pull/10344)
-  
+
 - [sdk/nodejs] Adds warning message when entrypoint resolution is ambiguous
   [#3582](https://github.com/pulumi/pulumi/issues/3582)
 
@@ -155,7 +252,7 @@ CHANGELOG
 - [sdk/python] Deprecate PULUMI_TEST_MODE
   [#10400](https://github.com/pulumi/pulumi/pull/10400)
 
- 
+
 ### Bug Fixes
 
 - [cli] Paginate template options
@@ -1611,7 +1708,7 @@ Replaced by 3.33.1 during release process.
 
 - [auto/*] - Fix escaped HTML characters from color directives in event stream.
 
-  E.g. `"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e"` -> `"<{%reset%}>debug: <{%reset%}>"`
+  E.g. `"<{%reset%}>debug: <{%reset%}>"` -> `"<{%reset%}>debug: <{%reset%}>"`
   [#7998](https://github.com/pulumi/pulumi/pull/7998)
 
 - [auto/*] - Allow eliding color directives from event logs by passing `NO_COLOR` env var.

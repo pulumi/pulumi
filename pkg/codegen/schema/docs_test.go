@@ -17,6 +17,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
+// loops.
+//
+// Time to complete on these tests increases from ~2s to 30s or more and the number of lines logged
+// to stdout from 46 lines to over 1,000,000 lines of output. This corresponds to the roughly 1
+// million doc items tested across each file.
+//
+// Aside from just being verbose, the voluminous output makes `gotestsum` analysis less useful and
+// prevents use of the `ci-matrix` tool.
+
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAssertions{
@@ -140,16 +150,14 @@ func TestParseAndRenderDocs(t *testing.T) {
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
 				doc := doc
-				t.Run(doc.entity, func(t *testing.T) {
-					original := []byte(doc.content)
-					expected := ParseDocs(original)
-					rendered := []byte(RenderDocsToString(original, expected))
-					actual := ParseDocs(rendered)
-					if !testutil.AssertSameStructure(t, original, rendered, expected, actual, nodeAssertions) {
-						t.Logf("original: %v", doc.content)
-						t.Logf("rendered: %v", string(rendered))
-					}
-				})
+				original := []byte(doc.content)
+				expected := ParseDocs(original)
+				rendered := []byte(RenderDocsToString(original, expected))
+				actual := ParseDocs(rendered)
+				if !testutil.AssertSameStructure(t, original, rendered, expected, actual, nodeAssertions) {
+					t.Logf("original: %v", doc.content)
+					t.Logf("rendered: %v", string(rendered))
+				}
 			}
 		})
 	}
@@ -191,27 +199,26 @@ func TestReferenceRenderer(t *testing.T) {
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
 				doc := doc
-				t.Run(doc.entity, func(t *testing.T) {
-					text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
-					expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"
 
-					parsed := ParseDocs(text)
-					actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(
-						func(r *Renderer, w io.Writer, src []byte, l *ast.Link, enter bool) (ast.WalkStatus, error) {
-							if !enter {
-								return ast.WalkContinue, nil
-							}
+				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
+				expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"
 
-							replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
-							if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
-								return ast.WalkStop, err
-							}
+				parsed := ParseDocs(text)
+				actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(
+					func(r *Renderer, w io.Writer, src []byte, l *ast.Link, enter bool) (ast.WalkStatus, error) {
+						if !enter {
+							return ast.WalkContinue, nil
+						}
 
-							return ast.WalkSkipChildren, nil
-						})))
+						replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
+						if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
+							return ast.WalkStop, err
+						}
 
-					assert.Equal(t, expected, string(actual))
-				})
+						return ast.WalkSkipChildren, nil
+					})))
+
+				assert.Equal(t, expected, string(actual))
 			}
 		})
 	}

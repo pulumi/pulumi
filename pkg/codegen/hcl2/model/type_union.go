@@ -100,25 +100,31 @@ func (*UnionType) SyntaxNode() hclsyntax.Node {
 // Traverse attempts to traverse the union type with the given traverser. This always fails.
 func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	var types []Type
+	var foundDiags hcl.Diagnostics
 	for _, t := range t.ElementTypes {
 		// We handle 'none' specially here: so that traversing an optional type returns an optional type.
 		if t == NoneType {
 			types = append(types, NoneType)
 		} else {
-			// Note that we intentionally drop errors here and assume that the traversal will dynamically succeed.
+			// Note that we only report errors when the entire operation fails. We try to
+			// strike a balance between assuming that the traversal will dynamically
+			// succeed and good error reporting.
 			et, diags := t.Traverse(traverser)
 			if !diags.HasErrors() {
 				types = append(types, et.(Type))
+			}
+			if len(diags) > 0 {
+				foundDiags = append(foundDiags, diags...)
 			}
 		}
 	}
 
 	switch len(types) {
 	case 0:
-		return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+		return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
 	case 1:
 		if types[0] == NoneType {
-			return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+			return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
 		}
 		return types[0], nil
 	default:

@@ -123,6 +123,33 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 	return result, nil
 }
 
+// InstallPluginError is returned by functions that are unable to download and install a plugin
+type InstallPluginError struct {
+	// The name of the plugin
+	Name string
+	// The kind of the plugin
+	Kind PluginKind
+	// The requested version of the plugin, if any.
+	Version *semver.Version
+	// the underlying error that occurred during the download or install
+	UnderlyingError error
+}
+
+func (err *InstallPluginError) Error() string {
+	if err.Version != nil {
+		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+			"at version v%[3]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
+			"Underlying error: %[4]s",
+			err.Kind, err.Name, err.Version.String(), err.UnderlyingError.Error())
+	}
+
+	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s', "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`.\n"+
+		"Underlying error: %[3]s",
+		err.Kind, err.Name, err.UnderlyingError.Error())
+}
+
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
@@ -1037,33 +1064,6 @@ func DownloadToFile(
 
 }
 
-// InstallPluginError is returned by functions that are unable to download and install a plugin
-type InstallPluginError struct {
-	// The name of the plugin
-	Name string
-	// The kind of the plugin
-	Kind PluginKind
-	// The requested version of the plugin, if any.
-	Version *semver.Version
-	// the underlying error that occurred during the download or install
-	UnderlyingError error
-}
-
-func (err *InstallPluginError) Error() string {
-	if err.Version != nil {
-		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
-			"at version v%[3]s, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
-			"Underlying error: %[4]s",
-			err.Kind, err.Name, err.Version.String(), err.UnderlyingError.Error())
-	}
-
-	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s', "+
-		"install the plugin using `pulumi plugin install %[1]s %[2]s`.\n"+
-		"Underlying error: %[3]s",
-		err.Kind, err.Name, err.UnderlyingError.Error())
-}
-
 type PluginContent interface {
 	io.Closer
 
@@ -1480,6 +1480,27 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 	return path, err
 }
 
+func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
+	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
+	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
+	if err != nil {
+		return nil, err
+	}
+
+	if info != nil {
+		contract.Assert(info.Path == filepath.Dir(path))
+		return info, nil
+	}
+
+	info = &PluginInfo{
+		Kind: kind,
+		Name: name,
+		Path: filepath.Dir(path),
+	}
+
+	return info, nil
+}
+
 func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *semver.Version) error {
 	pluginSpec := PluginSpec{
 		Kind: kind,
@@ -1534,27 +1555,6 @@ func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *se
 	}
 
 	return nil
-}
-
-func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
-	if err != nil {
-		return nil, err
-	}
-
-	if info != nil {
-		contract.Assert(info.Path == filepath.Dir(path))
-		return info, nil
-	}
-
-	info = &PluginInfo{
-		Kind: kind,
-		Name: name,
-		Path: filepath.Dir(path),
-	}
-
-	return info, nil
 }
 
 // getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:

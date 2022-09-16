@@ -19,7 +19,7 @@ from pulumi.runtime import settings, mocks
 import pulumi
 
 
-@pytest.mark.timeout(1)
+@pytest.mark.timeout(10)
 @pulumi.runtime.test
 def test_pulumi_does_not_hang_on_dependency_cycle(my_mocks):
     c = MockComponentResource(name='c')

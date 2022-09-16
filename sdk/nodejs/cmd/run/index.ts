@@ -169,7 +169,7 @@ function main(args: string[]): void {
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.
         //
         // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the users code throws
-        // an exception, this promise will get rejected, and we don't want touch or otherwise intercept the exception
+        // an exception, this promise will get rejected, and we don't want to touch or otherwise intercept the exception
         // or change the programRunning state here at all.
         promise.then(() => { programRunning = false; });
     });

@@ -1,0 +1,128 @@
+name: Unit Test
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      platform:
+        description: "OS to run tests on, e.g.: ubuntu-latest"
+        required: true
+        type: string
+      go-version:
+        description: Version of the Go toolchain for the build
+        default: "1.17.x"
+        required: false
+        type: string
+      python-version:
+        description: Version of the Python toolchain for the build
+        default: "3.9.x"
+        required: false
+        type: string
+      node-version:
+        description: Version of the Node toolchain for the build
+        default: "14.x"
+        required: false
+        type: string
+      dotnet-version:
+        description: "Version of the .NET toolchain for the build"
+        default: "6.0.x"
+        required: false
+        type: string
+      enable-coverage:
+        description: "Collects coverage stats; requires cov-enabled builds"
+        default: false
+        required: false
+        type: boolean
+      slow-test-cutoff:
+        required: false
+        default: 9999
+        description: "Run tests that take less than this many minutes"
+        type: number
+
+jobs:
+  test:
+    name: test
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite:
+          - run: cd sdk/dotnet && ../../scripts/retry make dotnet_test
+            eta: 3
+          - run: cd sdk/dotnet && ../../scripts/retry make test_auto
+            eta: 5
+          - run: cd sdk/dotnet && ../../scripts/retry make test_go
+            eta: 2
+
+          - run: cd sdk/go && ../../scripts/retry make test_auto
+            eta: 8
+          - run: cd sdk/go && ../../scripts/retry make test_fast
+            eta: 3
+
+          - run: cd sdk/nodejs && ../../scripts/retry make sxs_tests
+            eta: 3
+          - run: cd sdk/nodejs && ../../scripts/retry make test_auto
+            eta: 3
+          - run: cd sdk/nodejs && ../../scripts/retry make test_go
+            eta: 2
+          - run: cd sdk/nodejs && ../../scripts/retry make unit_tests
+            eta: 4
+
+          - run: cd sdk/python && ../../scripts/retry make test_auto
+            eta: 6
+          - run: cd sdk/python && ../../scripts/retry make test_fast
+            eta: 3
+          - run: cd sdk/python && ../../scripts/retry make test_go
+            eta: 3
+
+          - run: ./scripts/retry make test_pkg_nodejs
+            eta: 20
+
+          - run: ./scripts/retry make test_pkg_python
+            eta: 2
+          - run: ./scripts/retry make test_pkg_rest
+            eta: 10
+
+          - run: ./scripts/retry make test_integration_dotnet
+            eta: 6
+            require-build: true
+          - run: ./scripts/retry make test_integration_go
+            eta: 6
+            require-build: true
+          - run: ./scripts/retry make test_integration_nodejs
+            eta: 9
+            require-build: true
+          - run: ./scripts/retry make test_integration_python
+            eta: 10
+            require-build: true
+          - run: ./scripts/retry make test_integration_rest
+            eta: 5
+            require-build: true
+          - run: ./scripts/retry make test_integration_subpkgs
+            eta: 15
+            require-build: true
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ inputs.platform }}
+      go-version: ${{ inputs.go-version }}
+      python-version: ${{ inputs.python-version }}
+      node-version: ${{ inputs.node-version }}
+      dotnet-version: ${{ inputs.dotnet-version }}
+      enable-coverage: ${{ inputs.enable-coverage }}
+      run-command: ${{ matrix.test-suite.run }}
+      slow-test-cutoff: ${{ inputs.slow-test-cutoff }}
+      eta: ${{ matrix.test-suite.eta }}
+      require-build: ${{ matrix.test-suite.require-build || false }}
+      is-integration-test: true
+    secrets: inherit

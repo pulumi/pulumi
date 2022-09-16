@@ -22,6 +22,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -232,10 +234,33 @@ func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[strin
 	return groups
 }
 
+func parseAuthURL(remoteURL string) (string, *http.BasicAuth, error) {
+	u, err := url.Parse(remoteURL)
+	if err != nil {
+		return "", nil, err
+	}
+	var auth *http.BasicAuth
+	if u.User != nil {
+		auth = &http.BasicAuth{
+			Username: u.User.Username(),
+		}
+		if password, ok := u.User.Password(); ok {
+			auth.Password = password
+		}
+		u.User = nil
+	}
+	return u.String(), auth, nil
+}
+
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) error {
+	u, auth, err := parseAuthURL(url)
+	if err != nil {
+		return err
+	}
 	repo, err := git.PlainClone(path, false, &git.CloneOptions{
-		URL: url,
+		URL:  u,
+		Auth: auth,
 	})
 	if err != nil {
 		return err
@@ -260,9 +285,14 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 		depth = 1
 	}
 
+	u, auth, err := parseAuthURL(url)
+	if err != nil {
+		return err
+	}
 	// Attempt to clone the repo.
 	_, cloneErr := git.PlainClone(path, false, &git.CloneOptions{
-		URL:           url,
+		URL:           u,
+		Auth:          auth,
 		ReferenceName: referenceName,
 		SingleBranch:  true,
 		Depth:         depth,
@@ -324,6 +354,18 @@ func parseGistURL(u *url.URL) (string, error) {
 	return resultURL, nil
 }
 
+func parseHostAuth(u *url.URL) string {
+	if u.User == nil {
+		return u.Host
+	}
+	user := u.User.Username()
+	p, ok := u.User.Password()
+	if !ok {
+		return user + "@" + u.Host
+	}
+	return user + ":" + p + "@" + u.Host
+}
+
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
 // For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
 // "https://github.com/pulumi/templates.git" and "templates/javascript".
@@ -359,7 +401,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	// Cleave URI into what comes before and what comes after.
 	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
 		extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
-		resultURL := u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
+		resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + path[:extensionOffset]
 		gitRepoPath := path[extensionOffset:]
 		resultPath := strings.Trim(gitRepoPath, "/")
 		return resultURL, resultPath, nil
@@ -379,7 +421,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		repo = repo + ".git"
 	}
 
-	resultURL := u.Scheme + "://" + u.Host + "/" + owner + "/" + repo
+	resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
 	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
 
 	return resultURL, resultPath, nil
