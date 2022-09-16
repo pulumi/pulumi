@@ -114,9 +114,10 @@ func newUpCmd() *cobra.Command {
 		targetURNs, replaceURNs := []resource.URN{}, []resource.URN{}
 
 		if len(targets)+len(replaces)+len(targetReplaces) > 0 {
-			// This call to s.Snapshot adds latency s.Update below will call s.Snapshot again, presumably
-			// with the same result. Refactoring this or introducing a cache is a little tricky. For now:
-			// only call Snapshot twice if targets, replaces, or targetReplaces require it.
+			// The s.Snapshot call below adds needless latency as s.Update further below will call
+			// (*cloudBackend).getSnapshot again, presumably re-retrieving the same result over the network.
+			// Although s.Snapshot has a cache, it does not get hit by s.Update as of this writing. For now:
+			// only call s.Snapshot here if targets, replaces, or targetReplaces require it.
 			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return result.FromError(err)
