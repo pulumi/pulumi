@@ -1245,16 +1245,17 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		return err
 	}
 
-	for key, value := range pt.opts.Config {
-		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", key, value}, dir, false); err != nil {
-			return err
-		}
-	}
+	if len(pt.opts.Config)+len(pt.opts.Secrets) > 0 {
+		setAllArgs := []string{"config", "set-all"}
 
-	for key, value := range pt.opts.Secrets {
-		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", "--secret", key, value}, dir, false); err != nil {
+		for key, value := range pt.opts.Config {
+			setAllArgs = append(setAllArgs, "--plaintext", fmt.Sprintf("%s=%s", key, value))
+		}
+		for key, value := range pt.opts.Secrets {
+			setAllArgs = append(setAllArgs, "--secret", fmt.Sprintf("%s=%s", key, value))
+		}
+
+		if err := pt.runPulumiCommand("pulumi-config", setAllArgs, dir, false); err != nil {
 			return err
 		}
 	}
