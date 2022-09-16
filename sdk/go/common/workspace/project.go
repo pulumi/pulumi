@@ -226,64 +226,6 @@ func ValidateProject(raw interface{}) error {
 	return errs
 }
 
-//func (proj *Project) UnmarshalJSON(b []byte) error {
-//	var raw interface{}
-//	if err := json.Unmarshal(b, &raw); err != nil {
-//		return err
-//	}
-//	if obj, ok := raw.(map[string]interface{}); ok {
-//		if err := validate(obj); err != nil {
-//			return err
-//		}
-//
-//		return json.Unmarshal(b, proj)
-//	}
-//	return fmt.Errorf("expected a JSON object")
-//}
-//
-//func (proj *Project) UnmarshalYAML(unmarshal func(interface{}) error) error {
-//	var raw interface{}
-//	if err := unmarshal(&raw); err != nil {
-//		return err
-//	}
-//	if obj, ok := raw.(map[interface{}]interface{}); ok {
-//		// Cast any map[interface{}] to map[string]
-//		var cast func(value interface{}) (interface{}, error)
-//		cast = func(value interface{}) (interface{}, error) {
-//			if objMap, ok := value.(map[interface{}]interface{}); ok {
-//				strMap := make(map[string]interface{})
-//				for key, value := range objMap {
-//					if strKey, ok := key.(string); ok {
-//						innerValue, err := cast(value)
-//						if err != nil {
-//							return nil, err
-//						}
-//						strMap[strKey] = innerValue
-//					} else {
-//						return nil, fmt.Errorf("expected only string keys, got '%s'", key)
-//					}
-//				}
-//				return strMap, nil
-//			}
-//			return value, nil
-//		}
-//
-//		result, err := cast(obj)
-//		if err != nil {
-//			return err
-//		}
-//
-//		// This cast should be safe because we passed a `map[interface{}]interface{}` to cast and that will
-//		// return a `map[string]interface{}` for that input.
-//		if err := validate(result.(map[string]interface{})); err != nil {
-//			return err
-//		}
-//
-//		return unmarshal(proj)
-//	}
-//	return fmt.Errorf("expected a YAML object")
-//}
-
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
