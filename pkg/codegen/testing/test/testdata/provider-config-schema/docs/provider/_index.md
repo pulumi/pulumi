@@ -225,7 +225,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Pulumi.<wbr>Configstation.<wbr>Color</a></span>
+        <span class="property-type">string | <a href="#color">Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
