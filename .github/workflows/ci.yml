@@ -36,7 +36,7 @@ on:
         type: boolean
       test-platforms:
         required: false
-        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+        default: '["ubuntu-latest", "macos-latest", "windows-8core-2022"]'
         description: "Platforms to test"
         type: string
       build-targets:

@@ -139,7 +139,7 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "$GITHUB_ENV"
       - name: Enable code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: inputs.enable-coverage && (runner.os != 'Windows')
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
       # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
@@ -185,7 +185,7 @@ jobs:
           cache: yarn
           cache-dependency-path: sdk/nodejs/package.json
       - name: Uninstall pre-installed Pulumi (windows)
-        if: inputs.platform == 'windows-latest'
+        if: runner.os == 'Windows'
         run: |
           if command -v pulumi.exe; then
             echo "Deleting pulumi"
@@ -316,17 +316,17 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
-        if: inputs.platform != 'windows-latest'
+        if: runner.os != 'Windows'
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
       - name: Merge Go coverage data
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: inputs.enable-coverage && (runner.os != 'Windows')
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
           rm ./coverage/*.cov || true
       - name: Upload code coverage
-        if: inputs.enable-coverage && (inputs.platform != 'windows-latest')
+        if: inputs.enable-coverage && (runner.os != 'Windows')
         uses: codecov/codecov-action@v3
         with:
           directory: coverage
