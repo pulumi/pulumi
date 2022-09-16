@@ -101,16 +101,9 @@ jobs:
       enable-coverage: ${{ inputs.enable-coverage }}
     secrets: inherit
 
-  build-goreleaser-prep:
-    name: goreleaser prep
-    uses: ./.github/workflows/ci-build-goreleaser-prep.yml
-    with:
-      ref: ${{ inputs.ref }}
-    secrets: inherit
-
   build-binaries:
     name: build binaries
-    needs: [workaround, build-goreleaser-prep]
+    needs: [workaround]
     strategy:
       # To avoid tying up macOS runners:
       # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
