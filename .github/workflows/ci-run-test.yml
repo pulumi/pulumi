@@ -157,7 +157,7 @@ jobs:
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
-          cache-dependency-path: sdk/nodejs/*.json
+          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Install yarn
         run: |
           npm install -g yarn
