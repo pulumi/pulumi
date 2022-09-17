@@ -73,7 +73,7 @@ jobs:
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
-          cache-dependency-path: sdk/nodejs/package.json
+          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet

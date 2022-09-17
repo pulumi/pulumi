@@ -157,7 +157,14 @@ jobs:
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
-          cache-dependency-path: sdk/nodejs/*.json
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Uninstall pre-installed Pulumi (windows)
+        if: inputs.platform == 'windows-latest'
+        run: |
+          if command -v pulumi.exe; then
+            echo "Deleting pulumi"
+            rm -rf "$(command -v pulumi.exe)/../pulumi*"
+          fi
       - name: Install yarn
         run: |
           npm install -g yarn
