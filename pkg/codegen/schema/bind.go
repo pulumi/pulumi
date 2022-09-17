@@ -286,8 +286,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
-func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil, true)
+func BindSpec(spec PackageSpec, loader Loader) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(spec, nil, loader, true)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
