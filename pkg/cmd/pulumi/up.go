@@ -164,7 +164,6 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
-			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
 		}
 
 		if planFilePath != "" {
@@ -349,11 +348,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks:  engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:          parallel,
-			Debug:             debug,
-			Refresh:           refreshOption,
-			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refreshOption,
 		}
 
 		// TODO for the URL case:
@@ -566,12 +564,9 @@ func newUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
-		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
+		"Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
-	if !hasExperimentalCommands() {
-		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
-	}
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

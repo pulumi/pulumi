@@ -266,7 +266,6 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
-			ExperimentalPlans:         deployment.Options.UpdateOptions.ExperimentalPlans,
 		}
 		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
