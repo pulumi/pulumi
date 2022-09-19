@@ -151,6 +151,7 @@ require (
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.4.2
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.6.0

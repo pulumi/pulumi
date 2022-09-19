@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -11,6 +10,10 @@ import (
 	jpatch2 "github.com/mattbaird/jsonpatch"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"pgregory.net/rapid"
+
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 )
 
 type jsonPatchSystem struct {
@@ -26,13 +29,10 @@ func canonicalizeJson(jsonData json.RawMessage) (json.RawMessage, error) {
 	if err := json.Unmarshal(jsonData, &m); err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetIndent("", " ")
-	if err := enc.Encode(m); err != nil {
+	canonical, err := json.Marshal(m)
+	if err != nil {
 		return nil, err
 	}
-	canonical := buf.Bytes()
 	return canonical, nil
 }
 
@@ -85,6 +85,42 @@ func TestTextDiffTurnaround(t *testing.T) {
 			}
 		}
 		return []byte(patched)
+	}
+	sys := jsonPatchSystem{
+		diff:         diff,
+		patch:        patch,
+		canonicalize: canonicalize,
+	}
+	checkTurnaroundThoroughly(t, sys)
+}
+
+func unmarshalEdits(raw json.RawMessage) ([]gotextdiff.TextEdit, error) {
+	es := []gotextdiff.TextEdit{}
+	if err := json.Unmarshal(raw, &es); err != nil {
+		return nil, err
+	}
+	return es, nil
+}
+
+func TestGoTextDiff(t *testing.T) {
+	diff := func(original, modified []byte) []byte {
+		edits := myers.ComputeEdits(span.URIFromURI(""),
+			string(canonicalize(original)),
+			string(canonicalize(modified)),
+		)
+		bytes, err := json.Marshal(edits)
+		if err != nil {
+			panic(err)
+		}
+		return bytes
+	}
+	patch := func(original, patch []byte) []byte {
+		edits := []gotextdiff.TextEdit{}
+		if err := json.Unmarshal(patch, &edits); err != nil {
+			panic(err)
+		}
+		patched := gotextdiff.ApplyEdits(string(original), edits)
+		return canonicalize([]byte(patched))
 	}
 	sys := jsonPatchSystem{
 		diff:         diff,
@@ -207,6 +243,8 @@ func checkTurnaround(t *rapid.T, j *rapid.Generator, sys jsonPatchSystem) {
 	t.Logf("reconstructed          = %v", string(reconstructed))
 
 	if string(reconstructed) != string(sys.canonicalize(modified)) {
-		t.Fatalf("patch.Apply() did not match")
+		t.Fatalf("patch.Apply() did not match: %q != %q",
+			string(reconstructed),
+			string(sys.canonicalize(modified)))
 	}
 }
