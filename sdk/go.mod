@@ -41,6 +41,7 @@ require (
 require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/pkg/term v1.1.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	lukechampine.com/frand v1.4.2
 )
@@ -52,7 +53,6 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0 // indirect
 )
 
 require (
