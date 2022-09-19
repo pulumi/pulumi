@@ -1,0 +1,18 @@
+types:
+  feat: "Features"
+  fix: "Bug Fixes"
+  chore: "Miscellaneous"
+scopes:
+  auto: [dotnet, go, java, nodejs, python, yaml]
+  backend: [service, filestate]
+  cli: [about, config, display, engine, import, new, plugin, package]
+  pkg: [testing]
+  sdk: [dotnet, go, java, nodejs, python, yaml]
+  components: [dotnet, go, java, nodejs, python, yaml]
+  engine: []
+  build: []
+  ci: []
+  docs: []
+  programgen: [dotnet, go, java, nodejs, python, yaml]
+  sdkgen: [dotnet, go, java, nodejs, python, yaml]
+  protobuf: []

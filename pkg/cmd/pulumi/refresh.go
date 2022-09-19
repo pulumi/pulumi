@@ -378,6 +378,9 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 }
 
 func hasPendingCreates(snap *deploy.Snapshot) bool {
+	if snap == nil {
+		return false
+	}
 	for _, op := range snap.PendingOperations {
 		if op.Type == resource.OperationTypeCreating {
 			return true

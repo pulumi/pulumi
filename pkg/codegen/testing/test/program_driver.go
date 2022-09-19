@@ -225,7 +225,7 @@ func TestProgramCodegen(
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
-		t.Run(tt.Description, func(t *testing.T) {
+		t.Run(tt.Directory, func(t *testing.T) {
 			t.Parallel()
 			var err error
 			if tt.Skip.Has(testcase.Language) {

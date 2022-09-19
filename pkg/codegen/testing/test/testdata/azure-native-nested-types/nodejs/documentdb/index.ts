@@ -5,10 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "../utilities";
 
 // Export members:
-export * from "./sqlResourceSqlContainer";
+export { SqlResourceSqlContainerArgs } from "./sqlResourceSqlContainer";
+export type SqlResourceSqlContainer = import("./sqlResourceSqlContainer").SqlResourceSqlContainer;
+export const SqlResourceSqlContainer: typeof import("./sqlResourceSqlContainer").SqlResourceSqlContainer = null as any;
 
-// Import resources to register:
-import { SqlResourceSqlContainer } from "./sqlResourceSqlContainer";
+utilities.lazyLoad(exports, ["SqlResourceSqlContainer"], () => require("./sqlResourceSqlContainer"));
 
 const _module = {
     version: utilities.getVersion(),

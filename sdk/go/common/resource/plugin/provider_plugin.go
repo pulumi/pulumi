@@ -154,6 +154,36 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	return p, nil
 }
 
+// Create a new provider by loading the plugin binary located at `path`.
+func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+	env := os.Environ()
+	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
+		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil resource plugin at %q", path)
+
+	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
+
+	p := &provider{
+		ctx:           ctx,
+		plug:          plug,
+		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
+		cfgdone:       make(chan bool),
+		legacyPreview: legacyPreview,
+	}
+
+	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	if plug.Bin == "" {
+		err := p.Attach(host.ServerAddr())
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
+}
+
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool) Provider {
 

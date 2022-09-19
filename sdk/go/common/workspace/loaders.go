@@ -93,13 +93,19 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
-	var project Project
-	err = marshaller.Unmarshal(b, &project)
+	var raw interface{}
+	err = marshaller.Unmarshal(b, &raw)
 	if err != nil {
 		return nil, err
 	}
 
-	err = project.Validate()
+	err = ValidateProject(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	var project Project
+	err = marshaller.Unmarshal(b, &project)
 	if err != nil {
 		return nil, err
 	}

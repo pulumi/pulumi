@@ -1,25 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 set -x
 
 # When run by goreleaser, the arguments are absent, so files are installed in:
 #
-# * ./bin/darwin-amd64
+# * ./bin/darwin-x64
 # * ./bin/darwin-arm64
-# * ./bin/linux-amd64
+# * ./bin/linux-x64
 # * ./bin/linux-arm64
-# * ./bin/windows-amd64
+# * ./bin/windows-x64
 #
 # Allowing us to customize the archives for each.
-#
-# When run by GitHub Actions in tests, we set the args so that we install only the current OS's
-# binaries and in the shared "local path" dir, ./bin
-FILTER_TARGET="${1}"
-
-if [ "${FILTER_TARGET}" = "local" ]; then
-  FILTER_TARGET="$(go env GOOS)-$(go env GOARCH)"
-fi
+LOCAL="${1:-"false"}"
 
 TAG="v0.1.4"
 
@@ -34,13 +27,11 @@ for i in \
   FILE="$2"
   EXT="$3"
 
+  GO_TARGET="${TARGET/x64/amd64}"
+
   DIST_DIR="./bin/${TARGET}"
-  if [ -n "${FILTER_TARGET}" ]; then
-    if [ "${TARGET}" != "${FILTER_TARGET}" ]; then
-      continue
-    else
-      DIST_DIR="./bin"
-    fi
+  if [ "${LOCAL}" = "local" ] && [ "$(go env GOOS)-$(go env GOARCH)" != "${GO_TARGET}" ]; then
+    continue
   fi
 
   mkdir -p "${DIST_DIR}"

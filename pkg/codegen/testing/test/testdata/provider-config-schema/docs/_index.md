@@ -16,6 +16,11 @@ no_edit_this_page: true
     <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
 </ul>
 
+<h2 id="functions">Functions</h2>
+<ul class="api">
+    <li><a href="funcwithalloptionalinputs" title="FuncWithAllOptionalInputs"><span class="api-symbol api-symbol--function"></span>FuncWithAllOptionalInputs</a></li>
+</ul>
+
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>

@@ -15,7 +15,7 @@ namespace Pulumi.Mypkg
         /// Codegen demo with const inputs
         /// </summary>
         public static Task InvokeAsync(FuncWithConstInputArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("mypkg::funcWithConstInput", args ?? new FuncWithConstInputArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync("mypkg::funcWithConstInput", args ?? new FuncWithConstInputArgs(), options.WithDefaults());
     }
 
 

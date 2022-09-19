@@ -12,7 +12,7 @@ namespace Pulumi.Example
     public static class DoFoo
     {
         public static Task InvokeAsync(DoFooArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("example::doFoo", args ?? new DoFooArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync("example::doFoo", args ?? new DoFooArgs(), options.WithDefaults());
     }
 
 

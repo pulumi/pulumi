@@ -6,6 +6,7 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "declaration": true,
+        "resolveJsonModule": true,
         "sourceMap": true,
         "stripInternal": true,
         "experimentalDecorators": true,
@@ -66,6 +67,7 @@
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
         "cmd/run/run.ts",
+        "cmd/run/tracing.ts",
         "cmd/run-policy-pack/index.ts",
         "cmd/run-policy-pack/run.ts",
 
@@ -100,6 +102,7 @@
         "tests/runtime/langhost/run.spec.ts",
         "tests/runtime/langhost/cases/069.ambiguous_entrypoints/index.ts",
 
+        "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
 
         "tests_with_mocks/mocks.spec.ts"

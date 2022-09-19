@@ -14,9 +14,10 @@ PKG_CODEGEN_GO     := github.com/pulumi/pulumi/pkg/v3/codegen/go
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^(${PKG_CODEGEN_NODEJS}|${PKG_CODEGEN_PYTHON})$$')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
-VERSION         := $(shell pulumictl get version)
+VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
-TESTPARALLELISM ?= 10
+$(info    SHELL           = ${SHELL})
+$(info    VERSION         = ${VERSION})
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -25,7 +26,7 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 GO_TEST      = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FLAGS)
 GO_TEST_FAST = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
-ensure: .ensure.phony pulumictl.ensure go.ensure $(SUB_PROJECTS:%=%_ensure)
+ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
 	cd pkg && go mod download
@@ -89,11 +90,12 @@ install_all:: install
 dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-# NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
+.PHONY: brew
+# NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
 brew::
 	./scripts/brew.sh "${PROJECT}"
 
-.PHONY: lint_pkg lint_sdk lint_tests
+.PHONY: lint_%
 lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
 lint_pkg: lint_deps
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
@@ -103,24 +105,15 @@ lint_tests: lint_deps
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
+lint_actions:
+	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.17 \
+	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build:: $(TEST_ALL_DEPS)
+test_build::
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_output_values
-	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_plain
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_unknown
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh component_provider_schema
-	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_provider
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_unknown
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_resources
-	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_errors
 
 test_all:: test_build test_pkg test_integration
 
@@ -188,3 +181,7 @@ get_schemas: schema-aws!4.26.0          \
 			 schema-kubernetes!3.7.2    \
 			 schema-random!4.2.0        \
 			 schema-eks!0.37.1
+
+.PHONY: changelog
+changelog:
+	go run github.com/aaronfriel/go-change@v0.1.0 create

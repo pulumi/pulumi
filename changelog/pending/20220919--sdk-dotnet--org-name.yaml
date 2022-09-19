@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/dotnet
+  description: Added `Deployment.OrganizationName` to return the current organization if available.

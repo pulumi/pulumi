@@ -309,6 +309,15 @@ func marshalInputImpl(v interface{},
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && val.IsNil() {
+			// Here we round trip through a reflect.Value to catch fat pointers of the
+			// form
+			//
+			// 	<SomeType><nil value>
+			//
+			// This prevents calling methods on nil pointers when we cast to an interface
+			// (like `Resource`)
+			return resource.PropertyValue{}, nil, nil
 		}
 
 		// Look for some well known types.
@@ -350,8 +359,8 @@ func marshalInputImpl(v interface{},
 			if err != nil {
 				return resource.PropertyValue{}, nil, err
 			}
-			contract.Assert(known)
-			contract.Assert(!secretURN)
+			contract.Assertf(known, "URN must be known")
+			contract.Assertf(!secretURN, "URN must not be secret")
 
 			if custom, ok := v.(CustomResource); ok {
 				id, _, secretID, err := custom.ID().awaitID(context.Background())

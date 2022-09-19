@@ -23,5 +23,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		mockProvider("aws-native", AwsNative),
 		mockProvider("other", Other),
 		mockProvider("synthetic", Synthetic),
+		mockProvider("eks", Eks),
 	)
 }

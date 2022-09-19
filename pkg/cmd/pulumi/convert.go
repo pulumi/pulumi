@@ -46,8 +46,7 @@ func newConvertCmd() *cobra.Command {
 		Short: "Convert Pulumi programs from YAML into other supported languages",
 		Long: "Convert Pulumi programs from YAML into other supported languages.\n" +
 			"\n" +
-			"The YAML program to convert will default to the manifest in the current working directory.\n" +
-			"You may also specify '-f' for the file path or '-d' for the directory path containing the manifests.\n",
+			"The YAML program to convert will default to the manifest in the current working directory.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
 			var projectGenerator projectGeneratorFunc
@@ -60,7 +59,7 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case "python": // nolint: goconst
 				projectGenerator = python.GenerateProject
-			case "java":
+			case "java": // nolint: goconst
 				projectGenerator = javagen.GenerateProject
 			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject

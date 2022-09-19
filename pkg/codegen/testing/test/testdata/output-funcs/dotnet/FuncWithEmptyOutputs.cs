@@ -15,13 +15,13 @@ namespace Pulumi.Mypkg
         /// n/a
         /// </summary>
         public static Task<FuncWithEmptyOutputsResult> InvokeAsync(FuncWithEmptyOutputsArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsArgs(), options.WithDefaults());
 
         /// <summary>
         /// n/a
         /// </summary>
         public static Output<FuncWithEmptyOutputsResult> Invoke(FuncWithEmptyOutputsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsInvokeArgs(), options.WithDefaults());
     }
 
 

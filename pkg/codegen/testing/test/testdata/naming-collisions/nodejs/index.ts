@@ -5,9 +5,21 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
-export * from "./resource";
-export * from "./resourceInput";
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+
+export { ResourceArgs } from "./resource";
+export type Resource = import("./resource").Resource;
+export const Resource: typeof import("./resource").Resource = null as any;
+
+export { ResourceInputArgs } from "./resourceInput";
+export type ResourceInput = import("./resourceInput").ResourceInput;
+export const ResourceInput: typeof import("./resourceInput").ResourceInput = null as any;
+
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
+utilities.lazyLoad(exports, ["ResourceInput"], () => require("./resourceInput"));
 
 // Export enums:
 export * from "./types/enums";
@@ -18,10 +30,6 @@ import * as types from "./types";
 export {
     types,
 };
-
-// Import resources to register:
-import { Resource } from "./resource";
-import { ResourceInput } from "./resourceInput";
 
 const _module = {
     version: utilities.getVersion(),
@@ -37,9 +45,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

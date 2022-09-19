@@ -5,15 +5,19 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "../../utilities";
 
 // Export members:
-export * from "./nursery";
-export * from "./rubberTree";
+export { NurseryArgs } from "./nursery";
+export type Nursery = import("./nursery").Nursery;
+export const Nursery: typeof import("./nursery").Nursery = null as any;
+
+export { RubberTreeArgs, RubberTreeState } from "./rubberTree";
+export type RubberTree = import("./rubberTree").RubberTree;
+export const RubberTree: typeof import("./rubberTree").RubberTree = null as any;
+
+utilities.lazyLoad(exports, ["Nursery"], () => require("./nursery"));
+utilities.lazyLoad(exports, ["RubberTree"], () => require("./rubberTree"));
 
 // Export enums:
 export * from "../../types/enums/tree/v1";
-
-// Import resources to register:
-import { Nursery } from "./nursery";
-import { RubberTree } from "./rubberTree";
 
 const _module = {
     version: utilities.getVersion(),

@@ -63,6 +63,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
 	srv := grpc.NewServer(
 		grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
+		grpc.StreamInterceptor(OpenTracingStreamServerInterceptor(parentSpan, options...)),
 		grpc.MaxRecvMsgSize(maxRPCMessageSize),
 	)
 	for _, register := range registers {
