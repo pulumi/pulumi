@@ -17,6 +17,7 @@ package gitutil
 import (
 	"fmt"
 	"net/url"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -277,8 +278,21 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 	})
 }
 
+func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		// fallback on old behavior
+		return gitCloneOrPull(rawurl, referenceName, path, shallow)
+	}
+	if u.Hostname() == AzureDevOpsHostName {
+		// workaround go-git limitations
+		return gitCloneFallback(rawurl, referenceName, path, shallow)
+	}
+	return gitCloneOrPull(rawurl, referenceName, path, shallow)
+}
+
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {
@@ -324,6 +338,43 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 	}
 
 	return nil
+}
+
+// gitCloneFallback uses the `git` command to clone repositories instead of go-git as
+// go-git does not work with Azure DevOps repos https://github.com/go-git/go-git/issues/64
+func gitCloneFallback(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	// For shallow clones, use a depth of 1.
+	args := []string{
+		"clone", url, path,
+	}
+	if shallow {
+		args = append(args, "--depth")
+		args = append(args, "1")
+	}
+
+	err := exec.Command("git", args...).Run()
+	if err != nil {
+		return errors.Wrapf(err, "failed to `git clone` url %v", url)
+	}
+	return nil
+}
+
+// This method breaks an Azure Devops URL into the
+// repository url to clone and the path
+func parseGitRepoURLAzureDevops(rawurl string) (string, string, error) {
+	// example full Azure Devops url URL
+	// https://dev.azure.com/account-name/project-name/_git/repo-name?path=/foo/bar/baz/cloud-go
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return "", "", err
+	}
+	vals := u.Query()
+	path := vals.Get("path")
+
+	// remove querystring parameters
+	u.RawQuery = ""
+
+	return u.String(), path, nil
 }
 
 // We currently accept Gist URLs in the form: https://gist.github.com/owner/id.
@@ -389,6 +440,11 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 			return "", "", err
 		}
 		return repo, "", nil
+	}
+
+	// Special case Azure DevOps.
+	if u.Hostname() == AzureDevOpsHostName {
+		return parseGitRepoURLAzureDevops(rawurl)
 	}
 
 	path := strings.TrimPrefix(u.Path, "/")

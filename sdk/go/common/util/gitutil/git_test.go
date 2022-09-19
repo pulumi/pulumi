@@ -105,6 +105,25 @@ func TestParseGitRepoURL(t *testing.T) {
 	testError("http://github.com/pulumi/templates")
 }
 
+func TestParseURL(t *testing.T) {
+	t.Parallel()
+	{
+		url := "https://dev.azure.com/account-name/project-name/_git/repo-name?path=/nested-dir/foo/templates/cloud-go"
+		url, path, err := parseGitRepoURLAzureDevops(url)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://dev.azure.com/account-name/project-name/_git/repo-name", url)
+		assert.Equal(t, "/nested-dir/foo/templates/cloud-go", path)
+	}
+
+	{
+		url := "https://dev.azure.com/account-name/project-name/_git/repo-name"
+		url, path, err := parseGitRepoURLAzureDevops(url)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://dev.azure.com/account-name/project-name/_git/repo-name", url)
+		assert.Equal(t, "", path)
+	}
+}
+
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	t.Parallel()
 
