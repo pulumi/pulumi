@@ -13,7 +13,7 @@
 {{- end }}
 
 <!-- Create resource -->
-## Create a {{ .Header.Title }} Resource {#create}
+## Create {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
 <div>
@@ -187,7 +187,7 @@ The following arguments are supported:
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}
-## Look up an Existing {{.Header.Title}} Resource {#look-up}
+## Look up Existing {{.Header.Title}} Resource {#look-up}
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
