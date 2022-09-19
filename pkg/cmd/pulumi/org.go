@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -84,7 +85,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 			orgName = args[0]
 
-			currentBe, err := currentBackend(ctx, displayOpts)
+			currentBe, err := shared.CurrentBackend(ctx, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -124,7 +125,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			currentBe, err := currentBackend(ctx, displayOpts)
+			currentBe, err := shared.CurrentBackend(ctx, displayOpts)
 			if err != nil {
 				return err
 			}

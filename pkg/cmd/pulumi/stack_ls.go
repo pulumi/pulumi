@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -128,7 +129,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := shared.CurrentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

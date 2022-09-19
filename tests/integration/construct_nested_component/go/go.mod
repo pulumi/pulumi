@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/construct_component
+module github.com/pulumi/pulumi/tests/construct_nested_component
 
 go 1.18
 

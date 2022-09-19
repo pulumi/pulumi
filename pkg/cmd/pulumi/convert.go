@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -177,7 +178,7 @@ func runConvert(cwd string, language string, outDir string, generateOnly bool) r
 	}
 
 	// Load the project, to
-	proj, root, err := readProject()
+	proj, root, err := shared.ReadProject()
 	if err != nil {
 		return result.FromError(err)
 	}

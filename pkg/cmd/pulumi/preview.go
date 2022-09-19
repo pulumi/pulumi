@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -109,7 +110,7 @@ func newPreviewCmd() *cobra.Command {
 			} else {
 				displayOpts.SuppressPermalink = false
 			}
-			filestateBackend, err := isFilestateBackend(displayOpts)
+			filestateBackend, err := shared.IsFilestateBackend(displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}

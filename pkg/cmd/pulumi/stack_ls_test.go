@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -143,7 +144,7 @@ func TestListStacksPagination(t *testing.T) {
 		},
 	}
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
 			[]backend.StackSummary, backend.ContinuationToken, error) {
 			requestsMade = append(requestsMade, stackLSInputs{filter, inContToken})

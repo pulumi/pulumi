@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/pkg/v3/util/yamlutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -118,7 +119,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	if !args.generateOnly {
-		if _, err = currentBackend(ctx, opts); err != nil {
+		if _, err = shared.CurrentBackend(ctx, opts); err != nil {
 			return err
 		}
 	}
@@ -249,7 +250,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, path, err := readProjectWithPath()
+	proj, path, err := shared.ReadProjectWithPath()
 	root := filepath.Dir(path)
 	if err != nil {
 		return err
@@ -561,7 +562,7 @@ func validateProjectName(ctx context.Context, projectName string, generateOnly b
 	}
 
 	if !generateOnly {
-		b, err := currentBackend(ctx, opts)
+		b, err := shared.CurrentBackend(ctx, opts)
 		if err != nil {
 			return err
 		}
@@ -581,7 +582,7 @@ func validateProjectName(ctx context.Context, projectName string, generateOnly b
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
 func getStack(ctx context.Context, stack string, opts display.Options) (backend.Stack, string, string, error) {
-	b, err := currentBackend(ctx, opts)
+	b, err := shared.CurrentBackend(ctx, opts)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -613,7 +614,7 @@ func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
 
-	b, err := currentBackend(ctx, opts)
+	b, err := shared.CurrentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -674,7 +675,7 @@ func stackInit(
 
 // saveConfig saves the config for the stack.
 func saveConfig(stack backend.Stack, c config.Map) error {
-	project, _, err := readProject()
+	project, _, err := shared.ReadProject()
 	if err != nil {
 		return err
 	}

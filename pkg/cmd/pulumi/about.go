@@ -15,30 +15,22 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
-	"sort"
 	"strings"
 
 	"github.com/blang/semver"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
+
+	"github.com/pulumi/pulumi/pkg/v3/engineInterface"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -63,7 +55,21 @@ func newAboutCmd() *cobra.Command {
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 				ctx := commandContext()
-				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
+				engine, err := engineInterface.Start(ctx)
+				if err != nil {
+					return err
+				}
+
+				req := &enginerpc.AboutRequest{
+					TransitiveDependencies: transitiveDependencies,
+					Stack:                  stack,
+				}
+				res, err := engine.About(ctx, req)
+				if err != nil {
+					return err
+				}
+
+				summary := getSummaryAbout(res)
 				if jsonOut {
 					return printJSON(summary)
 				}
@@ -94,23 +100,22 @@ type summaryAbout struct {
 	Runtime       *projectRuntimeAbout     `json:"runtime"`
 	Dependencies  []programDependencyAbout `json:"dependencies"`
 	ErrorMessages []string                 `json:"errors"`
-	Errors        []error                  `json:"-"`
 	LogMessage    string                   `json:"-"`
 }
 
-func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
+func getSummaryAbout(res *enginerpc.AboutResponse) summaryAbout {
 	var err error
-	cli := getCLIAbout()
+	cli := getCLIAbout(res)
 	result := summaryAbout{
 		CLI:           &cli,
-		Errors:        []error{},
 		ErrorMessages: []string{},
 		LogMessage:    formatLogAbout(),
 	}
+
+	result.ErrorMessages = res.Errors
 	addError := func(err error, message string) {
 		err = fmt.Errorf("%s: %w", message, err)
 		result.ErrorMessages = append(result.ErrorMessages, err.Error())
-		result.Errors = append(result.Errors, err)
 	}
 
 	var host hostAbout
@@ -120,74 +125,12 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 		result.Host = &host
 	}
 
-	var proj *workspace.Project
-	var pwd string
-	if proj, pwd, err = readProject(); err != nil {
-		addError(err, "Failed to read project")
-	} else {
-		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
-		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
-		if err != nil {
-			addError(err, "Failed to create plugin context")
-		} else {
-			defer pluginContext.Close()
+	result.Plugins = getPluginsAbout(res.Plugins)
+	result.Runtime = getLanguageAbout(res)
+	result.Dependencies = getLanguageDependencies(res.Dependencies)
+	result.CurrentStack = getCurrentStackAbout(res.Stack)
+	result.Backend = getBackendAbout(res.Backend)
 
-			// Only try to get project plugins if we managed to read a project
-			if plugins, err := getPluginsAbout(pluginContext, proj, pwd, program); err != nil {
-				addError(err, "Failed to get information about the plugin")
-			} else {
-				result.Plugins = plugins
-			}
-
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
-			if err != nil {
-				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
-			} else {
-				aboutResponse, err := lang.About()
-				if err != nil {
-					addError(err, "Failed to get information about the project runtime")
-				} else {
-					result.Runtime = &projectRuntimeAbout{
-						other:      aboutResponse.Metadata,
-						Language:   proj.Runtime.Name(),
-						Executable: aboutResponse.Executable,
-						Version:    aboutResponse.Version,
-					}
-				}
-
-				progInfo := plugin.ProgInfo{Proj: proj, Pwd: pwd, Program: program}
-				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
-				if err != nil {
-					addError(err, "Failed to get information about the Pulumi program's dependencies")
-				} else {
-					result.Dependencies = make([]programDependencyAbout, len(deps))
-					for i, dep := range deps {
-						result.Dependencies[i] = programDependencyAbout{
-							Name:    dep.Name,
-							Version: dep.Version.String(),
-						}
-					}
-				}
-			}
-		}
-	}
-
-	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx)
-	if err != nil {
-		addError(err, "Could not access the backend")
-	} else if backend != nil {
-		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
-			addError(err, "Failed to get information about the current stack")
-		} else {
-			result.CurrentStack = &stack
-		}
-
-		tmp := getBackendAbout(backend)
-		result.Backend = &tmp
-	}
 	return result
 }
 
@@ -212,40 +155,49 @@ func (summary *summaryAbout) Print() {
 		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
 	fmt.Println(summary.LogMessage)
-	for _, err := range summary.Errors {
-		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	for _, err := range summary.ErrorMessages {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err})
 	}
 }
 
 type pluginAbout struct {
-	Name    string          `json:"name"`
-	Version *semver.Version `json:"version"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
-func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]pluginAbout, error) {
-	pluginSpec, err := getProjectPluginsSilently(ctx, proj, pwd, main)
-	if err != nil {
-		return nil, err
-	}
-	sort.Slice(pluginSpec, func(i, j int) bool {
-		pi, pj := pluginSpec[i], pluginSpec[j]
-		if pi.Name < pj.Name {
-			return true
-		} else if pi.Name == pj.Name && pi.Kind == pj.Kind &&
-			(pi.Version == nil || (pj.Version != nil && pi.Version.GT(*pj.Version))) {
-			return true
-		}
-		return false
-	})
-
-	var plugins = make([]pluginAbout, len(pluginSpec))
-	for i, p := range pluginSpec {
-		plugins[i] = pluginAbout{
+func getPluginsAbout(plugins []*pulumirpc.PluginDependency) []pluginAbout {
+	var result = make([]pluginAbout, len(plugins))
+	for i, p := range plugins {
+		result[i] = pluginAbout{
 			Name:    p.Name,
 			Version: p.Version,
 		}
 	}
-	return plugins, nil
+	return result
+}
+
+func getLanguageAbout(response *enginerpc.AboutResponse) *projectRuntimeAbout {
+	if response.Language == nil {
+		return nil
+	}
+
+	return &projectRuntimeAbout{
+		other:      response.Language.Metadata,
+		Language:   response.Runtime,
+		Executable: response.Language.Executable,
+		Version:    response.Language.Version,
+	}
+}
+
+func getLanguageDependencies(response []*pulumirpc.DependencyInfo) []programDependencyAbout {
+	result := make([]programDependencyAbout, len(response))
+	for _, dep := range response {
+		result = append(result, programDependencyAbout{
+			Name:    dep.Name,
+			Version: dep.Version,
+		})
+	}
+	return result
 }
 
 func formatPlugins(p []pluginAbout) string {
@@ -253,8 +205,8 @@ func formatPlugins(p []pluginAbout) string {
 	for _, plugin := range p {
 		name := plugin.Name
 		var version string
-		if plugin.Version != nil {
-			version = plugin.Version.String()
+		if plugin.Version != "" {
+			version = plugin.Version
 		} else {
 			version = "unknown"
 		}
@@ -304,16 +256,21 @@ type backendAbout struct {
 	Organizations []string `json:"organizations"`
 }
 
-func getBackendAbout(b backend.Backend) backendAbout {
-	currentUser, currentOrgs, err := b.CurrentUser()
-	if err != nil {
+func getBackendAbout(b *enginerpc.AboutBackend) *backendAbout {
+	if b == nil {
+		return nil
+	}
+
+	currentUser := b.User
+	if currentUser == "" {
 		currentUser = "Unknown"
 	}
-	return backendAbout{
-		Name:          b.Name(),
-		URL:           b.URL(),
+
+	return &backendAbout{
+		Name:          b.Name,
+		URL:           b.Url,
 		User:          currentUser,
-		Organizations: currentOrgs,
+		Organizations: b.Organizations,
 	}
 }
 
@@ -340,56 +297,30 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
-	var stack backend.Stack
-	var err error
-	if selectedStack == "" {
-		stack, err = state.CurrentStack(ctx, b)
-	} else {
-		var ref backend.StackReference
-		ref, err = b.ParseStackReference(selectedStack)
-		if err != nil {
-			return currentStackAbout{}, err
-		}
-		stack, err = b.GetStack(ctx, ref)
-	}
-	if err != nil {
-		return currentStackAbout{}, err
-	}
-	if stack == nil {
-		return currentStackAbout{}, errors.New("No current stack")
+func getCurrentStackAbout(currentStack *enginerpc.AboutStack) *currentStackAbout {
+	if currentStack == nil {
+		return nil
 	}
 
-	name := stack.Ref().String()
-	var snapshot *deploy.Snapshot
-	snapshot, err = stack.Snapshot(ctx)
-	if err != nil {
-		return currentStackAbout{}, err
-	} else if snapshot == nil {
-		return currentStackAbout{}, errors.New("No current snapshot")
-	}
-	var resources []*resource.State = snapshot.Resources
-	var pendingOps []resource.Operation = snapshot.PendingOperations
-
-	var aboutResources = make([]aboutState, len(resources))
-	for i, r := range resources {
+	var aboutResources = make([]aboutState, len(currentStack.Resources))
+	for i, r := range currentStack.Resources {
 		aboutResources[i] = aboutState{
-			Type: string(r.Type),
-			URN:  string(r.URN),
+			Type: r.Type,
+			URN:  r.Urn,
 		}
 	}
-	var aboutPending = make([]aboutState, len(pendingOps))
-	for i, p := range pendingOps {
+	var aboutPending = make([]aboutState, len(currentStack.PendingOperations))
+	for i, p := range currentStack.PendingOperations {
 		aboutPending[i] = aboutState{
-			Type: string(p.Type),
-			URN:  string(p.Resource.URN),
+			Type: p.Type,
+			URN:  p.Urn,
 		}
 	}
-	return currentStackAbout{
-		Name:       name,
+	return &currentStackAbout{
+		Name:       currentStack.Name,
 		Resources:  aboutResources,
 		PendingOps: aboutPending,
-	}, nil
+	}
 }
 
 func (current currentStackAbout) String() string {
@@ -463,22 +394,20 @@ type cliAbout struct {
 	GoCompiler string `json:"goCompiler"`
 }
 
-func getCLIAbout() cliAbout {
-	var ver semver.Version
-	var err error
-	var cliVersion string
+func getCLIAbout(res *enginerpc.AboutResponse) cliAbout {
+	var engineVersion string
 	// Version is not supplied in test builds.
-	ver, err = semver.ParseTolerant(version.Version)
+	ver, err := semver.ParseTolerant(res.Version)
 	if err == nil {
 		// To get semver formatting when possible
-		cliVersion = ver.String()
+		engineVersion = ver.String()
 	} else {
-		cliVersion = version.Version
+		engineVersion = res.Version
 	}
 	return cliAbout{
-		Version:    cliVersion,
-		GoVersion:  runtime.Version(),
-		GoCompiler: runtime.Compiler,
+		Version:    engineVersion,
+		GoVersion:  res.GoVersion,
+		GoCompiler: res.GoCompiler,
 	}
 }
 
@@ -543,23 +472,4 @@ func (runtime projectRuntimeAbout) String() string {
 	}
 	return fmt.Sprintf("This project is written in %s%s\n",
 		runtime.Language, paramString)
-}
-
-// This is necessary because dotnet invokes build during the call to
-// getProjectPlugins.
-func getProjectPluginsSilently(
-	ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]workspace.PluginSpec, error) {
-	_, w, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	stdout := os.Stdout
-	defer func() { os.Stdout = stdout }()
-	os.Stdout = w
-
-	return plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	}, plugin.AllPlugins)
 }

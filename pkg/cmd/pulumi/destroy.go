@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -116,7 +117,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			filestateBackend, err := shared.IsFilestateBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -133,7 +134,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := shared.ReadProject()
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())

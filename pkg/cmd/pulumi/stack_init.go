@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -72,11 +73,12 @@ func newStackInitCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			proj, _, err := readProject()
+			proj, _, err := shared.ReadProject()
 			if err != nil {
 				return err
 			}
-			b, err := currentBackend(ctx, opts)
+
+			b, err := shared.CurrentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}

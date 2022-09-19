@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -116,7 +117,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			filestateBackend, err := isFilestateBackend(opts.Display)
+			filestateBackend, err := shared.IsFilestateBackend(opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -132,7 +133,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			proj, root, err := shared.ReadProject()
 			if err != nil {
 				return result.FromError(err)
 			}

@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -90,54 +91,6 @@ func disableOutputValues() bool {
 // operations, such as those that will fail without a --force parameter.
 func skipConfirmations() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_CONFIRMATIONS"))
-}
-
-// backendInstance is used to inject a backend mock from tests.
-var backendInstance backend.Backend
-
-func isFilestateBackend(opts display.Options) (bool, error) {
-	if backendInstance != nil {
-		return false, nil
-	}
-
-	url, err := workspace.GetCurrentCloudURL()
-	if err != nil {
-		return false, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	return filestate.IsFileStateBackendURL(url), nil
-}
-
-func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) {
-	if backendInstance != nil {
-		return backendInstance, nil
-	}
-
-	url, err := workspace.GetCurrentCloudURL()
-	if err != nil {
-		return nil, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
-	}
-	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url)
-}
-
-func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
-	if backendInstance != nil {
-		return backendInstance, nil
-	}
-
-	url, err := workspace.GetCurrentCloudURL()
-	if err != nil {
-		return nil, fmt.Errorf("could not get cloud url: %w", err)
-	}
-
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
-	}
-	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -234,7 +187,7 @@ func requireStack(ctx context.Context,
 		return requireCurrentStack(ctx, offerNew, opts, setCurrent)
 	}
 
-	b, err := currentBackend(ctx, opts)
+	b, err := shared.CurrentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +225,7 @@ func requireCurrentStack(
 	ctx context.Context, offerNew bool,
 	opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
-	b, err := currentBackend(ctx, opts)
+	b, err := shared.CurrentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +395,7 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
 func readProjectForUpdate(clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := readProject()
+	proj, root, err := shared.ReadProject()
 	if err != nil {
 		return nil, "", err
 	}
@@ -452,42 +405,6 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 		})
 	}
 	return proj, root, nil
-}
-
-// readProject attempts to detect and read a Pulumi project for the current workspace. If the
-// project is successfully detected and read, it is returned along with the path to its containing
-// directory, which will be used as the root of the project's Pulumi program.
-func readProject() (*workspace.Project, string, error) {
-	proj, path, err := readProjectWithPath()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return proj, filepath.Dir(path), nil
-}
-
-// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
-// the project is successfully detected and read, it is returned along with the path to the project
-// file, which will be used as the root of the project's Pulumi program.
-//
-// If a project is not found while searching and no other error occurs, workspace.ErrProjectNotFound
-// is returned.
-func readProjectWithPath() (*workspace.Project, string, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, "", err
-	}
-	// Now that we got here, we have a path, so we will try to load it.
-	path, err := workspace.DetectProjectPathFrom(pwd)
-	if err != nil {
-		return nil, "", err
-	}
-	proj, err := workspace.LoadProject(path)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
-	}
-
-	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current

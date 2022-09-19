@@ -15,9 +15,9 @@
 package main
 
 import (
-	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,9 +25,14 @@ import (
 func TestCLI(t *testing.T) {
 	t.Parallel()
 
-	cli := getCLIAbout()
-	assert.Equal(t, cli.GoVersion, runtime.Version())
-	assert.Equal(t, cli.GoCompiler, runtime.Compiler)
+	cli := getCLIAbout(&engine.AboutResponse{
+		Version:    "1.0.0",
+		GoVersion:  "18.0.0",
+		GoCompiler: "go",
+	})
+	assert.Equal(t, "1.0.0", cli.Version)
+	assert.Equal(t, "18.0.0", cli.GoVersion)
+	assert.Equal(t, "go", cli.GoCompiler)
 }
 
 func TestBackend(t *testing.T) {

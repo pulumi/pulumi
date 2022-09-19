@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -45,7 +46,7 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 }
 
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
-	project, _, err := readProject()
+	project, _, err := shared.ReadProject()
 
 	if err != nil {
 		return nil, err

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -188,7 +189,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -216,7 +217,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return name == projectName, nil
 		},
@@ -242,7 +243,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return true, nil
 		},
@@ -274,7 +275,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return true, nil
 		},
@@ -304,7 +305,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return true, nil
 		},
@@ -334,7 +335,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	backendInstance = &backend.MockBackend{
+	shared.BackendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
 			return true, nil
 		},

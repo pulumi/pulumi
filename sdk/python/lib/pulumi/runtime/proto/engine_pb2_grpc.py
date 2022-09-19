@@ -9,7 +9,11 @@ from . import engine_pb2 as pulumi_dot_engine__pb2
 class EngineStub(object):
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
     to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
-    that can't store their own global state.
+    that can't store their own global state although this behaviour is deprecated.
+
+    N.B. This would be better
+    named "Host", as we have a whole other rpc package called engine which is actually the interface to the
+    engine.
     """
 
     def __init__(self, channel):
@@ -38,7 +42,11 @@ class EngineStub(object):
 class EngineServicer(object):
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
     to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
-    that can't store their own global state.
+    that can't store their own global state although this behaviour is deprecated.
+
+    N.B. This would be better
+    named "Host", as we have a whole other rpc package called engine which is actually the interface to the
+    engine.
     """
 
     def Log(self, request, context):
@@ -91,7 +99,11 @@ def add_EngineServicer_to_server(servicer, server):
 class Engine(object):
     """Engine is an auxiliary service offered to language and resource provider plugins. Its main purpose today is
     to serve as a common logging endpoint, but it also serves as a state storage mechanism for language hosts
-    that can't store their own global state.
+    that can't store their own global state although this behaviour is deprecated.
+
+    N.B. This would be better
+    named "Host", as we have a whole other rpc package called engine which is actually the interface to the
+    engine.
     """
 
     @staticmethod

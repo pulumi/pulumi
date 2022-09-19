@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/shared"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,7 +58,7 @@ func newConfigCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 
 			if err != nil {
 				return err
@@ -112,7 +113,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 
 			if err != nil {
 				return err
@@ -314,7 +315,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -368,7 +369,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -417,7 +418,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -507,7 +508,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 
 			if err != nil {
 				return err
@@ -624,7 +625,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			project, _, err := readProject()
+			project, _, err := shared.ReadProject()
 			if err != nil {
 				return err
 			}
@@ -879,7 +880,7 @@ func listConfig(ctx context.Context,
 }
 
 func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
-	project, _, err := readProject()
+	project, _, err := shared.ReadProject()
 	if err != nil {
 		return err
 	}
