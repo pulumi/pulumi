@@ -800,60 +800,61 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 
 // TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
 func TestTracePropagationGo(t *testing.T) {
-
-	// Detect a special trace coming from Go language plugin.
-	isGoListTrace := func(t *appdash.Trace) bool {
-		m := t.Span.Annotations.StringMap()
-
-		isGoCmd := strings.HasSuffix(m["command"], "go") ||
-			strings.HasSuffix(m["command"], "go.exe")
-
-		if m["component"] == "exec.Command" &&
-			m["args"] == "[list -m -json -mod=mod all]" &&
-			isGoCmd {
-			return true
-		}
-
-		return false
-	}
-
-	var foundTrace *appdash.Trace
-
-	// Look for trace mathching `isGoListTrace` in the trace file
-	// and store to `foundTrace`.
-	searchForGoListTrace := func(dir string) error {
-
-		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
-		if err != nil {
-			return err
-		}
-
-		foundTrace, err = FindTrace(store, isGoListTrace)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
+	dir, err := os.MkdirTemp("", "pulumi-tracefiles")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
 
 	opts := &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("empty", "go"),
 		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
 		SkipRefresh:            true,
-		SkipPreview:            false,
-		SkipUpdate:             true,
+		SkipPreview:            true,
+		SkipUpdate:             false,
 		SkipExportImport:       true,
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
-		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
-		PreviewCompletedHook:   searchForGoListTrace,
+		Tracing:                fmt.Sprintf("file:%s", filepath.Join(dir, "{command}.trace")),
+		RequireService:         true,
 	}
 
 	integration.ProgramTest(t, opts)
 
-	if foundTrace == nil {
-		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
-	}
+	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
+	assert.NoError(t, err)
+	assert.NotNil(t, store)
+
+	t.Run("traced `go list -m -json -mod=mod all`", func(t *testing.T) {
+		isGoListTrace := func(t *appdash.Trace) bool {
+			m := t.Span.Annotations.StringMap()
+
+			isGoCmd := strings.HasSuffix(m["command"], "go") ||
+				strings.HasSuffix(m["command"], "go.exe")
+
+			if m["component"] == "exec.Command" &&
+				m["args"] == "[list -m -json -mod=mod all]" &&
+				isGoCmd {
+				return true
+			}
+
+			return false
+		}
+		tr, err := FindTrace(store, isGoListTrace)
+		assert.NoError(t, err)
+		assert.NotNil(t, tr)
+	})
+
+	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
+		exportStackCounter := 0
+		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
+			name := tr.Span.Name()
+			if name == "api/exportStack" {
+				exportStackCounter++
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, exportStackCounter)
+	})
 }
 
 // Test that the about command works as expected. Because about parses the
