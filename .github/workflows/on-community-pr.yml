@@ -41,8 +41,10 @@ jobs:
       pull-requests: write
     uses: pulumi/pulumi/.github/workflows/on-pr-changelog.yml@master
     with:
-      ref: ${{ github.ref }}
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge
       base-ref: origin/${{ github.base_ref }}
       pr-number: ${{ github.event.pull_request.number }}
       changelog-required: ${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}
-    secrets: inherit
+    secrets:
+      # Scope secrets to the minimum required:
+      PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}

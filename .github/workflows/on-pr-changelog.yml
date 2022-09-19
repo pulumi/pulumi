@@ -24,6 +24,10 @@ on:
         required: true
         description: "Whether the changelog is required, used to allow check to pass on empty changelogs"
         type: boolean
+    secrets:
+      PULUMI_BOT_TOKEN:
+        required: true
+        description: "GitHub access token, required to mitigate GitHub rate limits"
 
 defaults:
   run:

@@ -44,6 +44,13 @@ on:
         default: false
         required: false
         type: boolean
+    secrets:
+      PULUMI_BOT_TOKEN:
+        required: true
+        description: "GitHub access token, required to mitigate GitHub rate limits"
+      PULUMI_PROD_ACCESS_TOKEN:
+        required: false
+        description: "Pulumi access token, required to run tests against the service"
 
 jobs:
   matrix:
