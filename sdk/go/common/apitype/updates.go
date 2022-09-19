@@ -225,6 +225,9 @@ type PatchUpdateCheckpointRequest struct {
 type PatchUpdateVerbatimCheckpointRequest struct {
 	Version           int             `json:"version"`
 	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
 }
 
 // PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch

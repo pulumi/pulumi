@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -925,6 +925,46 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+}
+
+// PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
+// UntypedDeployment transferred over the wire.
+func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token string) error {
+
+	req := apitype.PatchUpdateVerbatimCheckpointRequest{
+		Version:           3,
+		UntypedDeployment: untypedDeploymentBytes,
+		SequenceNumber:    sequenceNumber,
+	}
+
+	reqPayload, err := marshalVerbatimCheckpointRequest(req)
+	if err != nil {
+		return err
+	}
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
+	// deployment instead of a set of changes to apply.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+}
+
+// PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
+// PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
+// large stack states.
+func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token string) error {
+
+	req := apitype.PatchUpdateCheckpointDeltaRequest{
+		Version:         3,
+		CheckpointHash:  checkpointHash,
+		SequenceNumber:  sequenceNumber,
+		DeploymentDelta: deploymentDelta,
+	}
+
+	// It is safe to retry because SequenceNumber serves as an idempotency key.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 

@@ -327,9 +327,15 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
-		reqBody, err = json.Marshal(reqObj)
-		if err != nil {
-			return fmt.Errorf("marshalling request object as JSON: %w", err)
+		// Send verbatim if already marshalled. This is
+		// important when sending indented JSON is needed.
+		if raw, ok := reqObj.(json.RawMessage); ok {
+			reqBody = []byte(raw)
+		} else {
+			reqBody, err = json.Marshal(reqObj)
+			if err != nil {
+				return fmt.Errorf("marshalling request object as JSON: %w", err)
+			}
 		}
 	}
 

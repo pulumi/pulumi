@@ -14,13 +14,17 @@
 package client
 
 import (
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newMockServer(statusCode int, message string) *httptest.Server {
@@ -129,4 +133,49 @@ func TestGzip(t *testing.T) {
 	_, err = client.BulkDecryptValue(context.Background(), StackIdentifier{}, nil)
 	assert.NoError(t, err)
 
+}
+
+func TestPatchUpdateCheckpointVerbatimPreservesIndent(t *testing.T) {
+	t.Parallel()
+
+	deployment := apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{{URN: resource.URN("urn1")}},
+	}
+
+	var indented json.RawMessage
+	{
+		indented1, err := json.MarshalIndent(deployment, "", "")
+		require.NoError(t, err)
+		untyped := apitype.UntypedDeployment{
+			Version:    3,
+			Deployment: indented1,
+		}
+		indented2, err := json.MarshalIndent(untyped, "", "")
+		require.NoError(t, err)
+		indented = indented2
+	}
+
+	var request apitype.PatchUpdateVerbatimCheckpointRequest
+
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+
+		reader, err := gzip.NewReader(req.Body)
+		assert.NoError(t, err)
+		defer reader.Close()
+
+		err = json.NewDecoder(reader).Decode(&request)
+		assert.NoError(t, err)
+
+		return "{}"
+	})
+
+	client := newMockClient(server)
+
+	sequenceNumber := 1
+
+	err := client.PatchUpdateCheckpointVerbatim(context.Background(),
+		UpdateIdentifier{}, sequenceNumber, indented, "token")
+	assert.NoError(t, err)
+
+	assert.Equal(t, string(indented), string(request.UntypedDeployment))
 }
