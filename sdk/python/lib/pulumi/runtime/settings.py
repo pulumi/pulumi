@@ -165,7 +165,9 @@ def get_organization() -> str:
     for the argument `organization`.
     """
     if SETTINGS.organization is None:
-        raise Exception("Missing organization name; for test mode, please call `pulumi.runtime.setMocks")
+        raise Exception(
+            "Missing organization name; for test mode, please call `pulumi.runtime.setMocks"
+        )
     return SETTINGS.organization
 
 
