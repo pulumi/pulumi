@@ -1,5 +1,37 @@
 # Changelog
 
+## 3.40.1 (2022-09-17)
+
+
+### Features
+
+- [backend] Adds a flag `PULUMI_SKIP_CHECKPOINTS=true` that makes Pulumi skip saving state checkpoints as it modifies resources and only save the final state of a deployment. 
+  [#10750](https://github.com/pulumi/pulumi/pulls/10750)
+
+   This is an experimental feature that also requires `PULUMI_EXPERIMENTAL=true` to be set.
+
+   Using the feature introduces risk that in the case of network disconnect or crash state edits will be lost and may require manual recovery. When this risk is acceptable, using the feature can speed up Pulumi deployments.
+
+   See also:
+
+     - [Checkpoints](https://www.pulumi.com/docs/intro/concepts/state/#checkpoints)
+     - [#10668](https://github.com/pulumi/pulumi/issues/10668)
+
+- [ci] Improves first-time contributor developer experience and reduces test execution time by defaulting `integration.ProgramTest` to a filestate backend. Tests that require running against a service should set `RequireService` to `true`.
+  [#10720](https://github.com/pulumi/pulumi/pulls/10720)
+
+- [cli] Add a package author focused subcommand: `pulumi package` with subcommands `pulumi package gen-sdk` and `pulumi package get-schema`.
+  [#10711](https://github.com/pulumi/pulumi/pulls/10711)
+
+- [cli] Use "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/workspace/project.json" to validate loaded project files.
+  [#10596](https://github.com/pulumi/pulumi/pulls/10596)
+
+
+### Bug Fixes
+
+- [sdk/go] Correctly handle nil resource references in the RPC layer.
+  [#10739](https://github.com/pulumi/pulumi/pulls/10739)
+
 ## 3.40.0 (2022-09-14)
 
 ### Bug fixes
