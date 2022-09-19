@@ -169,7 +169,7 @@ export function getOrganization(): string {
     }
 
     // If the organization is missing, specialize the error.
-    // Throw an error if test mode is enabled, instructing how to manually configure the project:
+    // Throw an error if test mode is enabled, instructing how to manually configure the organization:
     throw new Error("Missing organization name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 

@@ -160,9 +160,12 @@ def is_legacy_apply_enabled():
 def get_organization() -> str:
     """
     Returns the current organization name (if available).
+
+    When writing unit tests, you can set this flag via `pulumi.runtime.set_mocks` by supplying a value
+    for the argument `organization`.
     """
     if SETTINGS.organization is None:
-        raise Exception("organization is not available")
+        raise Exception("Missing organization name; for test mode, please call `pulumi.runtime.setMocks")
     return SETTINGS.organization
 
 

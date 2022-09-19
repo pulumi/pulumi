@@ -160,7 +160,7 @@ namespace Pulumi
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
-            _organizationName = null;
+            _organizationName = options?.OrganizationName;
             this.Engine = engine;
             this.Monitor = monitor;
             _runner = new Runner(this, deploymentLogger);
@@ -172,7 +172,7 @@ namespace Pulumi
             {
                 if (string.IsNullOrEmpty(_organizationName))
                 {
-                    throw new Exception("organization is not available");
+                    throw new Exception("organization is not available; for test mode, set this in `TestOptions`");
                 }
                 return _organizationName;
             }
