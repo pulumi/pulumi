@@ -265,7 +265,7 @@ type ProgramTestOptions struct {
 	Verbose bool
 
 	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`.  This is
-	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
+	// equivalent to `--logflow --logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
 	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int
 	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
@@ -311,8 +311,8 @@ type ProgramTestOptions struct {
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
 
-	// Array of dependencies which come from local packages.
-	LocalDependencies []LocalDependency
+	// Array of provider plugin dependencies which come from local packages.
+	LocalProviders []LocalDependency
 }
 
 type LocalDependency struct {
@@ -559,9 +559,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
-	}
-	if overrides.LocalDependencies != nil {
-		opts.LocalDependencies = append(opts.LocalDependencies, overrides.LocalDependencies...)
 	}
 	return opts
 }
@@ -848,7 +845,7 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	}
 	cmd := []string{bin}
 	if du := pt.opts.GetDebugLogLevel(); du > 0 {
-		cmd = append(cmd, "--logtostderr", "-v="+strconv.Itoa(du))
+		cmd = append(cmd, "--logflow", "--logtostderr", "-v="+strconv.Itoa(du))
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
@@ -1763,21 +1760,37 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
 	}
 
+	// Add dynamic plugin paths from ProgramTester
+	if (proj.Plugins == nil || proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
+		proj.Plugins = &workspace.Plugins{
+			Providers: make([]workspace.PluginOptions, 0),
+		}
+	}
+
+	if pt.opts.LocalProviders != nil {
+		for _, provider := range pt.opts.LocalProviders {
+			proj.Plugins.Providers = append(proj.Plugins.Providers, workspace.PluginOptions{
+				Name: provider.Package,
+				Path: provider.Path,
+			})
+		}
+	}
+
 	if proj.Plugins != nil {
-		for _, provider := range proj.Plugins.Providers {
+		for i, provider := range proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
-				provider.Path = filepath.Join(projdir, provider.Path)
+				proj.Plugins.Providers[i].Path = filepath.Join(projdir, provider.Path)
 			}
 		}
-		for _, language := range proj.Plugins.Languages {
+		for i, language := range proj.Plugins.Languages {
 			if !filepath.IsAbs(language.Path) {
-				language.Path = filepath.Join(projdir, language.Path)
+				proj.Plugins.Providers[i].Path = filepath.Join(projdir, language.Path)
 			}
 		}
 
-		for _, analyzer := range proj.Plugins.Analyzers {
+		for i, analyzer := range proj.Plugins.Analyzers {
 			if !filepath.IsAbs(analyzer.Path) {
-				analyzer.Path = filepath.Join(projdir, analyzer.Path)
+				proj.Plugins.Providers[i].Path = filepath.Join(projdir, analyzer.Path)
 			}
 		}
 	}

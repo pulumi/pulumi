@@ -893,20 +893,22 @@ func TestConstructNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: mustAbs(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir))},
+				}
 			integration.ProgramTest(t,
-				optsForConstructNode(t, test.expectedResourceCount, pathEnv))
+				optsForConstructNode(t, test.expectedResourceCount, localProviders))
 		})
 	}
 }
 
-func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
+		Dir:            filepath.Join("construct_component", "nodejs"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
@@ -954,7 +956,7 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowNode(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
+	localProvider := testComponentSlowLocalProvider(t)
 
 	var opts *integration.ProgramTestOptions
 
@@ -962,10 +964,10 @@ func TestConstructSlowNode(t *testing.T) {
 	runComponentSetup(t, testDir)
 
 	opts = &integration.ProgramTestOptions{
-		Env:          []string{pathEnv},
-		Dir:          filepath.Join(testDir, "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
+		Dir:            filepath.Join(testDir, "nodejs"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -1007,21 +1009,23 @@ func TestConstructPlainNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: mustAbs(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir))},
+				}
 			integration.ProgramTest(t,
-				optsForConstructPlainNode(t, test.expectedResourceCount, pathEnv))
+				optsForConstructPlainNode(t, test.expectedResourceCount, localProviders))
 		})
 	}
 }
 
-func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component_plain", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
+		Dir:            filepath.Join("construct_component_plain", "nodejs"),
+		Dependencies:   []string{"@pulumi/pulumi"},
+		LocalProviders: localProviders,
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -1057,11 +1061,13 @@ func TestConstructMethodsNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir)),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
+				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
@@ -1105,11 +1111,13 @@ func TestConstructProviderNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir)),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
+				LocalProviders: []integration.LocalDependency{localProvider},
 				Quick:        true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
@@ -1159,9 +1167,11 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	expectedError := "intentional error from within an apply"
 
 	opts := &integration.ProgramTestOptions{
-		Env:           []string{pathEnv(t, filepath.Join(dir, componentDir))},
 		Dir:           filepath.Join(dir, "nodejs"),
 		Dependencies:  []string{"@pulumi/pulumi"},
+		LocalProviders: integration.LocalDependency[]{
+			{Package: "testcomponent", Path: mustAbs(t, filepath.Join(dir, componentDir))},
+		}
 		Quick:         true,
 		Stderr:        stderr,
 		ExpectFailure: true,
