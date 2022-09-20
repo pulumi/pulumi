@@ -36,6 +36,8 @@ import (
 
 const stackRefQualifiedName = "pulumi.StackReference"
 
+var ProjectKeysToOmit = []string{"configuration", "resources", "outputs"}
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -83,6 +85,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	// Set the runtime to "python" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("python", nil)
+	if project.AdditionalKeys != nil {
+		for _, k := range ProjectKeysToOmit {
+			delete(project.AdditionalKeys, k)
+		}
+	}
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err

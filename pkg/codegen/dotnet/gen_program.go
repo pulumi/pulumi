@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+var ProjectKeysToOmit = []string{"configuration", "resources", "outputs"}
+
 type GenerateProgramOptions struct {
 	// Determines whether ResourceArg types have an implicit name
 	// when constructing a resource. For example:
@@ -168,6 +170,11 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
+	if project.AdditionalKeys != nil {
+		for _, k := range ProjectKeysToOmit {
+			delete(project.AdditionalKeys, k)
+		}
+	}
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
 		return err
