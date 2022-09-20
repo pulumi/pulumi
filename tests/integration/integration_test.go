@@ -1161,11 +1161,11 @@ func TestProviderDownloadURL(t *testing.T) {
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    dir,
-				Env:                    []string{env},
 				ExportStateValidator:   validate,
 				SkipPreview:            true,
 				SkipEmptyPreviewUpdate: true,
 				Dependencies:           []string{lang.dependency},
+				LocalProviders:         []integration.LocalDependency{localProvider},
 			})
 		})
 	}

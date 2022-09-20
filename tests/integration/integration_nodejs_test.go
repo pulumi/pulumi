@@ -1065,10 +1065,10 @@ func TestConstructMethodsNode(t *testing.T) {
 				Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir)),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          filepath.Join(testDir, "nodejs"),
-				Dependencies: []string{"@pulumi/pulumi"},
+				Dir:            filepath.Join(testDir, "nodejs"),
+				Dependencies:   []string{"@pulumi/pulumi"},
 				LocalProviders: []integration.LocalDependency{localProvider},
-				Quick:        true,
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -1115,10 +1115,10 @@ func TestConstructProviderNode(t *testing.T) {
 				Package: "testcomponent", Path: mustAbs(t, filepath.Join(testDir, test.componentDir)),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          filepath.Join(testDir, "nodejs"),
-				Dependencies: []string{"@pulumi/pulumi"},
+				Dir:            filepath.Join(testDir, "nodejs"),
+				Dependencies:   []string{"@pulumi/pulumi"},
 				LocalProviders: []integration.LocalDependency{localProvider},
-				Quick:        true,
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -1167,11 +1167,11 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	expectedError := "intentional error from within an apply"
 
 	opts := &integration.ProgramTestOptions{
-		Dir:           filepath.Join(dir, "nodejs"),
-		Dependencies:  []string{"@pulumi/pulumi"},
-		LocalProviders: integration.LocalDependency[]{
+		Dir:          filepath.Join(dir, "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
 			{Package: "testcomponent", Path: mustAbs(t, filepath.Join(dir, componentDir))},
-		}
+		},
 		Quick:         true,
 		Stderr:        stderr,
 		ExpectFailure: true,
