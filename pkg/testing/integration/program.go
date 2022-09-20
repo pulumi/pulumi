@@ -1749,57 +1749,47 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	}
 	projinfo.Root = projdir
 
-	//Modify the pulumi project file in the temp dir
-	//if it has any local references to plugins
-	dir, err := workspace.DetectProjectPathFrom(projdir)
-	if err != nil {
-		return "", "", err
-	}
-	proj, err := workspace.LoadProject(dir)
-	if err != nil {
-		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
-	}
-
 	// Add dynamic plugin paths from ProgramTester
-	if (proj.Plugins == nil || proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
-		proj.Plugins = &workspace.Plugins{
+	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
+		projinfo.Proj.Plugins = &workspace.Plugins{
 			Providers: make([]workspace.PluginOptions, 0),
 		}
 	}
 
 	if pt.opts.LocalProviders != nil {
 		for _, provider := range pt.opts.LocalProviders {
-			proj.Plugins.Providers = append(proj.Plugins.Providers, workspace.PluginOptions{
+			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
 				Name: provider.Package,
 				Path: provider.Path,
 			})
 		}
 	}
 
-	if proj.Plugins != nil {
-		for i, provider := range proj.Plugins.Providers {
+	if projinfo.Proj.Plugins != nil {
+		for i, provider := range projinfo.Proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
-				proj.Plugins.Providers[i].Path = filepath.Join(projdir, provider.Path)
+				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, provider.Path)
 			}
 		}
-		for i, language := range proj.Plugins.Languages {
+		for i, language := range projinfo.Proj.Plugins.Languages {
 			if !filepath.IsAbs(language.Path) {
-				proj.Plugins.Providers[i].Path = filepath.Join(projdir, language.Path)
+				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, language.Path)
 			}
 		}
 
-		for i, analyzer := range proj.Plugins.Analyzers {
+		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
 			if !filepath.IsAbs(analyzer.Path) {
-				proj.Plugins.Providers[i].Path = filepath.Join(projdir, analyzer.Path)
+				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, analyzer.Path)
 			}
 		}
 	}
-	bytes, err := yaml.Marshal(proj)
+	projfile := filepath.Join(projdir, workspace.ProjectFile+".yaml")
+	bytes, err := yaml.Marshal(projinfo.Proj)
 	if err != nil {
-		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
+		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
 
-	if err := ioutil.WriteFile(dir, bytes, 0600); err != nil {
+	if err := ioutil.WriteFile(projfile, bytes, 0600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
 	}
 
