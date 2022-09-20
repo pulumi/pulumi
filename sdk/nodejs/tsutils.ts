@@ -17,6 +17,7 @@ import * as typescript from "typescript";
 
 import * as log from "./log";
 
+/** @internal */
 export function loadTypeScriptCompilerOptions(tsConfigPath: string): object {
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
