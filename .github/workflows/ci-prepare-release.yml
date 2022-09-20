@@ -67,18 +67,26 @@ jobs:
       - name: Flatten artifact directories
         run: |
           mkdir -p ./artifacts
+          mkdir -p ./sums.tmp
           mv ./artifacts-tmp/artifacts-*/* ./artifacts
+
+        # Each of these commands strips the ./ prefix to match existing (<=3.39) formatting.
+      - name: Checksums with SHA256
+        working-directory: artifacts
+        env:
+          version: ${{ inputs.version }}
+        run: sha256sum ./* | sed 's/.\///' | tee "../sums.tmp/pulumi-${version}-checksums.txt"
 
       - name: Checksums with BLAKE3
         working-directory: artifacts
-        run: b3sum ./* | tee B3SUMS
+        run: b3sum ./* | sed 's/.\///' | tee ../sums.tmp/B3SUMS
 
       - name: Checksums with SHA512
         working-directory: artifacts
-        run: sha512sum ./* | tee SHA512SUMS
+        run: sha512sum ./* | sed 's/.\///' | tee ../sums.tmp/SHA512SUMS
 
       - name: Sign checksums
-        working-directory: artifacts
+        working-directory: sums.tmp
         # Requires a signing key to be configured.
         if: false
         shell: bash
@@ -87,26 +95,27 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           set -u
-          echo "$RELEASE_KEY" > release.key
+          releaseKey="$(mktemp -d)/release.key"
+          echo "$RELEASE_KEY" > "${releaseKey}"
           set -x
-          for algo in B3 SHA512; do
+          for file in *; do
             echo | rsign sign \
               -p "${GITHUB_WORKSPACE}/.github/workflows/release.pub" \
-              -s release.key \
+              -s "${releaseKey}" \
               -t "${{ inputs.project }} v$version signed with automated key" \
               -c 'see website for signing information' \
-              -x "${algo}SUMS.auto.minisig" \
-              "${algo}SUMS"
+              -x "${file}.auto.minisig" \
+              "${file}"
           done
-          rm release.key
-          cat {B3,SHA512}SUMS.auto.minisig
+          rm "${releaseKey}"
+          cat ./*.auto.minisig
 
       - uses: actions/upload-artifact@v2
         with:
           name: artifacts-signatures
           retention-days: 1
           path: |
-            artifacts/*SUMS*
+            sums.tmp/*
           if-no-files-found: error
 
   publish:
