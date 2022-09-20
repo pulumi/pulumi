@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-// Unhyphenate removes all hyphens from s, replacing them with r, then uppercasing the letter following each hyphen.
+// Unhyphenate removes all hyphens from s, then uppercasing the letter following each hyphen.
 // For example, "abc-def-ghi" becomes "abcDefGhi".
 func Unhyphenate(str string) string {
 	return modifyStringAroundDelimeter(str, "-", UppercaseFirst)

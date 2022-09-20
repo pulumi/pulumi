@@ -198,5 +198,5 @@ func pythonCase(s string) string {
 		return true
 	})
 	c := cgstrings.Camel(noUnderscores)
-	return underscores + strings.ToUpper(c[:1]) + c[1:]
+	return underscores + cgstrings.UppercaseFirst(c)
 }
