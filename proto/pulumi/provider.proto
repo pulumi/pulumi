@@ -20,7 +20,7 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/v3/proto/go/pulumirpc";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
 // within a single package.  It is driven by the overall planning engine in response to resource diffs.
