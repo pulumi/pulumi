@@ -892,19 +892,50 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-
-		errmsg := "%d HTTP error fetching plugin from %s"
-
-		if req.URL.Host == "api.github.com" && resp.StatusCode == 404 {
-			errmsg += ". If this is a private GitHub repository, try " +
-				"providing a token via the GITHUB_TOKEN environment variable. " +
-				"See: https://github.com/settings/tokens"
-		}
-
-		return nil, -1, errors.Errorf(errmsg, resp.StatusCode, req.URL)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL)
 	}
 
 	return resp.Body, resp.ContentLength, nil
+}
+
+// DownloadError is an error that happened during the HTTP download of a plugin.
+type DownloadError struct {
+	msg  string
+	code int
+	url  *url.URL
+}
+
+func (e *DownloadError) Error() string {
+	return e.msg
+}
+
+// Create a new DownloadError with a message that indicates GITHUB_TOKEN should be set.
+func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
+	return &DownloadError{
+		code: statusCode,
+		url:  url,
+		msg: fmt.Sprintf("%d HTTP error fetching plugin from %s. "+
+			"If this is a private GitHub repository, try "+
+			"providing a token via the GITHUB_TOKEN environment variable. "+
+			"See: https://github.com/settings/tokens",
+			statusCode, url),
+	}
+}
+
+// Create a new DownloadError.
+func newDownloadError(statusCode int, url *url.URL) error {
+	if url.Host == "api.github.com" && statusCode == 404 {
+		return newGithubPrivateRepoError(statusCode, url)
+	}
+	return &DownloadError{
+		code: statusCode,
+		url:  url,
+		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+	}
+}
+
+func (e *DownloadError) Code() int {
+	return e.code
 }
 
 // installLock acquires a file lock used to prevent concurrent installs.
@@ -1039,6 +1070,13 @@ func DownloadToFile(
 			if _, ok := readErr.(*checksumError); ok {
 				return "", readErr
 			}
+
+			// Don't retry, since the request was processed and rejected.
+			if err, ok := readErr.(*DownloadError); ok &&
+				err.Code() == 404 || err.Code() == 403 {
+				return "", readErr
+			}
+
 			// Don't attempt more than 5 times
 			attempts := 5
 			if readErr != nil && attempt >= attempts {
