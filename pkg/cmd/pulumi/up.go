@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -109,6 +110,39 @@ func newUpCmd() *cobra.Command {
 		cfg, err := getStackConfiguration(ctx, s, sm)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+		}
+
+		for projectConfigKey, projectConfigType := range proj.Config {
+			key, err := config.ParseKey(projectConfigKey)
+			if err != nil {
+				return result.FromError(fmt.Errorf("parsing project config key: %w", err))
+			}
+
+			associatedStackValue, found, _ := cfg.Config.Get(key, true)
+			hasDefault := projectConfigType.Default != nil
+			if !found && !hasDefault {
+				stackName := s.Ref().Name().String()
+				missingConfigError := fmt.Errorf(
+					"Stack '%v' missing configuration value '%v'",
+					stackName,
+					associatedStackValue)
+				return result.FromError(missingConfigError)
+			}
+
+			if !found && hasDefault {
+				// not found at the stack level
+				// but has a default value at the project level
+				// assign the value to the stack
+				configValueJson, jsonError := json.Marshal(projectConfigType.Default)
+				if jsonError != nil {
+					return result.FromError(jsonError)
+				}
+				configValue := config.NewValue(string(configValueJson))
+				setError := cfg.Config.Set(key, configValue, true)
+				if setError != nil {
+					return result.FromError(setError)
+				}
+			}
 		}
 
 		targetURNs := []resource.URN{}

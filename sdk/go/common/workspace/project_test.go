@@ -41,7 +41,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	doTest(json.Marshal, json.Unmarshal)
 }
 
-func TestProjectValidation(t *testing.T) {
+func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	t.Parallel()
 	var err error
 
@@ -60,6 +60,86 @@ func TestProjectValidation(t *testing.T) {
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
 	assert.NoError(t, err)
+}
+
+func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
+	t.Parallel()
+	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	invalidConfig := make(map[string]ProjectConfigType)
+	invalidConfig["instanceSize"] = ProjectConfigType{
+		Type:    "integer",
+		Items:   nil,
+		Default: "hello",
+	}
+
+	project.Config = invalidConfig
+	err := project.Validate()
+	assert.Contains(t,
+		err.Error(),
+		"The default value specified for configuration key 'instanceSize' is not of the expected type 'integer'")
+
+	invalidValues := make([]interface{}, 0)
+	invalidValues = append(invalidValues, "hello")
+	// default value here has type array<string>
+	// config type specified is array<array<string>>
+	// should fail!
+	invalidConfigWithArray := make(map[string]ProjectConfigType)
+	invalidConfigWithArray["values"] = ProjectConfigType{
+		Type: "array",
+		Items: &ProjectConfigItemsType{
+			Type: "array",
+			Items: &ProjectConfigItemsType{
+				Type: "string",
+			},
+		},
+		Default: invalidValues,
+	}
+	project.Config = invalidConfigWithArray
+	err = project.Validate()
+	assert.Error(t, err, "There is a validation error")
+	assert.Contains(t,
+		err.Error(),
+		"The default value specified for configuration key 'values' is not of the expected type 'array<array<string>>'")
+}
+
+func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
+	t.Parallel()
+	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	validConfig := make(map[string]ProjectConfigType)
+	validConfig["instanceSize"] = ProjectConfigType{
+		Type:    "integer",
+		Items:   nil,
+		Default: 1,
+	}
+
+	project.Config = validConfig
+	err := project.Validate()
+	assert.NoError(t, err, "There should be no validation error")
+
+	// validValues = ["hello"]
+	validValues := make([]interface{}, 0)
+	validValues = append(validValues, "hello")
+	// validValuesArray = [["hello"]]
+	validValuesArray := make([]interface{}, 0)
+	validValuesArray = append(validValuesArray, validValues)
+
+	// default value here has type array<array<string>>
+	// config type specified is also array<array<string>>
+	// should succeed
+	validConfigWithArray := make(map[string]ProjectConfigType)
+	validConfigWithArray["values"] = ProjectConfigType{
+		Type: "array",
+		Items: &ProjectConfigItemsType{
+			Type: "array",
+			Items: &ProjectConfigItemsType{
+				Type: "string",
+			},
+		},
+		Default: validValuesArray,
+	}
+	project.Config = validConfigWithArray
+	err = project.Validate()
+	assert.NoError(t, err, "There should be no validation error")
 }
 
 func TestProjectLoadJSON(t *testing.T) {

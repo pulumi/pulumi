@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -151,6 +153,36 @@ func newPreviewCmd() *cobra.Command {
 			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			for projectConfigKey, projectConfigType := range proj.Config {
+				key := config.MustMakeKey(string(proj.Name), projectConfigKey)
+
+				_, found, _ := cfg.Config.Get(key, true)
+				hasDefault := projectConfigType.Default != nil
+				if !found && !hasDefault {
+					stackName := s.Ref().Name().String()
+					missingConfigError := fmt.Errorf(
+						"Stack '%v' missing configuration value '%v'",
+						stackName,
+						projectConfigKey)
+					return result.FromError(missingConfigError)
+				}
+
+				if !found && hasDefault {
+					// not found at the stack level
+					// but has a default value at the project level
+					// assign the value to the stack
+					configValueJson, jsonError := json.Marshal(projectConfigType.Default)
+					if jsonError != nil {
+						return result.FromError(jsonError)
+					}
+					configValue := config.NewValue(string(configValueJson))
+					setError := cfg.Config.Set(key, configValue, true)
+					if setError != nil {
+						return result.FromError(setError)
+					}
+				}
 			}
 
 			targetURNs := []resource.URN{}

@@ -110,6 +110,11 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
+	err = project.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	singleton.internal[path] = &project
 	return &project, nil
 }

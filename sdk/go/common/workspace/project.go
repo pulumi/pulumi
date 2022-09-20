@@ -97,6 +97,17 @@ type Plugins struct {
 	Analyzers []PluginOptions `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
 }
 
+type ProjectConfigItemsType struct {
+	Type  string                  `json:"type" yaml:"type"`
+	Items *ProjectConfigItemsType `json:"items" yaml:"items"`
+}
+
+type ProjectConfigType struct {
+	Type    string                  `json:"type" yaml:"type"`
+	Items   *ProjectConfigItemsType `json:"items" yaml:"items"`
+	Default interface{}             `json:"default" yaml:"default"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -122,7 +133,7 @@ type Project struct {
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
 	// Config has been renamed to StackConfigDir.
-	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+	Config map[string]ProjectConfigType `json:"config,omitempty" yaml:"config,omitempty"`
 
 	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
 	// Pulumi.yaml is in.
@@ -226,12 +237,67 @@ func ValidateProject(raw interface{}) error {
 	return errs
 }
 
+func InterFullTypeName(typeName string, itemsType *ProjectConfigItemsType) string {
+	if itemsType != nil {
+		return fmt.Sprintf("array<%v>", InterFullTypeName(itemsType.Type, itemsType.Items))
+	}
+
+	return typeName
+}
+
+func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
+
+	if typeName == "string" {
+		_, ok := value.(string)
+		return ok
+	}
+
+	if typeName == "integer" {
+		_, ok := value.(int)
+		return ok
+	}
+
+	if typeName == "boolean" {
+		_, ok := value.(bool)
+		return ok
+	}
+
+	items, isArray := value.([]interface{})
+
+	if !isArray || itemsType == nil {
+		return false
+	}
+
+	// validate each item
+	for _, item := range items {
+		itemType := itemsType.Type
+		underlyingItems := itemsType.Items
+		if !ValidateConfigValue(itemType, underlyingItems, item) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
 	}
 	if proj.Runtime.Name() == "" {
 		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	for configKey, configType := range proj.Config {
+		if configType.Default != nil {
+			// when the default value is specified, validate it against the type
+			if !ValidateConfigValue(configType.Type, configType.Items, configType.Default) {
+				inferredTypeName := InterFullTypeName(configType.Type, configType.Items)
+				return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
+					configKey,
+					inferredTypeName)
+			}
+		}
 	}
 
 	return nil
