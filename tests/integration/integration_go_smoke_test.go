@@ -39,9 +39,6 @@ func TestStackReferenceGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
 		EditDirs: []integration.EditDir{
 			{
 				Dir:      "step1",

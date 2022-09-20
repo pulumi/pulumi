@@ -482,6 +482,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 		}
 	}
 
+	maybeAppendEnv(pulumi.EnvOrganization, req.GetOrganization())
 	maybeAppendEnv(pulumi.EnvProject, req.GetProject())
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
