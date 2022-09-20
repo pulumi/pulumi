@@ -950,6 +950,7 @@ return () => handler;
 var __util = {};
 Object.defineProperty(__util, "__esModule", { value: true });
 __util.asyncTest = __asyncTest;
+var __assert_1 = {default: require("assert")};
 __util.assertAsyncThrows = __assertAsyncThrows;
 
 function __f1(__0, __1, __2, __3) {
@@ -998,7 +999,7 @@ return function /*asyncTest*/(test) {
 
 function __assertAsyncThrows(__0) {
   return (function() {
-    with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
+    with({ __awaiter: __f1, assert_1: __assert_1, assertAsyncThrows: __assertAsyncThrows }) {
 
 return function /*assertAsyncThrows*/(test) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1008,7 +1009,7 @@ return function /*assertAsyncThrows*/(test) {
         catch (err) {
             return err.message;
         }
-        assert(false, "Function was expected to throw, but didn't");
+        assert_1.default(false, "Function was expected to throw, but didn't");
         return "";
     });
 };
@@ -6067,16 +6068,96 @@ return function () { console.log(getAll()); };
             func: function () { typescript.parseCommandLine([""]); },
             expectText: `exports.handler = __f0;
 
-function __f0() {
-  return (function() {
-    with({ typescript: require("typescript/lib/typescript.js") }) {
+var __watchOptionsDidYouMeanDiagnostics = {};
+__watchOptionsDidYouMeanDiagnostics.getOptionsNameMap = __getWatchOptionsNameMap;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations = [];
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0 = {};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_0.name = "watchFile";
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_type = Object.create(global.Map.prototype);
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_0.type = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_type;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_category = {code: 6178, category: 3, key: "Advanced_Options_6178", message: "Advanced Options", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_0.category = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_category;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_description = {code: 6225, category: 3, key: "Specify_strategy_for_watching_file_Colon_FixedPollingInterval_default_PriorityPollingInterval_Dynami_6225", message: "Specify strategy for watching file: 'FixedPollingInterval' (default), 'PriorityPollingInterval', 'DynamicPriorityPolling', 'UseFsEvents', 'UseFsEventsOnParentDirectory'.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_0.description = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_description;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations[0] = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1 = {};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_1.name = "watchDirectory";
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1_type = Object.create(global.Map.prototype);
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_1.type = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1_type;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_1.category = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_category;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1_description = {code: 6226, category: 3, key: "Specify_strategy_for_watching_directory_on_platforms_that_don_t_support_recursive_watching_natively__6226", message: "Specify strategy for watching directory on platforms that don't support recursive watching natively: 'UseFsEvents' (default), 'FixedPollingInterval', 'DynamicPriorityPolling'.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_1.description = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1_description;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations[1] = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_1;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2 = {};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_2.name = "fallbackPolling";
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2_type = Object.create(global.Map.prototype);
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_2.type = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2_type;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_2.category = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_category;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2_description = {code: 6227, category: 3, key: "Specify_strategy_for_creating_a_polling_watch_when_it_fails_to_create_using_file_system_events_Colon_6227", message: "Specify strategy for creating a polling watch when it fails to create using file system events: 'FixedInterval' (default), 'PriorityInterval', 'DynamicPriority'.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_2.description = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2_description;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations[2] = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_2;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_3 = {};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_3.name = "synchronousWatchDirectory";
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_3.type = "boolean";
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_3.category = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_0_category;
+var __watchOptionsDidYouMeanDiagnostics_optionDeclarations_3_description = {code: 6228, category: 3, key: "Synchronously_call_callbacks_and_update_the_state_of_directory_watchers_on_platforms_that_don_t_supp_6228", message: "Synchronously call callbacks and update the state of directory watchers on platforms that don't support recursive watching natively.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations_3.description = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_3_description;
+__watchOptionsDidYouMeanDiagnostics_optionDeclarations[3] = __watchOptionsDidYouMeanDiagnostics_optionDeclarations_3;
+__watchOptionsDidYouMeanDiagnostics.optionDeclarations = __watchOptionsDidYouMeanDiagnostics_optionDeclarations;
+var __watchOptionsDidYouMeanDiagnostics_unknownOptionDiagnostic = {code: 5078, category: 1, key: "Unknown_watch_option_0_5078", message: "Unknown watch option '{0}'.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics.unknownOptionDiagnostic = __watchOptionsDidYouMeanDiagnostics_unknownOptionDiagnostic;
+var __watchOptionsDidYouMeanDiagnostics_unknownDidYouMeanDiagnostic = {code: 5079, category: 1, key: "Unknown_watch_option_0_Did_you_mean_1_5079", message: "Unknown watch option '{0}'. Did you mean '{1}'?", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics.unknownDidYouMeanDiagnostic = __watchOptionsDidYouMeanDiagnostics_unknownDidYouMeanDiagnostic;
+var __watchOptionsDidYouMeanDiagnostics_optionTypeMismatchDiagnostic = {code: 5080, category: 1, key: "Watch_option_0_requires_a_value_of_type_1_5080", message: "Watch option '{0}' requires a value of type {1}.", reportsUnnecessary: undefined, elidedInCompatabilityPyramid: undefined};
+__watchOptionsDidYouMeanDiagnostics.optionTypeMismatchDiagnostic = __watchOptionsDidYouMeanDiagnostics_optionTypeMismatchDiagnostic;
+var __typescript = {parseCommandLine: __parseCommandLine};
 
-return function () { typescript.parseCommandLine([""]); };
+function __getOptionDeclarationFromName(__0, __1, __2) {
+  return (function() {
+    with({ getOptionDeclarationFromName: __getOptionDeclarationFromName }) {
+
+return function /*getOptionDeclarationFromName*/(getOptionNameMap, optionName, allowShort) {
+        if (allowShort === void 0) { allowShort = false; }
+        optionName = optionName.toLowerCase();
+        var _a = getOptionNameMap(), optionsNameMap = _a.optionsNameMap, shortOptionNames = _a.shortOptionNames;
+        // Try to translate short option names to their full equivalents.
+        if (allowShort) {
+            var short = shortOptionNames.get(optionName);
+            if (short !== undefined) {
+                optionName = short;
+            }
+        }
+        return optionsNameMap.get(optionName);
+    };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
-`,
+
+function __getCompilerOptionValueTypeString(__0) {
+  return (function() {
+    with({ ts: require("typescript/lib/typescript.js"), getCompilerOptionValueTypeString: __getCompilerOptionValueTypeString }) {
+
+return function /*getCompilerOptionValueTypeString*/(option) {
+        return option.type === "list" ?
+            "Array" :
+            ts.isString(option.type) ? option.type : "string";
+    };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __trimString(__0) {
+  return (function() {
+    with({ trimString: __trimString }) {
+
+return function /*trimString*/(s) {
+        return typeof s.trim === "function" ? s.trim() : s.replace(/^[\\s]+|[\\s]+$/g, "");
+    };
+
+    }
+  }).apply(undefined, undefined).appl`,
         });
     }
 
