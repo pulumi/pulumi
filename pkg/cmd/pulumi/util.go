@@ -941,3 +941,55 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 		}
 	}
 }
+
+func validateStackConfigWithProject(
+	stackName string,
+	project *workspace.Project,
+	stackConfig backend.StackConfiguration) error {
+	for projectConfigKey, projectConfigType := range project.Config {
+		key := config.MustMakeKey(string(project.Name), projectConfigKey)
+		stackValue, found, _ := stackConfig.Config.Get(key, true)
+		hasDefault := projectConfigType.Default != nil
+		if !found && !hasDefault {
+			missingConfigError := fmt.Errorf(
+				"Stack '%v' missing configuration value '%v'",
+				stackName,
+				projectConfigKey)
+			return missingConfigError
+		} else if !found && hasDefault {
+			// not found at the stack level
+			// but has a default value at the project level
+			// assign the value to the stack
+			configValueJson, jsonError := json.Marshal(projectConfigType.Default)
+			if jsonError != nil {
+				return jsonError
+			}
+			configValue := config.NewValue(string(configValueJson))
+			setError := stackConfig.Config.Set(key, configValue, true)
+			if setError != nil {
+				return setError
+			}
+		} else {
+			// found value on the stack level
+			// retrieve it and validate it against
+			// the config defined at the project level
+			content, contentError := stackValue.MarshalValue()
+			if contentError != nil {
+				return contentError
+			}
+
+			if !workspace.ValidateConfigValue(projectConfigType.Type, projectConfigType.Items, content) {
+				typeName := workspace.InferFullTypeName(projectConfigType.Type, projectConfigType.Items)
+				validationError := fmt.Errorf(
+					"Stack '%v' with configuration key '%v' must of of type '%v'",
+					stackName,
+					projectConfigKey,
+					typeName)
+
+				return validationError
+			}
+		}
+	}
+
+	return nil
+}

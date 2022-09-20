@@ -139,6 +139,11 @@ func (c Value) ToObject() (interface{}, error) {
 	return c.unmarshalObjectJSON()
 }
 
+// MarshalValue returns the underlying content of the config value
+func (c Value) MarshalValue() (interface{}, error) {
+	return c.marshalValue()
+}
+
 func (c Value) MarshalJSON() ([]byte, error) {
 	v, err := c.marshalValue()
 	if err != nil {

@@ -237,9 +237,9 @@ func ValidateProject(raw interface{}) error {
 	return errs
 }
 
-func InterFullTypeName(typeName string, itemsType *ProjectConfigItemsType) string {
+func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) string {
 	if itemsType != nil {
-		return fmt.Sprintf("array<%v>", InterFullTypeName(itemsType.Type, itemsType.Items))
+		return fmt.Sprintf("array<%v>", InferFullTypeName(itemsType.Type, itemsType.Items))
 	}
 
 	return typeName
@@ -292,7 +292,7 @@ func (proj *Project) Validate() error {
 		if configType.Default != nil {
 			// when the default value is specified, validate it against the type
 			if !ValidateConfigValue(configType.Type, configType.Items, configType.Default) {
-				inferredTypeName := InterFullTypeName(configType.Type, configType.Items)
+				inferredTypeName := InferFullTypeName(configType.Type, configType.Items)
 				return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
 					configKey,
 					inferredTypeName)
