@@ -53,7 +53,7 @@ func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider s
 	// Allow per-execution override of the secrets provider via an environment
 	// variable. This allows a temporary replacement without updating the stack
 	// config, such a during CI.
-	if override := os.Getenv("PULUMI_SECRETS_PROVIDER"); override != "" {
+	if override := os.Getenv("PULUMI_CLOUD_SECRET_OVERRIDE"); override != "" {
 		secretsProvider = override
 	}
 

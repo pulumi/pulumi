@@ -28,7 +28,8 @@ import (
 
 func TestSecretsproviderOverride(t *testing.T) {
 	// Don't call t.Parallel because we temporarily modify
-	// PULUMI_SECRETS_PROVIDER env var and it may interfere with other tests.
+	// PULUMI_CLOUD_SECRET_OVERRIDE env var and it may interfere with other
+	// tests.
 
 	const stackConfig = "Pulumi.TestSecretsproviderOverride.yaml"
 	var stackName = tokens.Name("TestSecretsproviderOverride")
@@ -49,9 +50,9 @@ func TestSecretsproviderOverride(t *testing.T) {
 		}
 	})
 
-	t.Run("without override", func(t *testing.T) {
+	t.Run("with override", func(t *testing.T) {
 		opener.wantURL = "test://bar"
-		t.Setenv("PULUMI_SECRETS_PROVIDER", "test://bar")
+		t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")
 
 		// Last argument here shouldn't matter anymore, since it gets overriden
 		// by the env var. Both calls should succeed.
