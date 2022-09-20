@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet,go,nodejs,python
+  description: Fix generated `Pulumi.yaml` on convert
