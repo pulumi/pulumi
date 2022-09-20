@@ -103,9 +103,10 @@ type ProjectConfigItemsType struct {
 }
 
 type ProjectConfigType struct {
-	Type    string                  `json:"type" yaml:"type"`
-	Items   *ProjectConfigItemsType `json:"items" yaml:"items"`
-	Default interface{}             `json:"default" yaml:"default"`
+	Type        string                  `json:"type" yaml:"type"`
+	Description string                  `json:"description" yaml:"description"`
+	Items       *ProjectConfigItemsType `json:"items" yaml:"items"`
+	Default     interface{}             `json:"default" yaml:"default"`
 }
 
 // Project is a Pulumi project manifest.
