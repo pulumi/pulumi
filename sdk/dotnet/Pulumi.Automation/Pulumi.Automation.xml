@@ -635,7 +635,7 @@
             <summary>
             The secrets provider to user for encryption and decryption of stack secrets.
             <para/>
-            See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+            See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
             </summary>
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Program">
@@ -974,7 +974,7 @@
             <summary>
             The secrets provider to use for encryption and decryption of stack secrets.
             <para/>
-            See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+            See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.Program">
