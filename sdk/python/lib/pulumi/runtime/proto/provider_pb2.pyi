@@ -23,6 +23,7 @@ from google.protobuf.struct_pb2 import Struct
 class ConstructRequest:
     class PropertyDependencies:
         urns: List[str]
+    organization: str
     project: str
     stack: str
     config: Dict[str, str]
@@ -66,6 +67,7 @@ class CallRequest:
     argDependencies: Dict[str, ArgumentDependencies]
     provider: str
     version: str
+    organization: str
     project: str
     stack: str
     config: Dict[str, str]

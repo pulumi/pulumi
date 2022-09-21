@@ -47,7 +47,7 @@ export interface Options {
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
-    readonly organization?: string; // the name of the current organization (if available).
+    readonly organization?: string; // the name of the current organization.
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -92,7 +92,7 @@ export function resetOptions(
     process.env[nodeEnvKeys.parallel] = parallel.toString();
     process.env[nodeEnvKeys.monitorAddr] = monitorAddr;
     process.env[nodeEnvKeys.engineAddr] = engineAddr;
-    process.env[nodeEnvKeys.organization] = organization;
+    process.env[nodeEnvKeys.organization] = organization === "" ? "organization" : organization;
 }
 
 export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean, organization?: string) {
@@ -163,14 +163,10 @@ export function cacheDynamicProviders(): boolean {
 /**
  * Get the organization being run by the current update.
  */
-export function getOrganization(fallback?: string): string {
+export function getOrganization(): string {
     const organization = options().organization;
     if (organization) {
         return organization;
-    }
-
-    if (fallback !== undefined){
-        return fallback;
     }
 
     // If the organization is missing, specialize the error.

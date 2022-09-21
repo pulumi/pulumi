@@ -17,11 +17,10 @@
 import * as settings from "./runtime/settings";
 
 /**
- * getOrganization returns the current organization name. If no fallback value is given it throws an exception
- * if none is registered.
+ * getOrganization returns the current organization name.
  */
-export function getOrganization(fallback?: string): string {
-    return settings.getOrganization(fallback);
+export function getOrganization(): string {
+    return settings.getOrganization();
 }
 /**
  * getProject returns the current project name. It throws an exception if none is registered.
