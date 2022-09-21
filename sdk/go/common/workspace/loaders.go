@@ -104,8 +104,17 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
+	// just before marshalling, we will rewrite the config values
+	projectDef, err := SimplifyMarshalledProject(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	projectDef = RewriteShorthandConfigValues(projectDef)
+	modifiedProject, err := marshaller.Marshal(projectDef)
+
 	var project Project
-	err = marshaller.Unmarshal(b, &project)
+	err = marshaller.Unmarshal(modifiedProject, &project)
 	if err != nil {
 		return nil, err
 	}

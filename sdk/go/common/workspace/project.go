@@ -155,8 +155,47 @@ type Project struct {
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
-func ValidateProject(raw interface{}) error {
-	// Cast any map[interface{}] from the yaml decoder to map[string]
+// RewriteShorthandConfigValues rewrites short-hand version of configuration into a configuration type
+// for example the following config block definition:
+//
+//     config:
+//        instanceSize: t3.mirco
+//
+// will be rewritten into a typed value:
+//
+//     config:
+//       type: string
+//       default: t3.mirco
+//
+func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
+	configMap, foundConfig := project["config"]
+
+	if !foundConfig {
+		// no config defined, return as is
+		return project
+	}
+
+	config, ok := configMap.(map[string]interface{})
+
+	if !ok {
+		return project
+	}
+
+	for key, value := range config {
+		literalValue, isLiteral := value.(string)
+		if isLiteral {
+			configTypeDefinition := make(map[string]interface{})
+			configTypeDefinition["type"] = "string"
+			configTypeDefinition["default"] = literalValue
+			config[key] = configTypeDefinition
+		}
+	}
+
+	return project
+}
+
+// Cast any map[interface{}] from the yaml decoder to map[string]
+func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
 	var cast func(value interface{}) (interface{}, error)
 	cast = func(value interface{}) (interface{}, error) {
 		if objMap, ok := value.(map[interface{}]interface{}); ok {
@@ -188,29 +227,41 @@ func ValidateProject(raw interface{}) error {
 	}
 	result, err := cast(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var ok bool
 	var obj map[string]interface{}
 	if obj, ok = result.(map[string]interface{}); !ok {
-		return fmt.Errorf("expected an object")
+		return nil, fmt.Errorf("expected an object")
+	}
+
+	return obj, nil
+}
+
+func ValidateProject(raw interface{}) error {
+
+	project, err := SimplifyMarshalledProject(raw)
+	if err != nil {
+		return err
 	}
 
 	// Couple of manual errors to match Validate
-	name, ok := obj["name"]
+	name, ok := project["name"]
 	if !ok {
 		return errors.New("project is missing a 'name' attribute")
 	}
 	if strName, ok := name.(string); !ok || strName == "" {
 		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
-	if _, ok := obj["runtime"]; !ok {
+	if _, ok := project["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
+	project = RewriteShorthandConfigValues(project)
+
 	// Let everything else be caught by jsonschema
-	if err = ProjectSchema.Validate(obj); err == nil {
+	if err = ProjectSchema.Validate(project); err == nil {
 		return nil
 	}
 	validationError, ok := err.(*jsonschema.ValidationError)
