@@ -121,7 +121,10 @@ def run_list_packages(module_dir: str, tags: List[str]) -> Set[str]:
             text=True,
         )
     except sp.CalledProcessError as err:
-        raise Exception("Failed to list packages in module, usually this implies a Go compilation error. Check that `make lint` succeeds.") from err
+        message=f"Failed to list packages in module at path '{module_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds."
+        print(f"::error {message}", file=sys.stderr)
+        raise Exception(message) from err
+
     return set(cmd.stdout.split())
 
 def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
@@ -159,7 +162,9 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
             text=True,
         )
     except sp.CalledProcessError as err:
-        raise Exception("Failed to list packages in module, usually this implies a Go compilation error. Check that `make lint` succeeds.") from err
+        message=f"Failed to list tests in package dir '{pkg_dir}', usually this implies a Go compilation error. Check that `make lint` succeeds."
+        print(f"::error {message}", file=sys.stderr)
+        raise Exception(message) from err
 
     tests: List[str] = []
 
