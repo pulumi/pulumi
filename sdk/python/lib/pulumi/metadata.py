@@ -18,7 +18,7 @@ from .runtime.settings import get_project as runtime_gp
 from .runtime.settings import get_stack as runtime_gs
 
 
-def get_organization(fallback : Optional[str]) -> str:
+def get_organization(fallback : Optional[str] = None) -> str:
     """
     Returns the current organization name. If no fallback value is given it throws an exception if none is
     registered.
