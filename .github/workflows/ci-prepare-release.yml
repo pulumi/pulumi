@@ -75,7 +75,7 @@ jobs:
         working-directory: artifacts
         env:
           version: ${{ inputs.version }}
-        run: sha256sum ./* | sed 's/.\///' | tee "../sums.tmp/pulumi-${version}-checksums.txt"
+        run: sha256sum ./pulumi-*.{tar.gz,zip} | sed 's/.\///' | tee "../sums.tmp/pulumi-${version}-checksums.txt"
 
       - name: Checksums with BLAKE3
         working-directory: artifacts
