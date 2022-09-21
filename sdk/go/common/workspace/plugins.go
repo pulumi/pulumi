@@ -898,20 +898,20 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	return resp.Body, resp.ContentLength, nil
 }
 
-// DownloadError is an error that happened during the HTTP download of a plugin.
-type DownloadError struct {
+// downloadError is an error that happened during the HTTP download of a plugin.
+type downloadError struct {
 	msg  string
 	code int
 	url  *url.URL
 }
 
-func (e *DownloadError) Error() string {
+func (e *downloadError) Error() string {
 	return e.msg
 }
 
-// Create a new DownloadError with a message that indicates GITHUB_TOKEN should be set.
+// Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
 func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
-	return &DownloadError{
+	return &downloadError{
 		code: statusCode,
 		url:  url,
 		msg: fmt.Sprintf("%d HTTP error fetching plugin from %s. "+
@@ -922,19 +922,19 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 	}
 }
 
-// Create a new DownloadError.
+// Create a new downloadError.
 func newDownloadError(statusCode int, url *url.URL) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)
 	}
-	return &DownloadError{
+	return &downloadError{
 		code: statusCode,
 		url:  url,
 		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
 	}
 }
 
-func (e *DownloadError) Code() int {
+func (e *downloadError) Code() int {
 	return e.code
 }
 
@@ -1072,7 +1072,7 @@ func DownloadToFile(
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			if err, ok := readErr.(*DownloadError); ok &&
+			if err, ok := readErr.(*downloadError); ok &&
 				err.Code() == 404 || err.Code() == 403 {
 				return "", readErr
 			}
