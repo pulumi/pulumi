@@ -902,18 +902,20 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 type downloadError struct {
 	msg  string
 	code int
-	url  *url.URL
 }
 
 func (e *downloadError) Error() string {
 	return e.msg
 }
 
+func (e *downloadError) Code() int {
+	return e.code
+}
+
 // Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
 func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 	return &downloadError{
 		code: statusCode,
-		url:  url,
 		msg: fmt.Sprintf("%d HTTP error fetching plugin from %s. "+
 			"If this is a private GitHub repository, try "+
 			"providing a token via the GITHUB_TOKEN environment variable. "+
@@ -929,13 +931,8 @@ func newDownloadError(statusCode int, url *url.URL) error {
 	}
 	return &downloadError{
 		code: statusCode,
-		url:  url,
 		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
 	}
-}
-
-func (e *downloadError) Code() int {
-	return e.code
 }
 
 // installLock acquires a file lock used to prevent concurrent installs.
