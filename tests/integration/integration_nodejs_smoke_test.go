@@ -24,10 +24,6 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // Tests that stack references work in Node.
 func TestStackReferenceNodeJS(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
-
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 

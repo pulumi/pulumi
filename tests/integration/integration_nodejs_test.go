@@ -318,9 +318,6 @@ func TestStackParenting(t *testing.T) {
 }
 
 func TestStackBadParenting(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:           "stack_bad_parenting",
 		Dependencies:  []string{"@pulumi/pulumi"},
@@ -391,9 +388,6 @@ func TestConfigBasicNodeJS(t *testing.T) {
 }
 
 func TestConfigCaptureNodeJS(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("config_capture_e2e", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -645,9 +639,6 @@ func TestResourceWithSecretSerializationNodejs(t *testing.T) {
 }
 
 func TestStackReferenceSecretsNodejs(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
@@ -803,9 +794,6 @@ func TestCloudSecretProvider(t *testing.T) {
 
 // Tests a resource with a large (>4mb) string prop in Node.js
 func TestLargeResourceNode(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("large_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},

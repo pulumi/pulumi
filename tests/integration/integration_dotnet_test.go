@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -245,9 +244,6 @@ func TestConfigSecretsWarnDotNet(t *testing.T) {
 }
 
 func TestStackReferenceSecretsDotnet(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	owner := os.Getenv("PULUMI_TEST_OWNER")
 	if owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
