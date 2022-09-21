@@ -10,7 +10,7 @@ class Program
     {
         return Deployment.RunAsync(async () =>
         {
-            var slug = $"{Deployment.Instance.OrganizationName}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
+            var slug = $"{Deployment.Instance.OrganizationName()}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
             var a = new StackReference(slug);
 
             var gotError = false;

@@ -162,10 +162,14 @@ export function cacheDynamicProviders(): boolean {
 /**
  * Get the organization being run by the current update.
  */
-export function getOrganization(): string {
+export function getOrganization(fallback?: string): string {
     const organization = options().organization;
     if (organization) {
         return organization;
+    }
+
+    if (fallback !== undefined){
+        return fallback;
     }
 
     // If the organization is missing, specialize the error.

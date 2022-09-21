@@ -157,14 +157,18 @@ def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
 
 
-def get_organization() -> str:
+def get_organization(fallback : Optional[str]) -> str:
     """
-    Returns the current organization name (if available).
+    Returns the current organization name. If no fallback value is given it throws an exception if none is
+    registered.
 
     When writing unit tests, you can set this flag via `pulumi.runtime.set_mocks` by supplying a value
     for the argument `organization`.
     """
     if SETTINGS.organization is None:
+        if fallback is not None:
+            return fallback
+
         raise Exception(
             "Missing organization name; for test mode, please call `pulumi.runtime.setMocks"
         )

@@ -167,15 +167,15 @@ namespace Pulumi
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
-        string IDeployment.OrganizationName {
-            get
+        string IDeployment.OrganizationName(string? fallback) {
+            if (string.IsNullOrEmpty(_organizationName))
             {
-                if (string.IsNullOrEmpty(_organizationName))
-                {
+                if (fallback == null){
                     throw new Exception("organization is not available; for test mode, set this in `TestOptions`");
                 }
-                return _organizationName;
+                return fallback;
             }
+            return _organizationName;
         }
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
