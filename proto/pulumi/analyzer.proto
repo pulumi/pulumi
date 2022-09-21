@@ -80,7 +80,7 @@ message AnalyzerResourceOptions {
     bool deleteBeforeReplace = 3;                // true if this resource should be deleted before replacement.
     bool deleteBeforeReplaceDefined = 4;         // true if the deleteBeforeReplace property should be treated as defined even if it is false.
     repeated string additionalSecretOutputs = 5; // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 6;                 // a list of additional URNs that shoud be considered the same.
+    repeated string aliasURNs = 6;                 // a list of additional URNs that shoud be considered the same.
     CustomTimeouts customTimeouts = 7;           // a config block that will be used to configure timeouts for CRUD operations.
 }
 

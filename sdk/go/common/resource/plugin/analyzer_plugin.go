@@ -431,7 +431,7 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		AdditionalSecretOutputs:    secs,
-		Aliases:                    convertURNs(opts.Aliases),
+		AliasURNs:                  convertURNs(opts.AliasURNs),
 		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
 			Create: opts.CustomTimeouts.Create,
 			Update: opts.CustomTimeouts.Update,

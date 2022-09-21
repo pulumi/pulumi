@@ -1179,7 +1179,7 @@ proto.pulumirpc.AnalyzerResourceOptions.toObject = function(includeInstance, msg
     deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
     deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
-    aliasesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
+    aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
     customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts.toObject(includeInstance, f)
   };
 
@@ -1239,7 +1239,7 @@ proto.pulumirpc.AnalyzerResourceOptions.deserializeBinaryFromReader = function(m
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
-      msg.addAliases(value);
+      msg.addAliasurns(value);
       break;
     case 7:
       var value = new proto.pulumirpc.AnalyzerResourceOptions.CustomTimeouts;
@@ -1310,7 +1310,7 @@ proto.pulumirpc.AnalyzerResourceOptions.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getAliasesList();
+  f = message.getAliasurnsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       6,
@@ -1647,10 +1647,10 @@ proto.pulumirpc.AnalyzerResourceOptions.prototype.clearAdditionalsecretoutputsLi
 
 
 /**
- * repeated string aliases = 6;
+ * repeated string aliasURNs = 6;
  * @return {!Array<string>}
  */
-proto.pulumirpc.AnalyzerResourceOptions.prototype.getAliasesList = function() {
+proto.pulumirpc.AnalyzerResourceOptions.prototype.getAliasurnsList = function() {
   return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
 };
 
@@ -1659,7 +1659,7 @@ proto.pulumirpc.AnalyzerResourceOptions.prototype.getAliasesList = function() {
  * @param {!Array<string>} value
  * @return {!proto.pulumirpc.AnalyzerResourceOptions} returns this
  */
-proto.pulumirpc.AnalyzerResourceOptions.prototype.setAliasesList = function(value) {
+proto.pulumirpc.AnalyzerResourceOptions.prototype.setAliasurnsList = function(value) {
   return jspb.Message.setField(this, 6, value || []);
 };
 
@@ -1669,7 +1669,7 @@ proto.pulumirpc.AnalyzerResourceOptions.prototype.setAliasesList = function(valu
  * @param {number=} opt_index
  * @return {!proto.pulumirpc.AnalyzerResourceOptions} returns this
  */
-proto.pulumirpc.AnalyzerResourceOptions.prototype.addAliases = function(value, opt_index) {
+proto.pulumirpc.AnalyzerResourceOptions.prototype.addAliasurns = function(value, opt_index) {
   return jspb.Message.addToRepeatedField(this, 6, value, opt_index);
 };
 
@@ -1678,8 +1678,8 @@ proto.pulumirpc.AnalyzerResourceOptions.prototype.addAliases = function(value, o
  * Clears the list making it empty but non-null.
  * @return {!proto.pulumirpc.AnalyzerResourceOptions} returns this
  */
-proto.pulumirpc.AnalyzerResourceOptions.prototype.clearAliasesList = function() {
-  return this.setAliasesList([]);
+proto.pulumirpc.AnalyzerResourceOptions.prototype.clearAliasurnsList = function() {
+  return this.setAliasurnsList([]);
 };
 
 

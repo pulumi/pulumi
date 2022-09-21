@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
@@ -96,7 +97,8 @@ type ResourceOptions struct {
 	PluginDownloadURL       string
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	Aliases                 []resource.URN
+	AliasURNs               []resource.URN
+	Aliases					[]pulumi.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
@@ -138,7 +140,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.Aliases {
+	for _, a := range opts.AliasURNs {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 
@@ -188,7 +190,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		Aliases:                    aliasStrings,
+		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,

@@ -66,7 +66,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 	aliased := make(map[resource.URN]resource.URN)
 	for _, state := range snap.Resources {
 		// Add to aliased maps
-		for _, alias := range state.Aliases {
+		for _, alias := range state.AliasURNs {
 			// For ease of implementation, some SDKs may end up creating the same alias to the
 			// same resource multiple times.  That's fine, only error if we see the same alias,
 			// but it maps to *different* resources.

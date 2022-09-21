@@ -345,7 +345,7 @@ type ConstructInfo struct {
 // ConstructOptions captures options for a call to Construct.
 type ConstructOptions struct {
 	// Aliases is the set of aliases for the component.
-	Aliases []resource.URN
+	AliasURNs []resource.URN
 	// Dependencies is the list of resources this component depends on.
 	Dependencies []resource.URN
 	// Protect is true if the component is protected.

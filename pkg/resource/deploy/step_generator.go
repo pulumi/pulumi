@@ -351,7 +351,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var old *resource.State
 	var hasOld bool
 	var alias []resource.URN
-	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+	for _, urnOrAlias := range append([]resource.URN{urn}, goal.AliasURNs...) {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
@@ -535,7 +535,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.Aliases,
+				AliasURNs:                 new.AliasURNs,
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
@@ -1720,7 +1720,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 					IgnoreChanges:           goal.IgnoreChanges,
 					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 v.Aliases,
+					AliasURNs:                 v.AliasURNs,
 					CustomTimeouts:          v.CustomTimeouts,
 				},
 			},

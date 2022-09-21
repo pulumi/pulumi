@@ -983,9 +983,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliases := []resource.URN{}
-	for _, aliasURN := range req.GetAliases() {
-		aliases = append(aliases, resource.URN(aliasURN))
+	aliasURNs := []resource.URN{}
+	for _, aliasURN := range req.GetAliasURNs() {
+		aliasURNs = append(aliasURNs, resource.URN(aliasURN))
 	}
 
 	dependencies := []resource.URN{}
@@ -1090,7 +1090,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
+		aliasURNs, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1103,7 +1103,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			Aliases:              aliases,
+			AliasURNs:            aliasURNs,
 			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
@@ -1129,7 +1129,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete),
+				additionalSecretOutputs, aliasURNs, id, &timeouts, replaceOnChanges, retainOnDelete),
 			done: make(chan *RegisterResult),
 		}
 

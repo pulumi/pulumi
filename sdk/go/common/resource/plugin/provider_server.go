@@ -443,9 +443,9 @@ func (p *providerServer) Construct(ctx context.Context,
 		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
-	aliases := make([]resource.URN, len(req.GetAliases()))
-	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.URN(urn)
+	aliasURNs := make([]resource.URN, len(req.GetAliasURNs()))
+	for i, urn := range req.GetAliasURNs() {
+		aliasURNs[i] = resource.URN(urn)
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
@@ -460,7 +460,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
 	options := ConstructOptions{
-		Aliases:              aliases,
+		AliasURNs:            aliasURNs,
 		Dependencies:         dependencies,
 		Protect:              req.GetProtect(),
 		Providers:            req.GetProviders(),

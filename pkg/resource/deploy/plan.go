@@ -132,7 +132,7 @@ type GoalPlan struct {
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
 	// additional URNs that should be aliased to this resource.
-	Aliases []resource.URN
+	AliasURNs []resource.URN
 	// the expected ID of the resource, if any.
 	ID resource.ID
 	// an optional config object for resource options
@@ -185,7 +185,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 		IgnoreChanges:           goal.IgnoreChanges,
 		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
-		Aliases:                 goal.Aliases,
+		AliasURNs:               goal.AliasURNs,
 		ID:                      goal.ID,
 		CustomTimeouts:          goal.CustomTimeouts,
 	}
@@ -289,7 +289,7 @@ func checkMissingPlan(
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 oldState.Aliases,
+		AliasURNs:               oldState.AliasURNs,
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
 	}
@@ -563,7 +563,7 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the alias sets are identical.
-	if message, changed := rp.diffURNs(rp.Goal.Aliases, programGoal.Aliases); changed {
+	if message, changed := rp.diffURNs(rp.Goal.AliasURNs, programGoal.AliasURNs); changed {
 		return fmt.Errorf("aliases changed: %v", message)
 	}
 

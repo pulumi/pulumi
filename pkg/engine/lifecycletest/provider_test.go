@@ -424,7 +424,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
 			deploytest.ResourceOptions{
 				Inputs:  providerInputs,
-				Aliases: aliases,
+				AliasURNs: aliases,
 			})
 		assert.NoError(t, err)
 
@@ -516,7 +516,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
 			deploytest.ResourceOptions{
 				Inputs:  providerInputs,
-				Aliases: aliases,
+				AliasURNs: aliases,
 			})
 		assert.NoError(t, err)
 

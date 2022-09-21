@@ -323,7 +323,7 @@ message ConstructRequest {
     map<string, PropertyDependencies> inputDependencies = 11; // a map from property keys to the dependencies of the property.
     bool protect = 12;                                        // true if the resource should be marked protected.
     map<string, string> providers = 13;                       // the map of providers to use for this resource's children.
-    repeated string aliases = 14;                             // a list of additional URNs that shoud be considered the same.
+    repeated string aliasURNs = 14;                             // a list of additional URNs that shoud be considered the same.
     repeated string dependencies = 15;                        // a list of URNs that this resource depends on, as observed by the language host.
     repeated string configSecretKeys = 16;                    // the configuration keys that have secret values.
     string organization = 17;                                 // the organization of the stack being deployed into.

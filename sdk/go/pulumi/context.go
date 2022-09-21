@@ -645,7 +645,6 @@ func (ctx *Context) ReadResource(
 			Properties:              inputs.rpcProps,
 			Provider:                inputs.provider,
 			Id:                      string(idToRead),
-			Aliases:                 inputs.aliases,
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
@@ -848,7 +847,7 @@ func (ctx *Context) registerResource(
 				ImportId:                inputs.importID,
 				CustomTimeouts:          inputs.customTimeouts,
 				IgnoreChanges:           inputs.ignoreChanges,
-				Aliases:                 inputs.aliases,
+				AliasURNs:               inputs.aliasURNs,
 				AcceptSecrets:           true,
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
@@ -1242,7 +1241,7 @@ type resourceInputs struct {
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges           []string
-	aliases                 []string
+	aliasURNs                 []string
 	additionalSecretOutputs []string
 	version                 string
 	pluginDownloadURL       string
@@ -1329,7 +1328,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
-		aliases:                 aliases,
+		aliasURNs:               aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
 		pluginDownloadURL:       state.pluginDownloadURL,

@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1419,7 +1420,8 @@ type Resource struct {
 	name                string
 	children            []Resource
 	props               resource.PropertyMap
-	aliases             []resource.URN
+	aliasURNs           []resource.URN
+	aliases				[]pulumi.Alias
 	dependencies        []resource.URN
 	parent              resource.URN
 	deleteBeforeReplace bool
@@ -1432,7 +1434,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			Dependencies:        r.dependencies,
 			Inputs:              r.props,
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
-			Aliases:             r.aliases,
+			AliasURNs:           r.aliasURNs,
 		})
 		if err != nil {
 			return err
@@ -1445,7 +1447,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 	return nil
 }
 
-func TestAliases(t *testing.T) {
+func TestAliasURNs(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1520,14 +1522,14 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
-		aliases: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
+		aliasURNs: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n3",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
@@ -1537,7 +1539,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n3",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
@@ -1547,7 +1549,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n3",
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
@@ -1564,7 +1566,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t2",
 		name: "n1",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
@@ -1573,7 +1575,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
 		},
@@ -1583,7 +1585,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
@@ -1603,7 +1605,7 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("x"): resource.NewNumberProperty(42),
 		},
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
@@ -1615,7 +1617,7 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
 		},
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
@@ -1627,7 +1629,7 @@ func TestAliases(t *testing.T) {
 		props: resource.PropertyMap{
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
 		},
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
@@ -1641,7 +1643,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(999),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
@@ -1667,14 +1669,14 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:            "pkgA:index:t2-new",
 		name:         "n2-new",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t2::n2",
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
@@ -1700,14 +1702,14 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(2),
 		},
 		deleteBeforeReplace: true,
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:      "pkgA:index:t2-new",
 		name:   "n2-new",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
@@ -1716,13 +1718,13 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n2",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n3",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}}, []display.StepOp{deploy.OpCreate}, true)
@@ -1731,13 +1733,13 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n2",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
 	}}, []display.StepOp{deploy.OpCreate}, false)
@@ -1761,21 +1763,21 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:      "pkgA:index:t2",
 		name:   "n1-new-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n1-sub",
 		},
 	}, {
 		t:      "pkgA:index:t3",
 		name:   "n1-new-sub-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new$pkgA:index:t2::n1-new-sub"),
-		aliases: []resource.URN{
+		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2$pkgA:index:t3::n1-sub-sub",
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
@@ -1816,21 +1818,21 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1-v100",
 		name:    "n1-new",
-		aliases: n1Aliases,
+		aliasURNs: n1Aliases,
 	}, {
 		t:       "pkgA:index:t2-v10",
 		name:    "n1-new-sub",
 		parent:  resource.URN("urn:pulumi:test::test::pkgA:index:t1-v100::n1-new"),
-		aliases: n2Aliases,
+		aliasURNs: n2Aliases,
 	}, {
 		t:       "pkgA:index:t3",
 		name:    "n1-new-sub-sub",
 		parent:  resource.URN("urn:pulumi:test::test::pkgA:index:t1-v100$pkgA:index:t2-v10::n1-new-sub"),
-		aliases: n3Aliases,
+		aliasURNs: n3Aliases,
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	var err error
-	snap, err = snap.NormalizeURNReferences()
+	_, err = snap.NormalizeURNReferences()
 	assert.Nil(t, err)
 }
 
@@ -2412,7 +2414,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					AliasURNs: options.AliasURNs,
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -2599,7 +2601,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:       parent,
 					Protect:      options.Protect,
-					Aliases:      options.Aliases,
+					AliasURNs:    options.AliasURNs,
 					Dependencies: options.Dependencies,
 				})
 				assert.NoError(t, err)
@@ -2749,7 +2751,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					AliasURNs: options.AliasURNs,
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -2842,7 +2844,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
-					Aliases: options.Aliases,
+					AliasURNs: options.AliasURNs,
 					Protect: options.Protect,
 				})
 				assert.NoError(t, err)
@@ -4224,7 +4226,7 @@ func TestAliasWithPlans(t *testing.T) {
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resourceName, true, deploytest.ResourceOptions{
 			Inputs:  ins,
-			Aliases: aliases,
+			AliasURNs: aliases,
 		})
 		assert.NoError(t, err)
 

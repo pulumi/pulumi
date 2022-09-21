@@ -279,7 +279,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				if res.URN.Name() == "res3" {
 					foundRes3 = true
 					assert.Equal(t, "baz", res.Inputs["foo"].StringValue())
-					assert.Len(t, res.Aliases, 0)
+					assert.Len(t, res.AliasURNs, 0)
 				}
 				// "res4" is impacted by two component parent transformations which set
 				// Foo to "baz1" and then "baz2" and also a global stack

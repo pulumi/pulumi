@@ -231,9 +231,9 @@ namespace Pulumi
             public readonly Dictionary<string, string> ProviderRefs;
             public readonly HashSet<string> AllDirectDependencyUrns;
             public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyUrns;
-            public readonly List<string> Aliases;
+            public readonly List<string> AliasURNs;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string> aliasURNs)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
@@ -241,7 +241,7 @@ namespace Pulumi
                 ProviderRefs = providerRefs;
                 AllDirectDependencyUrns = allDirectDependencyUrns;
                 PropertyToDirectDependencyUrns = propertyToDirectDependencyUrns;
-                Aliases = aliases;
+                AliasURNs = aliasURNs;
             }
         }
     }

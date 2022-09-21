@@ -1185,9 +1185,9 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	}
 
 	// Marshal the aliases.
-	aliases := make([]string, len(options.Aliases))
-	for i, alias := range options.Aliases {
-		aliases[i] = string(alias)
+	aliasURNs := make([]string, len(options.AliasURNs))
+	for i, aliasURN := range options.AliasURNs {
+		aliasURNs[i] = string(aliasURN)
 	}
 
 	// Marshal the dependencies.
@@ -1231,7 +1231,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		Protect:           options.Protect,
 		Providers:         options.Providers,
 		InputDependencies: inputDependencies,
-		Aliases:           aliases,
+		AliasURNs:         aliasURNs,
 		Dependencies:      dependencies,
 	})
 	if err != nil {

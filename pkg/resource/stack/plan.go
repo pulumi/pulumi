@@ -103,7 +103,7 @@ func SerializeResourcePlan(
 			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
 			IgnoreChanges:           plan.Goal.IgnoreChanges,
 			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-			Aliases:                 plan.Goal.Aliases,
+			AliasURNs:               plan.Goal.AliasURNs,
 			ID:                      plan.Goal.ID,
 			CustomTimeouts:          plan.Goal.CustomTimeouts,
 		}
@@ -165,7 +165,7 @@ func DeserializeResourcePlan(
 			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
 			IgnoreChanges:           plan.Goal.IgnoreChanges,
 			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-			Aliases:                 plan.Goal.Aliases,
+			AliasURNs:               plan.Goal.AliasURNs,
 			ID:                      plan.Goal.ID,
 			CustomTimeouts:          plan.Goal.CustomTimeouts,
 		}
