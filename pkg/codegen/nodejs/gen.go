@@ -1502,7 +1502,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
 	referencesNestedTypes := mod.getImports(variables, externalImports, imports)
 
-	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
+	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true, ""), externalImports, imports)
 
 	fmt.Fprintf(w, "declare var exports: any;\n")
 
@@ -1542,17 +1542,34 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
-func (mod *modContext) getRelativePath() string {
-	rel, err := filepath.Rel(mod.mod, "")
+func (mod *modContext) getRelativePath(dirRoot string) string {
+	var currPath string
+	if dirRoot == "" {
+		currPath = mod.mod
+	} else {
+		currPath = dirRoot
+	}
+	rel, err := filepath.Rel(currPath, "")
 	contract.Assert(err == nil)
 	return path.Dir(filepath.ToSlash(rel))
 }
 
-func (mod *modContext) sdkImports(nested, utilities bool) []string {
+func (mod *modContext) sdkImports(nested, utilities bool, dirRoot string) []string {
 	imports := []string{"import * as pulumi from \"@pulumi/pulumi\";"}
 
-	relRoot := mod.getRelativePath()
+	// TODO: Skip writing sdkImports for types.inputs/types.outputs as special case.
+	relRoot := mod.getRelativePath(dirRoot)
+	// If this file is generating inputs in /types/, then it will be one level
+	// lower than otherwise.
+	// if typegen {
+	//	relRoot = path.Join("..", relRoot)
+	// }
+	fmt.Printf("Mod: %s -- relRoot: %s\n", mod.mod, relRoot)
 	if nested {
+		// TODO: If we're nested, we need to know HOW FAR we're nested!
+		//       this is only for nested TYPE outputs/inputs. Those are
+		//       potentially nested but ALSO nested wthin the types file,
+		//       which makes matters worse since they could be nested even deeper.
 		imports = append(imports, []string{
 			fmt.Sprintf(`import * as inputs from "%s/types/input";`, relRoot),
 			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
@@ -1575,12 +1592,13 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 }
 
 func (mod *modContext) utilitiesImport() string {
-	relRoot := mod.getRelativePath()
+	relRoot := mod.getRelativePath("")
 	return fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot)
 }
 
-func (mod *modContext) genTypes() (string, string, error) {
-	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+func (mod *modContext) buildImports() (codegen.StringSet, map[string]codegen.StringSet) {
+	var externalImports = codegen.NewStringSet()
+	var imports = map[string]codegen.StringSet{}
 	var hasDefaultObjects bool
 	for _, t := range mod.types {
 		if t.IsOverlay {
@@ -1596,23 +1614,40 @@ func (mod *modContext) genTypes() (string, string, error) {
 	// Instantiating the default might require an environmental variable. This
 	// uses utilities.
 	if hasDefaultObjects {
-		externalImports.Add(fmt.Sprintf("import * as utilities from \"%s/utilities\";", mod.getRelativePath()))
+		externalImports.Add(fmt.Sprintf("import * as utilities from \"%s/utilities\";", mod.getRelativePath("")))
+	}
+	return externalImports, imports
+}
+
+func (mod *modContext) genTypes() ([]*ioFile, error) {
+	var (
+		inputFiles, outputFiles []*ioFile
+		err                     error
+		// Fetch the collection of imports needed by these modules.
+		externalImports, imports = mod.buildImports()
+		// Build a file tree out of the types, then emit them.
+		namespaces = mod.getNamespaces()
+		buildCtx   = func(input bool) *ioContext {
+			return &ioContext{
+				mod:             mod,
+				input:           input,
+				imports:         imports,
+				externalImports: externalImports,
+			}
+		}
+
+		inputCtx  = buildCtx(true)
+		outputCtx = buildCtx(false)
+	)
+	// Iterate through the namespaces, generating one per node in the tree.
+	if inputFiles, err = namespaces[""].intoIOFiles(inputCtx, "./types"); err != nil {
+		return nil, err
+	}
+	if outputFiles, err = namespaces[""].intoIOFiles(outputCtx, "./types"); err != nil {
+		return nil, err
 	}
 
-	inputs, outputs := &bytes.Buffer{}, &bytes.Buffer{}
-	mod.genHeader(inputs, mod.sdkImports(true, false), externalImports, imports)
-	mod.genHeader(outputs, mod.sdkImports(true, false), externalImports, imports)
-
-	// Build a namespace tree out of the types, then emit them.
-	namespaces := mod.getNamespaces()
-	if err := mod.genNamespace(inputs, namespaces[""], true, 0); err != nil {
-		return "", "", err
-	}
-	if err := mod.genNamespace(outputs, namespaces[""], false, 0); err != nil {
-		return "", "", err
-	}
-
-	return inputs.String(), outputs.String(), nil
+	return append(inputFiles, outputFiles...), nil
 }
 
 type namespace struct {
@@ -1620,6 +1655,151 @@ type namespace struct {
 	types    []*schema.ObjectType
 	enums    []*schema.EnumType
 	children []*namespace
+}
+
+// The Debug method returns a string representation of
+// the namespace for the purposes of debugging.
+func (ns namespace) Debug() string {
+	var children []string
+	for _, child := range ns.children {
+		children = append(children, child.name)
+	}
+	var childrenStr = strings.Join(children, "\t\n")
+	return fmt.Sprintf(
+		"Namespace %s:\n\tTypes: %d\n\tEnums: %d\n\tChildren:\n%s",
+		ns.name,
+		len(ns.types),
+		len(ns.enums),
+		childrenStr,
+	)
+}
+
+// ioContext defines a set of parameters used when generating input/output
+// type definitions. These parameters are stable no matter which directory
+// is getting generated.
+type ioContext struct {
+	mod             *modContext
+	input           bool
+	imports         map[string]codegen.StringSet
+	externalImports codegen.StringSet
+}
+
+// intoIOFiles converts this namespace into one or more files.
+// It recursively builds one file for each node in the tree.
+// If input=true, then it builds input types. Otherwise, it
+// builds output types.
+// The parameters in ctx are stable regardless of the depth of recursion,
+// but parent is expected to change with each recursive call.
+func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, error) {
+	// We generate the input and output namespaces when there are enums, regardless of i
+	// they are empty.
+	if ns == nil {
+		panic("TODO: The caller needs to check if this is nil or not first.")
+	}
+	fmt.Println(ns.Debug())
+	// Declare a new file to store the contents exposed at this directory level.
+	var dirRoot = path.Join(parent, ns.name)
+	var filename string
+	if ctx.input {
+		filename = path.Join(dirRoot, "input.ts")
+	} else {
+		filename = path.Join(dirRoot, "output.ts")
+	}
+	fmt.Printf("Generating namespace into IO file: %s\n", filename)
+	var file = newIOFile(filename)
+	// We start every file with the header information.
+	ctx.mod.genHeader(file.writer(), ctx.mod.sdkImports(true, false, dirRoot), ctx.externalImports, ctx.imports)
+	// We want to organize the items in the source file by alphabetical order.
+	sort.Slice(ns.types, func(i, j int) bool {
+		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+	})
+	sort.Slice(ns.enums, func(i, j int) bool {
+		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
+	})
+	// Now, we write out the types declared at this directory
+	// level to the file.
+	var files = []*ioFile{file}
+	for i, t := range ns.types {
+		var isInputType = ctx.input && ctx.mod.details(t).inputType
+		var isOutputType = !ctx.input && ctx.mod.details(t).outputType
+		// Only write input and output types.
+		if isInputType || isOutputType {
+			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
+				return files, err
+			}
+			if i != len(ns.types)-1 {
+				fmt.Fprintf(file.writer(), "\n")
+			}
+		}
+	}
+	// We have successfully written all types at this level.
+	// Next, we recurse to generate the files at the next directory level.
+	sort.Slice(ns.children, func(i, j int) bool {
+		return ns.children[i].name < ns.children[j].name
+	})
+	for i, child := range ns.children {
+		// At this level, we export any nested definitions from
+		// the next level.
+		var fullPath = path.Join(dirRoot, child.name)
+		fmt.Printf("-----> Exporting file %s with parent %s\n", fullPath, dirRoot)
+		//fmt.Fprintf(file.writer(), "export * as %s from \"%s\";\n", child.name, fullPath)
+		fmt.Fprintf(file.writer(), "export * as %s from \"./%s\";\n", child.name, child.name)
+		// fmt.Fprintf(file.writer(), "export type { %s };", child.name)
+		nestedFiles, err := child.intoIOFiles(ctx, dirRoot)
+		if err != nil {
+			return nil, err
+		}
+		if i != len(ns.children)-1 {
+			fmt.Fprintf(file.writer(), "\n")
+		}
+		// Collect these files to return.
+		files = append(files, nestedFiles...)
+	}
+
+	// Lastly, we write the index file for this directory once.
+	// We don't want to generate the file twice, when this function is called
+	// with input=true and again when input=false, so we only generate it
+	// when input=true.
+	// As a special case, we skip the top-level directory /types/, since that
+	// is written elsewhere.
+	if parent != "./types" && ctx.input {
+		var indexPath = path.Join(dirRoot, "index.ts")
+		var file = newIOFile(indexPath)
+		ctx.mod.genHeader(file.writer(), nil, nil, nil)
+		fmt.Fprintf(file.writer(), "export * from \"./%s\";\n", "input")
+		fmt.Fprintf(file.writer(), "export * from \"./%s\";\n", "output")
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+// An ioFile represents a file containing Input/Output type definitions.
+type ioFile struct {
+	// Each file has a name relative to the top-level directory.
+	filename string
+	// This writer stores the contents of the file as we build it incrementally.
+	buffer *bytes.Buffer
+}
+
+// newIOFile constructs a new ioFile
+func newIOFile(name string) *ioFile {
+	return &ioFile{
+		filename: name,
+		buffer:   bytes.NewBuffer(nil),
+	}
+}
+
+func (f *ioFile) name() string {
+	return f.filename
+}
+
+func (f *ioFile) writer() io.Writer {
+	return f.buffer
+}
+
+func (f *ioFile) contents() []byte {
+	return f.buffer.Bytes()
 }
 
 func (mod *modContext) getNamespaces() map[string]*namespace {
@@ -1844,7 +2024,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		referencesNestedTypes := mod.getImportsForResource(r, externalImports, imports, r)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true, ""), externalImports, imports)
 
 		rinfo, err := mod.genResource(buffer, r)
 		if err != nil {
@@ -1866,7 +2046,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		referencesNestedTypes := mod.getImports(f, externalImports, imports)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true, ""), externalImports, imports)
 
 		funInfo, err := mod.genFunction(buffer, f)
 		if err != nil {
@@ -1902,12 +2082,13 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	// Nested types
 	// Importing enums always imports inputs and outputs, so if we have enums we generate inputs and outputs
 	if len(mod.types) > 0 || (mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums && mod.mod == "types") {
-		input, output, err := mod.genTypes()
+		files, err := mod.genTypes()
 		if err != nil {
 			return err
 		}
-		fs.Add(path.Join(modDir, "input.ts"), []byte(input))
-		fs.Add(path.Join(modDir, "output.ts"), []byte(output))
+		for _, file := range files {
+			fs.Add(file.name(), []byte(file.contents()))
+		}
 	}
 
 	// Index
@@ -1945,7 +2126,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 	var imports []string
 	// Include the SDK import if we'll be registering module resources.
 	if len(mod.resources) != 0 {
-		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
+		imports = mod.sdkImports(false, true, "")
 	} else if len(children) > 0 || len(mod.functions) > 0 {
 		// Even if there are no resources, exports ref utilities.
 		imports = append(imports, mod.utilitiesImport())
@@ -1983,7 +2164,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		} else if len(mod.enums) > 0 {
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "// Export enums:\n")
-			rel := mod.getRelativePath()
+			rel := mod.getRelativePath("")
 			var filePath string
 			if mod.mod == "" {
 				filePath = ""

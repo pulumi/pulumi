@@ -236,3 +236,49 @@ func Test_isStringType(t *testing.T) {
 		})
 	}
 }
+
+// This test asserts that modContext.getRelativePath()
+// returns the right relative path, regardless of whether
+// the file is a resource definition or an Input/Output declaration
+// from /types/
+func TestGetRelativePath(t *testing.T) {
+	t.Parallel()
+	type TestCase struct {
+		mod      string
+		dirRoot  string
+		expected string
+	}
+	var cases = []TestCase{
+		{
+			mod:      "foo",
+			dirRoot:  "",
+			expected: "..",
+		}, {
+			mod:      "foo/bar",
+			dirRoot:  "",
+			expected: "../..",
+		}, {
+			mod:      "types/accessanalyzer/input",
+			dirRoot:  "",
+			expected: "../../..",
+		}, {
+			mod:      "input",
+			dirRoot:  "types/accessanalyzer",
+			expected: "../..",
+		},
+	}
+	for _, tc := range cases {
+		var ctx = &modContext{mod: tc.mod}
+		var observed = ctx.getRelativePath(tc.dirRoot)
+		require.Equal(
+			t,
+			tc.expected,
+			observed,
+			"Case (%s, %s): Expected %s, Observed %s",
+			tc.mod,
+			tc.dirRoot,
+			tc.expected,
+			observed,
+		)
+	}
+}

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/nodejs
+  description: Splits input and output definitions into multiple files.
