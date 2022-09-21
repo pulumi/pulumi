@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -741,7 +742,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
+				buildTestProvider(t, filepath.Join("..", "testprovider")),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:                    []string{pathEnv},
@@ -783,7 +784,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
+				buildTestProvider(t, filepath.Join("..", "testprovider")),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:                    []string{pathEnv},
@@ -800,6 +801,37 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
+func buildTestProvider(t *testing.T, providerDir string) string {
+	fn := func() {
+		providerName := "pulumi-resource-testprovider"
+		if runtime.GOOS == "windows" {
+			providerName += ".exe"
+		}
+
+		_, err := os.Stat(filepath.Join(providerDir, providerName))
+		if err == nil {
+			return
+		} else if errors.Is(err, os.ErrNotExist) {
+			// Not built yet, continue.
+		} else {
+			t.Fatalf("Unexpected error building test provider: %v", err)
+		}
+
+		cmd := exec.Command("go", "build", "-o", providerName)
+		cmd.Dir = providerDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
+		}
+	}
+	lockfile := filepath.Join(providerDir, ".lock")
+	timeout := 10 * time.Minute
+	synchronouslyDo(t, lockfile, timeout, fn)
+
+	// Allows us to drop this in in places where providerDir was used:
+	return providerDir
+}
+
 func runComponentSetup(t *testing.T, testDir string) {
 	ptesting.YarnInstallMutex.Lock()
 	defer ptesting.YarnInstallMutex.Unlock()
@@ -808,7 +840,20 @@ func runComponentSetup(t *testing.T, testDir string) {
 	contract.AssertNoError(err)
 	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
+	fn := func() {
+		cmd := exec.Command("bash", setupFilename)
+		cmd.Dir = testDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
+		}
+	}
 	lockfile := filepath.Join(testDir, ".lock")
+	timeout := 10 * time.Minute
+	synchronouslyDo(t, lockfile, timeout, fn)
+}
+
+func synchronouslyDo(t *testing.T, lockfile string, timeout time.Duration, fn func()) {
 	mutex := fsutil.NewFileMutex(lockfile)
 	defer func() {
 		assert.NoError(t, mutex.Unlock())
@@ -825,20 +870,15 @@ func runComponentSetup(t *testing.T, testDir string) {
 			}
 		}
 
-		cmd := exec.Command("bash", setupFilename)
-		cmd.Dir = testDir
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
+		fn()
 		lockWait <- struct{}{}
 	}()
 
 	select {
-	case <-time.After(10 * time.Minute):
+	case <-time.After(timeout):
 		t.Fatalf("timed out waiting for lock on %s", lockfile)
 	case <-lockWait:
-		// waited for lock
+		// waited for fn, success.
 	}
 }
 
@@ -867,7 +907,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
+				buildTestProvider(t, filepath.Join("..", "testprovider")),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
@@ -1102,7 +1142,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
+				buildTestProvider(t, filepath.Join("..", "testprovider")),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
@@ -1158,7 +1198,7 @@ func TestProviderDownloadURL(t *testing.T) {
 	for _, lang := range languages {
 		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
-			env := pathEnv(t, filepath.Join("..", "testprovider"))
+			env := pathEnv(t, buildTestProvider(t, filepath.Join("..", "testprovider")))
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    dir,
@@ -1174,6 +1214,7 @@ func TestProviderDownloadURL(t *testing.T) {
 
 // printfTestValidation is used by the TestPrintfXYZ test cases in the language-specific test
 // files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
+//
 //nolint:deadcode // The linter doesn't see the uses since the consumers are conditionally compiled tests.
 func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 	var foundStdout int

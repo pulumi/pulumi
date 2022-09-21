@@ -17,7 +17,7 @@ type World struct {
 // WorldInput is an input type that accepts WorldArgs and WorldOutput values.
 // You can construct a concrete instance of `WorldInput` via:
 //
-//          WorldArgs{...}
+//	WorldArgs{...}
 type WorldInput interface {
 	pulumi.Input
 

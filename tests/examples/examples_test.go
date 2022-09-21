@@ -39,28 +39,6 @@ func TestAccMinimal(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
-func TestAccMinimal_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "minimal"),
-			Config: map[string]string{
-				"name": "Pulumi",
-			},
-			Secrets: map[string]string{
-				"secret": "this is my secret message",
-			},
-			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				// Simple runtime validation that just ensures the checkpoint was written and read.
-				assert.NotNil(t, stackInfo.Deployment)
-			},
-			RunBuild: true,
-			CloudURL: integration.MakeTempBackend(t),
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -70,22 +48,6 @@ func TestAccDynamicProviderSimple(t *testing.T) {
 				"simple:config:x": "1",
 				"simple:config:y": "1",
 			},
-		})
-
-	integration.ProgramTest(t, &test)
-}
-
-//nolint:paralleltest // uses parallel programtest
-func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
-	test := getBaseOptions().
-		With(integration.ProgramTestOptions{
-			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
-			Config: map[string]string{
-				"simple:config:w": "1",
-				"simple:config:x": "1",
-				"simple:config:y": "1",
-			},
-			CloudURL: integration.MakeTempBackend(t),
 		})
 
 	integration.ProgramTest(t, &test)

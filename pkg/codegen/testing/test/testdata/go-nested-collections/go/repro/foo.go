@@ -87,7 +87,7 @@ func (i *Foo) ToFooOutputWithContext(ctx context.Context) FooOutput {
 // FooArrayInput is an input type that accepts FooArray and FooArrayOutput values.
 // You can construct a concrete instance of `FooArrayInput` via:
 //
-//          FooArray{ FooArgs{...} }
+//	FooArray{ FooArgs{...} }
 type FooArrayInput interface {
 	pulumi.Input
 
@@ -112,7 +112,7 @@ func (i FooArray) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutpu
 // FooMapInput is an input type that accepts FooMap and FooMapOutput values.
 // You can construct a concrete instance of `FooMapInput` via:
 //
-//          FooMap{ "key": FooArgs{...} }
+//	FooMap{ "key": FooArgs{...} }
 type FooMapInput interface {
 	pulumi.Input
 

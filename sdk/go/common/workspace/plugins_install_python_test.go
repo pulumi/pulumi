@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build python || all
-// +build python all
 
 package workspace
 

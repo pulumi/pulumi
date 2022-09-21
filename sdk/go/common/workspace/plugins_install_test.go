@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build nodejs || python || all
-// +build nodejs python all
 
 package workspace
 
@@ -118,7 +117,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	skipMetadata := true
 	plugins, err := getPlugins(dir, skipMetadata)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(plugins))
+	require.Equal(t, 1, len(plugins))
 	assert.Equal(t, plugin.Name, plugins[0].Name)
 	assert.Equal(t, plugin.Kind, plugins[0].Kind)
 	assert.Equal(t, *plugin.Version, *plugins[0].Version)

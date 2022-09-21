@@ -79,7 +79,7 @@ func (i *RegistryGeoReplication) ToRegistryGeoReplicationOutputWithContext(ctx c
 // RegistryGeoReplicationArrayInput is an input type that accepts RegistryGeoReplicationArray and RegistryGeoReplicationArrayOutput values.
 // You can construct a concrete instance of `RegistryGeoReplicationArrayInput` via:
 //
-//          RegistryGeoReplicationArray{ RegistryGeoReplicationArgs{...} }
+//	RegistryGeoReplicationArray{ RegistryGeoReplicationArgs{...} }
 type RegistryGeoReplicationArrayInput interface {
 	pulumi.Input
 
@@ -104,7 +104,7 @@ func (i RegistryGeoReplicationArray) ToRegistryGeoReplicationArrayOutputWithCont
 // RegistryGeoReplicationMapInput is an input type that accepts RegistryGeoReplicationMap and RegistryGeoReplicationMapOutput values.
 // You can construct a concrete instance of `RegistryGeoReplicationMapInput` via:
 //
-//          RegistryGeoReplicationMap{ "key": RegistryGeoReplicationArgs{...} }
+//	RegistryGeoReplicationMap{ "key": RegistryGeoReplicationArgs{...} }
 type RegistryGeoReplicationMapInput interface {
 	pulumi.Input
 

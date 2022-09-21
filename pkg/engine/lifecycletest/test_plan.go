@@ -169,7 +169,7 @@ type TestPlan struct {
 	Steps          []TestStep
 }
 
-//nolint: goconst
+// nolint: goconst
 func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
