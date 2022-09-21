@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
+import assert from "assert";
 import * as childProcess from "child_process";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
