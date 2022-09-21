@@ -15,13 +15,13 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with default values.
         /// </summary>
         public static Task<FuncWithDefaultValueResult> InvokeAsync(FuncWithDefaultValueArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with default values.
         /// </summary>
         public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
     }
 
 

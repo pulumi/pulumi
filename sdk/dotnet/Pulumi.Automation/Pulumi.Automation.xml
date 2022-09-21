@@ -924,6 +924,31 @@
             Colorize output. Choices are: always, never, raw, auto (default "auto")
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.LogFlow">
+            <summary>
+            Flow log settings to child processes (like plugins)
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.LogVerbosity">
+            <summary>
+            Enable verbose logging (e.g., v=3); anything >3 is very verbose
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.LogToStdErr">
+            <summary>
+            Log to stderr instead of to files
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Tracing">
+            <summary>
+            Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Debug">
+            <summary>
+            Print detailed debugging output during resource operations
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.

@@ -190,3 +190,15 @@ jobs:
           cache: enable
       - name: Repository Dispatch
         run: ${{ matrix.job.run-command }}
+
+
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
+    uses: ./.github/workflows/release-homebrew-tap.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+    secrets: inherit

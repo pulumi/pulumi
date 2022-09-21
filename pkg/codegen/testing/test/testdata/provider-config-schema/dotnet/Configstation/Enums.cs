@@ -5,7 +5,7 @@ using System;
 using System.ComponentModel;
 using Pulumi;
 
-namespace Pulumi.Configstation
+namespace Configstation.Pulumi.Configstation
 {
     [EnumType]
     public readonly struct Color : IEquatable<Color>

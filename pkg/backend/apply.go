@@ -130,7 +130,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		// If not an update, we can skip displaying warnings
 	} else if countResources(events) == 0 {
 		// This is an update and there are no resources being CREATED
-		fmt.Print(infoPrefix, "There are no resources in your stack(other than the stack resource).\n\n")
+		fmt.Print(infoPrefix, "There are no resources in your stack (other than the stack resource).\n\n")
 	}
 
 	// Otherwise, ensure the user wants to proceed.

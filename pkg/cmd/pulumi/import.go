@@ -460,11 +460,11 @@ func newImportCmd() *cobra.Command {
 
 			var programGenerator programGeneratorFunc
 			switch proj.Runtime.Name() {
-			case "dotnet":
+			case "dotnet": // nolint: goconst
 				programGenerator = dotnet.GenerateProgram
 			case "go":
 				programGenerator = gogen.GenerateProgram
-			case "nodejs":
+			case "nodejs": // nolint: goconst
 				programGenerator = nodejs.GenerateProgram
 			case "python":
 				programGenerator = python.GenerateProgram

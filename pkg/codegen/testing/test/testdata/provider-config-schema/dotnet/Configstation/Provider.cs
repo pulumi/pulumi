@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi;
 
-namespace Pulumi.Configstation
+namespace Configstation.Pulumi.Configstation
 {
     [ConfigstationResourceType("pulumi:providers:configstation")]
     public partial class Provider : global::Pulumi.ProviderResource
@@ -43,7 +44,7 @@ namespace Pulumi.Configstation
         /// this is a relaxed string enum which can also be set via env var
         /// </summary>
         [Input("favoriteColor", json: true)]
-        public InputUnion<string, Pulumi.Configstation.Color>? FavoriteColor { get; set; }
+        public InputUnion<string, Configstation.Pulumi.Configstation.Color>? FavoriteColor { get; set; }
 
         public ProviderArgs()
         {

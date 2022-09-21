@@ -63,28 +63,3 @@ snapshot:
 
 checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
-
-brews:
-  -
-    name: pulumi
-    tap:
-      owner: pulumi
-      name: homebrew-tap
-    commit_author:
-      name: pulumi-bot
-      email: bot@pulumi.com
-    homepage: "https://pulumi.com"
-    description: "Pulumi - Modern Infrastructure as Code. Any cloud, any language "
-    folder: Formula
-    license: Apache-2.0
-    test: |
-      system "#{bin}/pulumi version"
-    conflicts:
-      - pulumi
-    install: |-
-      bin.install Dir["*"]
-
-      # Install shell completions
-      (bash_completion/"pulumi.bash").write Utils.safe_popen_read("#{bin}/pulumi gen-completion bash")
-      (zsh_completion/"_pulumi").write Utils.safe_popen_read("#{bin}/pulumi gen-completion zsh")
-      (fish_completion/"pulumi.fish").write Utils.safe_popen_read("#{bin}/pulumi gen-completion fish")

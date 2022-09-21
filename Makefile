@@ -90,7 +90,8 @@ install_all:: install
 dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-# NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
+.PHONY: brew
+# NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
 brew::
 	./scripts/brew.sh "${PROJECT}"
 
