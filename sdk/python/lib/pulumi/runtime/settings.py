@@ -157,7 +157,7 @@ def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
 
 
-def get_organization(fallback : Optional[str] = None) -> str:
+def get_organization(fallback: Optional[str] = None) -> str:
     """
     Returns the current organization name. If no fallback value is given it throws an exception if none is
     registered.
