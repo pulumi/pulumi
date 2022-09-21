@@ -45,7 +45,13 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 }
 
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
-	ps, err := loadProjectStack(s)
+	project, _, err := readProject()
+
+	if err != nil {
+		return nil, err
+	}
+
+	ps, err := loadProjectStack(project, s)
 	if err != nil {
 		return nil, err
 	}

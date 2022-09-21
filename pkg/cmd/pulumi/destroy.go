@@ -157,11 +157,20 @@ func newDestroyCmd() *cobra.Command {
 				sm = snap.SecretsManager
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
+				applyProjectConfig: true,
+			})
+
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
-
 			}
+
+			stackName := s.Ref().Name().String()
+			configError := validateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config)
+			if configError != nil {
+				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
+			}
+
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)

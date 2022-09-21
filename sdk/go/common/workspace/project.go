@@ -259,7 +259,13 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 	}
 
 	if typeName == "boolean" {
-		_, ok := value.(bool)
+		// check to see if the value is a literal string "true" | "false"
+		literalValue, ok := value.(string)
+		if ok && (literalValue == "true" || literalValue == "false") {
+			return true
+		}
+
+		_, ok = value.(bool)
 		return ok
 	}
 

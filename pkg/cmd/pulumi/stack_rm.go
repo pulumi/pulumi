@@ -86,7 +86,7 @@ func newStackRmCmd() *cobra.Command {
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
+				if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 						return result.FromError(err)
 					}

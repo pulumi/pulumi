@@ -146,7 +146,10 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
+				applyProjectConfig: true,
+			})
+
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}

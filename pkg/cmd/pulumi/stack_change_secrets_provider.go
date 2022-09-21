@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -58,6 +59,12 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			project, _, err := readProject()
+
+			if err != nil {
+				return err
+			}
+
 			// Validate secrets provider type
 			if err := validateSecretsProvider(args[0]); err != nil {
 				return err
@@ -68,7 +75,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			currentProjectStack, err := loadProjectStack(currentStack)
+			currentProjectStack, err := loadProjectStack(project, currentStack)
 			if err != nil {
 				return err
 			}
@@ -96,7 +103,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 
 			// Fixup the checkpoint
 			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
-			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, currentStack, currentConfig, decrypter)
+			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentConfig, decrypter)
 		}),
 	}
 
@@ -107,7 +114,9 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 	return cmd
 }
 
-func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, currentStack backend.Stack,
+func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+	project *workspace.Project,
+	currentStack backend.Stack,
 	currentConfig config.Map, decrypter config.Decrypter) error {
 	// The order of operations here should be to load the secrets manager current stack
 	// Get the newly created secrets manager for the stack
@@ -129,7 +138,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	}
 
 	// Reload the project stack after the new secretsProvider is in place
-	reloadedProjectStack, err := loadProjectStack(currentStack)
+	reloadedProjectStack, err := loadProjectStack(project, currentStack)
 	if err != nil {
 		return err
 	}

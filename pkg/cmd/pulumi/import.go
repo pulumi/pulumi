@@ -492,7 +492,11 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm)
+			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
+				// we don't need project config here
+				applyProjectConfig: false,
+			})
+
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}

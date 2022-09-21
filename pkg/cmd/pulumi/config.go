@@ -39,6 +39,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type StackConfigOptions struct {
+	applyProjectConfig bool
+}
+
 func newConfigCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
@@ -57,12 +61,18 @@ func newConfigCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			project, _, err := readProject()
+
+			if err != nil {
+				return err
+			}
+
 			stack, err := requireStack(ctx, stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			return listConfig(ctx, stack, showSecrets, jsonOut)
+			return listConfig(ctx, project, stack, showSecrets, jsonOut)
 		}),
 	}
 
@@ -106,6 +116,12 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			project, _, err := readProject()
+
+			if err != nil {
+				return err
+			}
+
 			// Get current stack and ensure that it is a different stack to the destination stack
 			currentStack, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
 			if err != nil {
@@ -114,7 +130,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
-			currentProjectStack, err := loadProjectStack(currentStack)
+			currentProjectStack, err := loadProjectStack(project, currentStack)
 			if err != nil {
 				return err
 			}
@@ -124,7 +140,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			destinationProjectStack, err := loadProjectStack(destinationStack)
+			destinationProjectStack, err := loadProjectStack(project, destinationStack)
 			if err != nil {
 				return err
 			}
@@ -302,7 +318,12 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
+			project, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
+			stack, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -312,7 +333,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
-			ps, err := loadProjectStack(s)
+			ps, err := loadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -322,7 +343,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			return saveProjectStack(s, ps)
+			return saveProjectStack(stack, ps)
 		}),
 	}
 	rmCmd.PersistentFlags().BoolVar(
@@ -351,12 +372,17 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			project, _, err := readProject()
 			if err != nil {
 				return err
 			}
 
-			ps, err := loadProjectStack(s)
+			stack, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+
+			ps, err := loadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -373,7 +399,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return saveProjectStack(s, ps)
+			return saveProjectStack(stack, ps)
 		}),
 	}
 	rmAllCmd.PersistentFlags().BoolVar(
@@ -395,6 +421,11 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			project, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
 			// Ensure the stack exists.
 			s, err := requireStack(ctx, *stack, false, opts, false /*setCurrent*/)
 			if err != nil {
@@ -411,7 +442,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ps, err := workspace.LoadProjectStack(configPath)
+			ps, err := workspace.LoadProjectStack(project, configPath)
 			if err != nil {
 				return err
 			}
@@ -480,6 +511,12 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			project, _, err := readProject()
+
+			if err != nil {
+				return err
+			}
+
 			// Ensure the stack exists.
 			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
 			if err != nil {
@@ -538,7 +575,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			ps, err := loadProjectStack(s)
+			ps, err := loadProjectStack(project, s)
 			if err != nil {
 				return err
 			}
@@ -591,13 +628,18 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			project, _, err := readProject()
 			if err != nil {
 				return err
 			}
 
-			ps, err := loadProjectStack(s)
+			// Ensure the stack exists.
+			stack, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+
+			ps, err := loadProjectStack(project, stack)
 			if err != nil {
 				return err
 			}
@@ -620,7 +662,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				c, cerr := getStackEncrypter(s)
+				c, cerr := getStackEncrypter(stack)
 				if cerr != nil {
 					return cerr
 				}
@@ -636,7 +678,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				}
 			}
 
-			return saveProjectStack(s, ps)
+			return saveProjectStack(stack, ps)
 		}),
 	}
 
@@ -680,16 +722,17 @@ var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+		_, path, err := workspace.DetectProjectStackPath(stack.Ref().Name().Q())
+		return path, err
 	}
 	return stackConfigFile, nil
 }
 
-func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
+func loadProjectStack(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
 		return workspace.DetectProjectStack(stack.Ref().Name().Q())
 	}
-	return workspace.LoadProjectStack(stackConfigFile)
+	return workspace.LoadProjectStack(project, stackConfigFile)
 }
 
 func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
@@ -741,10 +784,87 @@ type configValueJSON struct {
 	Secret      bool        `json:"secret"`
 }
 
-func listConfig(ctx context.Context, stack backend.Stack, showSecrets bool, jsonOut bool) error {
-	ps, err := loadProjectStack(stack)
+func validateStackConfigAndApplyProjectConfig(
+	stackName string,
+	project *workspace.Project,
+	stackConfig config.Map) error {
+	for projectConfigKey, projectConfigType := range project.Config {
+		key := config.MustMakeKey(string(project.Name), projectConfigKey)
+		stackValue, found, _ := stackConfig.Get(key, true)
+		hasDefault := projectConfigType.Default != nil
+		if !found && !hasDefault {
+			missingConfigError := fmt.Errorf(
+				"Stack '%v' missing configuration value '%v'",
+				stackName,
+				projectConfigKey)
+			return missingConfigError
+		} else if !found && hasDefault {
+			// not found at the stack level
+			// but has a default value at the project level
+			// assign the value to the stack
+			var configValue config.Value
+
+			if projectConfigType.Type == "array" {
+				// for array types, JSON-ify the default value
+				configValueJson, jsonError := json.Marshal(projectConfigType.Default)
+				if jsonError != nil {
+					return jsonError
+				}
+				configValue = config.NewObjectValue(string(configValueJson))
+
+			} else {
+				// for primitive types
+				// pass the values as is
+				configValueContent := fmt.Sprintf("%v", projectConfigType.Default)
+				configValue = config.NewValue(configValueContent)
+			}
+
+			setError := stackConfig.Set(key, configValue, true)
+			if setError != nil {
+				return setError
+			}
+		} else {
+			// found value on the stack level
+			// retrieve it and validate it against
+			// the config defined at the project level
+			content, contentError := stackValue.MarshalValue()
+			if contentError != nil {
+				return contentError
+			}
+
+			if !workspace.ValidateConfigValue(projectConfigType.Type, projectConfigType.Items, content) {
+				typeName := workspace.InferFullTypeName(projectConfigType.Type, projectConfigType.Items)
+				validationError := fmt.Errorf(
+					"Stack '%v' with configuration key '%v' must of of type '%v'",
+					stackName,
+					projectConfigKey,
+					typeName)
+
+				return validationError
+			}
+		}
+	}
+
+	return nil
+}
+
+func listConfig(ctx context.Context,
+	project *workspace.Project,
+	stack backend.Stack,
+	showSecrets bool,
+	jsonOut bool) error {
+
+	ps, err := loadProjectStack(project, stack)
 	if err != nil {
 		return err
+	}
+
+	stackName := stack.Ref().Name().String()
+	// when listing configuration values
+	// also show values coming from the project
+	configError := validateStackConfigAndApplyProjectConfig(stackName, project, ps.Config)
+	if configError != nil {
+		return configError
 	}
 
 	cfg := ps.Config
@@ -827,9 +947,18 @@ func listConfig(ctx context.Context, stack backend.Stack, showSecrets bool, json
 }
 
 func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, jsonOut bool) error {
-	ps, err := loadProjectStack(stack)
+	project, _, err := readProject()
 	if err != nil {
 		return err
+	}
+	ps, err := loadProjectStack(project, stack)
+	if err != nil {
+		return err
+	}
+	stackName := stack.Ref().Name().String()
+	configError := validateStackConfigAndApplyProjectConfig(stackName, project, ps.Config)
+	if configError != nil {
+		return configError
 	}
 
 	cfg := ps.Config
@@ -922,17 +1051,32 @@ func looksLikeSecret(k config.Key, v string) bool {
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(
 	ctx context.Context, stack backend.Stack,
-	sm secrets.Manager) (backend.StackConfiguration, error) {
+	sm secrets.Manager,
+	options StackConfigOptions) (backend.StackConfiguration, error) {
 	var cfg config.Map
-	workspaceStack, err := loadProjectStack(stack)
+	project, _, err := readProject()
+	defaultStackConfig := backend.StackConfiguration{}
+	if err != nil {
+		return defaultStackConfig, err
+	}
+
+	workspaceStack, err := loadProjectStack(project, stack)
 	if err != nil || workspaceStack == nil {
 		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
 		cfg, err = backend.GetLatestConfiguration(ctx, stack)
 		if err != nil {
-			return backend.StackConfiguration{}, fmt.Errorf(
+			return defaultStackConfig, fmt.Errorf(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
 		}
 	} else {
+		if options.applyProjectConfig {
+			stackName := stack.Ref().Name().String()
+			configErr := validateStackConfigAndApplyProjectConfig(stackName, project, workspaceStack.Config)
+			if configErr != nil {
+				return defaultStackConfig, configErr
+			}
+		}
+
 		cfg = workspaceStack.Config
 	}
 
@@ -948,8 +1092,9 @@ func getStackConfiguration(
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
+		return defaultStackConfig, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
+
 	return backend.StackConfiguration{
 		Config:    cfg,
 		Decrypter: crypter,

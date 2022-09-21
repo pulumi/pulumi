@@ -110,7 +110,7 @@ func TestProjectStackPath(t *testing.T) {
 				0600)
 			assert.NoError(t, err)
 
-			path, err := DetectProjectStackPath("my_stack")
+			_, path, err := DetectProjectStackPath("my_stack")
 			tt.validate(t, tmpDir, path, err)
 		})
 	}

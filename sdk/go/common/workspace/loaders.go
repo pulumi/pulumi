@@ -126,7 +126,7 @@ type projectStackLoader struct {
 }
 
 // Load a ProjectStack config file from the specified path. The configuration will be cached for subsequent loads.
-func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
+func (singleton *projectStackLoader) load(project *Project, path string) (*ProjectStack, error) {
 	singleton.Lock()
 	defer singleton.Unlock()
 
@@ -252,10 +252,10 @@ func LoadProject(path string) (*Project, error) {
 }
 
 // LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(path string) (*ProjectStack, error) {
+func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
 	contract.Require(path != "", "path")
 
-	return projectStackSingleton.load(path)
+	return projectStackSingleton.load(project, path)
 }
 
 // LoadPluginProject reads a plugin project definition from a file.
