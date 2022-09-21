@@ -25,7 +25,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"testing"
 
@@ -171,10 +170,6 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -194,10 +189,6 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -228,10 +219,6 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 
