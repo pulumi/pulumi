@@ -47,6 +47,7 @@ function validateUrl(destination: string): boolean {
     return true;
 }
 
+/** @internal */
 export function start(destinationUrl: string) {
     if(!validateUrl(destinationUrl)) {
         return;
@@ -92,6 +93,7 @@ export function start(destinationUrl: string) {
     rootSpan = tracer.startSpan("nodejs-runtime-root");
 }
 
+/** @internal */
 export function stop() {
     // If rootSpan is null, the URI provided was invalid,
     // so tracing was never enabled.
@@ -104,6 +106,7 @@ export function stop() {
     // SimpleSpanProcessor, it eagerly sends spans.
 }
 
+/** @internal */
 export function newSpan(name: string): opentelemetry.Span {
     const tracer = opentelemetry.trace.getTracer(serviceName);
     const parentSpan = opentelemetry.trace.getActiveSpan() ?? rootSpan;

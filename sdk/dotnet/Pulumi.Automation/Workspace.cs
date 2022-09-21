@@ -50,7 +50,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// The secrets provider to use for encryption and decryption of stack secrets.
         /// <para/>
-        /// See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+        /// See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
         /// </summary>
         public abstract string? SecretsProvider { get; }
 
