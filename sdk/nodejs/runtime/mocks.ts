@@ -225,7 +225,8 @@ export class MockMonitor {
  * @param project: If provided, the name of the Pulumi project. Defaults to "project".
  * @param stack: If provided, the name of the Pulumi stack. Defaults to "stack".
  * @param preview: If provided, indicates whether or not the program is running a preview. Defaults to false.
+ * @param organization: If provided, the name of the Pulumi organization. Defaults to nothing.
  */
-export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean) {
-    setMockOptions(new MockMonitor(mocks), project, stack, preview);
+export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean, organization?: string) {
+    setMockOptions(new MockMonitor(mocks), project, stack, preview, organization);
 }
