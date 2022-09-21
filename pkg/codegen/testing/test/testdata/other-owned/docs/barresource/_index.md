@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a BarResource Resource {#create}
+## Create BarResource Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

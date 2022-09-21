@@ -1,6 +1,0 @@
-changes:
-  - type: feat
-    scope: cli
-    description: >
-      Add a package author focused subcommand: `pulumi package` with subcommands `pulumi
-      package gen-sdk` and `pulumi package get-schema`.
