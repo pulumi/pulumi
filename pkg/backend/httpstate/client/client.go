@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -471,6 +472,9 @@ func (pc *Client) GetStackUpdates(
 func (pc *Client) ExportStackDeployment(
 	ctx context.Context, stack StackIdentifier, version *int) (apitype.UntypedDeployment, error) {
 
+	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "ExportStackDeployment")
+	defer tracingSpan.Finish()
+
 	path := getStackPath(stack, "export")
 
 	// Tack on a specific version as desired.
@@ -479,7 +483,7 @@ func (pc *Client) ExportStackDeployment(
 	}
 
 	var resp apitype.ExportStackResponse
-	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+	if err := pc.restCall(childCtx, "GET", path, nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
 	}
 
