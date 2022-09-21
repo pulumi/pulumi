@@ -155,6 +155,25 @@ type Project struct {
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
+func isPrimitiveValue(value interface{}) (string, bool) {
+	_, isLiteralBoolean := value.(bool)
+	if isLiteralBoolean {
+		return "boolean", true
+	}
+
+	_, isLiteralInt := value.(int)
+	if isLiteralInt {
+		return "integer", true
+	}
+
+	_, isLiteralString := value.(string)
+	if isLiteralString {
+		return "string", true
+	}
+
+	return "", false
+}
+
 // RewriteShorthandConfigValues rewrites short-hand version of configuration into a configuration type
 // for example the following config block definition:
 //
@@ -182,11 +201,11 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 	}
 
 	for key, value := range config {
-		literalValue, isLiteral := value.(string)
+		typeName, isLiteral := isPrimitiveValue(value)
 		if isLiteral {
 			configTypeDefinition := make(map[string]interface{})
-			configTypeDefinition["type"] = "string"
-			configTypeDefinition["default"] = literalValue
+			configTypeDefinition["type"] = typeName
+			configTypeDefinition["default"] = value
 			config[key] = configTypeDefinition
 		}
 	}
