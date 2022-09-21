@@ -1069,8 +1069,7 @@ func DownloadToFile(
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			if err, ok := readErr.(*downloadError); ok &&
-				err.Code() == 404 || err.Code() == 403 {
+			if err, ok := readErr.(*downloadError); ok && (err.Code() == 404 || err.Code() == 403) {
 				return "", readErr
 			}
 
