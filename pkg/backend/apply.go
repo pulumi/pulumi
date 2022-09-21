@@ -153,7 +153,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		choices := []string{string(yes), string(no)}
 
 		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
-		if plan != nil && opts.Engine.Plan == nil {
+		// If we're in experimental mode we don't add this because "yes" will also use the plan
+		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.ExperimentalPlans {
 			choices = append(choices, string(yesPlan))
 		}
 
@@ -195,6 +196,10 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == string(yes) {
+			// If we're in experimental mode always use the plan
+			if opts.Engine.ExperimentalPlans {
+				return nil, plan
+			}
 			return nil, nil
 		}
 		if response == string(yesPlan) {

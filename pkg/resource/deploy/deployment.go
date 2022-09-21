@@ -63,6 +63,7 @@ type Options struct {
 	UseLegacyDiff             bool           // whether or not to use legacy diffing behavior.
 	DisableResourceReferences bool           // true to disable resource reference support.
 	DisableOutputValues       bool           // true to disable output value support.
+	ExperimentalPlans         bool           // true if experimental plans should be used automatically.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

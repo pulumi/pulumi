@@ -148,6 +148,9 @@ type UpdateOptions struct {
 
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
+
+	// true if experimental plans should be used automatically.
+	ExperimentalPlans bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

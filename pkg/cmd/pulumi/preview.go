@@ -185,6 +185,7 @@ func newPreviewCmd() *cobra.Command {
 					DisableOutputValues:       disableOutputValues(),
 					UpdateTargets:             targetURNs,
 					TargetDependents:          targetDependents,
+					ExperimentalPlans:         hasExperimentalCommands(),
 				},
 				Display: displayOpts,
 			}

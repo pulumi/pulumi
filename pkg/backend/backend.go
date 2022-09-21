@@ -258,6 +258,8 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// Experimental plan support, when true cause plans to be generated.
+	ExperimentalPlans bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.
