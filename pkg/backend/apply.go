@@ -229,7 +229,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			return changes, res
 		}
 
-		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the newly generated plan
+		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
+		// newly generated plan
 		if originalPlan != nil {
 			op.Opts.Engine.Plan = originalPlan
 		} else if plan != nil {
