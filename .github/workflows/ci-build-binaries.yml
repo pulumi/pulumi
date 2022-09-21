@@ -99,13 +99,20 @@ jobs:
         with:
           install-only: true
           distribution: goreleaser-pro
-      - uses: actions/download-artifact@v2
-        with:
-          name: build-external-deps
-          path: bin
-      - name: Set execute bit on files
+      - name: Set up bin dir
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GOOS: ${{ inputs.os }}
+          GOARCH: ${{ inputs.arch }}
+        run: ./scripts/prep-for-goreleaser.sh local
+      - name: Show files and permissions
+        if: ${{ runner.os != 'macOS'}}
+        run: find bin -type f -printf "%M    %p/"\\n
+      - name: Show files and permissions
+        if: ${{ runner.os == 'macOS'}}
         run: |
-          find bin -exec chmod -v +x {} ';'
+          brew install findutils
+          gfind bin -type f -printf "%M    %p/"\\n
       - name: Package
         shell: bash
         env:
