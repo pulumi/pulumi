@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -643,6 +644,9 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
@@ -750,6 +754,9 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
