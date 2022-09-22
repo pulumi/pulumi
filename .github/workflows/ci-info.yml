@@ -94,11 +94,15 @@ jobs:
             echo "::endgroup::"
           fi
 
-          if EXISTING_RELEASE="$(gh release view "v${PULUMI_VERSION}")"; then
-            echo "::error::This version has already been released!"
-            echo "::group::Release ${PULUMI_VERSION}"
-            echo "$EXISTING_RELEASE"
-            echo "::endgroup::"
+          if EXISTING_RELEASE_DRAFT="$(gh release view "v${PULUMI_VERSION}" --json isDraft --jq '.isDraft')"; then
+            if [ "$EXISTING_RELEASE_DRAFT" != "true" ]; then
+              echo "::error::This version has already been released!"
+              echo "::group::Release ${PULUMI_VERSION}"
+              echo "$EXISTING_RELEASE"
+              echo "::endgroup::"
+            else
+              echo "::info Preparing to update draft release ${PULUMI_VERSION}"
+            fi
           fi
 
           if $ERROR; then
