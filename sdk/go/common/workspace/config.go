@@ -29,11 +29,11 @@ func ValidateStackConfigAndApplyProjectConfig(
 
 			if projectConfigType.Type == "array" {
 				// for array types, JSON-ify the default value
-				configValueJson, jsonError := json.Marshal(projectConfigType.Default)
+				configValueJSON, jsonError := json.Marshal(projectConfigType.Default)
 				if jsonError != nil {
 					return jsonError
 				}
-				configValue = config.NewObjectValue(string(configValueJson))
+				configValue = config.NewObjectValue(string(configValueJSON))
 
 			} else {
 				// for primitive types

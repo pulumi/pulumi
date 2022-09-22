@@ -111,7 +111,7 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 	}
 
 	projectDef = RewriteShorthandConfigValues(projectDef)
-	modifiedProject, err := marshaller.Marshal(projectDef)
+	modifiedProject, _ := marshaller.Marshal(projectDef)
 
 	var project Project
 	err = marshaller.Unmarshal(modifiedProject, &project)

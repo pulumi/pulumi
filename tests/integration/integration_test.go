@@ -163,10 +163,12 @@ func TestConfigSave(t *testing.T) {
 
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
-	err := (&workspace.Project{
+	project := workspace.Project{
 		Name:    "testing-config",
 		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-	}).Save(path)
+	}
+
+	err := project.Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing-2")
@@ -209,9 +211,9 @@ func TestConfigSave(t *testing.T) {
 		assert.Equal(t, v, dv)
 	}
 
-	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
+	testStack1, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
 	assert.NoError(t, err)
-	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
+	testStack2, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(testStack1.Config))

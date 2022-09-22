@@ -331,6 +331,7 @@ func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 }
 
 func TestStackConfigIsInheritedFromProjectConfig(t *testing.T) {
+	t.Parallel()
 	projectYaml := `
 name: test
 runtime: dotnet
@@ -359,6 +360,7 @@ config:
 }
 
 func TestStackConfigErrorsWhenStackValueIsNotCorrectlyTyped(t *testing.T) {
+	t.Parallel()
 	projectYaml := `
 name: test
 runtime: dotnet
@@ -384,6 +386,7 @@ config:
 }
 
 func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
+	t.Parallel()
 	projectYaml := `
 name: test
 runtime: dotnet
@@ -419,6 +422,7 @@ config:
 }
 
 func TestStackConfigErrorsWhenMissingStackValueForConfigTypeWithNoDefault(t *testing.T) {
+	t.Parallel()
 	projectYaml := `
 name: test
 runtime: dotnet
