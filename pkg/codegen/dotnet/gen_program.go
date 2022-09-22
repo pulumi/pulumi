@@ -443,7 +443,13 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
+
 	namespace := namespaceName(namespaces, module)
+	namespaceTokens := strings.Split(namespace, "/")
+	for i, name := range namespaceTokens {
+		namespaceTokens[i] = Title(name)
+	}
+	namespace = strings.Join(namespaceTokens, ".")
 
 	if namespace != "" {
 		namespace = "." + namespace
