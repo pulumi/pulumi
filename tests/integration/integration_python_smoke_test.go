@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -31,10 +30,6 @@ func TestEmptyPython(t *testing.T) {
 }
 
 func TestStackReferencePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
-
 	opts := &integration.ProgramTestOptions{
 		RequireService: true,
 

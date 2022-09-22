@@ -150,13 +150,16 @@ def run_list_tests(pkg_dir: str, tags: List[str]) -> List[str]:
     # $ go test -tags all --list ./tests/integration
     # no Go files in /home/friel/c/github.com/pulumi/pulumi
     # ```
-    cmd = sp.run(
-        ["go", "test", "-tags", " ".join(tags), "--list", "."],
-        check=True,
-        cwd=pkg_dir,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        cmd = sp.run(
+            ["go", "test", "-tags", " ".join(tags), "--list", "."],
+            check=True,
+            cwd=pkg_dir,
+            capture_output=True,
+            text=True,
+        )
+    except sp.CalledProcessError as err:
+        raise Exception("Failed to list packages in module, usually this implies a Go compilation error. Check that `make lint` succeeds.") from err
 
     tests: List[str] = []
 

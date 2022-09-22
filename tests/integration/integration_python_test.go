@@ -248,9 +248,6 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 }
 
 func TestMultiStackReferencePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -378,9 +375,6 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 }
 
 func TestPartialValuesPython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
@@ -730,9 +724,6 @@ func TestConstructProviderPython(t *testing.T) {
 }
 
 func TestGetResourcePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{

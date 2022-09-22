@@ -50,8 +50,7 @@ Subcommands of this command are useful to package authors during development.`,
 // schema source is either a file (ending with .[json|y[a]ml]) or a plugin with an
 // optional version:
 //
-//		FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
-//
+//	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	var spec schema.PackageSpec
 	wd, err := os.Getwd()

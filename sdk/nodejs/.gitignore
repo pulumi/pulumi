@@ -5,3 +5,4 @@
 /custom_node/
 /runtime/native/node_dev/
 .nyc_output/
+!yarn.lock
