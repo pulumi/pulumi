@@ -166,7 +166,7 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			stackName := s.Ref().Name().String()
-			configError := validateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config)
+			configError := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config)
 			if configError != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
 			}

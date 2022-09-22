@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -326,6 +327,13 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 
 	if typeName == "integer" {
 		_, ok := value.(int)
+		if !ok {
+			valueAsText, isText := value.(string)
+			if isText {
+				_, integerParseError := strconv.Atoi(valueAsText)
+				return integerParseError == nil
+			}
+		}
 		return ok
 	}
 

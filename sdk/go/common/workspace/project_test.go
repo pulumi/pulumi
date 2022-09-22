@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -223,6 +224,16 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 	return LoadProject(path)
 }
 
+func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
+	tmp, err := ioutil.TempFile("", "*.yaml")
+	assert.NoError(t, err)
+	path := tmp.Name()
+	err = ioutil.WriteFile(path, []byte(content), 0600)
+	assert.NoError(t, err)
+	defer deleteFile(t, tmp)
+	return LoadProjectStack(project, path)
+}
+
 func TestProjectLoadsConfigSchemas(t *testing.T) {
 	t.Parallel()
 	projectContent := `
@@ -307,6 +318,125 @@ config:
 	assert.Equal(t, "array", arrayOfArrays.Items.Type)
 	assert.NotNil(t, arrayOfArrays.Items.Items)
 	assert.Equal(t, "string", arrayOfArrays.Items.Items.Type)
+}
+
+func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
+	parsedKey, err := config.ParseKey(key)
+	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	configValue, foundValue := stackConfig[parsedKey]
+	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
+	value, valueError := configValue.Value(config.NopDecrypter)
+	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	return value
+}
+
+func TestStackConfigIsInheritedFromProjectConfig(t *testing.T) {
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize: t3.micro
+  instanceCount: 20
+  protect: true`
+
+	projectStackYaml := `
+config:
+  test:instanceSize: t4.large`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NoError(t, configError, "Config override should be valid")
+
+	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
+	// instanceCount and protect are inherited from the project
+	assert.Equal(t, "20", getConfigValue(t, stack.Config, "test:instanceCount"))
+	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:protect"))
+}
+
+func TestStackConfigErrorsWhenStackValueIsNotCorrectlyTyped(t *testing.T) {
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  values:
+    type: array
+    items: 
+      type: string
+    default: [value]`
+
+	projectStackYaml := `
+config:
+  test:values: someValue
+`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t, configError.Error(), "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
+}
+
+func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  importantNumber:
+    type: integer
+`
+
+	projectStackYamlValid := `
+config:
+  test:importantNumber: 20
+`
+
+	projectStackYamlInvalid := `
+config:
+  test:importantNumber: hello
+`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NoError(t, configError, "there should no config type error")
+
+	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError = ValidateStackConfigAndApplyProjectConfig("dev", project, invalidStackConfig.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t,
+		configError.Error(),
+		"Stack 'dev' with configuration key 'importantNumber' must be of type 'integer'")
+}
+
+func TestStackConfigErrorsWhenMissingStackValueForConfigTypeWithNoDefault(t *testing.T) {
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  values:
+    type: array
+    items: 
+      type: string`
+
+	projectStackYaml := ``
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t, configError.Error(), "Stack 'dev' missing configuration value 'values'")
 }
 
 func TestProjectLoadYAML(t *testing.T) {
