@@ -26,6 +26,7 @@ import (
 	"gocloud.dev/secrets/driver"
 )
 
+//nolint:paralleltest
 func TestSecretsproviderOverride(t *testing.T) {
 	// Don't call t.Parallel because we temporarily modify
 	// PULUMI_CLOUD_SECRET_OVERRIDE env var and it may interfere with other
@@ -39,6 +40,7 @@ func TestSecretsproviderOverride(t *testing.T) {
 	opener := &mockSecretsKeeperOpener{}
 	secrets.DefaultURLMux().RegisterKeeper("test", opener)
 
+	//nolint:paralleltest
 	t.Run("without override", func(t *testing.T) {
 		opener.wantURL = "test://foo"
 
@@ -50,11 +52,12 @@ func TestSecretsproviderOverride(t *testing.T) {
 		}
 	})
 
+	//nolint:paralleltest
 	t.Run("with override", func(t *testing.T) {
 		opener.wantURL = "test://bar"
 		t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")
 
-		// Last argument here shouldn't matter anymore, since it gets overriden
+		// Last argument here shouldn't matter anymore, since it gets overridden
 		// by the env var. Both calls should succeed.
 		if _, err := newCloudSecretsManager(stackName, stackConfig, "test://foo"); err != nil {
 			t.Fatalf("newCloudSecretsManager failed: %v", err)
