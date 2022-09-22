@@ -112,7 +112,7 @@ func (t *reparentingTracer) hasChildOf(opts ...opentracing.StartSpanOption) bool
 
 var _ opentracing.Tracer = &reparentingTracer{}
 
-// Option to log payloads in trace spans. Defalut is on. Can be
+// Option to log payloads in trace spans. Default is on. Can be
 // disabled by setting an env var to reduce tracing overhead.
 func logPayloads() []otgrpc.Option {
 	res := []otgrpc.Option{}
