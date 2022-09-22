@@ -85,7 +85,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 
 	s2 := createSnapshotPtr()
 	r0 := s2.Resources[0]
-	r0.AliasURNs = []resource.URN{r0.URN}
+	r0.Aliases = []resource.URN{r0.URN}
 	s2.Resources[2].Parent = r0.URN
 	r0.URN += "!"
 	s2n, err := s2.NormalizeURNReferences()

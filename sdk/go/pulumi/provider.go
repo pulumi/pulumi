@@ -86,8 +86,8 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	// Rebuild the resource options.
-	aliases := make([]Alias, len(req.GetAliasURNs()))
-	for i, urn := range req.GetAliasURNs() {
+	aliases := make([]Alias, len(req.GetAliases()))
+	for i, urn := range req.GetAliases() {
 		aliases[i] = Alias{URN: URN(urn)}
 	}
 	dependencyURNs := urnSet{}

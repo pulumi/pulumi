@@ -6519,7 +6519,7 @@ proto.pulumirpc.ConstructRequest.toObject = function(includeInstance, msg) {
     inputdependenciesMap: (f = msg.getInputdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.ConstructRequest.PropertyDependencies.toObject) : [],
     protect: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
+    aliasesList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
     dependenciesList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
     configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 16)) == null ? undefined : f,
     organization: jspb.Message.getFieldWithDefault(msg, 17, "")
@@ -6620,7 +6620,7 @@ proto.pulumirpc.ConstructRequest.deserializeBinaryFromReader = function(msg, rea
       break;
     case 14:
       var value = /** @type {string} */ (reader.readString());
-      msg.addAliasurns(value);
+      msg.addAliases(value);
       break;
     case 15:
       var value = /** @type {string} */ (reader.readString());
@@ -6746,7 +6746,7 @@ proto.pulumirpc.ConstructRequest.serializeBinaryToWriter = function(message, wri
   if (f && f.getLength() > 0) {
     f.serializeBinary(13, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
-  f = message.getAliasurnsList();
+  f = message.getAliasesList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       14,
@@ -7199,10 +7199,10 @@ proto.pulumirpc.ConstructRequest.prototype.clearProvidersMap = function() {
 
 
 /**
- * repeated string aliasURNs = 14;
+ * repeated string aliases = 14;
  * @return {!Array<string>}
  */
-proto.pulumirpc.ConstructRequest.prototype.getAliasurnsList = function() {
+proto.pulumirpc.ConstructRequest.prototype.getAliasesList = function() {
   return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 14));
 };
 
@@ -7211,7 +7211,7 @@ proto.pulumirpc.ConstructRequest.prototype.getAliasurnsList = function() {
  * @param {!Array<string>} value
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.setAliasurnsList = function(value) {
+proto.pulumirpc.ConstructRequest.prototype.setAliasesList = function(value) {
   return jspb.Message.setField(this, 14, value || []);
 };
 
@@ -7221,7 +7221,7 @@ proto.pulumirpc.ConstructRequest.prototype.setAliasurnsList = function(value) {
  * @param {number=} opt_index
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.addAliasurns = function(value, opt_index) {
+proto.pulumirpc.ConstructRequest.prototype.addAliases = function(value, opt_index) {
   return jspb.Message.addToRepeatedField(this, 14, value, opt_index);
 };
 
@@ -7230,8 +7230,8 @@ proto.pulumirpc.ConstructRequest.prototype.addAliasurns = function(value, opt_in
  * Clears the list making it empty but non-null.
  * @return {!proto.pulumirpc.ConstructRequest} returns this
  */
-proto.pulumirpc.ConstructRequest.prototype.clearAliasurnsList = function() {
-  return this.setAliasurnsList([]);
+proto.pulumirpc.ConstructRequest.prototype.clearAliasesList = function() {
+  return this.setAliasesList([]);
 };
 
 

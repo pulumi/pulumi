@@ -70,6 +70,7 @@ type AnalyzerResourceOptions struct {
 	DeleteBeforeReplace     *bool                   // true if this resource should be deleted prior to replacement.
 	AdditionalSecretOutputs []resource.PropertyKey  // outputs that should always be treated as secrets.
 	AliasURNs               []resource.URN          // additional URNs that should be aliased to this resource.
+	Aliases                 []resource.Alias        // additional URNs that should be aliased to this resource.
 	CustomTimeouts          resource.CustomTimeouts // an optional config object for resource options
 }
 

@@ -319,7 +319,7 @@ type ResourceV3 struct {
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
 	// Aliases is a list of previous URNs that this resource may have had in previous deployments.
-	AliasURNs []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations.
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.

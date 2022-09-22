@@ -48,6 +48,8 @@ type GoalV1 struct {
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty"`
 	// additional URNs that should be aliased to this resource.
 	AliasURNs []resource.URN `json:"aliases,omitempty"`
+	// structured alias objects to be assigned to this resource.
+	Aliases []resource.Alias `json:"structuredAliases,omitempty"`
 	// the expected ID of the resource, if any.
 	ID resource.ID `json:"id,omitempty"`
 	// an optional config object for resource options

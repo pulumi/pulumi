@@ -627,6 +627,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableResourceReferences
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
+	case "aliasSpecs":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -983,9 +985,28 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliasURNs := []resource.URN{}
+	aliases := []resource.Alias{}
 	for _, aliasURN := range req.GetAliasURNs() {
-		aliasURNs = append(aliasURNs, resource.URN(aliasURN))
+		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
+	}
+
+	for _, aliasObject := range req.GetAliases() {
+		aliasSpec := aliasObject.GetSpec()
+		var alias resource.Alias
+		if aliasSpec != nil {
+			alias = resource.Alias{
+				Name:    aliasSpec.Name,
+				Type:    aliasSpec.Type,
+				Stack:   aliasSpec.Stack,
+				Project: aliasSpec.Project,
+				Parent:  resource.URN(aliasSpec.GetParentUrn()),
+			}
+		} else {
+			alias = resource.Alias{
+				URN: resource.URN(aliasObject.GetUrn()),
+			}
+		}
+		aliases = append(aliases, alias)
 	}
 
 	dependencies := []resource.URN{}
@@ -1090,7 +1111,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliasURNs, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
+		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1103,7 +1124,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			AliasURNs:            aliasURNs,
+			// We don't actually need to send a list of aliases to construct anymore because the engine does
+			// all alias construction.
+			Aliases:              []resource.Alias{},
 			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
@@ -1129,7 +1152,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliasURNs, id, &timeouts, replaceOnChanges, retainOnDelete),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete),
 			done: make(chan *RegisterResult),
 		}
 

@@ -431,7 +431,7 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		AdditionalSecretOutputs:    secs,
-		AliasURNs:                  convertURNs(opts.AliasURNs),
+		Aliases:                    convertAliases(opts.Aliases, opts.AliasURNs),
 		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
 			Create: opts.CustomTimeouts.Create,
 			Update: opts.CustomTimeouts.Update,
@@ -575,6 +575,21 @@ func convertURNs(urns []resource.URN) []string {
 	result := make([]string, len(urns))
 	for idx := range urns {
 		result[idx] = string(urns[idx])
+	}
+	return result
+}
+
+func convertAlias(alias resource.Alias) string {
+	return string(alias.GetURN())
+}
+
+func convertAliases(aliases []resource.Alias, aliasURNs []resource.URN) []string {
+	result := make([]string, len(aliases)+len(aliasURNs))
+	for idx, alias := range aliases {
+		result[idx] = convertAlias(alias)
+	}
+	for idx, aliasURN := range aliasURNs {
+		result[idx+len(aliases)] = convertAlias(resource.Alias{URN: aliasURN})
 	}
 	return result
 }

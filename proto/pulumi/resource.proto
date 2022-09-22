@@ -17,6 +17,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "pulumi/provider.proto";
+import "pulumi/alias.proto";
 
 package pulumirpc;
 
@@ -147,23 +148,4 @@ message ResourceInvokeRequest {
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
-}
-
-message Alias {
-    message Spec {
-        string name = 1;        // The previous name of the resource.  If none is provided, we will use the current name.
-        string type = 2;        // The previous type of the resource. If none is provided, we will use the current resoource type.
-        string stack = 3;       // The previous stack of the resource. If not set, the current stack of the resource is used.
-        string project = 4;     // The previous project of the resource. If not set, the current project of the resource is used.
-
-        // The previous parent of the resource. If not set, the current parent of the resource is used.
-        oneof parent {
-            string parentUrn = 5;   // The urn of the previous parent.
-            bool noParent = 6;      // Used to indicate the resource previously had no parent. If false this property is ignored.
-        }
-    }
-    oneof alias {
-        string urn = 1; // The previous urn to alias to.
-        Spec spec = 2;  // An alias specification.
-    }
 }

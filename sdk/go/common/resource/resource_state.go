@@ -40,10 +40,22 @@ type State struct {
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
-	AliasURNs               []URN                 // TODO
+	Aliases                 []URN                 // TODO
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
+}
+
+func (s *State) GetAliasURNs() []URN {
+	return s.Aliases
+}
+
+func (s *State) GetAliases() []Alias {
+	aliases := make([]Alias, len(s.Aliases))
+	for i, alias := range s.Aliases {
+		aliases[i] = Alias{URN: alias}
+	}
+	return aliases
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -51,7 +63,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
-	additionalSecretOutputs []PropertyKey, aliasURNs []URN, timeouts *CustomTimeouts,
+	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
 	importID ID, retainOnDelete bool) *State {
 
 	contract.Assertf(t != "", "type was empty")
@@ -75,7 +87,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		PropertyDependencies:    propertyDependencies,
 		PendingReplacement:      pendingReplacement,
 		AdditionalSecretOutputs: additionalSecretOutputs,
-		AliasURNs:               aliasURNs,
+		Aliases:                 aliases,
 		ImportID:                importID,
 		RetainOnDelete:          retainOnDelete,
 	}

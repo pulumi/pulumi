@@ -1241,7 +1241,7 @@ type resourceInputs struct {
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges           []string
-	aliasURNs                 []string
+	aliasURNs               []string
 	additionalSecretOutputs []string
 	version                 string
 	pluginDownloadURL       string

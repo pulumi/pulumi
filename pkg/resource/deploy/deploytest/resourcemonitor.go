@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
@@ -98,7 +97,7 @@ type ResourceOptions struct {
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
 	AliasURNs               []resource.URN
-	Aliases					[]pulumi.Alias
+	Aliases                 []resource.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
@@ -142,6 +141,28 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	aliasStrings := []string{}
 	for _, a := range opts.AliasURNs {
 		aliasStrings = append(aliasStrings, string(a))
+	}
+
+	aliasObjects := []*pulumirpc.Alias{}
+	for _, a := range opts.Aliases {
+		var obj *pulumirpc.Alias
+		if a.URN == "" {
+			alias := &pulumirpc.Alias_Spec{
+				Name:    a.Name,
+				Type:    a.Type,
+				Project: a.Project,
+				Stack:   a.Stack,
+			}
+			if a.NoParent() {
+				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent()}
+			} else if a.Parent != "" {
+				alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
+			}
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
+		} else {
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: string(a.URN)}}
+		}
+		aliasObjects = append(aliasObjects, obj)
 	}
 
 	inputDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
@@ -200,6 +221,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PluginDownloadURL:          opts.PluginDownloadURL,
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
+		Aliases:                    aliasObjects,
 	}
 
 	// submit request

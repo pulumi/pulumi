@@ -5,10 +5,11 @@
 3972899080 941 proto/build-container/scripts/install-python.sh
 2099022623 1282 proto/build-container/scripts/utils.sh
 3892283777 4835 proto/generate.sh
-2852880675 9235 proto/pulumi/analyzer.proto
+1405145341 1741 proto/pulumi/alias.proto
+1949619858 9233 proto/pulumi/analyzer.proto
 2889436496 3240 proto/pulumi/engine.proto
 3421371250 793 proto/pulumi/errors.proto
 3300935796 5024 proto/pulumi/language.proto
 2700626499 1743 proto/pulumi/plugin.proto
-428488328 19669 proto/pulumi/provider.proto
-3701573817 11819 proto/pulumi/resource.proto
+1451439690 19667 proto/pulumi/provider.proto
+3808155704 10824 proto/pulumi/resource.proto
