@@ -183,8 +183,9 @@ func isPrimitiveValue(value interface{}) (string, bool) {
 // will be rewritten into a typed value:
 //
 //     config:
-//       type: string
-//       default: t3.mirco
+//       instanceSize:
+//         type: string
+//         default: t3.mirco
 //
 func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
 	configMap, foundConfig := project["config"]

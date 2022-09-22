@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -205,44 +206,138 @@ func TestProjectLoadJSON(t *testing.T) {
 	assert.Equal(t, "", proj.Main)
 }
 
+func deleteFile(t *testing.T, file *os.File) {
+	if file != nil {
+		err := os.Remove(file.Name())
+		assert.NoError(t, err, "Error while deleting file")
+	}
+}
+
+func loadProjectFromText(t *testing.T, content string) (*Project, error) {
+	tmp, err := ioutil.TempFile("", "*.yaml")
+	assert.NoError(t, err)
+	path := tmp.Name()
+	err = ioutil.WriteFile(path, []byte(content), 0600)
+	assert.NoError(t, err)
+	defer deleteFile(t, tmp)
+	return LoadProject(path)
+}
+
+func TestProjectLoadsConfigSchemas(t *testing.T) {
+	t.Parallel()
+	projectContent := `
+name: test
+runtime: dotnet
+config:
+  integerSchemaFull:
+    type: integer
+    description: a very important value
+    default: 1
+  integerSchemaSimple: 20
+  textSchemaFull:
+    type: string
+    default: t3.micro
+  textSchemaSimple: t4.large
+  booleanSchemaFull:
+    type: boolean
+    default: true
+  booleanSchemaSimple: false
+  simpleArrayOfStrings:
+    type: array
+    items:
+      type: string
+    default: [hello]
+  arrayOfArrays:
+    type: array
+    items:
+      type: array
+      items:
+        type: string
+  `
+
+	project, err := loadProjectFromText(t, projectContent)
+	assert.NoError(t, err, "Should be able to load the project")
+	assert.Equal(t, 8, len(project.Config), "There are 8 config type definition")
+	// full integer config schema
+	integerSchemFull, ok := project.Config["integerSchemaFull"]
+	assert.True(t, ok, "should be able to read integerSchemaFull")
+	assert.Equal(t, "integer", integerSchemFull.Type)
+	assert.Equal(t, "a very important value", integerSchemFull.Description)
+	assert.Equal(t, 1, integerSchemFull.Default)
+	assert.Nil(t, integerSchemFull.Items, "Primtive config type doesn't have an items type")
+
+	integerSchemaSimple, ok := project.Config["integerSchemaSimple"]
+	assert.True(t, ok, "should be able to read integerSchemaSimple")
+	assert.Equal(t, "integer", integerSchemaSimple.Type, "integer type is inferred correctly")
+	assert.Equal(t, 20, integerSchemaSimple.Default, "Default integer value is parsed correctly")
+
+	textSchemaFull, ok := project.Config["textSchemaFull"]
+	assert.True(t, ok, "should be able to read textSchemaFull")
+	assert.Equal(t, "string", textSchemaFull.Type)
+	assert.Equal(t, "t3.micro", textSchemaFull.Default)
+	assert.Equal(t, "", textSchemaFull.Description)
+
+	textSchemaSimple, ok := project.Config["textSchemaSimple"]
+	assert.True(t, ok, "should be able to read textSchemaSimple")
+	assert.Equal(t, "string", textSchemaSimple.Type)
+	assert.Equal(t, "t4.large", textSchemaSimple.Default)
+
+	booleanSchemaFull, ok := project.Config["booleanSchemaFull"]
+	assert.True(t, ok, "should be able to read booleanSchemaFull")
+	assert.Equal(t, "boolean", booleanSchemaFull.Type)
+	assert.Equal(t, true, booleanSchemaFull.Default)
+
+	booleanSchemaSimple, ok := project.Config["booleanSchemaSimple"]
+	assert.True(t, ok, "should be able to read booleanSchemaSimple")
+	assert.Equal(t, "boolean", booleanSchemaSimple.Type)
+	assert.Equal(t, false, booleanSchemaSimple.Default)
+
+	simpleArrayOfStrings, ok := project.Config["simpleArrayOfStrings"]
+	assert.True(t, ok, "should be able to read simpleArrayOfStrings")
+	assert.Equal(t, "array", simpleArrayOfStrings.Type)
+	assert.NotNil(t, simpleArrayOfStrings.Items)
+	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
+	arrayValues := simpleArrayOfStrings.Default.([]interface{})
+	assert.Equal(t, "hello", arrayValues[0])
+
+	arrayOfArrays, ok := project.Config["arrayOfArrays"]
+	assert.True(t, ok, "should be able to read arrayOfArrays")
+	assert.Equal(t, "array", arrayOfArrays.Type)
+	assert.NotNil(t, arrayOfArrays.Items)
+	assert.Equal(t, "array", arrayOfArrays.Items.Type)
+	assert.NotNil(t, arrayOfArrays.Items.Items)
+	assert.Equal(t, "string", arrayOfArrays.Items.Items.Type)
+}
+
 func TestProjectLoadYAML(t *testing.T) {
 	t.Parallel()
 
-	writeAndLoad := func(str string) (*Project, error) {
-		tmp, err := ioutil.TempFile("", "*.yaml")
-		assert.NoError(t, err)
-		path := tmp.Name()
-		err = ioutil.WriteFile(path, []byte(str), 0600)
-		assert.NoError(t, err)
-		return LoadProject(path)
-	}
-
 	// Test wrong type
-	_, err := writeAndLoad("\"hello\"")
+	_, err := loadProjectFromText(t, "\"hello\"")
 	assert.Equal(t, "expected an object", err.Error())
 
 	// Test bad key
-	_, err = writeAndLoad("4: hello")
+	_, err = loadProjectFromText(t, "4: hello")
 	assert.Equal(t, "expected only string keys, got '%!s(int=4)'", err.Error())
 
 	// Test nested bad key
-	_, err = writeAndLoad("hello:\n    6: bad")
+	_, err = loadProjectFromText(t, "hello:\n    6: bad")
 	assert.Equal(t, "expected only string keys, got '%!s(int=6)'", err.Error())
 
 	// Test lack of name
-	_, err = writeAndLoad("{}")
+	_, err = loadProjectFromText(t, "{}")
 	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
 
 	// Test bad name
-	_, err = writeAndLoad("name:")
+	_, err = loadProjectFromText(t, "name:")
 	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
 
 	// Test missing runtime
-	_, err = writeAndLoad("name: project")
+	_, err = loadProjectFromText(t, "name: project")
 	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
 
 	// Test other schema errors
-	_, err = writeAndLoad("name: project\nruntime: 4")
+	_, err = loadProjectFromText(t, "name: project\nruntime: 4")
 	// These can vary in order, so contains not equals check
 	expected := []string{
 		"3 errors occurred:",
@@ -253,7 +348,7 @@ func TestProjectLoadYAML(t *testing.T) {
 		assert.Contains(t, err.Error(), e)
 	}
 
-	_, err = writeAndLoad("name: project\nruntime: test\nbackend: 4\nmain: {}")
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nbackend: 4\nmain: {}")
 	expected = []string{
 		"2 errors occurred:",
 		"* #/main: expected string or null, but got object",
@@ -263,13 +358,13 @@ func TestProjectLoadYAML(t *testing.T) {
 	}
 
 	// Test success
-	proj, err := writeAndLoad("name: project\nruntime: test")
+	proj, err := loadProjectFromText(t, "name: project\nruntime: test")
 	assert.NoError(t, err)
 	assert.Equal(t, tokens.PackageName("project"), proj.Name)
 	assert.Equal(t, "test", proj.Runtime.Name())
 
 	// Test null optionals should work
-	proj, err = writeAndLoad("name: project\nruntime: test\ndescription:\nmain: null\nbackend:\n")
+	proj, err = loadProjectFromText(t, "name: project\nruntime: test\ndescription:\nmain: null\nbackend:\n")
 	assert.NoError(t, err)
 	assert.Nil(t, proj.Description)
 	assert.Equal(t, "", proj.Main)
