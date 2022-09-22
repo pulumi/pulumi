@@ -82,10 +82,10 @@ func TestEngineEvents(t *testing.T) {
 
 }
 
-// TestProjectMain tests out the ability to override the main entrypoint.
-func TestProjectMain(t *testing.T) {
+// TestProjectMainNodejs tests out the ability to override the main entrypoint.
+func TestProjectMainNodejs(t *testing.T) {
 	test := integration.ProgramTestOptions{
-		Dir:          "project_main",
+		Dir:          "project_main/nodejs",
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
