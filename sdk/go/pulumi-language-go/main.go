@@ -47,7 +47,10 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func compileProgramCwd(buildID string) (string, error) {
+// This function takes a file target to specify where to compile to.
+// If `outfile` is "", the binary is compiled to a new temporary file.
+// This function returns the path of the file that was produced.
+func compileProgramCwd(outfile string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", errors.Wrap(err, "unable to get current working directory")
@@ -58,15 +61,18 @@ func compileProgramCwd(buildID string) (string, error) {
 		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
 
-	f, err := os.CreateTemp("", fmt.Sprintf("pulumi-go.%s.*", buildID))
-	if err != nil {
-		return "", errors.Wrap(err, "unable to create go program temp file")
-	}
+	if outfile == "" {
+		// If no outfile is supplied, write the Go binary to a temporary file.
+		f, err := os.CreateTemp("", "pulumi-go.*")
+		if err != nil {
+			return "", errors.Wrap(err, "unable to create go program temp file")
+		}
 
-	if err := f.Close(); err != nil {
-		return "", errors.Wrap(err, "unable to close go program temp file")
+		if err := f.Close(); err != nil {
+			return "", errors.Wrap(err, "unable to close go program temp file")
+		}
+		outfile = f.Name()
 	}
-	outfile := f.Name()
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
@@ -86,9 +92,11 @@ func compileProgramCwd(buildID string) (string, error) {
 func main() {
 	var tracing string
 	var binary string
+	var buildTarget string
 	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
+	flag.StringVar(&buildTarget, "buildTarget", "", "Path to use to output the compiled Pulumi Go program")
 	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	flag.Parse()
@@ -114,10 +122,14 @@ func main() {
 		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
 	}
 
+	if binary != "" && buildTarget != "" {
+		cmdutil.Exit(errors.Errorf("binary and buildTarget cannot both be specified"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, binary)
+			host := newLanguageHost(engineAddress, tracing, binary, buildTarget)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -140,13 +152,15 @@ type goLanguageHost struct {
 	engineAddress string
 	tracing       string
 	binary        string
+	buildTarget   string
 }
 
-func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		binary:        binary,
+		buildTarget:   buildTarget,
 	}
 }
 
@@ -437,11 +451,14 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgramCwd(req.GetProject())
+	program, err := compileProgramCwd(host.buildTarget)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in compiling Go")
 	}
-	defer os.Remove(program)
+	if host.buildTarget == "" {
+		// If there is no specified buildTarget, delete the temporary program after running it.
+		defer os.Remove(program)
+	}
 
 	return runProgram(program, env), nil
 }
