@@ -155,7 +155,9 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(ctx context.Context, requestSpan opentracing.Span, d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+func pulumiAPICall(ctx context.Context,
+	requestSpan opentracing.Span,
+	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
 	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
 
 	// Normalize URL components
