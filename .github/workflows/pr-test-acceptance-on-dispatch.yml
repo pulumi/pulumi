@@ -60,3 +60,7 @@ jobs:
       integration-test-platforms: ubuntu-latest
       smoke-test-platforms: ''
       enable-coverage: true
+    secrets:
+      # Scope secrets to the minimum required:
+      PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      PULUMI_PROD_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
