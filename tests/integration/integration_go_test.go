@@ -765,3 +765,16 @@ func TestAboutGo(t *testing.T) {
 func TestConstructOutputValuesGo(t *testing.T) {
 	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
+
+// TestProjectMainGo tests out the ability to override the main entrypoint.
+func TestProjectMainGo(t *testing.T) {
+	test := integration.ProgramTestOptions{
+		Dir:          "project_main/go",
+		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Simple runtime validation that just ensures the checkpoint was written and read.
+			assert.NotNil(t, stackInfo.Deployment)
+		},
+	}
+	integration.ProgramTest(t, &test)
+}
