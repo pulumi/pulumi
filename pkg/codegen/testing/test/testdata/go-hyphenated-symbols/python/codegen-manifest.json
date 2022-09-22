@@ -1,0 +1,18 @@
+{
+  "emittedFiles": [
+    "pulumi_crds/provider.py",
+    "pulumi_crds/hyphentest/HyphenTest/_inputs.py",
+    "pulumi_crds/hyphentest/HyphenTest/__init__.py",
+    "pulumi_crds/hyphentest/HyphenTest/HyphenTest.py",
+    "pulumi_crds/hyphentest/HyphenTest/outputs.py",
+    "pulumi_crds/hyphentest/__init__.py",
+    "pulumi_crds/meta/v1/_inputs.py",
+    "pulumi_crds/meta/v1/__init__.py",
+    "pulumi_crds/meta/v1/outputs.py",
+    "pulumi_crds/meta/__init__.py",
+    "pulumi_crds/__init__.py",
+    "pulumi_crds/_utilities.py",
+    "pulumi_crds/py.typed",
+    "pulumi_crds/pulumi-plugin.json"
+  ]
+}
