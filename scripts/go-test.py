@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Wraps `go test`.
 """
@@ -23,7 +24,6 @@ def options(options_and_packages: List[str]):
 def packages(options_and_packages: List[str]):
     return [o for o in options_and_packages if o.startswith('github.com/pulumi/pulumi')]
 
-
 root = pathlib.Path(__file__).absolute().parent.parent
 integration_test_subset = os.environ.get('PULUMI_INTEGRATION_TESTS', None)
 args = sys.argv[1:]
@@ -31,20 +31,12 @@ cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
 if cov is not None:
     args = args + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
 
-test_parallelism = int(os.environ.get("GO_TEST_PARALLELISM", "8"))
-pkg_parallelism = int(os.environ.get("GO_TEST_PKG_PARALLELISM", "2"))
-# TODO: https://github.com/pulumi/pulumi/issues/10699
-# Enable running tests with -shuffle on.
-shuffle = os.environ.get("GO_TEST_SHUFFLE", "off")
-args = ['-parallel', str(test_parallelism), '-p', str(pkg_parallelism), "-shuffle", shuffle] + args
-
 if integration_test_subset:
     print(f"Using test subset: {integration_test_subset}")
     args += ['-run', INTEGRATION_TESTS[integration_test_subset]]
 
 if os.environ.get("CI") != "true":
     args += ['-v']
-
 
 class RepeatTimer(threading.Timer):
     def run(self):
@@ -57,6 +49,9 @@ heartbeat_str = '💓' if not windows else 'heartbeat'
 
 start_time = datetime.now()
 def heartbeat():
+    if not sys:
+        # occurs during interpreter shutdown
+        return
     print(heartbeat_str, file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
     sys.stdout.flush()
     sys.stderr.flush()
@@ -64,6 +59,9 @@ def heartbeat():
 timer = RepeatTimer(10, heartbeat)
 timer.daemon = True
 timer.start()
+
+
+args = sys.argv[1:]
 
 if shutil.which('gotestsum') is not None:
     test_run = str(uuid.uuid4())
@@ -76,15 +74,17 @@ if shutil.which('gotestsum') is not None:
         os.mkdir(str(test_results_dir))
 
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
-    junit_file = str(test_results_dir.joinpath(f'{test_run}.xml'))
-    args = ['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--rerun-fails=2', '--packages', pkgs, '--'] + \
+    args = ['gotestsum', '--jsonfile', json_file, '--rerun-fails=1', '--packages', pkgs, '--'] + \
         opts
-
-    print(' '.join(args))
-    if not dryrun:
-        sp.check_call(args, shell=False)
 else:
     args = ['go', 'test'] + args
-    print(' '.join(args))
-    if not dryrun:
-        sp.check_call(args, shell=False)
+
+if not dryrun:
+    sp.check_call(args, shell=False)
+else:
+    print("Would have run: " + ' '.join(args))
+
+timer.cancel()
+# rarely the python runtime will shut down, closing sys.stderr and crashing with a write to a closed
+# sys.stderr. ensure that we exit with an OK status code, in case we race on the write in the timer:
+sys.exit(0)

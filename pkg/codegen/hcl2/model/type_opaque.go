@@ -131,7 +131,6 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 // - The number type is safely convertible from int and unsafely convertible from string
 // - The int type is unsafely convertible from string
 // - The bool type is unsafely convertible from string
-//
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 	kind, _ := t.conversionFrom(src, false, nil)
 	return kind

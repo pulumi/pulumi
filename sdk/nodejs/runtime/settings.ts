@@ -24,6 +24,7 @@ const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+/** @internal */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
@@ -162,14 +163,18 @@ export function cacheDynamicProviders(): boolean {
 /**
  * Get the organization being run by the current update.
  */
-export function getOrganization(): string {
+export function getOrganization(fallback?: string): string {
     const organization = options().organization;
     if (organization) {
         return organization;
     }
 
+    if (fallback !== undefined){
+        return fallback;
+    }
+
     // If the organization is missing, specialize the error.
-    // Throw an error if test mode is enabled, instructing how to manually configure the project:
+    // Throw an error if test mode is enabled, instructing how to manually configure the organization:
     throw new Error("Missing organization name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 

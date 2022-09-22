@@ -17,6 +17,12 @@ namespace Pulumi
         string ProjectName { get; }
 
         /// <summary>
+        /// Returns the current organization name. If no fallback value is given it throws an exception if
+        /// none is registered.
+        /// </summary>
+        string OrganizationName(string? fallback = null);
+
+        /// <summary>
         /// Whether or not the application is currently being previewed or actually applied.
         /// </summary>
         bool IsDryRun { get; }

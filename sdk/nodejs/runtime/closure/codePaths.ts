@@ -15,8 +15,8 @@
 /* eslint-disable max-len */
 
 import * as fs from "fs";
-import * as normalize from "normalize-package-data";
-import * as readPackageTree from "read-package-tree";
+import normalize from "normalize-package-data";
+import readPackageTree from "read-package-tree";
 import * as upath from "upath";
 import { log } from "../..";
 import * as asset from "../../asset";

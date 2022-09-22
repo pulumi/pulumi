@@ -425,11 +425,11 @@ func DependsOn(o []Resource) ResourceOption {
 // Declares explicit dependencies on other resources. Similar to
 // `DependsOn`, but also admits resource inputs and outputs:
 //
-//     var r Resource
-//     var ri ResourceInput
-//     var ro ResourceOutput
-//     allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
-//     DependsOnInputs(allDeps)
+//	var r Resource
+//	var ri ResourceInput
+//	var ro ResourceOutput
+//	allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
+//	DependsOnInputs(allDeps)
 func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
@@ -549,7 +549,7 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-//nolint: revive
+// nolint: revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o

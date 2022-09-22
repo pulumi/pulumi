@@ -29,7 +29,7 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "go tidy",
-		[]string{ex, "mod", "tidy"},
+		[]string{ex, "mod", "tidy", "-compat=1.18"},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
 	if pulumiSDKPath != "" {
@@ -50,7 +50,7 @@ func TypeCheck(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath 
 	require.NoError(t, err)
 
 	err = integration.RunCommand(t, "go tidy after replace",
-		[]string{ex, "mod", "tidy"},
+		[]string{ex, "mod", "tidy", "-compat=1.18"},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
 

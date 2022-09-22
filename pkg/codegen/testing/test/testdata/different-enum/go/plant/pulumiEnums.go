@@ -153,7 +153,7 @@ func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutputWithContext(ctx context.
 // ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
 // You can construct a concrete instance of `ContainerBrightnessInput` via:
 //
-//          ContainerBrightnessArgs{...}
+//	ContainerBrightnessArgs{...}
 type ContainerBrightnessInput interface {
 	pulumi.Input
 
@@ -329,7 +329,7 @@ func (o ContainerSizePtrOutput) ToIntPtrOutputWithContext(ctx context.Context) p
 // ContainerSizeInput is an input type that accepts ContainerSizeArgs and ContainerSizeOutput values.
 // You can construct a concrete instance of `ContainerSizeInput` via:
 //
-//          ContainerSizeArgs{...}
+//	ContainerSizeArgs{...}
 type ContainerSizeInput interface {
 	pulumi.Input
 

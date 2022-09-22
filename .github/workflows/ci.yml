@@ -14,102 +14,199 @@ on:
         required: true
         description: "Version to produce"
         type: string
+      build-all-targets:
+        required: false
+        default: true
+        description: "Build targets to produce, false builds only for Linux amd64."
+        type: boolean
       lint:
         required: false
         default: true
         description: "Whether to run lints"
         type: boolean
+      test-version-sets:
+        required: false
+        default: minimum current
+        description: Version sets on which to run integration tests
+        type: string
+      integration-test-platforms:
+        required: false
+        default: ubuntu-latest
+        description: Platforms on which to run integration tests, as a space delimited list
+        type: string
+      smoke-test-platforms:
+        required: false
+        default: windows-latest macos-latest
+        description: Platforms on which to run integration tests, as a space delimited list
+        type: string
       enable-coverage:
         description: "Collects coverage stats; requires cov-enabled builds"
         default: false
         required: false
         type: boolean
-      unit-test:
+    secrets:
+      PULUMI_BOT_TOKEN:
+        required: true
+        description: "GitHub access token, required to mitigate GitHub rate limits"
+      PULUMI_PROD_ACCESS_TOKEN:
         required: false
-        default: true
-        description: "Whether to run unit tests"
-        type: boolean
-      integration-test:
-        required: false
-        default: true
-        description: "Whether to run integration tests"
-        type: boolean
-      test-platforms:
-        required: false
-        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
-        description: "Platforms to test"
-        type: string
-      build-targets:
-        required: false
-        default: |
-          [
-            { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
-            { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
-            { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
-            { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-            { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
-            { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
-          ]
-        description: "Build targets to produce"
-        type: string
-      slow-test-cutoff:
-        required: false
-        default: 9999
-        description: "Run tests that take less than this many minutes"
-        type: number
+        description: "Pulumi access token, required to run tests against the service"
 
 jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Configure Go Cache Key
+        env:
+          CACHE_KEY: "matrix-setup"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3 # only used by gotestsum
+        with:
+          go-version: '>=1.19.0' # decoupled from version sets, only used by gotestsum
+          cache: true
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
+      - uses: actions/checkout@v3
+        with:
+          repository: dnephin/gotestsum
+          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+          path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: read-gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
+      - name: build matrix
+        id: matrix
+        env:
+          BUILD_ALL_TARGETS: ${{ inputs.build-all-targets }}
+          TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
+          INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
+          INPUT_SMOKE_TEST_PLATFORMS: ${{ inputs.smoke-test-platforms }}
+        run: |
+          echo "::group::Prime test timing data"
+          mkdir -p test-results
+          find test-results -type f -empty -print -delete || true
+          echo "::endgroup::"
+
+          echo "::group::Test matrix variables"
+          readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
+          readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
+          readarray -td' ' SMOKE_PLATFORMS < <(echo -n "$INPUT_SMOKE_TEST_PLATFORMS"); declare -p SMOKE_PLATFORMS;
+          BUILD_TARGETS='[
+            { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }
+          ]'
+          if [ "${BUILD_ALL_TARGETS}" = "true" ]; then
+            BUILD_TARGETS='[
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
+            ]'
+          fi
+
+          UNIT_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind unit-test \
+            --platform ubuntu-latest \
+            --version-set current \
+            --partition-module pkg 3 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+          )
+
+          INTEGRATION_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind integration-test \
+            --platform "${INTEGRATION_PLATFORMS[@]}" \
+            --version-set "${VERSION_SETS_TO_TEST[@]}" \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 2 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
+          )
+
+          SMOKE_TEST_MATRIX=$(
+            ./scripts/get-job-matrix.py \
+            -vvv \
+            generate-matrix \
+            --kind smoke-test \
+            --tags all smoke \
+            --platform "${SMOKE_PLATFORMS[@]}" \
+            --version-set current \
+            --partition-module pkg 1 \
+            --partition-module sdk 1 \
+            --partition-module tests 1 \
+            --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 2
+          )
+          echo "::endgroup::"
+
+          echo "::group::Version set variable"
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set current
+          )
+          echo "::endgroup::"
+
+          echo "::group::Unit test matrix"
+          echo "$UNIT_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Integration test matrix"
+          echo "$INTEGRATION_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Smoke test matrix"
+          echo "$SMOKE_TEST_MATRIX" | yq -P '.'
+          echo "::endgroup::"
+          echo "::group::Version set"
+          echo "$VERSION_SET" | yq -P '.'
+          echo "::endgroup::"
+
+          echo "::group::Set outputs"
+          ./.github/scripts/set-output unit-test-matrix "${UNIT_TEST_MATRIX}"
+          ./.github/scripts/set-output integration-test-matrix "${INTEGRATION_TEST_MATRIX}"
+          ./.github/scripts/set-output smoke-test-matrix "${SMOKE_TEST_MATRIX}"
+          ./.github/scripts/set-output version-set "${VERSION_SET}"
+          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          echo "::endgroup::"
+    outputs:
+      unit-test-matrix: "${{ fromJson(steps.matrix.outputs.unit-test-matrix) }}"
+      integration-test-matrix: "${{ fromJson(steps.matrix.outputs.integration-test-matrix) }}"
+      smoke-test-matrix: "${{ fromJson(steps.matrix.outputs.smoke-test-matrix) }}"
+      version-set: "${{ fromJson(steps.matrix.outputs.version-set) }}"
+      build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
+
   lint:
     name: lint
-    if: inputs.lint
+    needs: [matrix]
+    if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
     with:
       ref: ${{ inputs.ref }}
-
-  workaround:
-    # As of 2022-09-01, using inputs in matrices below result in "waiting for
-    # pending jobs" or failures starting them. This job is a workaround to avoid
-    # that.
-    #
-    # See: https://github.com/pulumi/pulumi/actions/runs/2976429676
-    #
-    # By introducing this workaround node in the evaluator, the matrix jobs below succeed.
-    name: workaround
-    runs-on: ubuntu-latest
-    outputs:
-      test-platforms: ${{ inputs.test-platforms }}
-      build-targets: ${{ inputs.build-targets }}
-    steps:
-      - run: echo "OK"
-
-  # Tests that can run concurrently with builds
-  unit-test:
-    name: unit test
-    needs: [workaround]
-    if: inputs.unit-test
-    strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
-      matrix:
-        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
-    uses: ./.github/workflows/ci-unit-test.yml
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      platform: ${{ matrix.platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
-    secrets: inherit
+      version-set: ${{ needs.matrix.outputs.version-set }}
 
   build-binaries:
     name: build binaries
-    needs: [workaround]
+    needs: [matrix]
     strategy:
       # To avoid tying up macOS runners:
       # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.workaround.outputs.build-targets, 'macos') }}
+      fail-fast: ${{ contains(needs.matrix.outputs.build-targets, 'macos') }}
       matrix:
-        target: ${{ fromJson(needs.workaround.outputs.build-targets) }}
+        target: ${{ fromJson(needs.matrix.outputs.build-targets) }}
     uses: ./.github/workflows/ci-build-binaries.yml
     with:
       ref: ${{ inputs.ref }}
@@ -117,33 +214,115 @@ jobs:
       os: ${{ matrix.target.os }}
       arch: ${{ matrix.target.arch }}
       build-platform: ${{ matrix.target.build-platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
     secrets: inherit
 
   build-sdks:
-    name: build SDKs
+    name: Build SDKs
+    needs: [matrix]
     uses: ./.github/workflows/ci-build-sdks.yml
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
+      version-set: ${{ needs.matrix.outputs.version-set }}
     secrets: inherit
 
-  # Tests that can depend on builds
-  integration-test:
-    name: integration test
-    if: inputs.integration-test
-    needs: [workaround, build-binaries, build-sdks]
+  # Tests that can run concurrently with builds.
+  unit-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name: It changes this:
+    #   CI / Unit Test (cd sdk/dotnet && make dotnet_test, cd sdk/dotnet && make dotnet_test, macos-latest, mi... / sdk/dotnet dotnet_test on macos-latest/current
+    #   (See: https://github.com/pulumi/pulumi/runs/8241055084?check_suite_focus=true#logs)
+    # To this:
+    #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
+    name: Unit Test${{ matrix.platform && '' }}
+    needs: [matrix]
+    if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
-      # To avoid tying up macOS runners:
-      # If using IDE, ignore yaml-schema error: 'Incorrect type. Expected "boolean"'
-      fail-fast: ${{ contains(needs.workaround.outputs.test-platforms, 'macos') }}
-      matrix:
-        platform: ${{ fromJson(needs.workaround.outputs.test-platforms) }}
-    uses: ./.github/workflows/ci-integration-test.yml
+      fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.matrix.outputs.unit-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
       platform: ${{ matrix.platform }}
-      enable-coverage: ${{ inputs.enable-coverage }}
-      slow-test-cutoff: ${{ inputs.slow-test-cutoff }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: false
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
     secrets: inherit
+
+  # Tests that depend on builds
+  integration-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Integration Test${{ matrix.platform && '' }}
+    needs: [matrix, build-binaries, build-sdks]
+    if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
+    strategy:
+      fail-fast: ${{ contains(needs.matrix.outputs.integration-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.matrix.outputs.integration-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true # TODO: set to true here
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  # Tests that depend on builds, but a smaller subset against Windows & MacOS platforms.
+  smoke-test:
+    # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
+    # appearing in the rendered title of the job name. See: unit test.
+    name: Smoke Test${{ matrix.platform && '' }}
+    needs: [matrix, build-binaries, build-sdks]
+    if: ${{ needs.matrix.outputs.smoke-test-matrix != '{}' }}
+    strategy:
+      fail-fast: ${{ contains(needs.matrix.outputs.smoke-test-matrix, 'macos') }}
+      matrix: ${{ fromJson(needs.matrix.outputs.smoke-test-matrix) }}
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ inputs.ref }}
+      version: ${{ inputs.version }}
+      platform: ${{ matrix.platform }}
+
+      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
+      test-command: ${{ matrix.test-suite.command }}
+      is-integration-test: true # TODO: set to true here
+      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
+      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
+
+      version-set: ${{ toJson(matrix.version-set) }}
+    secrets: inherit
+
+  test-collect-reports:
+    needs: [unit-test, integration-test, smoke-test]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v3
+        with:
+          path: test-results
+          key: gotestsum-timing-${{ github.run_number }}
+          restore-keys: gotestsum-timing-
+      - uses: actions/download-artifact@v3
+        continue-on-error: true
+        with:
+          name: gotestsum-test-results
+          path: test-results
+      - name: List and clean up test results
+        continue-on-error: true
+        run: |
+          ls -lhR test-results
+          find test-results -mindepth 1 -name '*.json' -mtime +7 -delete

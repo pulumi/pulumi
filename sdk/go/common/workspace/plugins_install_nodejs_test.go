@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build nodejs || all
-// +build nodejs all
 
 package workspace
 

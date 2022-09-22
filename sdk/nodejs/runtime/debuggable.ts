@@ -29,6 +29,7 @@ let leakDetectorScheduled: boolean = false;
  */
 let leakCandidates: Set<Promise<any>> = new Set<Promise<any>>();
 
+/** @internal */
 export function leakedPromises(): [Set<Promise<any>>, string] {
     const leaked = leakCandidates;
     const promisePlural = leaked.size === 0 ? "promise was" : "promises were";
@@ -56,6 +57,7 @@ export function leakedPromises(): [Set<Promise<any>>, string] {
     return [leaked, message];
 }
 
+/** @internal */
 export function promiseDebugString(p: Promise<any>): string {
     return `CONTEXT(${(<any>p)._debugId}): ${(<any>p)._debugCtx}\n` +
         `STACK_TRACE:\n` +

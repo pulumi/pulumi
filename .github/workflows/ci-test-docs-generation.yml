@@ -52,14 +52,6 @@ jobs:
           dotnet-version: 6.0.x # TODO(friel) use version_set
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-        with:
-          repo: pulumi/pulumictl
-          tag: v0.0.32
-          cache: enable
       - name: Check out source code
         uses: actions/checkout@v2
         with:
@@ -71,11 +63,13 @@ jobs:
         with:
           repository: pulumi/pulumi-aws
           path: pulumi-aws
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
       - name: Check out pulumi-kubernetes
         uses: actions/checkout@v2
         with:
           repository: pulumi/pulumi-kubernetes
           path: pulumi-kubernetes
+          token: ${{ secrets.PULUMI_BOT_GH_PAT_DOCS }}
       - name: Check out docs
         uses: actions/checkout@v2
         with:

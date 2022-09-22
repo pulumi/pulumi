@@ -64,15 +64,15 @@ func jsonPythonLiteral(thing interface{}) (string, error) {
 //
 // Example:
 //
-// {
-//   "pkg": "azure-native",
-//   "mod": "databricks",
-//   "fqn": "pulumi_azure_native.databricks"
-//   "classes": {
-//     "azure-native:databricks:Workspace": "Workspace",
-//     "azure-native:databricks:vNetPeering": "VNetPeering"
-//   }
-// }
+//	{
+//	  "pkg": "azure-native",
+//	  "mod": "databricks",
+//	  "fqn": "pulumi_azure_native.databricks"
+//	  "classes": {
+//	    "azure-native:databricks:Workspace": "Workspace",
+//	    "azure-native:databricks:vNetPeering": "VNetPeering"
+//	  }
+//	}
 type resourceModuleInfo struct {
 	Pkg     string            `json:"pkg"`
 	Mod     string            `json:"mod"`

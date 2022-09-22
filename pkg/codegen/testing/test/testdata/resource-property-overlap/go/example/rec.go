@@ -87,7 +87,7 @@ func (i *Rec) ToRecOutputWithContext(ctx context.Context) RecOutput {
 // RecArrayInput is an input type that accepts RecArray and RecArrayOutput values.
 // You can construct a concrete instance of `RecArrayInput` via:
 //
-//          RecArray{ RecArgs{...} }
+//	RecArray{ RecArgs{...} }
 type RecArrayInput interface {
 	pulumi.Input
 
@@ -112,7 +112,7 @@ func (i RecArray) ToRecArrayOutputWithContext(ctx context.Context) RecArrayOutpu
 // RecMapInput is an input type that accepts RecMap and RecMapOutput values.
 // You can construct a concrete instance of `RecMapInput` via:
 //
-//          RecMap{ "key": RecArgs{...} }
+//	RecMap{ "key": RecArgs{...} }
 type RecMapInput interface {
 	pulumi.Input
 

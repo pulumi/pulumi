@@ -1,5 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-// +build nodejs all
+//go:build (nodejs || all) && !smoke
 
 package ints
 

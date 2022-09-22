@@ -696,25 +696,25 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
 // binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   (+) yarn run build
-//   pulumi init
-//   (*) pulumi login
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi up
-//   pulumi stack export --file stack.json
-//   pulumi stack import --file stack.json
-//   pulumi preview (expected to be empty)
-//   pulumi up (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//	yarn install
+//	yarn link <each opts.Depencies>
+//	(+) yarn run build
+//	pulumi init
+//	(*) pulumi login
+//	pulumi stack init integrationtesting
+//	pulumi config set <each opts.Config>
+//	pulumi config set --secret <each opts.Secrets>
+//	pulumi preview
+//	pulumi up
+//	pulumi stack export --file stack.json
+//	pulumi stack import --file stack.json
+//	pulumi preview (expected to be empty)
+//	pulumi up (expected to be empty)
+//	pulumi destroy --yes
+//	pulumi stack rm --yes integrationtesting
 //
-//   (*) Only if PULUMI_ACCESS_TOKEN is set.
-//   (+) Only if `opts.RunBuild` is true.
+//	(*) Only if PULUMI_ACCESS_TOKEN is set.
+//	(+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -2166,8 +2166,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	// tidy to resolve all transitive dependencies including from local dependencies above
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	// tidy to resolve all transitive dependencies including from local dependencies above.
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy", "-compat=1.18"}, cwd)
 	if err != nil {
 		return err
 	}
