@@ -1750,7 +1750,11 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
 	}
-	projinfo.Root = projdir
+	// Reload the projinfo before making mutating changes (workspace.LoadProject caches the in-memory Project by path)
+	projinfo, err = pt.getProjinfo(projdir)
+	if err != nil {
+		return "", "", err
+	}
 
 	// Add dynamic plugin paths from ProgramTester
 	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
@@ -1771,18 +1775,29 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if projinfo.Proj.Plugins != nil {
 		for i, provider := range projinfo.Proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
-				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, provider.Path)
+				path, err := filepath.Abs(provider.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
+				}
+				projinfo.Proj.Plugins.Providers[i].Path = path
 			}
 		}
 		for i, language := range projinfo.Proj.Plugins.Languages {
 			if !filepath.IsAbs(language.Path) {
-				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, language.Path)
+				path, err := filepath.Abs(language.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", language.Path, err)
+				}
+				projinfo.Proj.Plugins.Languages[i].Path = path
 			}
 		}
-
 		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
 			if !filepath.IsAbs(analyzer.Path) {
-				projinfo.Proj.Plugins.Providers[i].Path = filepath.Join(projdir, analyzer.Path)
+				path, err := filepath.Abs(analyzer.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", analyzer.Path, err)
+				}
+				projinfo.Proj.Plugins.Analyzers[i].Path = path
 			}
 		}
 	}
