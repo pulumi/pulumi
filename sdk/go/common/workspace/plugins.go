@@ -1652,7 +1652,9 @@ func getPluginInfoAndPath(
 	// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
 	isBundled := kind == LanguagePlugin ||
 		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == ResourcePlugin && name == "pulumi-python")
+		(kind == ResourcePlugin && name == "pulumi-python") ||
+		(kind == AnalyzerPlugin && name == "policy") ||
+		(kind == AnalyzerPlugin && name == "policy-python")
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
