@@ -149,3 +149,14 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 		},
 	}
 }
+
+// TestRefreshGo simply tests that we can build and run an empty Go project with the `refresh` option set.
+func TestRefreshGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("refresh", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick: true,
+	})
+}

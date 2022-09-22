@@ -83,7 +83,7 @@ namespace Pulumi
             Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES") == "1" ||
             string.Equals(Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES"), "TRUE", StringComparison.OrdinalIgnoreCase);
 
-        private readonly string? _organizationName;
+        private readonly string _organizationName;
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
@@ -131,7 +131,7 @@ namespace Pulumi
             _isDryRun = dryRunValue;
             _stackName = stack;
             _projectName = project;
-            _organizationName = organization;
+            _organizationName = organization ?? "organization";
 
             var deploymentLogger = CreateDefaultLogger();
 
@@ -160,23 +160,14 @@ namespace Pulumi
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
-            _organizationName = options?.OrganizationName;
+            _organizationName = options?.OrganizationName ?? "organization";
             this.Engine = engine;
             this.Monitor = monitor;
             _runner = new Runner(this, deploymentLogger);
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
-        string IDeployment.OrganizationName(string? fallback) {
-            if (string.IsNullOrEmpty(_organizationName))
-            {
-                if (fallback == null){
-                    throw new Exception("organization is not available; for test mode, set this in `TestOptions`");
-                }
-                return fallback;
-            }
-            return _organizationName;
-        }
+        string IDeployment.OrganizationName => _organizationName;
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;

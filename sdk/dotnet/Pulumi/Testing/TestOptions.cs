@@ -21,7 +21,7 @@ namespace Pulumi.Testing
         public bool? IsPreview { get; set; }
 
         /// <summary>
-        /// Organization name. Defaults to nothing if not specified.
+        /// Organization name. Defaults to <b>"organization"</b> if not specified.
         /// </summary>
         public string? OrganizationName { get; set; }
     }

@@ -48,6 +48,7 @@ class LanguageServer(LanguageRuntimeServicer):
 
         # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
         engine_address = request.args[0] if request.args else ""
+        organization = request.organization if request.organization else "organization"
         reset_options(
             project=request.project,
             monitor_address=request.monitor_address,
@@ -55,7 +56,7 @@ class LanguageServer(LanguageRuntimeServicer):
             stack=request.stack,
             parallel=request.parallel,
             preview=request.dryRun,
-            organization=request.organization,
+            organization=organization,
         )
 
         if request.config:
