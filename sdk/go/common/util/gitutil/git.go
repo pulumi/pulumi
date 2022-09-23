@@ -359,24 +359,6 @@ func gitCloneFallback(url string, referenceName plumbing.ReferenceName, path str
 	return nil
 }
 
-// This method breaks an Azure Devops URL into the
-// repository url to clone and the path
-func parseGitRepoURLAzureDevops(rawurl string) (string, string, error) {
-	// example full Azure Devops url URL
-	// https://dev.azure.com/account-name/project-name/_git/repo-name?path=/foo/bar/baz/cloud-go
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return "", "", err
-	}
-	vals := u.Query()
-	path := vals.Get("path")
-
-	// remove querystring parameters
-	u.RawQuery = ""
-
-	return u.String(), path, nil
-}
-
 // We currently accept Gist URLs in the form: https://gist.github.com/owner/id.
 // We may want to consider supporting https://gist.github.com/id at some point,
 // as well as arbitrary revisions, e.g. https://gist.github.com/owner/id/commit.
@@ -444,7 +426,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 
 	// Special case Azure DevOps.
 	if u.Hostname() == AzureDevOpsHostName {
-		return parseGitRepoURLAzureDevops(rawurl)
+		return rawurl, "", nil
 	}
 
 	path := strings.TrimPrefix(u.Path, "/")
