@@ -378,7 +378,10 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		return "", "", err
 	}
 
-	if u.Scheme != "https" {
+	switch u.Scheme {
+	case "https":
+	case "http":
+	default:
 		return "", "", errors.New("invalid URL scheme")
 	}
 

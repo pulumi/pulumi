@@ -247,9 +247,15 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	return nil
 }
 
-// IsTemplateURL returns true if templateNamePathOrURL starts with "https://".
+// IsTemplateURL returns true if templateNamePathOrURL starts with "https://" or "http://".
 func IsTemplateURL(templateNamePathOrURL string) bool {
-	return strings.HasPrefix(templateNamePathOrURL, "https://")
+	if strings.HasPrefix(templateNamePathOrURL, "https://") {
+		return true
+	}
+	if strings.HasPrefix(templateNamePathOrURL, "http://") {
+		return true
+	}
+	return false
 }
 
 // isTemplateFileOrDirectory returns true if templateNamePathOrURL is the name of a valid file or directory.
