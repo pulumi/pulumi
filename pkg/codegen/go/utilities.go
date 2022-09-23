@@ -88,7 +88,8 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	// Capitalize and make a valid identifier.
-	safeName = makeValidIdentifier(Title(safeName))
+	safeName = enumTitle(safeName)
+	safeName = makeValidIdentifier(safeName)
 
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
@@ -106,4 +107,20 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 
 func camel(s string) string {
 	return cgstrings.Camel(s)
+}
+
+// Title converts the input string to a title case
+// where only the initial letter is upper-cased.
+// It also removes $-prefix if any.
+func enumTitle(s string) string {
+	if s == "" {
+		return ""
+	}
+	if s[0] == '$' {
+		return Title(s[1:])
+	}
+	s = cgstrings.UppercaseFirst(s)
+	return cgstrings.ModifyStringAroundDelimeter(s, "-", func(next string) string {
+		return "_" + cgstrings.UppercaseFirst(next)
+	})
 }

@@ -9,7 +9,7 @@ import (
 // Unhyphenate removes all hyphens from s, then uppercasing the letter following each hyphen.
 // For example, "abc-def-ghi" becomes "abcDefGhi".
 func Unhyphenate(str string) string {
-	return modifyStringAroundDelimeter(str, "-", UppercaseFirst)
+	return ModifyStringAroundDelimeter(str, "-", UppercaseFirst)
 }
 
 // Camel converts s to camelCase.
@@ -39,7 +39,7 @@ func UppercaseFirst(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-func modifyStringAroundDelimeter(str, delim string, modifyNext func(next string) string) string {
+func ModifyStringAroundDelimeter(str, delim string, modifyNext func(next string) string) string {
 	if delim == "" {
 		return str
 	}
@@ -57,5 +57,5 @@ func modifyStringAroundDelimeter(str, delim string, modifyNext func(next string)
 	if next != "" {
 		next = modifyNext(next)
 	}
-	return prev + modifyStringAroundDelimeter(next, delim, modifyNext)
+	return prev + ModifyStringAroundDelimeter(next, delim, modifyNext)
 }

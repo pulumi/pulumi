@@ -411,8 +411,8 @@ func TestTitle(t *testing.T) {
 	assert.Equal("Plugh", Title("plugh"))
 	assert.Equal("WaldoThudFred", Title("WaldoThudFred"))
 	assert.Equal("WaldoThudFred", Title("waldoThudFred"))
-	assert.Equal("Waldo_Thud_Fred", Title("waldo-Thud-Fred"))
-	assert.Equal("Waldo_ThudFred", Title("waldo-ThudFred"))
-	assert.Equal("Waldo_Thud_Fred", Title("waldo-Thud_Fred"))
-	assert.Equal("Waldo_Thud_Fred", Title("waldo-thud_Fred"))
+	assert.Equal("WaldoThudFred", Title("waldo-Thud-Fred"))
+	assert.Equal("WaldoThudFred", Title("waldo-ThudFred"))
+	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
+	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
 }
