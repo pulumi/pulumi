@@ -16,7 +16,7 @@ func (nameInfo) Format(name string) string {
 	return name
 }
 
-//nolint: lll
+// nolint: lll
 func TestApplyRewriter(t *testing.T) {
 	t.Parallel()
 

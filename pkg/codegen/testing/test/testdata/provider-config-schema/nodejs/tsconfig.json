@@ -15,6 +15,7 @@
     "files": [
         "config/index.ts",
         "config/vars.ts",
+        "funcWithAllOptionalInputs.ts",
         "index.ts",
         "provider.ts",
         "types/enums/index.ts",

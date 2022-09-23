@@ -130,7 +130,7 @@ class Settings:
 
 
 # default to "empty" settings.
-SETTINGS = Settings(stack="stack", project="project")
+SETTINGS = Settings(stack="stack", project="project", organization="organization")
 
 
 def configure(settings: Settings):
@@ -159,10 +159,11 @@ def is_legacy_apply_enabled():
 
 def get_organization() -> str:
     """
-    Returns the current organization name (if available).
+    Returns the current organization name.
+
+    When writing unit tests, you can set this flag via `pulumi.runtime.set_mocks` by supplying a value
+    for the argument `organization`.
     """
-    if SETTINGS.organization is None:
-        raise Exception("organization is not available")
     return SETTINGS.organization
 
 

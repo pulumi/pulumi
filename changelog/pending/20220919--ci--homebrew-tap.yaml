@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: ci
+  description: Re-enable Homebrew Tap publishing.

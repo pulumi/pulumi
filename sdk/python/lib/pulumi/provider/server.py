@@ -82,7 +82,9 @@ class ProviderServicer(ResourceProviderServicer):
             request, proto.ConstructRequest
         ), f"request is not ConstructRequest but is {type(request)} instead"
 
+        organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
+            organization=organization,
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
             parallel=_zero_as_none(request.parallel),
@@ -211,7 +213,9 @@ class ProviderServicer(ResourceProviderServicer):
             request, proto.CallRequest
         ), f"request is not CallRequest but is {type(request)} instead"
 
+        organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
+            organization=organization,
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
             parallel=_zero_as_none(request.parallel),

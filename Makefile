@@ -16,8 +16,10 @@ INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
+ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
+endif
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -90,7 +92,8 @@ install_all:: install
 dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-# NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
+.PHONY: brew
+# NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
 brew::
 	./scripts/brew.sh "${PROJECT}"
 
@@ -111,10 +114,7 @@ lint_actions:
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
-test_build::
-	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
-
-test_all:: test_build test_pkg test_integration
+test_all:: test_pkg test_integration
 
 test_pkg_nodejs: get_schemas
 # this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
@@ -147,6 +147,11 @@ test_integration_subpkgs:
 	@cd tests && $(GO_TEST) $(TESTS_PKGS)
 
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
+
+# Used by CI to run tests in parallel across the Go modules pkg, sdk, and tests.
+.PHONY: gotestsum/%
+gotestsum/%:
+	cd $* && $(PYTHON) '$(CURDIR)/scripts/go-test.py' $(GO_TEST_FLAGS) $${OPTS} $${PKGS}
 
 tidy::
 	./scripts/tidy.sh

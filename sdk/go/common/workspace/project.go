@@ -15,17 +15,39 @@
 package workspace
 
 import (
+	_ "embed"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
+
+//go:embed project.json
+var projectSchema string
+
+var ProjectSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(u string) (io.ReadCloser, error) {
+		if u == "blob://project.json" {
+			return io.NopCloser(strings.NewReader(projectSchema)), nil
+		}
+		return jsonschema.LoadURL(u)
+	}
+	ProjectSchema = compiler.MustCompile("blob://project.json")
+}
 
 // Analyzers is a list of analyzers to run on this project.
 type Analyzers []tokens.QName
@@ -119,6 +141,89 @@ type Project struct {
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
+}
+
+func ValidateProject(raw interface{}) error {
+	// Cast any map[interface{}] from the yaml decoder to map[string]
+	var cast func(value interface{}) (interface{}, error)
+	cast = func(value interface{}) (interface{}, error) {
+		if objMap, ok := value.(map[interface{}]interface{}); ok {
+			strMap := make(map[string]interface{})
+			for key, value := range objMap {
+				if strKey, ok := key.(string); ok {
+					innerValue, err := cast(value)
+					if err != nil {
+						return nil, err
+					}
+					strMap[strKey] = innerValue
+				} else {
+					return nil, fmt.Errorf("expected only string keys, got '%s'", key)
+				}
+			}
+			return strMap, nil
+		} else if objArray, ok := value.([]interface{}); ok {
+			strArray := make([]interface{}, len(objArray))
+			for key, value := range objArray {
+				innerValue, err := cast(value)
+				if err != nil {
+					return nil, err
+				}
+				strArray[key] = innerValue
+			}
+			return strArray, nil
+		}
+		return value, nil
+	}
+	result, err := cast(raw)
+	if err != nil {
+		return err
+	}
+
+	var ok bool
+	var obj map[string]interface{}
+	if obj, ok = result.(map[string]interface{}); !ok {
+		return fmt.Errorf("expected an object")
+	}
+
+	// Couple of manual errors to match Validate
+	name, ok := obj["name"]
+	if !ok {
+		return errors.New("project is missing a 'name' attribute")
+	}
+	if strName, ok := name.(string); !ok || strName == "" {
+		return errors.New("project is missing a non-empty string 'name' attribute")
+	}
+	if _, ok := obj["runtime"]; !ok {
+		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	// Let everything else be caught by jsonschema
+	if err = ProjectSchema.Validate(obj); err == nil {
+		return nil
+	}
+	validationError, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return err
+	}
+
+	var errs *multierror.Error
+	var appendError func(err *jsonschema.ValidationError)
+	appendError = func(err *jsonschema.ValidationError) {
+		if err.InstanceLocation != "" && err.Message != "" {
+			errorf := func(path, message string, args ...interface{}) error {
+				contract.Require(path != "", "path")
+				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
+			}
+
+			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", err.Message))
+		}
+		for _, err := range err.Causes {
+			appendError(err)
+		}
+	}
+	appendError(validationError)
+
+	return errs
 }
 
 func (proj *Project) Validate() error {

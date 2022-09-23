@@ -45,6 +45,7 @@ namespace Pulumi.Automation
                 request.MonitorAddress,
                 request.Config,
                 request.ConfigSecretKeys,
+                request.Organization,
                 request.Project,
                 request.Stack,
                 request.Parallel,

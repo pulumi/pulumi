@@ -59,7 +59,7 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case "python": // nolint: goconst
 				projectGenerator = python.GenerateProject
-			case "java":
+			case "java": // nolint: goconst
 				projectGenerator = javagen.GenerateProject
 			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject

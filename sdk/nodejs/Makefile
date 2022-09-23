@@ -7,7 +7,9 @@ LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-n
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TEST_FAST_TIMEOUT := 2m
 
+ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
+endif
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -22,7 +24,7 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
-	yarn install
+	yarn install --frozen-lockfile
 	@touch .ensure.phony
 
 lint:: ensure

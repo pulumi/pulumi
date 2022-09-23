@@ -24,6 +24,7 @@ const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
+/** @internal */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
 
@@ -46,7 +47,7 @@ export interface Options {
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
     readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
-    readonly organization?: string; // the name of the current organization (if available).
+    readonly organization?: string; // the name of the current organization.
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -91,7 +92,7 @@ export function resetOptions(
     process.env[nodeEnvKeys.parallel] = parallel.toString();
     process.env[nodeEnvKeys.monitorAddr] = monitorAddr;
     process.env[nodeEnvKeys.engineAddr] = engineAddr;
-    process.env[nodeEnvKeys.organization] = organization;
+    process.env[nodeEnvKeys.organization] = organization === "" ? "organization" : organization;
 }
 
 export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean, organization?: string) {
@@ -169,7 +170,7 @@ export function getOrganization(): string {
     }
 
     // If the organization is missing, specialize the error.
-    // Throw an error if test mode is enabled, instructing how to manually configure the project:
+    // Throw an error if test mode is enabled, instructing how to manually configure the organization:
     throw new Error("Missing organization name; for test mode, please call `pulumi.runtime.setMocks`");
 }
 

@@ -67,17 +67,11 @@ jobs:
 
           NEXT_VERSION="$(.github/scripts/get-next-version "${PLAIN_VERSION}")"
           ./.github/scripts/set-output next-version "${NEXT_VERSION}"
-      - name: Configure Go cache key
-        env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
+          go-version: '>=1.19.0' # decoupled from version sets, used by changelog tool
           cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          cache-dependency-path: '.github/scripts/get-changelog'
       - name: Extract release notes
         id: notes
         run: |
@@ -85,7 +79,7 @@ jobs:
           CHANGELOG="$(./.github/scripts/get-changelog "${PREVIOUS_VERSION}" --version "${{ fromJSON(steps.version.outputs.version) }}")"
           ./.github/scripts/set-output release-notes "${CHANGELOG}"
       - name: Check version
-        if: (!inputs.is-snapshot)
+        if: ${{ !inputs.is-snapshot }}
         run: |
           PULUMI_VERSION="${{ fromJSON(steps.version.outputs.version) }}"
 
@@ -100,11 +94,15 @@ jobs:
             echo "::endgroup::"
           fi
 
-          if EXISTING_RELEASE="$(gh release view "v${PULUMI_VERSION}")"; then
-            echo "::error::This version has already been released!"
-            echo "::group::Release ${PULUMI_VERSION}"
-            echo "$EXISTING_RELEASE"
-            echo "::endgroup::"
+          if EXISTING_RELEASE_DRAFT="$(gh release view "v${PULUMI_VERSION}" --json isDraft --jq '.isDraft')"; then
+            if [ "$EXISTING_RELEASE_DRAFT" != "true" ]; then
+              echo "::error::This version has already been released!"
+              echo "::group::Release ${PULUMI_VERSION}"
+              echo "$EXISTING_RELEASE"
+              echo "::endgroup::"
+            else
+              echo "::info Preparing to update draft release ${PULUMI_VERSION}"
+            fi
           fi
 
           if $ERROR; then

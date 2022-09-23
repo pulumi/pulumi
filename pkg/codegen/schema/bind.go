@@ -118,17 +118,17 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //
 // A few notes on diagnostics and errors in spec binding:
 //
-// - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a package
-//   failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as error values.
-// - Semantic errors during type binding should not be fatal. Instead, they should return an `InvalidType`. The invalid
-//   type is accepted in any position, and carries diagnostics that explain the semantic error during binding. This
-//   allows binding to continue and produce as much information as possible for the end user.
-// - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
-// - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
-//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
-//   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
-//   diagnostic error that is appropriately tagged with a JSON pointer.
-//
+//   - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a
+//     package failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as
+//     error values.
+//   - Semantic errors during type binding should not be fatal. Instead, they should return an `InvalidType`. The
+//     invalid type is accepted in any position, and carries diagnostics that explain the semantic error during binding.
+//     This allows binding to continue and produce as much information as possible for the end user.
+//   - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
+//   - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
+//     diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
+//     are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
+//     diagnostic error that is appropriately tagged with a JSON pointer.
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	validate bool) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
@@ -286,8 +286,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
-func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil, true)
+func BindSpec(spec PackageSpec, loader Loader) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(spec, nil, loader, true)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
@@ -445,7 +445,7 @@ func (t *types) externalPackage() PackageReference {
 	return t.pkg.Reference()
 }
 
-//nolint: goconst
+// nolint: goconst
 func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 	switch name {
 	case "boolean":

@@ -34,6 +34,21 @@ func TestParseGitRepoURL(t *testing.T) {
 		assert.Equal(t, expectedURLPath, actualURLPath)
 	}
 
+	// Azure DevOps.
+	{
+		// Azure DevOps uses a different scheme for URLs.
+		// specifying a subdir and git ref is not currently supported.
+		{
+			url := "https://dev.azure.com/account-name/project-name/_git/repo-name"
+			test(url, "", url)
+		}
+
+		{
+			url := "https://dev.azure.com/tree/tree/_git/repo-name"
+			test(url, "", url)
+		}
+	}
+
 	// GitHub.
 	pre := "https://github.com/pulumi/templates"
 	exp := pre + ".git"
@@ -103,25 +118,6 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git")
 	testError("http://github.com/pulumi/templates")
-}
-
-func TestParseURL(t *testing.T) {
-	t.Parallel()
-	{
-		url := "https://dev.azure.com/account-name/project-name/_git/repo-name?path=/nested-dir/foo/templates/cloud-go"
-		url, path, err := parseGitRepoURLAzureDevops(url)
-		assert.NoError(t, err)
-		assert.Equal(t, "https://dev.azure.com/account-name/project-name/_git/repo-name", url)
-		assert.Equal(t, "/nested-dir/foo/templates/cloud-go", path)
-	}
-
-	{
-		url := "https://dev.azure.com/account-name/project-name/_git/repo-name"
-		url, path, err := parseGitRepoURLAzureDevops(url)
-		assert.NoError(t, err)
-		assert.Equal(t, "https://dev.azure.com/account-name/project-name/_git/repo-name", url)
-		assert.Equal(t, "", path)
-	}
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {

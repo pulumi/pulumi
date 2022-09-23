@@ -17,19 +17,19 @@
 import * as settings from "./runtime/settings";
 
 /**
- * getOrganization returns the current organization name.  It throws an exception if none is registered.
+ * getOrganization returns the current organization name.
  */
 export function getOrganization(): string {
     return settings.getOrganization();
 }
 /**
- * getProject returns the current project name.  It throws an exception if none is registered.
+ * getProject returns the current project name. It throws an exception if none is registered.
  */
 export function getProject(): string {
     return settings.getProject();
 }
 /**
- * getStack returns the current stack name.  It throws an exception if none is registered.
+ * getStack returns the current stack name. It throws an exception if none is registered.
  */
 export function getStack(): string {
     return settings.getStack();

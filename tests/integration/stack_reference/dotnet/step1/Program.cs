@@ -11,9 +11,7 @@ class Program
     {
         return Deployment.RunAsync(async () =>
         {
-            var config = new Config();
-            var org = config.Require("org");
-            var slug = $"{org}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
+            var slug = $"{Deployment.Instance.OrganizationName}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
             var a = new StackReference(slug);
 
             var oldVal = (string[])await a.GetValueAsync("val");

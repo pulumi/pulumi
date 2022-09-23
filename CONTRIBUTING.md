@@ -103,7 +103,12 @@ is a pretty standard starting point during debugging that will show a fairly com
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
 
-When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your pull request gets into the next release.
+We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
+
+```bash
+$ make changelog
+````
+…and follow the prompts on screen.
 
 ### Pulumi employees
 

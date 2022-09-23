@@ -111,23 +111,29 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
-		targetURNs := []resource.URN{}
-		snap, err := s.Snapshot(ctx)
-		if err != nil {
-			return result.FromError(err)
-		}
-		for _, t := range targets {
-			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
-		}
+		targetURNs, replaceURNs := []resource.URN{}, []resource.URN{}
 
-		replaceURNs := []resource.URN{}
-		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
-		}
+		if len(targets)+len(replaces)+len(targetReplaces) > 0 {
+			// The s.Snapshot call below adds needless latency as s.Update further below will call
+			// (*cloudBackend).getSnapshot again, presumably re-retrieving the same result over the network.
+			// Although s.Snapshot has a cache, it does not get hit by s.Update as of this writing. For now:
+			// only call s.Snapshot here if targets, replaces, or targetReplaces require it.
+			snap, err := s.Snapshot(ctx)
+			if err != nil {
+				return result.FromError(err)
+			}
+			for _, t := range targets {
+				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
+			}
 
-		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
-			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+			for _, r := range replaces {
+				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
+			}
+
+			for _, tr := range targetReplaces {
+				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+			}
 		}
 
 		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {

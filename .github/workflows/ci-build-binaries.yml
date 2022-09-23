@@ -27,16 +27,10 @@ on:
         required: true
         description: "Version to produce"
         type: string
-      go-version:
-        description: 'Version of the Go toolchain for the build'
-        default: '1.19.x'
+      version-set:
         required: false
+        description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
-      enable-coverage:
-        description: 'Builds executables with coverage analysis enabled'
-        default: false
-        required: false
-        type: boolean
 
 defaults:
   run:
@@ -58,7 +52,7 @@ jobs:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
         # but only modify the path by adding tar.exe
-        if: runner.os == 'Windows'
+        if: ${{ runner.os == 'Windows' }}
         env:
           TOOL_BIN: ${{ runner.temp }}/tar-bin
         run: |
@@ -69,24 +63,16 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
-      - name: Enable code coverage
-        if: inputs.enable-coverage
-        run: |
-          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
-      - name: Configure Go cache key
+      - name: Configure Go Cache Key
         env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ inputs.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - name: Configure Go cache key for builds # Include target OS and arch
-        env:
-          CACHE_KEY: "${{ inputs.os }}-${{ inputs.arch }}"
-        run: echo "$CACHE_KEY" >> .gocache.tmp
       - uses: actions/setup-go@v3
         with:
-          go-version: ${{ inputs.go-version }}
+          go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
           cache-dependency-path: |
             pkg/go.sum
@@ -99,13 +85,20 @@ jobs:
         with:
           install-only: true
           distribution: goreleaser-pro
-      - uses: actions/download-artifact@v2
-        with:
-          name: build-external-deps
-          path: bin
-      - name: Set execute bit on files
+      - name: Set up bin dir
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GOOS: ${{ inputs.os }}
+          GOARCH: ${{ inputs.arch }}
+        run: ./scripts/prep-for-goreleaser.sh local
+      - name: Show files and permissions
+        if: ${{ runner.os != 'macOS'}}
+        run: find bin -type f -printf "%M    %p/"\\n
+      - name: Show files and permissions
+        if: ${{ runner.os == 'macOS'}}
         run: |
-          find bin -exec chmod -v +x {} ';'
+          brew install findutils
+          gfind bin -type f -printf "%M    %p/"\\n
       - name: Package
         shell: bash
         env:

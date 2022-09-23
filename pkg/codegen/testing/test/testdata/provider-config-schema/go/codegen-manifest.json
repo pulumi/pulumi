@@ -4,6 +4,7 @@
     "configstation/config/pulumiTypes.go",
     "configstation/config/pulumiUtilities.go",
     "configstation/doc.go",
+    "configstation/funcWithAllOptionalInputs.go",
     "configstation/init.go",
     "configstation/provider.go",
     "configstation/pulumi-plugin.json",

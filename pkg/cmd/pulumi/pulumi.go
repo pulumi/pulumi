@@ -313,6 +313,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newPluginCmd(),
 				newSchemaCmd(),
+				newPackageCmd(),
 			},
 		},
 		{

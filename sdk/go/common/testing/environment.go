@@ -109,8 +109,10 @@ func (e *Environment) SetBackend(backend string) {
 
 // SetEnvVars appends to the list of environment variables.
 // According to https://pkg.go.dev/os/exec#Cmd.Env:
-//     If Env contains duplicate environment keys, only the last
-//     value in the slice for each duplicate key is used.
+//
+//	If Env contains duplicate environment keys, only the last
+//	value in the slice for each duplicate key is used.
+//
 // So later values take precedence.
 func (e *Environment) SetEnvVars(env ...string) {
 	e.Env = append(e.Env, env...)

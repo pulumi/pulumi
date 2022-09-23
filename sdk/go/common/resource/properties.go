@@ -103,12 +103,12 @@ type Secret struct {
 // resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
 // respect to the ID:
 //
-// - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
-//   be null.
-// - The ID may be unknown (in which case it will be the unknown property value)
-// - Otherwise, the ID must be a string.
+//   - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
+//     be null.
+//   - The ID may be unknown (in which case it will be the unknown property value)
+//   - Otherwise, the ID must be a string.
 //
-//nolint: revive
+// nolint: revive
 type ResourceReference struct {
 	URN            URN
 	ID             PropertyValue

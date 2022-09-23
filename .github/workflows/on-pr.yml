@@ -45,11 +45,22 @@ jobs:
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
-      test-platforms: '["ubuntu-latest"]'
-      build-targets: '[{ "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" }]'
+      lint: true
+      build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+      test-version-sets: >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && 'minimum current'
+          || 'current'
+        }}
+      integration-test-platforms: ubuntu-latest
+      smoke-test-platforms: >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test')
+          && 'macos-latest windows-latest'
+          || ''
+        }}
       enable-coverage: true
-      # They said GitHub Actions didn't have ternaries, but I know better:
-      slow-test-cutoff: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') && 9999 || 5 }}
     secrets: inherit
 
   prepare-release:
@@ -71,7 +82,7 @@ jobs:
   # release:
   #   name: release
   #   if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
-  #   needs: [info, prepare-release]
+  #   needs: [info, matrix, prepare-release]
   #   uses: ./.github/workflows/release.yml
   #   permissions:
   #     contents: write
@@ -81,5 +92,6 @@ jobs:
   #     version: ${{ needs.info.outputs.version }}
   #     next-version: ${{ needs.info.outputs.next-version }}
   #     release-notes: ${{ needs.info.outputs.release-notes }}
+  #     version-set: ${{ needs.matrix.outputs.version-set }}
   #     queue-merge: false
   #   secrets: inherit

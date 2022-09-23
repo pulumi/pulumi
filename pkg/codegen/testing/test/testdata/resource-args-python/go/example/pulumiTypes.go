@@ -17,7 +17,7 @@ type PetType struct {
 // PetTypeInput is an input type that accepts PetTypeArgs and PetTypeOutput values.
 // You can construct a concrete instance of `PetTypeInput` via:
 //
-//          PetTypeArgs{...}
+//	PetTypeArgs{...}
 type PetTypeInput interface {
 	pulumi.Input
 
@@ -44,7 +44,7 @@ func (i PetTypeArgs) ToPetTypeOutputWithContext(ctx context.Context) PetTypeOutp
 // PetTypeArrayInput is an input type that accepts PetTypeArray and PetTypeArrayOutput values.
 // You can construct a concrete instance of `PetTypeArrayInput` via:
 //
-//          PetTypeArray{ PetTypeArgs{...} }
+//	PetTypeArray{ PetTypeArgs{...} }
 type PetTypeArrayInput interface {
 	pulumi.Input
 
