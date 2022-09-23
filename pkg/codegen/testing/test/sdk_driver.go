@@ -310,7 +310,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
 	},
 	{
-		Directory:   "go-hyphenated-symbols",
+		Directory:   "hyphenated-symbols",
 		Description: "Test that types can have names with hyphens in them",
 	},
 }
