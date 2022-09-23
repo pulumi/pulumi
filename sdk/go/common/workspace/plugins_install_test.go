@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -69,8 +70,11 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	}
 
 	// Add plugin binary to included files.
-	files["pulumi-resource-test"] = nil
-	files["pulumi-resource-test.exe"] = nil
+	if runtime.GOOS == "windows" {
+		files["pulumi-resource-test.exe"] = nil
+	} else {
+		files["pulumi-resource-test"] = nil
+	}
 
 	tgz, err := createTGZ(files)
 	require.NoError(t, err)
@@ -99,7 +103,11 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
 
-	info, err = os.Stat(filepath.Join(dir, plugin.Dir(), plugin.File()))
+	file := filepath.Join(dir, plugin.Dir(), plugin.File())
+	if runtime.GOOS == "windows" {
+		file += ".exe"
+	}
+	info, err = os.Stat(file)
 	assert.NoError(t, err)
 	assert.False(t, info.IsDir())
 
