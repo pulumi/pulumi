@@ -109,22 +109,25 @@ func TestConstructPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t,
-				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPython(t, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
+		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},

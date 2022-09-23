@@ -264,9 +264,9 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
-	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`.  This is
-	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
-	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
+	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`. This
+	// is equivalent to `--logflow --logtostderr -v=N`, where N is the value of DebugLogLevel. This may also
+	// be enabled by setting the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int
 	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
 	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
@@ -311,8 +311,8 @@ type ProgramTestOptions struct {
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
 
-	// Array of dependencies which come from local packages.
-	LocalDependencies []LocalDependency
+	// Array of provider plugin dependencies which come from local packages.
+	LocalProviders []LocalDependency
 }
 
 type LocalDependency struct {
@@ -560,8 +560,8 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
 	}
-	if overrides.LocalDependencies != nil {
-		opts.LocalDependencies = append(opts.LocalDependencies, overrides.LocalDependencies...)
+	if overrides.LocalProviders != nil {
+		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
 	return opts
 }
@@ -848,7 +848,7 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	}
 	cmd := []string{bin}
 	if du := pt.opts.GetDebugLogLevel(); du > 0 {
-		cmd = append(cmd, "--logtostderr", "-v="+strconv.Itoa(du))
+		cmd = append(cmd, "--logflow", "--logtostderr", "-v="+strconv.Itoa(du))
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
@@ -1750,43 +1750,64 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
 	}
-	projinfo.Root = projdir
-
-	//Modify the pulumi project file in the temp dir
-	//if it has any local references to plugins
-	dir, err := workspace.DetectProjectPathFrom(projdir)
+	// Reload the projinfo before making mutating changes (workspace.LoadProject caches the in-memory Project by path)
+	projinfo, err = pt.getProjinfo(projdir)
 	if err != nil {
 		return "", "", err
 	}
-	proj, err := workspace.LoadProject(dir)
-	if err != nil {
-		return "", "", fmt.Errorf("error loading project %q: %w", dir, err)
+
+	// Add dynamic plugin paths from ProgramTester
+	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
+		projinfo.Proj.Plugins = &workspace.Plugins{
+			Providers: make([]workspace.PluginOptions, 0),
+		}
 	}
 
-	if proj.Plugins != nil {
-		for _, provider := range proj.Plugins.Providers {
+	if pt.opts.LocalProviders != nil {
+		for _, provider := range pt.opts.LocalProviders {
+			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
+				Name: provider.Package,
+				Path: provider.Path,
+			})
+		}
+	}
+
+	if projinfo.Proj.Plugins != nil {
+		for i, provider := range projinfo.Proj.Plugins.Providers {
 			if !filepath.IsAbs(provider.Path) {
-				provider.Path = filepath.Join(projdir, provider.Path)
+				path, err := filepath.Abs(provider.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
+				}
+				projinfo.Proj.Plugins.Providers[i].Path = path
 			}
 		}
-		for _, language := range proj.Plugins.Languages {
+		for i, language := range projinfo.Proj.Plugins.Languages {
 			if !filepath.IsAbs(language.Path) {
-				language.Path = filepath.Join(projdir, language.Path)
+				path, err := filepath.Abs(language.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", language.Path, err)
+				}
+				projinfo.Proj.Plugins.Languages[i].Path = path
 			}
 		}
-
-		for _, analyzer := range proj.Plugins.Analyzers {
+		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
 			if !filepath.IsAbs(analyzer.Path) {
-				analyzer.Path = filepath.Join(projdir, analyzer.Path)
+				path, err := filepath.Abs(analyzer.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", analyzer.Path, err)
+				}
+				projinfo.Proj.Plugins.Analyzers[i].Path = path
 			}
 		}
 	}
-	bytes, err := yaml.Marshal(proj)
+	projfile := filepath.Join(projdir, workspace.ProjectFile+".yaml")
+	bytes, err := yaml.Marshal(projinfo.Proj)
 	if err != nil {
-		return "", "", fmt.Errorf("error marshalling project %q: %w", dir, err)
+		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
 
-	if err := ioutil.WriteFile(dir, bytes, 0600); err != nil {
+	if err := ioutil.WriteFile(projfile, bytes, 0600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
 	}
 

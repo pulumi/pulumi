@@ -84,20 +84,23 @@ func TestConstructDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t,
-				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructDotnet(t, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructDotnet(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component", "dotnet"),
-		Dependencies: []string{"Pulumi"},
+		Env:            env,
+		Dir:            filepath.Join("construct_component", "dotnet"),
+		Dependencies:   []string{"Pulumi"},
+		LocalProviders: localProviders,
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},

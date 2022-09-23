@@ -286,7 +286,7 @@ func TestLargeResourceDotNet(t *testing.T) {
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowDotnet(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
+	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -300,10 +300,11 @@ func TestConstructSlowDotnet(t *testing.T) {
 	runComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir:          filepath.Join(testDir, "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Quick:        true,
+		Env:            []string{testYarnLinkPulumiEnv},
+		Dir:            filepath.Join(testDir, "dotnet"),
+		Dependencies:   []string{"Pulumi"},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -353,22 +354,25 @@ func TestConstructPlainDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t,
-				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainDotnet(t, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
+func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
 	env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component_plain", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Quick:        true,
+		Env:            env,
+		Dir:            filepath.Join("construct_component_plain", "dotnet"),
+		Dependencies:   []string{"Pulumi"},
+		LocalProviders: localProviders,
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -404,12 +408,15 @@ func TestConstructMethodsDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent",
+				Path:    filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join(testDir, "dotnet"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
+				Dir:            filepath.Join(testDir, "dotnet"),
+				Dependencies:   []string{"Pulumi"},
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -448,12 +455,14 @@ func TestConstructProviderDotnet(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join(testDir, "dotnet"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
+				Dir:            filepath.Join(testDir, "dotnet"),
+				Dependencies:   []string{"Pulumi"},
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},

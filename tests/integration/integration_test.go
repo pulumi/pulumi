@@ -623,31 +623,11 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:deadcode
-func pathEnv(t *testing.T, path ...string) string {
-	pathEnv := []string{os.Getenv("PATH")}
-	for _, p := range path {
-		absPath, err := filepath.Abs(p)
-		if err != nil {
-			t.Fatal(err)
-			return ""
-		}
-		pathEnv = append(pathEnv, absPath)
+func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
+	return integration.LocalDependency{
+		Package: "testcomponent",
+		Path:    filepath.Join("construct_component_slow", "testcomponent"),
 	}
-	pathSeparator := ":"
-	if runtime.GOOS == "windows" {
-		pathSeparator = ";"
-	}
-	return "PATH=" + strings.Join(pathEnv, pathSeparator)
-}
-
-//nolint:deadcode
-func testComponentSlowPathEnv(t *testing.T) string {
-	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
-}
-
-//nolint:deadcode
-func testComponentPlainPathEnv(t *testing.T) string {
-	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
 }
 
 // nolint: unused,deadcode
@@ -741,13 +721,15 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
+				LocalProviders:         localProviders,
 				SkipRefresh:            true,
 				SkipPreview:            false,
 				SkipUpdate:             true,
@@ -783,13 +765,15 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		test := test
 
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
+				LocalProviders:         localProviders,
 				SkipRefresh:            true,
 				SkipPreview:            false,
 				SkipUpdate:             true,
@@ -906,14 +890,16 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join(testDir, lang),
-				Dependencies: dependencies,
-				Quick:        true,
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: localProviders,
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
@@ -962,14 +948,16 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
 
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:           []string{pathEnv},
-				Dir:           filepath.Join(testDir, lang),
-				Dependencies:  dependencies,
-				Quick:         true,
-				Stderr:        stderr,
-				ExpectFailure: true,
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
+				Stderr:         stderr,
+				ExpectFailure:  true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					output := stderr.String()
 					assert.Contains(t, output, expectedError)
@@ -1141,14 +1129,16 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				buildTestProvider(t, filepath.Join("..", "testprovider")),
-				filepath.Join(testDir, test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join(testDir, lang),
-				Dependencies: dependencies,
-				Quick:        true,
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: localProviders,
+				Quick:          true,
 			})
 		})
 	}
@@ -1198,15 +1188,17 @@ func TestProviderDownloadURL(t *testing.T) {
 	for _, lang := range languages {
 		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
-			env := pathEnv(t, buildTestProvider(t, filepath.Join("..", "testprovider")))
+			localProvider := integration.LocalDependency{
+				Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider")),
+			}
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    dir,
-				Env:                    []string{env},
 				ExportStateValidator:   validate,
 				SkipPreview:            true,
 				SkipEmptyPreviewUpdate: true,
 				Dependencies:           []string{lang.dependency},
+				LocalProviders:         []integration.LocalDependency{localProvider},
 			})
 		})
 	}
