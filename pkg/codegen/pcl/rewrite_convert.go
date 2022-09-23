@@ -170,12 +170,26 @@ func resolveDiscriminatedUnions(obj *model.ObjectConsExpression, modelType model
 			continue
 		}
 
-		lit, ok := item.Value.(*model.TemplateExpression)
+		// The discriminator should be a string, but it could be in the
+		// form of a *string wrapped in a __convert call so we try both.
+		var lit *model.TemplateExpression
+		lit, ok = item.Value.(*model.TemplateExpression)
+		if !ok {
+			var call *model.FunctionCallExpression
+			call, ok = item.Value.(*model.FunctionCallExpression)
+			if ok && call.Name == IntrinsicConvert {
+				lit, ok = call.Args[0].(*model.TemplateExpression)
+			}
+		}
 		if !ok {
 			continue
 		}
 
-		discriminatorValue := lit.Parts[0].(*model.LiteralValueExpression).Value.AsString()
+		discriminatorValue, ok := extractStringValue(lit)
+		if !ok {
+			return nil
+		}
+
 		if ref, ok := union.Mapping[discriminatorValue]; ok {
 			discriminatorValue = strings.TrimPrefix(ref, "#/types/")
 		}

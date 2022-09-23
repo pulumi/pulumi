@@ -13,7 +13,7 @@ class Program
             // Kinda strange, but we are getting a stack reference to ourselves, and referencing
             // the result of the previous deployment.
 
-            var slug = $"{Deployment.Instance.OrganizationName()}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
+            var slug = $"{Deployment.Instance.OrganizationName}/{Deployment.Instance.ProjectName}/{Deployment.Instance.StackName}";
             var sr = new StackReference(slug);
 
             return new Dictionary<string, object>

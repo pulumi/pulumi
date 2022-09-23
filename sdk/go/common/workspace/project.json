@@ -81,9 +81,9 @@
             "type": ["object", "null"],
             "properties": {
                 "refresh": {
-                    "description": "Boolean indicating whether to refresh the state before performing a Pulumi operation.",
-                    "type": "boolean",
-                    "default": false
+                    "description": "Set to \"always\" to refresh the state before performing a Pulumi operation.",
+                    "type": "string",
+                    "const": "always"
                 }
             },
             "additionalProperties": false

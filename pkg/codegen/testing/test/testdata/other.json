@@ -16,6 +16,13 @@
 					"type": "number"
 				}
 			}
+		},
+		"other:module/sub:Object": {
+			"inputProperties": {
+				"answer": {
+					"type": "number"
+				}
+			}
 		}
 	},
 	"language": {

@@ -51,7 +51,7 @@ def main():
                 stack=os.environ["PULUMI_STACK"],
                 dry_run=os.environ["PULUMI_DRY_RUN"] == "true",
                 # PULUMI_ORGANIZATION might not be set for filestate backends
-                organization=os.environ.get("PULUMI_ORGANIZATION", None),
+                organization=os.environ.get("PULUMI_ORGANIZATION", "organization"),
             )
         )
 

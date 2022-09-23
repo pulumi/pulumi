@@ -615,22 +615,10 @@ func (spec PluginSpec) Dir() string {
 	return dir
 }
 
-// File gets the expected filename for this plugin.
+// File gets the expected filename for this plugin, excluding any platform specific suffixes (e.g. ".exe" on
+// windows).
 func (spec PluginSpec) File() string {
-	return spec.FilePrefix() + spec.FileSuffix()
-}
-
-// FilePrefix gets the expected default file prefix for the plugin.
-func (spec PluginSpec) FilePrefix() string {
 	return fmt.Sprintf("pulumi-%s-%s", spec.Kind, spec.Name)
-}
-
-// FileSuffix returns the suffix for the plugin (if any).
-func (spec PluginSpec) FileSuffix() string {
-	if runtime.GOOS == windowsGOOS {
-		return ".exe"
-	}
-	return ""
 }
 
 // DirPath returns the directory where this plugin should be installed.
@@ -667,15 +655,6 @@ func (spec PluginSpec) PartialFilePath() (string, error) {
 	return fmt.Sprintf("%s.partial", dir), nil
 }
 
-// FilePath returns the full path where this plugin's primary executable should be installed.
-func (spec PluginSpec) FilePath() (string, error) {
-	dir, err := spec.DirPath()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, spec.File()), nil
-}
-
 func (spec PluginSpec) String() string {
 	var version string
 	if v := spec.Version; v != nil {
@@ -710,11 +689,6 @@ func (info PluginInfo) String() string {
 		version = fmt.Sprintf("-%s", v)
 	}
 	return info.Name + version
-}
-
-// FilePath returns the full path where this plugin's primary executable should be installed.
-func (info PluginInfo) FilePath() string {
-	return filepath.Join(info.Path, info.Spec().File())
 }
 
 // Delete removes the plugin from the cache.  It also deletes any supporting files in the cache, which includes
@@ -759,21 +733,11 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	info.LastUsedTime = tinfo.AccessTime()
 
 	if info.Kind == ResourcePlugin {
-		info.SetSchemaMetadata()
+		info.SchemaPath = filepath.Join(filepath.Dir(path), "schema-"+info.Name+".json")
+		info.SchemaTime = tinfo.ModTime()
 	}
 
 	return nil
-}
-
-func (info *PluginInfo) SetSchemaMetadata() {
-	binpath := info.FilePath()
-	bintime, err := times.Stat(binpath)
-	if err != nil {
-		return
-	}
-
-	info.SchemaPath = filepath.Join(info.Path, "schema-"+info.Name+".json")
-	info.SchemaTime = bintime.ModTime()
 }
 
 func interpolateURL(serverURL string, version semver.Version, os, arch string) string {
@@ -1507,10 +1471,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 		return "", err
 	}
 
-	if info != nil {
-		contract.Assert(info.Path == filepath.Dir(path))
-	}
-
+	contract.Assert(info.Path == filepath.Dir(path))
 	return path, err
 }
 
@@ -1521,17 +1482,7 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 		return nil, err
 	}
 
-	if info != nil {
-		contract.Assert(info.Path == filepath.Dir(path))
-		return info, nil
-	}
-
-	info = &PluginInfo{
-		Kind: kind,
-		Name: name,
-		Path: filepath.Dir(path),
-	}
-
+	contract.Assert(info.Path == filepath.Dir(path))
 	return info, nil
 }
 
@@ -1591,6 +1542,23 @@ func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *se
 	return nil
 }
 
+// Given a PluginInfo try to find the executable file that corresponds to it
+func getPluginPath(info *PluginInfo) string {
+	var path string
+	exts := getCandidateExtensions()
+	for _, ext := range exts {
+		path = filepath.Join(info.Path, info.Spec().File()) + ext
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+
+	// We didn't actually find a file for this plugin, so just use the old behaviour of assuming the first
+	// extension.
+	return filepath.Join(info.Path, info.Spec().File()) + exts[0]
+}
+
 // getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:
 //   - if found as an ambient plugin, nil and the path to the executable
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
@@ -1631,15 +1599,15 @@ func getPluginInfoAndPath(
 		}
 
 		spec := plugin.Spec()
-		path := filepath.Join(plugin.Path, spec.File())
 		info := &PluginInfo{
 			Name:    spec.Name,
 			Kind:    spec.Kind,
 			Version: spec.Version,
 			Path:    plugin.Path,
 		}
+		path := getPluginPath(info)
 		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata {
+		if !skipMetadata && path != "" {
 			if err := info.SetFileMetadata(path); err != nil {
 				return nil, "", err
 			}
@@ -1661,10 +1629,14 @@ func getPluginInfoAndPath(
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
 	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundled
 	if includeAmbient {
-		filename = (&PluginSpec{Kind: kind, Name: name, Version: version}).FilePrefix()
+		filename = (&PluginSpec{Kind: kind, Name: name}).File()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
-			return nil, path, nil
+			return &PluginInfo{
+				Kind: kind,
+				Name: name,
+				Path: filepath.Dir(path),
+			}, path, nil
 		}
 	}
 
@@ -1689,7 +1661,11 @@ func getPluginInfoAndPath(
 						logging.V(6).Infof("GetPluginPath(%s, %s, %v): found next to current executable %s",
 							kind, name, version, candidate)
 
-						return nil, candidate, nil
+						return &PluginInfo{
+							Kind: kind,
+							Name: name,
+							Path: filepath.Dir(candidate),
+						}, candidate, nil
 					}
 				}
 			}
@@ -1754,7 +1730,7 @@ func getPluginInfoAndPath(
 	}
 
 	if match != nil {
-		matchPath := match.FilePath()
+		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found in cache at %s", kind, name, version, matchPath)
 		return match, matchPath, nil
 	}

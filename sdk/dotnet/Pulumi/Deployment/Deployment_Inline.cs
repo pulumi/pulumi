@@ -15,7 +15,7 @@ namespace Pulumi
             if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
 
-            _organizationName = settings.Organization;
+            _organizationName = settings.Organization ?? "organization";
             _projectName = settings.Project;
             _stackName = settings.Stack;
             _isDryRun = settings.IsDryRun;

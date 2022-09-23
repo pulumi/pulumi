@@ -25,10 +25,9 @@ namespace Pulumi
         public string ProjectName => _deployment.ProjectName;
 
         /// <summary>
-        /// Returns the current organization name. If no fallback value is given it throws an exception if
-        /// none is registered.
+        /// Returns the current organization name.
         /// </summary>
-        public string OrganizationName(string? fallback = null) => _deployment.OrganizationName(fallback);
+        public string OrganizationName => _deployment.OrganizationName;
 
         /// <summary>
         /// Whether or not the application is currently being previewed or actually applied.
