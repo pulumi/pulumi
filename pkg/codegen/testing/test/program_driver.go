@@ -203,11 +203,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#10834]
 	},
-	{
-		Directory:   "hyphenated-symbols",
-		Description: "Test that types can have names with hyphens in them",
-		Skip:        codegen.NewStringSet("nodejs", "dotnet"),
-	},
 }
 
 // Checks that a generated program is correct
