@@ -7,9 +7,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-func NewHost(schemaDirectoryPath string) plugin.Host {
+func NewHost(schemaDirectoryPath string, mockPluginVersions map[string]string) plugin.Host {
 	mockProvider := func(name tokens.Package, loader ProviderLoader) *deploytest.PluginLoader {
-		return deploytest.NewProviderLoader(name, semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+		version := "1.0.0"
+		if mockPluginVersions != nil {
+			if v, ok := mockPluginVersions[name.String()]; ok {
+				version = v
+			}
+		}
+
+		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
 			return loader(schemaDirectoryPath)
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}

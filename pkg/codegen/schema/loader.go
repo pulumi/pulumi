@@ -70,7 +70,6 @@ func (l *pluginLoader) getPackage(key string) (PackageReference, bool) {
 	if l.cacheOptions.disableEntryCache {
 		return nil, false
 	}
-
 	p, ok := l.entries[key]
 	return p, ok
 }
@@ -157,7 +156,7 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 	defer l.m.Unlock()
 
 	key := packageIdentity(pkg, version)
-	if p, ok := l.getPackage(key); ok {
+	if p, ok := l.getPackage(key); ok && version == nil {
 		return p, nil
 	}
 
@@ -174,16 +173,27 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 		return nil, err
 	}
 
-	// Insert a version into the spec if the package does not provide one
-	if version != nil && spec.PackageInfoSpec.Version == "" {
-		spec.PackageInfoSpec.Version = version.String()
+	// Insert a version into the spec if the package does not provide one or if the
+	// existing version is less than the provided one
+	if version != nil {
+		setVersion := true
+		if spec.PackageInfoSpec.Version != "" {
+			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
+			if err == nil {
+				if vSemver.Compare(*version) == 1 {
+					setVersion = false
+				}
+			}
+		}
+		if setVersion {
+			spec.PackageInfoSpec.Version = version.String()
+		}
 	}
 
 	p, err := importPartialSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
 	}
-
 	return l.setPackage(key, p), nil
 }
 
@@ -203,7 +213,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		return nil, nil, err
 	}
 
-	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, nil)
+	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, version)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -213,7 +223,8 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		version = pluginInfo.Version
 	}
 
-	if pluginInfo.SchemaPath != "" {
+	// don't ues the cache if there is a valid version
+	if pluginInfo.SchemaPath != "" && version == nil {
 		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil

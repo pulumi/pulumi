@@ -307,6 +307,8 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Normalize module.
 	if r.Schema != nil {
 		pkg := r.Schema.Package
+		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+		contract.AssertNoError(err)
 		if lang, ok := pkg.Language["python"]; ok {
 			pkgInfo := lang.(PackageInfo)
 			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
@@ -431,9 +433,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
-
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
-
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 

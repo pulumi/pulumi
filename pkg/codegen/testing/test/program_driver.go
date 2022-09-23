@@ -1,6 +1,7 @@
 package test
 
 import (
+	"bufio"
 	"bytes"
 	"io/ioutil"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
@@ -28,6 +31,8 @@ type ProgramTest struct {
 	Skip           codegen.StringSet
 	ExpectNYIDiags codegen.StringSet
 	SkipCompile    codegen.StringSet
+	// optional map of (mock plugin name to versions) to load for specific tests.
+	MockPluginVersions map[string]string
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -131,6 +136,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-resource-options",
 		Description: "Resource Options",
+		MockPluginVersions: map[string]string{
+			"aws": "4.38.0",
+		},
 	},
 	{
 		Directory:   "aws-secret",
@@ -200,6 +208,9 @@ type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 // Generates a program from a pcl.Program
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
+// Generates a project from a pcl.Program
+type GenProject = func(directory string, project workspace.Project, program *pcl.Program) error
+
 type ProgramCodegenOptions struct {
 	Language   string
 	Extension  string
@@ -207,6 +218,20 @@ type ProgramCodegenOptions struct {
 	Check      CheckProgramOutput
 	GenProgram GenProgram
 	TestCases  []ProgramTest
+
+	// For generating a full project
+	IsGenProject bool
+	GenProject   GenProject
+	// Maps a test file (i.e. "aws-resource-options") to a struct containing a package
+	// (i.e. "github.com/pulumi/pulumi-aws/sdk/v5", "pulumi-aws) and its
+	// version prefixed by an operator (i.e. " v5.11.0", ==5.11.0")
+	ExpectedVersion map[string]PkgVersionInfo
+	DependencyFile  string
+}
+
+type PkgVersionInfo struct {
+	Pkg          string
+	OpAndVersion string
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -269,14 +294,31 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+			program, diags, err := pcl.BindProgram(parser.Files,
+				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)))
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)
 			}
-			files, diags, err := testcase.GenProgram(program)
+			var files map[string][]byte
+			// generate a full project and check expected package versions
+			if testcase.IsGenProject {
+				project := workspace.Project{
+					Name:    "test",
+					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
+				}
+				err = testcase.GenProject(testDir, project, program)
+				assert.NoError(t, err)
+
+				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
+				outfilePath := filepath.Join(testDir, testcase.OutputFile)
+				CheckVersion(t, tt.Directory, depFilePath, testcase.ExpectedVersion)
+				GenProjectCleanUp(t, testDir, depFilePath, outfilePath)
+
+			}
+			files, diags, err = testcase.GenProgram(program)
 			assert.NoError(t, err)
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
@@ -311,4 +353,49 @@ func TestProgramCodegen(
 			}
 		})
 	}
+}
+
+// CheckVersion checks for an expected package version
+// Todo: support checking multiple package expected versions
+func CheckVersion(t *testing.T, dir, depFilePath string, expectedVersionMap map[string]PkgVersionInfo) {
+	depFile, err := os.Open(depFilePath)
+	require.NoError(t, err)
+
+	// Splits on newlines by default.
+	scanner := bufio.NewScanner(depFile)
+
+	match := false
+	expectedPkg, expectedVersion := strings.TrimSpace(expectedVersionMap[dir].Pkg),
+		strings.TrimSpace(expectedVersionMap[dir].OpAndVersion)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, expectedPkg) {
+			line = strings.TrimSpace(line)
+			actualVersion := strings.TrimPrefix(line, expectedPkg)
+			actualVersion = strings.TrimSpace(actualVersion)
+			expectedVersion = strings.Trim(expectedVersion, "v:^/> ")
+			actualVersion = strings.Trim(actualVersion, "v:^/> ")
+			if expectedVersion == actualVersion {
+				match = true
+				break
+			}
+			actualSemver, err := semver.Make(actualVersion)
+			if err == nil {
+				continue
+			}
+			expectedSemver, _ := semver.Make(expectedVersion)
+			if actualSemver.Compare(expectedSemver) >= 0 {
+				match = true
+				break
+			}
+		}
+	}
+	require.True(t, match)
+}
+
+func GenProjectCleanUp(t *testing.T, dir, depFilePath, outfilePath string) {
+	os.Remove(depFilePath)
+	os.Remove(outfilePath)
+	os.Remove(dir + "/.gitignore")
+	os.Remove(dir + "/Pulumi.yaml")
 }

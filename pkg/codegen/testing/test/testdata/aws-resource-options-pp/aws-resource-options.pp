@@ -8,5 +8,6 @@ resource bucket1 "aws:s3:Bucket" {
 		dependsOn = [provider]
 		protect = true
 		ignoreChanges = [bucket, lifecycleRules[0]]
+		version = "4.38.0"
 	}
 }
