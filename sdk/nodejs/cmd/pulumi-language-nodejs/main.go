@@ -262,7 +262,7 @@ func getPluginsFromDir(
 	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
 	inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
 	}
@@ -274,12 +274,12 @@ func getPluginsFromDir(
 		curr := filepath.Join(dir, name)
 
 		// Re-stat the directory, in case it is a symlink.
-		file, err = os.Stat(curr)
+		fi, err := os.Stat(curr)
 		if err != nil {
 			allErrors = multierror.Append(allErrors, err)
 			continue
 		}
-		if file.IsDir() {
+		if fi.IsDir() {
 			// if a directory, recurse.
 			more, err := getPluginsFromDir(
 				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")

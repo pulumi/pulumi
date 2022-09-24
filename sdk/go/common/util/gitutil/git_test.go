@@ -34,6 +34,21 @@ func TestParseGitRepoURL(t *testing.T) {
 		assert.Equal(t, expectedURLPath, actualURLPath)
 	}
 
+	// Azure DevOps.
+	{
+		// Azure DevOps uses a different scheme for URLs.
+		// specifying a subdir and git ref is not currently supported.
+		{
+			url := "https://dev.azure.com/account-name/project-name/_git/repo-name"
+			test(url, "", url)
+		}
+
+		{
+			url := "https://dev.azure.com/tree/tree/_git/repo-name"
+			test(url, "", url)
+		}
+	}
+
 	// GitHub.
 	pre := "https://github.com/pulumi/templates"
 	exp := pre + ".git"

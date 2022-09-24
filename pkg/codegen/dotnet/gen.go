@@ -588,7 +588,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			fmt.Fprintf(w, "%s{\n", indent)
 			fmt.Fprintf(w, "%s    get => %s;\n", indent, backingFieldName)
 		}
-		if prop.Secret {
+		if prop.Secret && isInputType(prop.Type) {
 			fmt.Fprintf(w, "%s    set\n", indent)
 			fmt.Fprintf(w, "%s    {\n", indent)
 			// Since we can't directly assign the Output from CreateSecret to the property, use an Output.All or

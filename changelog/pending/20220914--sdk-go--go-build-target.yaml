@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: "Pulumi Go Programs now support a Pulumi.yaml option `buildTarget: path/to/binary` to compile/recompile a Go binary to that location."

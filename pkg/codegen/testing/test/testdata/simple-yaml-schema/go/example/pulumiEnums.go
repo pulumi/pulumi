@@ -254,7 +254,7 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 // RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.
 // You can construct a concrete instance of `RubberTreeVarietyInput` via:
 //
-//          RubberTreeVarietyArgs{...}
+//	RubberTreeVarietyArgs{...}
 type RubberTreeVarietyInput interface {
 	pulumi.Input
 

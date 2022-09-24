@@ -53,7 +53,6 @@ var pulumiOrg = getTestOrg()
 const pName = "testproj"
 const agent = "pulumi/pulumi/test"
 const pulumiTestOrg = "pulumi-test"
-const windows = "windows"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
@@ -441,10 +440,6 @@ func randomStackName() string {
 func TestNewStackRemoteSource(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
-
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := randomStackName()
@@ -539,10 +534,6 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 func TestUpsertStackRemoteSource(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
@@ -639,10 +630,6 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
-
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := randomStackName()
@@ -657,6 +644,9 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
@@ -750,10 +740,6 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
-
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := randomStackName()
@@ -768,6 +754,9 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",

@@ -347,7 +347,7 @@ Coming soon!
 
 
 
-## Create a SqlResourceSqlContainer Resource {#create}
+## Create SqlResourceSqlContainer Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

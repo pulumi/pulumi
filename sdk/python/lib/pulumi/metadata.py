@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Optional
 from .runtime.settings import get_organization as runtime_go
 from .runtime.settings import get_project as runtime_gp
 from .runtime.settings import get_stack as runtime_gs
@@ -19,7 +20,7 @@ from .runtime.settings import get_stack as runtime_gs
 
 def get_organization() -> str:
     """
-    Returns the current organization name (if available).
+    Returns the current organization name.
     """
     return runtime_go()
 

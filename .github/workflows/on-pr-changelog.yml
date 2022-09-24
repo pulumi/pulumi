@@ -24,6 +24,10 @@ on:
         required: true
         description: "Whether the changelog is required, used to allow check to pass on empty changelogs"
         type: boolean
+    secrets:
+      PULUMI_BOT_TOKEN:
+        required: true
+        description: "GitHub access token, required to mitigate GitHub rate limits"
 
 defaults:
   run:
@@ -40,17 +44,9 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
-      - name: Configure Go cache key
-        env:
-          CACHE_KEY: "${{ github.workflow }}-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}"
-        run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.19.x
-          cache: true
-          cache-dependency-path: |
-            pkg/go.sum
-            .gocache.tmp
+          go-version: '>=1.19.0' # decoupled from version sets, only used by changelog tool
       - name: Changelog
         id: changelog
         env:

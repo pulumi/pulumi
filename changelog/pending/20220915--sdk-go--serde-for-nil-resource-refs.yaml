@@ -1,5 +1,0 @@
-changes:
-  - type: fix
-    scope: sdk/go
-    description: >
-      Correctly handle nil resource references in the RPC layer.

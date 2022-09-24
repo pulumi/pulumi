@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Mark pulumi-analyzer-policy and pulumi-analyzer-policy-python as bundled plugins.

@@ -4,7 +4,9 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scrip
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
 
+ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
+endif
 
 include ../../build/common.mk
 

@@ -191,6 +191,15 @@ func (ctx *Context) wait() error {
 	return nil
 }
 
+// Organization returns the current organization name.
+func (ctx *Context) Organization() string {
+	org := ctx.info.Organization
+	if org == "" {
+		org = "organization"
+	}
+	return org
+}
+
 // Project returns the current project name.
 func (ctx *Context) Project() string { return ctx.info.Project }
 
@@ -536,18 +545,17 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 // For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
 // define the following CustomResource type:
 //
-//     type MyResource struct {
-//         pulumi.CustomResourceState
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
 //
-//         Foo pulumi.IntOutput    `pulumi:"foo"`
-//         Bar pulumi.StringOutput `pulumi:"bar"`
-//     }
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
 //
 // And invoke ReadResource like so:
 //
-//     var resource MyResource
-//     err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
-//
+//	var resource MyResource
+//	err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 func (ctx *Context) ReadResource(
 	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
 	if t == "" {
@@ -668,18 +676,17 @@ func (ctx *Context) ReadResource(
 // For example, given a custom resource with an int-typed output "foo" and a string-typed output "bar", one would
 // define the following CustomResource type:
 //
-//     type MyResource struct {
-//         pulumi.CustomResourceState
+//	type MyResource struct {
+//	    pulumi.CustomResourceState
 //
-//         Foo pulumi.IntOutput    `pulumi:"foo"`
-//         Bar pulumi.StringOutput `pulumi:"bar"`
-//     }
+//	    Foo pulumi.IntOutput    `pulumi:"foo"`
+//	    Bar pulumi.StringOutput `pulumi:"bar"`
+//	}
 //
 // And invoke RegisterResource like so:
 //
-//     var resource MyResource
-//     err := ctx.RegisterResource(tok, name, props, &resource, opts...)
-//
+//	var resource MyResource
+//	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
 func (ctx *Context) RegisterResource(
 	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -117,7 +118,7 @@ func getDocsForPackage(pkg *Package) []doc {
 func TestParseAndRenderDocs(t *testing.T) {
 	t.Parallel()
 
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 func TestReferenceRenderer(t *testing.T) {
 	t.Parallel()
 
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}

@@ -296,6 +296,7 @@ def set_mocks(
     preview: Optional[bool] = None,
     logger: Optional[logging.Logger] = None,
     monitor: Optional[MockMonitor] = None,
+    organization: Optional[str] = None,
 ):
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
@@ -306,6 +307,7 @@ def set_mocks(
         project=project if project is not None else "project",
         stack=stack if stack is not None else "stack",
         dry_run=preview,
+        organization=organization,
     )
     configure(settings)
 

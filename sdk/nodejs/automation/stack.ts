@@ -19,7 +19,7 @@ import * as readline from "readline";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
-import * as TailFile from "@logdna/tail-file";
+import TailFile from "@logdna/tail-file";
 
 import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";

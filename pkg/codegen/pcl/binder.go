@@ -165,8 +165,33 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 
 // declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
 // locals.
+// Temporarily, we load all resources first, as convert sets the highest package version seen
+// under all resources' options. Once this is supported for invokes, the order of declaration will not
+// impact which package is actually loaded.
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
+
+	for _, item := range model.SourceOrderBody(file.Body) {
+		switch item := item.(type) {
+		case *hclsyntax.Block:
+			switch item.Type {
+			case "resource":
+				if len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
+				}
+
+				resource := &Resource{
+					syntax: item,
+				}
+				declareDiags := b.declareNode(item.Labels[0], resource)
+				diagnostics = append(diagnostics, declareDiags...)
+
+				if err := b.loadReferencedPackageSchemas(resource); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
 
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
@@ -208,20 +233,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diagnostics = append(diagnostics, diags...)
 
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
-					return nil, err
-				}
-			case "resource":
-				if len(item.Labels) != 2 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
-				}
-
-				resource := &Resource{
-					syntax: item,
-				}
-				declareDiags := b.declareNode(item.Labels[0], resource)
-				diagnostics = append(diagnostics, declareDiags...)
-
-				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
 			case "output":
@@ -291,4 +302,12 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
 	return model.BindExpression(node, b.root, b.tokens, b.options.modelOptions()...)
+}
+
+func modelExprToString(expr *model.Expression) string {
+	if expr == nil {
+		return ""
+	}
+	return (*expr).(*model.TemplateExpression).
+		Parts[0].(*model.LiteralValueExpression).Value.AsString()
 }

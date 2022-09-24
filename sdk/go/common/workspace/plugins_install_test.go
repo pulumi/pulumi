@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build nodejs || python || all
-// +build nodejs python all
 
 package workspace
 
@@ -71,8 +70,11 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	}
 
 	// Add plugin binary to included files.
-	files["pulumi-resource-test"] = nil
-	files["pulumi-resource-test.exe"] = nil
+	if runtime.GOOS == "windows" {
+		files["pulumi-resource-test.exe"] = nil
+	} else {
+		files["pulumi-resource-test"] = nil
+	}
 
 	tgz, err := createTGZ(files)
 	require.NoError(t, err)
@@ -101,7 +103,11 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
 
-	info, err = os.Stat(filepath.Join(dir, plugin.Dir(), plugin.File()))
+	file := filepath.Join(dir, plugin.Dir(), plugin.File())
+	if runtime.GOOS == "windows" {
+		file += ".exe"
+	}
+	info, err = os.Stat(file)
 	assert.NoError(t, err)
 	assert.False(t, info.IsDir())
 
@@ -118,7 +124,7 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginSpec) PluginIn
 	skipMetadata := true
 	plugins, err := getPlugins(dir, skipMetadata)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(plugins))
+	require.Equal(t, 1, len(plugins))
 	assert.Equal(t, plugin.Name, plugins[0].Name)
 	assert.Equal(t, plugin.Kind, plugins[0].Kind)
 	assert.Equal(t, *plugin.Version, *plugins[0].Version)
@@ -172,10 +178,6 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -195,10 +197,6 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestReinstall(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -229,10 +227,6 @@ func TestReinstall(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
-	}
-
 	name := "foo.txt"
 	content := []byte("hello\n")
 

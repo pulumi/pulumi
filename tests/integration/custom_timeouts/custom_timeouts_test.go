@@ -1,5 +1,4 @@
-//go:build python || all
-// +build python all
+//go:build (python || all) && !smoke
 
 package ints
 

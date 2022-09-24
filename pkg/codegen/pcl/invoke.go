@@ -64,7 +64,10 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
+	pkgInfo := PackageInfo{
+		name: pkg,
+	}
+	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
 	if !ok {
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}

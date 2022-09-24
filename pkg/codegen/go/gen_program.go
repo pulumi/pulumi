@@ -519,6 +519,9 @@ func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
 			}
 		} else {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
+			if info.ImportBasePath != "" {
+				imp = fmt.Sprintf("%s/%s", info.ImportBasePath, modSplit[0])
+			}
 		}
 	}
 	return fmt.Sprintf("%q", imp)
@@ -760,7 +763,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.isErrAssigned = true
 		case *readDirTemp:
 			tmpSuffix := strings.Split(t.Name, "files")[1]
-			g.Fgenf(w, "%s, err := ioutil.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
+			g.Fgenf(w, "%s, err := os.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
 			g.Fgenf(w, "if err != nil {\n")
 			if genZeroValueDecl {
 				g.Fgenf(w, "return _zero, err\n")

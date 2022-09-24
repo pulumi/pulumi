@@ -419,24 +419,23 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 //
 // The applier function must have one of the following signatures:
 //
-//    func (v U) T
-//    func (v U) (T, error)
+//	func (v U) T
+//	func (v U) (T, error)
 //
 // U must be assignable from the ElementType of the Output. If T is a type that has a registered Output type, the
 // result of ApplyT will be of the registered Output type, and can be used in an appropriate type assertion:
 //
-//    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyT(func(v string) int {
-//        return len(v)
-//    }).(pulumi.IntOutput)
+//	stringOutput := pulumi.String("hello").ToStringOutput()
+//	intOutput := stringOutput.ApplyT(func(v string) int {
+//	    return len(v)
+//	}).(pulumi.IntOutput)
 //
 // Otherwise, the result will be of type AnyOutput:
 //
-//    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyT(func(v string) []rune {
-//        return []rune(v)
-//    }).(pulumi.AnyOutput)
-//
+//	stringOutput := pulumi.String("hello").ToStringOutput()
+//	intOutput := stringOutput.ApplyT(func(v string) []rune {
+//	    return []rune(v)
+//	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyT(applier interface{}) Output {
 	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
 }
@@ -450,24 +449,23 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 //
 // The applier function must have one of the following signatures:
 //
-//    func (ctx context.Context, v U) T
-//    func (ctx context.Context, v U) (T, error)
+//	func (ctx context.Context, v U) T
+//	func (ctx context.Context, v U) (T, error)
 //
 // U must be assignable from the ElementType of the Output. If T is a type that has a registered Output type, the
 // result of ApplyT will be of the registered Output type, and can be used in an appropriate type assertion:
 //
-//    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyTWithContext(func(_ context.Context, v string) int {
-//        return len(v)
-//    }).(pulumi.IntOutput)
+//	stringOutput := pulumi.String("hello").ToStringOutput()
+//	intOutput := stringOutput.ApplyTWithContext(func(_ context.Context, v string) int {
+//	    return len(v)
+//	}).(pulumi.IntOutput)
 //
 // Otherwise, the result will be of type AnyOutput:
 //
-//    stringOutput := pulumi.String("hello").ToStringOutput()
-//    intOutput := stringOutput.ApplyT(func(_ context.Context, v string) []rune {
-//        return []rune(v)
-//    }).(pulumi.AnyOutput)
-//
+//	stringOutput := pulumi.String("hello").ToStringOutput()
+//	intOutput := stringOutput.ApplyT(func(_ context.Context, v string) []rune {
+//	    return []rune(v)
+//	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
 	fn := checkApplier(applier, o.elementType())
 
@@ -675,19 +673,18 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 // The logic to do this is pretty arcane, and very special-casey when it comes to finding Inputs, converting them to
 // Outputs, and awaiting their values. Roughly speaking:
 //
-// 1. If we cannot set resolved--e.g. because it was derived from an unexported field--we do nothing
-// 2. If the value is an Input:
+//  1. If we cannot set resolved--e.g. because it was derived from an unexported field--we do nothing
+//  2. If the value is an Input:
 //     a. If the value is `nil`, do nothing. The value is already fully-resolved. `resolved` is not set.
 //     b. Otherwise, convert the Input to an appropriately-typed Output by calling the corresponding `ToOutput` method.
-//        The desired type is determined based on the type of the destination, and the conversion method is determined
-//        from the name of the desired type. If no conversion method is available, we will attempt to assign the Input
-//        itself, and will panic if that assignment is not well-typed.
+//     The desired type is determined based on the type of the destination, and the conversion method is determined
+//     from the name of the desired type. If no conversion method is available, we will attempt to assign the Input
+//     itself, and will panic if that assignment is not well-typed.
 //     c. Replace the value to await with the resolved value of the input.
-// 3. Depending on the kind of the value:
+//  3. Depending on the kind of the value:
 //     a. If the value is a Resource, stop.
 //     b. If the value is a primitive, stop.
 //     c. If the value is a slice, array, struct, or map, recur on its contents.
-//
 func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []Resource, error) {
 	contract.Assert(v.IsValid())
 
@@ -967,58 +964,57 @@ func toOutputWithContext(ctx context.Context, join *workGroup, v interface{}, fo
 //
 // For example, given a nested Pulumi value type with the following shape:
 //
-//     type Nested struct {
-//         Foo int
-//         Bar string
-//     }
+//	type Nested struct {
+//	    Foo int
+//	    Bar string
+//	}
 //
 // We would define the following:
 //
-//     var nestedType = reflect.TypeOf((*Nested)(nil)).Elem()
+//	var nestedType = reflect.TypeOf((*Nested)(nil)).Elem()
 //
-//     type NestedInput interface {
-//         pulumi.Input
+//	type NestedInput interface {
+//	    pulumi.Input
 //
-//         ToNestedOutput() NestedOutput
-//         ToNestedOutputWithContext(context.Context) NestedOutput
-//     }
+//	    ToNestedOutput() NestedOutput
+//	    ToNestedOutputWithContext(context.Context) NestedOutput
+//	}
 //
-//     type Nested struct {
-//         Foo int `pulumi:"foo"`
-//         Bar string `pulumi:"bar"`
-//     }
+//	type Nested struct {
+//	    Foo int `pulumi:"foo"`
+//	    Bar string `pulumi:"bar"`
+//	}
 //
-//     type NestedInputValue struct {
-//         Foo pulumi.IntInput `pulumi:"foo"`
-//         Bar pulumi.StringInput `pulumi:"bar"`
-//     }
+//	type NestedInputValue struct {
+//	    Foo pulumi.IntInput `pulumi:"foo"`
+//	    Bar pulumi.StringInput `pulumi:"bar"`
+//	}
 //
-//     func (NestedInputValue) ElementType() reflect.Type {
-//         return nestedType
-//     }
+//	func (NestedInputValue) ElementType() reflect.Type {
+//	    return nestedType
+//	}
 //
-//     func (v NestedInputValue) ToNestedOutput() NestedOutput {
-//         return pulumi.ToOutput(v).(NestedOutput)
-//     }
+//	func (v NestedInputValue) ToNestedOutput() NestedOutput {
+//	    return pulumi.ToOutput(v).(NestedOutput)
+//	}
 //
-//     func (v NestedInputValue) ToNestedOutputWithContext(ctx context.Context) NestedOutput {
-//         return pulumi.ToOutputWithContext(ctx, v).(NestedOutput)
-//     }
+//	func (v NestedInputValue) ToNestedOutputWithContext(ctx context.Context) NestedOutput {
+//	    return pulumi.ToOutputWithContext(ctx, v).(NestedOutput)
+//	}
 //
-//     type NestedOutput struct { *pulumi.OutputState }
+//	type NestedOutput struct { *pulumi.OutputState }
 //
-//     func (NestedOutput) ElementType() reflect.Type {
-//         return nestedType
-//     }
+//	func (NestedOutput) ElementType() reflect.Type {
+//	    return nestedType
+//	}
 //
-//     func (o NestedOutput) ToNestedOutput() NestedOutput {
-//         return o
-//     }
+//	func (o NestedOutput) ToNestedOutput() NestedOutput {
+//	    return o
+//	}
 //
-//     func (o NestedOutput) ToNestedOutputWithContext(ctx context.Context) NestedOutput {
-//         return o
-//     }
-//
+//	func (o NestedOutput) ToNestedOutputWithContext(ctx context.Context) NestedOutput {
+//	    return o
+//	}
 type Input interface {
 	ElementType() reflect.Type
 }

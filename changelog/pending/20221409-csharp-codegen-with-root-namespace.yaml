@@ -1,4 +1,0 @@
-changes:
-- type: bug
-  scope: codegen/dotnet
-  description: Make sure all references to Pulumi types now are suffixed with the global modifier in case users specify the root namespace to be Something.Pulumi

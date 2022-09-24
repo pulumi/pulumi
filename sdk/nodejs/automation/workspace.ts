@@ -36,7 +36,7 @@ export interface Workspace {
     readonly pulumiHome?: string;
     /**
      * The secrets provider to use for encryption and decryption of stack secrets.
-     * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+     * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
     /**

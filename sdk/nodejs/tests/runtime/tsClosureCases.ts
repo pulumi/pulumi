@@ -950,6 +950,7 @@ return () => handler;
 var __util = {};
 Object.defineProperty(__util, "__esModule", { value: true });
 __util.asyncTest = __asyncTest;
+var __assert_1 = {default: require("assert")};
 __util.assertAsyncThrows = __assertAsyncThrows;
 
 function __f1(__0, __1, __2, __3) {
@@ -998,7 +999,7 @@ return function /*asyncTest*/(test) {
 
 function __assertAsyncThrows(__0) {
   return (function() {
-    with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
+    with({ __awaiter: __f1, assert_1: __assert_1, assertAsyncThrows: __assertAsyncThrows }) {
 
 return function /*assertAsyncThrows*/(test) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1008,7 +1009,7 @@ return function /*assertAsyncThrows*/(test) {
         catch (err) {
             return err.message;
         }
-        assert(false, "Function was expected to throw, but didn't");
+        assert_1.default(false, "Function was expected to throw, but didn't");
         return "";
     });
 };
@@ -6060,26 +6061,7 @@ return function () { console.log(getAll()); };
 `,
         });
     }
-
-    {
-        cases.push({
-            title: "Capture non-built-in module",
-            func: function () { typescript.parseCommandLine([""]); },
-            expectText: `exports.handler = __f0;
-
-function __f0() {
-  return (function() {
-    with({ typescript: require("typescript/lib/typescript.js") }) {
-
-return function () { typescript.parseCommandLine([""]); };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-`,
-        });
-    }
-
+ 
 //     {
 //         cases.push({
 //             title: "Fail to capture non-deployment module due to native code",

@@ -19,19 +19,23 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/yamlutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	"gopkg.in/yaml.v3"
 )
 
 type newPolicyArgs struct {
@@ -171,9 +175,67 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return err
 	}
 
+	if filepath.Ext(projPath) == ".yaml" {
+		filedata, err := os.ReadFile(projPath)
+		if err != nil {
+			return err
+		}
+		var workspaceDocument yaml.Node
+		err = yaml.Unmarshal(filedata, &workspaceDocument)
+		if err != nil {
+			return err
+		}
+		if proj.Runtime.Name() == "python" {
+			// If the template does give virtualenv use it, else default to "venv"
+			if len(proj.Runtime.Options()) == 0 {
+				proj.Runtime.SetOption("virtualenv", "venv")
+				err = yamlutil.Insert(&workspaceDocument, "runtime", strings.TrimSpace(`
+name: python
+options:
+virtualenv: venv
+`))
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		contract.Assert(len(workspaceDocument.Content) == 1)
+		projFile, err := yaml.Marshal(workspaceDocument.Content[0])
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(projPath, projFile, 0600)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(ctx, proj, projPath, root); err != nil {
+		span := opentracing.SpanFromContext(ctx)
+		// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
+		// policy project. Ideally we should be able to make a plugin context without any related project. But
+		// fow now this works.
+		projinfo := &engine.Projinfo{Proj: &workspace.Project{
+			Main:    proj.Main,
+			Runtime: proj.Runtime}, Root: root}
+		_, _, pluginCtx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			false,
+			span,
+		)
+		if err != nil {
+			return err
+		}
+
+		defer pluginCtx.Close()
+
+		if err := installPolicyPackDependencies(pluginCtx, proj, projPath, root); err != nil {
 			return err
 		}
 	}
@@ -189,32 +251,20 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(ctx context.Context,
+func installPolicyPackDependencies(ctx *plugin.Context,
 	proj *workspace.PolicyPackProject, projPath, root string) error {
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		fmt.Println("Installing dependencies...")
-		fmt.Println()
-
-		bin, err := npm.Install(ctx, "", false /*production*/, os.Stdout, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("`%s install` failed; rerun manually to try again.: %w", bin, err)
-		}
-
-		fmt.Println("Finished installing dependencies")
-		fmt.Println()
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		const venvDir = "venv"
-		if err := python.InstallDependencies(ctx, root, venvDir, true /*showOutput*/); err != nil {
-			return err
-		}
-
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", venvDir)
-		if err := proj.Save(projPath); err != nil {
-			return fmt.Errorf("saving project at %s: %w", projPath, err)
-		}
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	lang, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
+
+	if err = lang.InstallDependencies(root); err != nil {
+		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
+			"then run `pulumi up` to perform an initial deployment: %w", err)
+	}
+
 	return nil
 }
 
