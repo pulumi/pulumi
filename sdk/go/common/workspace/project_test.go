@@ -385,6 +385,50 @@ config:
 	assert.Contains(t, configError.Error(), "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
 }
 
+func TestLoadingConfigIsRewrittenToStackConfigDir(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config: ./some/path`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	assert.Equal(t, "./some/path", project.StackConfigDir, "Stack config dir is read from the config property")
+	assert.Equal(t, 0, len(project.Config), "Config should be empty")
+}
+
+func TestDefningBothConfigAndStackConfigDirErrorsOut(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config: ./some/path
+stackConfigDir: ./some/other/path`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.Nil(t, project, "Should NOT be able to load the project")
+	assert.NotNil(t, projectError, "There is a project error")
+	assert.Contains(t, projectError.Error(), "Should not use both config and stackConfigDir")
+}
+
+func TestConfigObjectAndStackConfigDirSuccessfullyLoadProject(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+stackConfigDir: ./some/other/path
+config:
+  value: hello
+`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.Nil(t, projectError, "There is no error")
+	assert.NotNil(t, project, "The project can be loaded correctly")
+	assert.Equal(t, "./some/other/path", project.StackConfigDir)
+	assert.Equal(t, 1, len(project.Config), "there is one config value")
+}
+
 func TestStackConfigIntegerTypeIsCorrectlyValidated(t *testing.T) {
 	t.Parallel()
 	projectYaml := `

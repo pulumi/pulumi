@@ -110,6 +110,11 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
+	projectDef, rewriteError := RewriteConfigPathIntoStackConfigDir(projectDef)
+	if rewriteError != nil {
+		return nil, rewriteError
+	}
+
 	projectDef = RewriteShorthandConfigValues(projectDef)
 	modifiedProject, _ := marshaller.Marshal(projectDef)
 

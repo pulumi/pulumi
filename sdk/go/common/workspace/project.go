@@ -175,6 +175,31 @@ func isPrimitiveValue(value interface{}) (string, bool) {
 	return "", false
 }
 
+// RewriteConfigPathIntoStackConfigDir checks if the project is using the old "config" property
+// to declare a path to the stack configuration directory. If that is the case, we rewrite it
+// such that the value in config: {value} is moved to stackConfigDir: {value}.
+// if the user defines both values as strings, we error out.
+func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[string]interface{}, error) {
+	config, hasConfig := project["config"]
+	_, hasStackConfigDir := project["stackConfigDir"]
+
+	if hasConfig {
+		configText, configIsText := config.(string)
+		if configIsText && hasStackConfigDir {
+			return nil, errors.New("Should not use both config and stackConfigDir to define the stack directory. " +
+				"Use only stackConfigDir instead.")
+		} else if configIsText && !hasStackConfigDir {
+			// then we have config: {value}. Move this to stackConfigDir: {value}
+			project["stackConfigDir"] = configText
+			// reset the config property
+			project["config"] = nil
+			return project, nil
+		}
+	}
+
+	return project, nil
+}
+
 // RewriteShorthandConfigValues rewrites short-hand version of configuration into a configuration type
 // for example the following config block definition:
 //
@@ -277,6 +302,13 @@ func ValidateProject(raw interface{}) error {
 	}
 	if _, ok := project["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	project, rewriteError := RewriteConfigPathIntoStackConfigDir(project)
+
+	// when defining both config and stackConfigDir as strings in the same project
+	if rewriteError != nil {
+		return rewriteError
 	}
 
 	project = RewriteShorthandConfigValues(project)
