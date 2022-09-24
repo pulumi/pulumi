@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ type Host interface {
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string) (LanguageRuntime, error)
+	LanguageRuntime(runtime string, options map[string]interface{}) (LanguageRuntime, error)
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
@@ -198,8 +199,10 @@ type pluginLoadRequest struct {
 }
 
 type defaultHost struct {
-	ctx                     *Context                         // the shared context for this host.
-	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
+	ctx *Context // the shared context for this host.
+
+	// the runtime options for the project, passed to resource providers to support dynamic providers.
+	runtimeOptions          map[string]interface{}
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
@@ -368,17 +371,26 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 	return plugin.(Provider), nil
 }
 
-func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
+func (host *defaultHost) LanguageRuntime(runtime string, options map[string]interface{}) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
 	plugin, err := loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
+
+		// Key our cached runtime plugins by the runtime name and the options
+		jsonOptions, err := json.Marshal(options)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal runtime options to JSON: %w", err)
+		}
+
+		key := runtime + ":" + string(jsonOptions)
+
 		// First see if we already loaded this plugin.
-		if plug, has := host.languagePlugins[runtime]; has {
+		if plug, has := host.languagePlugins[key]; has {
 			contract.Assert(plug != nil)
 			return plug.Plugin, nil
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, options)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -386,7 +398,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 			}
 
 			// Memoize the result.
-			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
+			host.languagePlugins[key] = &languagePlugin{Plugin: plug, Info: info}
 		}
 
 		return plug, err
@@ -413,7 +425,10 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 			}
 		case workspace.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(plugin.Name); err != nil {
+				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
+				// host.runtimePlugins because there might be other langauge plugins reported here (e.g
+				// shimless multi-language providers).
+				if _, err := host.LanguageRuntime(plugin.Name, nil); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
 				}
@@ -525,7 +540,7 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
+		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name(), info.Proj.Runtime.Options())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}

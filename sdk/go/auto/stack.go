@@ -1076,6 +1076,11 @@ func (s *languageRuntimeServer) GetProgramDependencies(
 	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
 
+func (s *languageRuntimeServer) RunPlugin(
+	_ *pulumirpc.RunPluginRequest, _ pulumirpc.LanguageRuntime_RunPluginServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
+}
+
 type fileWatcher struct {
 	Filename  string
 	tail      *tail.Tail

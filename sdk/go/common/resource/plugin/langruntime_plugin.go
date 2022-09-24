@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -341,4 +342,59 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 
 	logging.V(7).Infof("%s success: #versions=%d", prefix, len(results))
 	return results, nil
+}
+
+func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+	logging.V(7).Infof("langhost[%v].RunPlugin(pwd=%s,program=%s) executing",
+		h.runtime, info.Pwd, info.Program)
+
+	ctx, kill := context.WithCancel(h.ctx.Request())
+
+	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
+		Pwd:     info.Pwd,
+		Program: info.Program,
+		Args:    info.Args,
+		Env:     info.Env,
+	})
+
+	if err != nil {
+		// If there was an error starting the plugin kill the context for this request to ensure any lingering
+		// connection terminates.
+		kill()
+		return nil, nil, nil, err
+	}
+
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+
+	go func() {
+		for {
+			logging.V(10).Infoln("Waiting for plugin message")
+			msg, err := resp.Recv()
+			if err != nil {
+				contract.IgnoreError(outw.CloseWithError(err))
+				contract.IgnoreError(errw.CloseWithError(err))
+				break
+			}
+
+			logging.V(10).Infoln("Got plugin response: ", msg)
+
+			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
+				n, err := outw.Write(value.Stdout)
+				contract.AssertNoError(err)
+				contract.Assert(n == len(value.Stdout))
+			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
+				n, err := errw.Write(value.Stderr)
+				contract.AssertNoError(err)
+				contract.Assert(n == len(value.Stderr))
+			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+				// If stdout and stderr are empty we've flushed and are returning the exit code
+				outw.Close()
+				errw.Close()
+				break
+			}
+		}
+	}()
+
+	return outr, errr, kill, nil
 }

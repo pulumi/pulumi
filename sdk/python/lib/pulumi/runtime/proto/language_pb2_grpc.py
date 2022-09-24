@@ -48,6 +48,11 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.GetProgramDependenciesRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.GetProgramDependenciesResponse.FromString,
                 )
+        self.RunPlugin = channel.unary_stream(
+                '/pulumirpc.LanguageRuntime/RunPlugin',
+                request_serializer=pulumi_dot_language__pb2.RunPluginRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.RunPluginResponse.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
@@ -97,6 +102,13 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RunPlugin(self, request, context):
+        """RunPlugin executes a plugin program and returns its result asynchronously.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -129,6 +141,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.GetProgramDependencies,
                     request_deserializer=pulumi_dot_language__pb2.GetProgramDependenciesRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.GetProgramDependenciesResponse.SerializeToString,
+            ),
+            'RunPlugin': grpc.unary_stream_rpc_method_handler(
+                    servicer.RunPlugin,
+                    request_deserializer=pulumi_dot_language__pb2.RunPluginRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.RunPluginResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -241,5 +258,22 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/GetProgramDependencies',
             pulumi_dot_language__pb2.GetProgramDependenciesRequest.SerializeToString,
             pulumi_dot_language__pb2.GetProgramDependenciesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RunPlugin(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/pulumirpc.LanguageRuntime/RunPlugin',
+            pulumi_dot_language__pb2.RunPluginRequest.SerializeToString,
+            pulumi_dot_language__pb2.RunPluginResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

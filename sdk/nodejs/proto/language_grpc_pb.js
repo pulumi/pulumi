@@ -120,6 +120,28 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
   return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RunPluginRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.RunPluginRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RunPluginRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RunPluginRequest(buffer_arg) {
+  return pulumi_language_pb.RunPluginRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RunPluginResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.RunPluginResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RunPluginResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RunPluginResponse(buffer_arg) {
+  return pulumi_language_pb.RunPluginResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RunRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.RunRequest)) {
     throw new Error('Expected argument of type pulumirpc.RunRequest');
@@ -217,6 +239,18 @@ getProgramDependencies: {
     requestDeserialize: deserialize_pulumirpc_GetProgramDependenciesRequest,
     responseSerialize: serialize_pulumirpc_GetProgramDependenciesResponse,
     responseDeserialize: deserialize_pulumirpc_GetProgramDependenciesResponse,
+  },
+  // RunPlugin executes a plugin program and returns its result asynchronously.
+runPlugin: {
+    path: '/pulumirpc.LanguageRuntime/RunPlugin',
+    requestStream: false,
+    responseStream: true,
+    requestType: pulumi_language_pb.RunPluginRequest,
+    responseType: pulumi_language_pb.RunPluginResponse,
+    requestSerialize: serialize_pulumirpc_RunPluginRequest,
+    requestDeserialize: deserialize_pulumirpc_RunPluginRequest,
+    responseSerialize: serialize_pulumirpc_RunPluginResponse,
+    responseDeserialize: deserialize_pulumirpc_RunPluginResponse,
   },
 };
 

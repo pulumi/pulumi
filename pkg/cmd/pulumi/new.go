@@ -691,7 +691,7 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), runtime.Options())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}

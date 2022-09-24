@@ -39,6 +39,9 @@ service LanguageRuntime {
 
     // GetProgramDependencies returns the set of dependencies required by the program.
     rpc GetProgramDependencies(GetProgramDependenciesRequest) returns (GetProgramDependenciesResponse) {}
+
+    // RunPlugin executes a plugin program and returns its result asynchronously.
+    rpc RunPlugin(RunPluginRequest) returns (stream RunPluginResponse) {}
 }
 
 // AboutResponse returns runtime information about the language.
@@ -109,4 +112,19 @@ message InstallDependenciesRequest {
 message InstallDependenciesResponse {
     bytes stdout = 1; // a line of stdout text.
     bytes stderr = 2; // a line of stderr text.
+}
+
+message RunPluginRequest{
+    string pwd = 1; // the program's working directory.
+    string program = 2; // the path to the program to execute.
+    repeated string args = 3; // any arguments to pass to the program.
+    repeated string env = 4; // any environment variables to set as part of the program.
+}
+
+message RunPluginResponse {
+    oneof output {
+        bytes stdout = 1; // a line of stdout text.
+        bytes stderr = 2; // a line of stderr text.
+        int32 exitcode = 3; // the exit code of the provider.
+    }
 }

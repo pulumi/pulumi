@@ -39,19 +39,12 @@ setup_nodejs() (
   fi
 )
 
-setup_go() (
-  set -euo pipefail
-  if [ -d "testcomponent-go" ]; then
-    cd testcomponent-go
-    go build -o "pulumi-resource-testcomponent$(go env GOEXE)"
-  fi
-)
-
 setup_python() (
   set -euo pipefail
   if [ -d "testcomponent-python" ]; then
     cd testcomponent-python
-    python3 -m venv venv
+    # Clear out any existing venv to prevent 'permission denied' issues
+    python3 -m venv venv --clear
     # shellcheck disable=SC1090
     . venv/*/activate
     python3 -m pip install -e ../../../../sdk/python/env/src
@@ -59,11 +52,10 @@ setup_python() (
 )
 
 setup_nodejs
-setup_go
 setup_python
 
 i=0
-for step in setup_nodejs setup_python setup_go; do
+for step in setup_nodejs setup_python; do
   time "${step}" &
   builds[${i}]=$!
   echo "Started ${step} with PID ${builds[${i}]}"

@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
@@ -186,7 +188,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, args, pwd, env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -294,7 +296,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
+func execPlugin(ctx *Context, bin, prefix string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -303,6 +305,44 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
+
+	// Check to see if we have a binary we can invoke directly
+	if _, err := os.Stat(bin); os.IsNotExist(err) {
+		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml"
+		pluginDir := filepath.Dir(bin)
+		proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
+		if err != nil {
+			return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
+		}
+
+		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, proj.Runtime.Name())
+
+		runtime, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), proj.Runtime.Options())
+		if err != nil {
+			return nil, errors.Wrap(err, "loading runtime")
+		}
+
+		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+			Pwd:     pwd,
+			Program: pluginDir,
+			Args:    pluginArgs,
+			Env:     env,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &plugin{
+			Bin:    bin,
+			Args:   args,
+			Env:    env,
+			Kill:   func() error { kill(); return nil },
+			Stdout: io.NopCloser(stdout),
+			Stderr: io.NopCloser(stderr),
+		}, nil
+	}
+
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd

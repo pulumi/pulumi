@@ -140,7 +140,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 				result.Plugins = plugins
 			}
 
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name())
+			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), proj.Runtime.Options())
 			if err != nil {
 				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
 			} else {

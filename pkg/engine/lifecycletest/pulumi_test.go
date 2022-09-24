@@ -2562,6 +2562,12 @@ func (ctx *updateContext) GetProgramDependencies(
 	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
 
+func (ctx *updateContext) RunPlugin(
+	req *pulumirpc.RunPluginRequest,
+	server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
+}
+
 func TestLanguageClient(t *testing.T) {
 	t.Parallel()
 
