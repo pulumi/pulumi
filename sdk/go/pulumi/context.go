@@ -191,6 +191,15 @@ func (ctx *Context) wait() error {
 	return nil
 }
 
+// Organization returns the current organization name.
+func (ctx *Context) Organization() string {
+	org := ctx.info.Organization
+	if org == "" {
+		org = "organization"
+	}
+	return org
+}
+
 // Project returns the current project name.
 func (ctx *Context) Project() string { return ctx.info.Project }
 

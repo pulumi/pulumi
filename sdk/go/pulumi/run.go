@@ -172,6 +172,7 @@ func getEnvInfo() RunInfo {
 	}
 
 	return RunInfo{
+		Organization:     os.Getenv(EnvOrganization),
 		Project:          os.Getenv(EnvProject),
 		Stack:            os.Getenv(EnvStack),
 		Config:           config,
@@ -185,6 +186,8 @@ func getEnvInfo() RunInfo {
 }
 
 const (
+	// EnvOrganization is the envvar used to read the current Pulumi organization name.
+	EnvOrganization = "PULUMI_ORGANIZATION"
 	// EnvProject is the envvar used to read the current Pulumi project name.
 	EnvProject = "PULUMI_PROJECT"
 	// EnvStack is the envvar used to read the current Pulumi stack name.
