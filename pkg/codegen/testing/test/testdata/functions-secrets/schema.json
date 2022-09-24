@@ -1,0 +1,62 @@
+{
+    "name": "mypkg",
+    "version": "0.0.1",
+    "functions": {
+        "mypkg::funcWithSecrets": {
+            "inputs": {
+                "properties": {
+                    "cryptoKey": {
+                        "type": "string"
+                    },
+                    "plaintext": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "cryptoKey",
+                    "plaintext"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "ciphertext": {
+                        "type": "string"
+                    },
+                    "cryptoKey": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "plaintext": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "ciphertext",
+                    "cryptoKey",
+                    "plaintext",
+                    "id"
+                ]
+            }
+        }
+    },
+    "language": {
+        "nodejs": {
+            "devDependencies": {
+                "@types/node": "latest"
+            }
+        },
+        "go": {},
+        "python": {},
+        "csharp": {
+            "projectReferences": [
+                "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+            ]
+        }
+    }
+}

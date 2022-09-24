@@ -294,6 +294,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Generate a resource that outputs [][][]Foo",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory: "functions-secrets",
+		// Secret properties for non-Output<T> returning functions cannot be secret because they are plain.
+		Description: "functions that have properties that are secrets in the schema",
+	},
 }
 
 var genSDKOnly bool
