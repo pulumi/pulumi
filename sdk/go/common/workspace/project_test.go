@@ -359,6 +359,32 @@ config:
 	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:protect"))
 }
 
+func TestNamespacedConfigValuesAreInheritedCorrectly(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  aws:region: us-west-1`
+
+	projectStackYaml := `
+config:
+  test:instanceSize: t4.large`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NoError(t, configError, "Config override should be valid")
+
+	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
+	// aws:region is namespaced and is inherited from the project
+	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
+}
+
 func TestStackConfigErrorsWhenStackValueIsNotCorrectlyTyped(t *testing.T) {
 	t.Parallel()
 	projectYaml := `

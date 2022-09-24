@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -12,7 +13,21 @@ func ValidateStackConfigAndApplyProjectConfig(
 	project *Project,
 	stackConfig config.Map) error {
 	for projectConfigKey, projectConfigType := range project.Config {
-		key := config.MustMakeKey(string(project.Name), projectConfigKey)
+		var key config.Key
+		if strings.Contains(projectConfigKey, ":") {
+			// key is already namespaced
+			parsedKey, parseError := config.ParseKey(projectConfigKey)
+			if parseError != nil {
+				return parseError
+			}
+
+			key = parsedKey
+		} else {
+			// key is not namespaced
+			// use the project as namespace
+			key = config.MustMakeKey(string(project.Name), projectConfigKey)
+		}
+
 		stackValue, found, _ := stackConfig.Get(key, true)
 		hasDefault := projectConfigType.Default != nil
 		if !found && !hasDefault {
