@@ -493,8 +493,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
-				// we don't need project config here
-				applyProjectConfig: false,
+				applyProjectConfig: true,
 			})
 
 			if err != nil {
