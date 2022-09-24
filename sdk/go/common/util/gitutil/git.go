@@ -17,6 +17,8 @@ package gitutil
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -277,8 +279,17 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 	})
 }
 
+func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	if u, err := url.Parse(rawurl); err == nil && u.Hostname() == AzureDevOpsHostName {
+		// system-installed git is used to clone Azure DevOps repositories
+		// due to https://github.com/go-git/go-git/issues/64
+		return gitCloneOrPullSystemGit(rawurl, referenceName, path, shallow)
+	}
+	return gitCloneOrPull(rawurl, referenceName, path, shallow)
+}
+
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {
@@ -323,6 +334,33 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 		}
 	}
 
+	return nil
+}
+
+// gitCloneOrPullSystemGit uses the `git` command to pull or clone repositories.
+func gitCloneOrPullSystemGit(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	// Assume repo already exists, pull changes.
+	gitArgs := []string{
+		"pull",
+	}
+	if _, err := os.Stat(filepath.Join(path, ".git")); os.IsNotExist(err) {
+		// Repo does not exist, clone it.
+		gitArgs = []string{
+			"clone", url,
+		}
+		// For shallow clones, use a depth of 1.
+		if shallow {
+			gitArgs = append(gitArgs, "--depth")
+			gitArgs = append(gitArgs, "1")
+		}
+	}
+
+	cmd := exec.Command("git", gitArgs...)
+	cmd.Dir = path
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run `git %v`", strings.Join(gitArgs, " "))
+	}
 	return nil
 }
 
@@ -372,6 +410,9 @@ func parseHostAuth(u *url.URL) string {
 // Additionally, it supports nested git projects, as used by GitLab.
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
+//
+// Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
+// and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
@@ -389,6 +430,12 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 			return "", "", err
 		}
 		return repo, "", nil
+	}
+
+	// Special case Azure DevOps.
+	if u.Hostname() == AzureDevOpsHostName {
+		// Specifying branch/ref and subpath is currently unsupported.
+		return rawurl, "", nil
 	}
 
 	path := strings.TrimPrefix(u.Path, "/")
