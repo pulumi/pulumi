@@ -3,6 +3,7 @@ package pcl
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,7 +22,7 @@ var fileToMockPlugins = map[string]map[string]string{
 func TestBindProgram(t *testing.T) {
 	t.Parallel()
 
-	testdata, err := ioutil.ReadDir(testdataPath)
+	testdata, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -33,7 +34,7 @@ func TestBindProgram(t *testing.T) {
 			continue
 		}
 		folderPath := filepath.Join(testdataPath, v.Name())
-		files, err := ioutil.ReadDir(folderPath)
+		files, err := os.ReadDir(folderPath)
 		if err != nil {
 			t.Fatalf("could not read test data: %v", err)
 		}

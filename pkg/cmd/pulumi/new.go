@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -542,7 +541,7 @@ func newNewCmd() *cobra.Command {
 
 // errorIfNotEmptyDirectory returns an error if path is not empty.
 func errorIfNotEmptyDirectory(path string) error {
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}

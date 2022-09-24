@@ -1272,7 +1272,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 func cleanupTempDirs(finalDir string) error {
 	dir := filepath.Dir(finalDir)
 
-	infos, err := ioutil.ReadDir(dir)
+	infos, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
@@ -1422,7 +1422,7 @@ func GetPluginsWithMetadata() ([]PluginInfo, error) {
 }
 
 func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -1890,7 +1890,7 @@ var pluginRegexp = regexp.MustCompile(
 var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
-func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
+func tryPlugin(file os.DirEntry) (PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
@@ -1955,7 +1955,7 @@ func getPluginSize(path string) (int64, error) {
 
 	size := int64(0)
 	if file.IsDir() {
-		subs, err := ioutil.ReadDir(path)
+		subs, err := os.ReadDir(path)
 		if err != nil {
 			return 0, err
 		}
