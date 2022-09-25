@@ -87,23 +87,73 @@ func NewPolicyAnalyzer(
 		return nil, errors.Wrapf(err, "failed to load Pulumi policy project located at %q", policyPackPath)
 	}
 
-	// For historical reasons, the Node.js plugin name is just "policy".
-	// All other languages have the runtime appended, e.g. "policy-<runtime>".
-	policyAnalyzerName := "policy"
-	if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
-	}
+	// Historically we've only support nodejs and python, and have done this via shim plugins that behaved
+	// sort of like mini language plugins (pulumi-analyzer-policy-python for example handles the --virtualenv
+	// option). For new languages (and eventually for nodejs and python as well) we just use a new method on
+	// the language runtime itself to launch the policy plugin.
 
-	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-	pluginPath, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
-	if err != nil {
-		return nil, rpcerror.Convert(err)
-	} else if pluginPath == "" {
-		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
-			"plugin that runs policy plugins is missing. This might occur when the plugin "+
-			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
-			"does not support resource policies", string(name))
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
+		// For historical reasons, the Node.js plugin name is just "policy".
+		// All other languages have the runtime appended, e.g. "policy-<runtime>".
+		policyAnalyzerName := "policy"
+		if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
+			policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
+		}
+
+		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
+		pluginPath, err := workspace.GetPluginPath(
+			workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
+		if err != nil {
+			return nil, rpcerror.Convert(err)
+		} else if pluginPath == "" {
+			return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
+				"plugin that runs policy plugins is missing. This might occur when the plugin "+
+				"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
+				"does not support resource policies", string(name))
+		}
+
+		// Create the environment variables from the options.
+		env, err := constructEnv(opts, proj.Runtime.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
+		// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
+		// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
+		// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
+		// node_modules is used.
+		pwd := policyPackPath
+
+		args := []string{host.ServerAddr(), "."}
+		for k, v := range proj.Runtime.Options() {
+			if vstr := fmt.Sprintf("%v", v); vstr != "" {
+				args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
+			}
+		}
+
+		plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
+		if err != nil {
+			// The original error might have been wrapped before being returned from newPlugin. So we look for
+			// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
+			if errors.Cause(err) == errRunPolicyModuleNotFound {
+				return nil, fmt.Errorf("it looks like the policy pack's dependencies are not installed; "+
+					"try running npm install or yarn install in %q", policyPackPath)
+			}
+			if errors.Cause(err) == errPluginNotFound {
+				return nil, fmt.Errorf("policy pack not found at %q", name)
+			}
+			return nil, errors.Wrapf(err, "policy pack %q failed to start", string(name))
+		}
+		contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
+
+		return &analyzer{
+			ctx:     ctx,
+			name:    name,
+			plug:    plug,
+			client:  pulumirpc.NewAnalyzerClient(plug.Conn),
+			version: proj.Version,
+		}, nil
 	}
 
 	// Create the environment variables from the options.
@@ -112,13 +162,6 @@ func NewPolicyAnalyzer(
 		return nil, err
 	}
 
-	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
-	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
-	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
-	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
-	// node_modules is used.
-	pwd := policyPackPath
-
 	args := []string{host.ServerAddr(), "."}
 	for k, v := range proj.Runtime.Options() {
 		if vstr := fmt.Sprintf("%v", v); vstr != "" {
@@ -126,7 +169,7 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
+	plug, err := newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name), args, env)
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.

@@ -426,7 +426,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 		case workspace.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
 				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
-				// host.runtimePlugins because there might be other langauge plugins reported here (e.g
+				// host.runtimePlugins because there might be other language plugins reported here (e.g
 				// shimless multi-language providers).
 				if _, err := host.LanguageRuntime(plugin.Name, nil); err != nil {
 					result = multierror.Append(result,
