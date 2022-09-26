@@ -15,8 +15,10 @@
 package workspace
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -139,6 +141,40 @@ type projectStackLoader struct {
 	internal map[string]*ProjectStack
 }
 
+// Rewrite config values to make them namespaced. Using the project name as the default namespace
+// for example:
+//     config:
+//       instanceSize: t3.micro
+//
+// is valid configuration and will be rewritten in the form
+//
+//     config:
+//       {projectName}:instanceSize:t3.micro
+func stackConfigNamespacedWithProject(project *Project, projectStack map[string]interface{}) map[string]interface{} {
+	config, ok := projectStack["config"]
+	if ok {
+		configAsMap, isMap := config.(map[string]interface{})
+		if isMap {
+			modifiedConfig := make(map[string]interface{})
+			for key, value := range configAsMap {
+				if strings.Contains(key, ":") {
+					// key is already namespaced
+					// use it as is
+					modifiedConfig[key] = value
+				} else {
+					namespacedKey := fmt.Sprintf("%s:%s", project.Name, key)
+					modifiedConfig[namespacedKey] = value
+				}
+			}
+
+			projectStack["config"] = modifiedConfig
+			return projectStack
+		}
+	}
+
+	return projectStack
+}
+
 // Load a ProjectStack config file from the specified path. The configuration will be cached for subsequent loads.
 func (singleton *projectStackLoader) load(project *Project, path string) (*ProjectStack, error) {
 	singleton.Lock()
@@ -148,24 +184,47 @@ func (singleton *projectStackLoader) load(project *Project, path string) (*Proje
 		return v, nil
 	}
 
-	marshaler, err := marshallerForPath(path)
+	marshaller, err := marshallerForPath(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var projectStack ProjectStack
 	b, err := readFileStripUTF8BOM(path)
 	if os.IsNotExist(err) {
-		projectStack = ProjectStack{
+		defaultProjectStack := ProjectStack{
 			Config: make(config.Map),
 		}
-		singleton.internal[path] = &projectStack
-		return &projectStack, nil
+		singleton.internal[path] = &defaultProjectStack
+		return &defaultProjectStack, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	err = marshaler.Unmarshal(b, &projectStack)
+	var projectStackRaw interface{}
+	err = marshaller.Unmarshal(b, &projectStackRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	simplifiedStackFormm, err := SimplifyMarshalledProject(projectStackRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	// rewrite config values to make them namespaced
+	// for example:
+	//     config:
+	//       instanceSize: t3.micro
+	//
+	// is valid configuration and will be rewritten in the form
+	//
+	//     config:
+	//       {projectName}:instanceSize:t3.micro
+	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackFormm)
+	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
+
+	var projectStack ProjectStack
+	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
 	if err != nil {
 		return nil, err
 	}
