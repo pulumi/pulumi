@@ -27,15 +27,8 @@ import (
 	"gocloud.dev/secrets/driver"
 )
 
-func deleteFile(t *testing.T, file *os.File) {
-	if file != nil {
-		err := os.Remove(file.Name())
-		assert.NoError(t, err, "Error while deleting file")
-	}
-}
-
 func deleteFiles(t *testing.T, files map[string]string) {
-	for file, _ := range files {
+	for file := range files {
 		err := os.Remove(file)
 		assert.Nil(t, err, "Should be able to remove the file directory")
 	}
@@ -75,7 +68,8 @@ func TestSecretsProviderOverride(t *testing.T) {
 			assert.Nil(t, createSecretsManagerError, "Creating the cloud secret manager should succeed")
 
 			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
-			assert.NotNil(t, createSecretsManagerError, "newCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error")
+			msg := "newCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
+			assert.NotNil(t, createSecretsManagerError, msg)
 		})
 	})
 
@@ -87,10 +81,11 @@ func TestSecretsProviderOverride(t *testing.T) {
 
 			// Last argument here shouldn't matter anymore, since it gets overridden
 			// by the env var. Both calls should succeed.
+			msg := "creating the secrets manager should succeed regardless of secrets provider"
 			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo")
-			assert.Nil(t, createSecretsManagerError, "creating the secrets manager should succeed regardless of secrets provider #1")
+			assert.Nil(t, createSecretsManagerError, msg)
 			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
-			assert.Nil(t, createSecretsManagerError, "creating the secrets manager should succeed regardless of secrets provider #2")
+			assert.Nil(t, createSecretsManagerError, msg)
 		})
 	})
 }
