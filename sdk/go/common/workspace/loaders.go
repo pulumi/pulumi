@@ -206,7 +206,16 @@ func (singleton *projectStackLoader) load(project *Project, path string) (*Proje
 		return nil, err
 	}
 
-	simplifiedStackFormm, err := SimplifyMarshalledProject(projectStackRaw)
+	if projectStackRaw == nil {
+		// for example when reading an empty stack file
+		defaultProjectStack := ProjectStack{
+			Config: make(config.Map),
+		}
+		singleton.internal[path] = &defaultProjectStack
+		return &defaultProjectStack, nil
+	}
+
+	simplifiedStackForm, err := SimplifyMarshalledProject(projectStackRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +229,7 @@ func (singleton *projectStackLoader) load(project *Project, path string) (*Proje
 	//
 	//     config:
 	//       {projectName}:instanceSize:t3.micro
-	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackFormm)
+	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
 	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
 
 	var projectStack ProjectStack
