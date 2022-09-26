@@ -107,6 +107,9 @@ type OutputState struct {
 	known  bool        // true if this output's value is known.
 	secret bool        // true if this output's value is secret
 
+	isPromise bool // true if this value is a Promise and it is unsound to flatten it
+	awaited   bool // true if this value has been used
+
 	element reflect.Type // the element type of this output.
 	deps    []Resource   // the dependencies associated with this output property.
 }
@@ -252,6 +255,7 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			o.cond.Wait()
 		}
 		o.cond.L.Unlock()
+		o.awaited = true
 
 		deps = mergeDependencies(deps, o.deps)
 		known = known && o.known
@@ -264,7 +268,7 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		if ov, ok := o.value.(Output); ok {
+		if ov, ok := o.value.(Output); ok && !ov.getState().isPromise {
 			o = ov.getState()
 		} else {
 			return o.value, true, secret, deps, nil

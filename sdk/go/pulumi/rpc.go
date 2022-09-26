@@ -129,7 +129,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		return pmap, pdeps, nil, nil
 	}
 
-	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
+	marshalProperty := func(pname string, pv interface{}, pt reflect.Type, optional bool) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInput(pv, pt, true)
 		if err != nil {
@@ -180,11 +180,24 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		numFields := pt.NumField()
 		for i := 0; i < numFields; i++ {
 			destField, _ := getMappedField(reflect.Value{}, i)
+			if destField.Anonymous && destField.Type.Implements(inputType) {
+				ePmap, ePdeps, _, err := marshalInputs(pv.Field(i).Interface().(Input))
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				for k, v := range ePmap {
+					pmap[k] = v
+				}
+				for k, v := range ePdeps {
+					pdeps[k] = v
+				}
+				continue
+			}
 			tag := destField.Tag.Get("pulumi")
 			if tag == "" {
 				continue
 			}
-			err := marshalProperty(tag, pv.Field(i).Interface(), destField.Type)
+			err := marshalProperty(tag, pv.Field(i).Interface(), destField.Type, false)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -194,7 +207,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		for _, key := range pv.MapKeys() {
 			keyname := key.Interface().(string)
 			val := pv.MapIndex(key).Interface()
-			err := marshalProperty(keyname, val, rt.Elem())
+			err := marshalProperty(keyname, val, rt.Elem(), false)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -225,6 +238,13 @@ func marshalInputImpl(v interface{},
 	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
+
+		if destType.Implements(promiseType) {
+			method, ok := destType.MethodByName("ElementType")
+			if ok {
+				destType = method.Func.Call([]reflect.Value{reflect.ValueOf(v)})[0].Interface().(reflect.Type)
+			}
+		}
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		if input, ok := v.(Input); !skipInputCheck && ok {
@@ -257,50 +277,10 @@ func marshalInputImpl(v interface{},
 
 			// If the input is an Output, await its value. The returned value is fully resolved.
 			if output, ok := input.(Output); ok {
-				if !await {
-					return resource.PropertyValue{}, nil, fmt.Errorf(cannotAwaitFmt, output)
-				}
-
-				// Await the output.
-				ov, known, secret, outputDeps, err := output.getState().await(context.TODO())
-				if err != nil {
-					return resource.PropertyValue{}, nil, err
-				}
-
-				// Get the underlying value, if known.
-				var element resource.PropertyValue
-				if known {
-					element, _, err = marshalInputImpl(ov, destType, await, true /*skipInputCheck*/)
-					if err != nil {
-						return resource.PropertyValue{}, nil, err
-					}
-
-					// If it's known, not a secret, and has no deps, return the value itself.
-					if !secret && len(outputDeps) == 0 {
-						return element, nil, nil
-					}
-				}
-
-				// Expand dependencies.
-				urnSet, err := expandDependencies(context.TODO(), outputDeps)
-				if err != nil {
-					return resource.PropertyValue{}, nil, err
-				}
-				var dependencies []resource.URN
-				if len(urnSet) > 0 {
-					dependencies = make([]resource.URN, len(urnSet))
-					for i, urn := range urnSet.sortedValues() {
-						dependencies[i] = resource.URN(urn)
-					}
-				}
-
-				return resource.NewOutputProperty(resource.Output{
-					Element:      element,
-					Known:        known,
-					Secret:       secret,
-					Dependencies: dependencies,
-				}), outputDeps, nil
-			}
+				return marshalOutput(await, output, destType)
+			} /* else if output, ok := input.(promiseInput); ok {
+				return marshalOutput(await, output.ToOutput(), destType)
+			} */
 		}
 
 		// Set skipInputCheck to false, so that if we loop around we don't skip the input check.
@@ -488,6 +468,57 @@ func marshalInputImpl(v interface{},
 		}
 		return resource.PropertyValue{}, nil, fmt.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
+}
+
+func marshalOutput(await bool, output Output, destType reflect.Type) (resource.PropertyValue, []Resource, error) {
+	if output.getState() == nil || output.getState().cond == nil {
+		// Default values lack an output state.
+		return resource.NewNullProperty(), nil, nil
+	}
+
+	if !await {
+		return resource.PropertyValue{}, nil, fmt.Errorf(cannotAwaitFmt, output)
+	}
+
+	// Await the output.
+	ov, known, secret, outputDeps, err := output.getState().await(context.TODO())
+	if err != nil {
+		return resource.PropertyValue{}, nil, err
+	}
+
+	// Get the underlying value, if known.
+	var element resource.PropertyValue
+	if known {
+		element, _, err = marshalInputImpl(ov, destType, await, true /*skipInputCheck*/)
+		if err != nil {
+			return resource.PropertyValue{}, nil, err
+		}
+
+		// If it's known, not a secret, and has no deps, return the value itself.
+		if !secret && len(outputDeps) == 0 {
+			return element, nil, nil
+		}
+	}
+
+	// Expand dependencies.
+	urnSet, err := expandDependencies(context.TODO(), outputDeps)
+	if err != nil {
+		return resource.PropertyValue{}, nil, err
+	}
+	var dependencies []resource.URN
+	if len(urnSet) > 0 {
+		dependencies = make([]resource.URN, len(urnSet))
+		for i, urn := range urnSet.sortedValues() {
+			dependencies[i] = resource.URN(urn)
+		}
+	}
+
+	return resource.NewOutputProperty(resource.Output{
+		Element:      element,
+		Known:        known,
+		Secret:       secret,
+		Dependencies: dependencies,
+	}), outputDeps, nil
 }
 
 func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (Resource, error) {
