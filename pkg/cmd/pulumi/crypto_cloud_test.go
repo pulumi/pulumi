@@ -22,49 +22,76 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/stretchr/testify/assert"
 	"gocloud.dev/secrets"
 	"gocloud.dev/secrets/driver"
 )
 
+func deleteFile(t *testing.T, file *os.File) {
+	if file != nil {
+		err := os.Remove(file.Name())
+		assert.NoError(t, err, "Error while deleting file")
+	}
+}
+
+func deleteFiles(t *testing.T, files map[string]string) {
+	for file, _ := range files {
+		err := os.Remove(file)
+		assert.Nil(t, err, "Should be able to remove the file directory")
+	}
+}
+
+func createTempFiles(t *testing.T, files map[string]string, f func()) {
+	for file, content := range files {
+		fileError := os.WriteFile(file, []byte(content), 0600)
+		assert.Nil(t, fileError, "should be able to write the file contents")
+	}
+
+	defer deleteFiles(t, files)
+	f()
+}
+
 //nolint:paralleltest
-func TestSecretsproviderOverride(t *testing.T) {
+func TestSecretsProviderOverride(t *testing.T) {
 	// Don't call t.Parallel because we temporarily modify
 	// PULUMI_CLOUD_SECRET_OVERRIDE env var and it may interfere with other
 	// tests.
 
-	const stackConfig = "Pulumi.TestSecretsproviderOverride.yaml"
-	var stackName = tokens.Name("TestSecretsproviderOverride")
-	// Cleanup the generated stack config after the test.
-	t.Cleanup(func() { os.Remove(stackConfig) })
+	stackConfigFileName := "Pulumi.TestSecretsProviderOverride.yaml"
+	files := make(map[string]string)
+	files["Pulumi.yaml"] = "{\"name\":\"test\", \"runtime\":\"dotnet\"}"
+	files[stackConfigFileName] = ""
+
+	var stackName = tokens.Name("TestSecretsProviderOverride")
 
 	opener := &mockSecretsKeeperOpener{}
 	secrets.DefaultURLMux().RegisterKeeper("test", opener)
 
 	//nolint:paralleltest
 	t.Run("without override", func(t *testing.T) {
-		opener.wantURL = "test://foo"
+		createTempFiles(t, files, func() {
+			opener.wantURL = "test://foo"
+			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo")
+			assert.Nil(t, createSecretsManagerError, "Creating the cloud secret manager should succeed")
 
-		if _, err := newCloudSecretsManager(stackName, stackConfig, "test://foo"); err != nil {
-			t.Fatalf("newCloudSecretsManager failed: %v", err)
-		}
-		if _, err := newCloudSecretsManager(stackName, stackConfig, "test://bar"); err == nil {
-			t.Fatal("newCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error")
-		}
+			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
+			assert.NotNil(t, createSecretsManagerError, "newCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error")
+		})
 	})
 
 	//nolint:paralleltest
 	t.Run("with override", func(t *testing.T) {
-		opener.wantURL = "test://bar"
-		t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")
+		createTempFiles(t, files, func() {
+			opener.wantURL = "test://bar"
+			t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")
 
-		// Last argument here shouldn't matter anymore, since it gets overridden
-		// by the env var. Both calls should succeed.
-		if _, err := newCloudSecretsManager(stackName, stackConfig, "test://foo"); err != nil {
-			t.Fatalf("newCloudSecretsManager failed: %v", err)
-		}
-		if _, err := newCloudSecretsManager(stackName, stackConfig, "test://bar"); err != nil {
-			t.Fatalf("newCloudSecretsManager failed: %v", err)
-		}
+			// Last argument here shouldn't matter anymore, since it gets overridden
+			// by the env var. Both calls should succeed.
+			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo")
+			assert.Nil(t, createSecretsManagerError, "creating the secrets manager should succeed regardless of secrets provider #1")
+			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
+			assert.Nil(t, createSecretsManagerError, "creating the secrets manager should succeed regardless of secrets provider #2")
+		})
 	})
 }
 
