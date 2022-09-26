@@ -222,7 +222,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			go func() { resolveOther(99) }()
 		}()
 		assertApplied(t, out.ApplyT(func(v interface{}) (interface{}, error) {
-			assert.Equal(t, v, 99)
+			assert.Equal(t, 99, v)
 			return nil, nil
 		}))
 	}
@@ -235,7 +235,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			go func() { rejectOther(errors.New("boom")) }()
 		}()
 		v, _, _, _, err := await(out)
-		assert.NotNil(t, err)
+		assert.NotNil(t, err, "Expected err to be non-nil, got nil. Value is: %#v", out.getState())
 		assert.Nil(t, v)
 	}
 }

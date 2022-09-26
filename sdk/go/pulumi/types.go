@@ -36,6 +36,10 @@ type Output interface {
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
+
+	// Promise[any] methods:
+	ToPromise() Promise[any]
+	// getPromiseState() *promiseState[any]
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -95,20 +99,16 @@ const (
 )
 
 // OutputState holds the internal details of an Output and implements the Apply and ApplyWithContext methods.
+//
+// OutputState is a wrapper for a promise state that also holds the element type of the output for
+// runtime conversion and checking. It is interoperable with the erased Output interface.
 type OutputState struct {
-	cond *sync.Cond
+	*promiseState[any]
+	element reflect.Type
+}
 
-	join *workGroup // the wait group associated with this output, if any.
-
-	state uint32 // one of output{Pending,Resolved,Rejected}
-
-	value  interface{} // the value of this output if it is resolved.
-	err    error       // the error associated with this output if it is rejected.
-	known  bool        // true if this output's value is known.
-	secret bool        // true if this output's value is secret
-
-	element reflect.Type // the element type of this output.
-	deps    []Resource   // the dependencies associated with this output property.
+func (p *OutputState) ToPromise() Promise[any] {
+	return p
 }
 
 func getOutputState(v reflect.Value) (*OutputState, bool) {
@@ -136,22 +136,19 @@ func (o *OutputState) dependencies() []Resource {
 	return o.deps
 }
 
+func (o *OutputState) workgroup() *workGroup {
+	if o == nil {
+		return nil
+	}
+	return o.join
+}
+
 func (o *OutputState) fulfill(value interface{}, known, secret bool, deps []Resource, err error) {
 	o.fulfillValue(reflect.ValueOf(value), known, secret, deps, err)
 }
 
 func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps []Resource, err error) {
 	if o == nil {
-		return
-	}
-
-	o.cond.L.Lock()
-	defer func() {
-		o.cond.L.Unlock()
-		o.cond.Broadcast()
-	}()
-
-	if o.state != outputPending {
 		return
 	}
 
@@ -182,21 +179,11 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 		}
 	}
 
-	if err != nil {
-		o.state, o.err, o.known, o.secret = outputRejected, err, true, secret
-	} else {
-		if value.IsValid() {
-			reflect.ValueOf(&o.value).Elem().Set(value)
-		}
-		o.state, o.known, o.secret = outputResolved, known, secret
-
-		// If needed, merge the up-front provided dependencies with fulfilled dependencies, pruning duplicates.
-		if len(deps) == 0 {
-			// We didn't get any new dependencies, so no need to merge.
-			return
-		}
-		o.deps = mergeDependencies(o.deps, deps)
+	var v interface{}
+	if value.IsValid() {
+		reflect.ValueOf(&v).Elem().Set(value)
 	}
+	o.promiseState.fulfillValue(v, known, secret, deps, err)
 }
 
 func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
@@ -244,30 +231,23 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			return nil, false, false, nil, nil
 		}
 
-		o.cond.L.Lock()
-		for o.state == outputPending {
-			if ctx.Err() != nil {
-				return nil, true, false, nil, ctx.Err()
-			}
-			o.cond.Wait()
-		}
-		o.cond.L.Unlock()
+		oValue, oKnown, oSecret, oDeps, oErr := o.promiseState.await(ctx)
 
-		deps = mergeDependencies(deps, o.deps)
-		known = known && o.known
-		secret = secret || o.secret
-		if !o.known || o.err != nil {
-			return nil, known, secret, deps, o.err
-		}
+		deps = mergeDependencies(deps, oDeps)
+		known = known && oKnown
+		secret = secret || oSecret
 
+		if !oKnown || oErr != nil {
+			return nil, known, secret, deps, oErr
+		}
 		// If the result is an Output, await it in turn.
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		if ov, ok := o.value.(Output); ok {
+		if ov, ok := oValue.(Output); ok {
 			o = ov.getState()
 		} else {
-			return o.value, true, secret, deps, nil
+			return oValue, true, secret, deps, nil
 		}
 	}
 }
@@ -277,22 +257,10 @@ func (o *OutputState) getState() *OutputState {
 }
 
 func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
-	if join != nil {
-		join.Add(1)
+	return &OutputState{
+		promiseState: newPromiseState[any](join, deps...),
+		element:      elementType,
 	}
-
-	var m sync.Mutex
-	out := &OutputState{
-		join:    join,
-		element: elementType,
-		deps:    deps,
-		// Note: Calling registerResource or readResource with the same resource state can report a
-		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
-		//
-		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
-		cond: sync.NewCond(&m),
-	}
-	return out
 }
 
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
@@ -437,7 +405,7 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyT(applier interface{}) Output {
-	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
+	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.element))
 }
 
 var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
