@@ -299,6 +299,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		// Secret properties for non-Output<T> returning functions cannot be secret because they are plain.
 		Description: "functions that have properties that are secrets in the schema",
 	},
+	{
+		Directory:        "secrets",
+		Description:      "Generate a resource with secret properties",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
 }
 
 var genSDKOnly bool
