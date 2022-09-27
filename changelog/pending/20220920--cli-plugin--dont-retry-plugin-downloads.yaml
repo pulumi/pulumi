@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: Don't retry plugin downloads in 403 and 404 responses

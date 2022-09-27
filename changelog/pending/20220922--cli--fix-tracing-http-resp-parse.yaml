@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fixes --tracing to account for response parsing in HTTP api/* spans.
