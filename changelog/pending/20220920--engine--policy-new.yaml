@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: "'pulumi policy new' now uses the same system as 'pulumi new' to install dependencies."

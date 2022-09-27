@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description:  The `@pulumi/pulumi` package is now interoperable with ESModules.

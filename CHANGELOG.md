@@ -1,5 +1,72 @@
 # Changelog
 
+## 3.40.2 (2022-09-27)
+
+
+### Features
+
+- [cli] Allow per-execution override of the cloud secrets provider url via the `PULUMI_CLOUD_SECRET_OVERRIDE` environment variable. This allows a temporary replacement without updating the stack config, such a during CI. This does not effect stacks using service secrets or passphrases.
+  [#10749](https://github.com/pulumi/pulumi/pulls/10749)
+  [#10749](https://github.com/pulumi/pulumi/pulls/10749)
+  [#10749](https://github.com/pulumi/pulumi/pulls/10749)
+
+- [cli/new] Enables `pulumi new` to use templates from Azure DevOps(currently limited to master/main branches and does not support providing subdirectories).
+  [#10789](https://github.com/pulumi/pulumi/pulls/10789)
+
+- [engine] 'pulumi policy new' now uses the same system as 'pulumi new' to install dependencies.
+  [#10797](https://github.com/pulumi/pulumi/pulls/10797)
+
+- [programgen] Support resource option "version" in `pulumi convert` to select specific provider SDK versions.
+  [#10194](https://github.com/pulumi/pulumi/pulls/10194)
+
+- [yaml] [Updates Pulumi YAML to v0.5.8](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.8)
+  [#10856](https://github.com/pulumi/pulumi/pulls/10856)
+
+- [cli/plugin] Don't retry plugin downloads in 403 and 404 responses
+  [#10803](https://github.com/pulumi/pulumi/pulls/10803)
+
+- [sdk/dotnet] Added `Deployment.OrganizationName` to return the current organization if available.
+  [#10564](https://github.com/pulumi/pulumi/pulls/10564)
+
+- [sdk/go] Pulumi Go Programs now support a Pulumi.yaml option `buildTarget: path/to/binary` to compile/recompile a Go binary to that location.
+  [#10731](https://github.com/pulumi/pulumi/pulls/10731)
+
+- [sdk/go] Added `Context.Organization` to return the current organization if available.
+  [#10811](https://github.com/pulumi/pulumi/pulls/10811)
+
+
+### Bug Fixes
+
+- [ci] Re-enable Homebrew Tap publishing.
+  [#10796](https://github.com/pulumi/pulumi/pulls/10796)
+
+- [cli] Fixes --tracing to account for response parsing in HTTP api/* spans.
+  [#10828](https://github.com/pulumi/pulumi/pulls/10828)
+
+- [cli] Fixes Pulumi.yaml validation error when the `refresh: always` option is specified
+  [#10833](https://github.com/pulumi/pulumi/pulls/10833)
+
+- [engine] Mark pulumi-analyzer-policy and pulumi-analyzer-policy-python as bundled plugins.
+  [#10817](https://github.com/pulumi/pulumi/pulls/10817)
+
+- [engine] Fix node and python MLCs on Windows.
+  [#10827](https://github.com/pulumi/pulumi/pulls/10827)
+
+- [sdkgen/dotnet] Fixes a .NET SDK codegen bug when emitting functions with secret parameters.
+  [#10840](https://github.com/pulumi/pulumi/pulls/10840)
+
+- [sdkgen/dotnet] Fix the type emitted for `ImmutableArray.Create` and `ImmutableDictionary.Create` for secret properties.
+  [#10850](https://github.com/pulumi/pulumi/pulls/10850)
+
+- [sdk/nodejs] The `@pulumi/pulumi` package is now interoperable with ESModules.
+  [#10622](https://github.com/pulumi/pulumi/pulls/10622)
+
+- [sdk/{nodejs,python}] `getOrganization` now returns "organization" by default.
+  [#10820](https://github.com/pulumi/pulumi/pulls/10820)
+
+- [programgen/yaml] Fix incorrect import for non-pulumi owned package on convert
+  [#10727](https://github.com/pulumi/pulumi/pulls/10727)
+
 ## 3.40.1 (2022-09-17)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/new
-  description: Enables `pulumi new` to use templates from Azure DevOps(currently limited to master/main branches and does not support providing subdirectories).

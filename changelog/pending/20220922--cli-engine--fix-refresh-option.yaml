@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: "Fixes Pulumi.yaml validation error when the `refresh: always` option is specified"
