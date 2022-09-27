@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -308,16 +309,26 @@ func execPlugin(ctx *Context, bin, prefix string, pluginArgs []string, pwd strin
 
 	// Check to see if we have a binary we can invoke directly
 	if _, err := os.Stat(bin); os.IsNotExist(err) {
-		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml"
+		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
 		pluginDir := filepath.Dir(bin)
-		proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
-		if err != nil {
-			return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
+
+		var runtimeInfo workspace.ProjectRuntimeInfo
+		proj, pluginErr := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
+		if pluginErr == nil {
+			runtimeInfo = proj.Runtime
+		} else {
+			// Couldn't load PulumiPlugin.yaml try PulumiPolicy.yaml
+			proj, policyErr := workspace.LoadPolicyPack(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
+			if policyErr == nil {
+				runtimeInfo = proj.Runtime
+			} else {
+				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w\nloading PulumiPolicy.yaml: %w", pluginErr, policyErr)
+			}
 		}
 
-		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, proj.Runtime.Name())
+		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
-		runtime, err := ctx.Host.LanguageRuntime(proj.Runtime.Name(), proj.Runtime.Options())
+		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), runtimeInfo.Options())
 		if err != nil {
 			return nil, errors.Wrap(err, "loading runtime")
 		}

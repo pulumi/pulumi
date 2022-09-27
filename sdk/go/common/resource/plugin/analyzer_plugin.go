@@ -126,12 +126,6 @@ func NewPolicyAnalyzer(
 		pwd := policyPackPath
 
 		args := []string{host.ServerAddr(), "."}
-		for k, v := range proj.Runtime.Options() {
-			if vstr := fmt.Sprintf("%v", v); vstr != "" {
-				args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
-			}
-		}
-
 		plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
 		if err != nil {
 			// The original error might have been wrapped before being returned from newPlugin. So we look for
@@ -169,7 +163,10 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name), args, env)
+	// Fake the file name for this policy to make "newPlugin" happy
+	pluginPath := filepath.Join(policyPackPath, "policy-pack")
+
+	plug, err := newPlugin(ctx, ctx.Pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
