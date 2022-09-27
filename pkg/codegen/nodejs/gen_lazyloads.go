@@ -72,6 +72,8 @@ func (ll *lazyLoadGen) genLazyLoads(w io.Writer) {
 		fmt.Fprintf(w, "utilities.lazyLoad(exports, %s, () => require(%q));\n",
 			string(j), importPath)
 	}
+	// Flush the lazy load queue.
+	ll.deferredLazyLoads = map[string][]string{}
 }
 
 // Generates TypeScript code that lazily imports and re-exports a
@@ -110,6 +112,7 @@ func (ll *lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, impo
 		quotedImport)
 
 	ll.deferLazyLoad(i.resourceClassName, importPath)
+	ll.genLazyLoads(w)
 }
 
 // Generates TypeScript code that lazily imports and re-exports a
@@ -135,6 +138,7 @@ func (ll *lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, impo
 			f, quotedImport)
 		ll.deferLazyLoad(f, importPath)
 	}
+	ll.genLazyLoads(w)
 }
 
 func (ll *lazyLoadGen) deferLazyLoad(propertyName, importPath string) {

@@ -1973,7 +1973,6 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
 			ll.genReexport(w, exp, importPath)
 		}
-		ll.genLazyLoads(w)
 	}
 
 	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
