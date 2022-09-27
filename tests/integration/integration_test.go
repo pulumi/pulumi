@@ -146,7 +146,7 @@ func TestStackInitValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "could not load current project: invalid YAML file")
+		assert.Contains(t, stderr, "invalid YAML file")
 	})
 }
 
