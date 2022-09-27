@@ -35,6 +35,9 @@ on:
         description: "Whether to run in dry-run mode and skip pushing the commit"
         type: boolean
 
+env:
+  PULUMI_VERSION: ${{ inputs.version }}
+
 jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
@@ -61,8 +64,6 @@ jobs:
           ./pulumi/.github/scripts/generate-homebrew-tap \
             "${PULUMI_VERSION}" ./pulumi/.github/scripts/pulumi-tap-template.rb \
             > ./homebrew-tap/Formula/pulumi.rb
-
-          git add homebrew-tap/Formula/pulumi.rb
       - name: Commit updated formula
         working-directory: homebrew-tap
         run: |
@@ -71,18 +72,16 @@ jobs:
           git config user.name pulumi-bot
           git config user.email bot@pulumi.com
           git add Formula/pulumi.rb
-          git commit -m "Brew formula update for Pulumi version ${PULUMI_VERSION}"
-          git push -u origin master
           echo "::group::git diff"
-          git diff
+          git  --no-pager diff
           echo "::endgroup::"
+          git commit -m "Brew formula update for Pulumi version ${PULUMI_VERSION}"
       - name: Push formula
         working-directory: homebrew-tap
         if: ${{ !inputs.dry-run }}
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-          PULUMI_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
 
-          git push
+          git push origin HEAD:master
