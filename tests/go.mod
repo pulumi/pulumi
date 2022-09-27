@@ -12,7 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/pulumi/pulumi/pkg/v3 v3.34.1
-	github.com/pulumi/pulumi/sdk/v3 v3.40.1
+	github.com/pulumi/pulumi/sdk/v3 v3.40.2
 	github.com/stretchr/testify v1.8.0
 	google.golang.org/grpc v1.49.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
