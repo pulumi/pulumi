@@ -30,14 +30,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type lazyLoadGen struct {
-	deferredLazyLoads map[string][]string
-}
+type lazyLoadGen struct{}
 
 func newLazyLoadGen() *lazyLoadGen {
-	return &lazyLoadGen{
-		deferredLazyLoads: map[string][]string{},
-	}
+	return &lazyLoadGen{}
 }
 
 // Generates TypeScript code to re-export a generated module. For
@@ -58,22 +54,12 @@ func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string)
 
 // Used as a follow up to multiple genReexport calls to generate a
 // lazy-load polyfill to all the properties that need that.
-func (ll *lazyLoadGen) genLazyLoads(w io.Writer) {
-	importPaths := []string{}
-	for importPath := range ll.deferredLazyLoads {
-		importPaths = append(importPaths, importPath)
-	}
-	sort.Strings(importPaths)
-	for _, importPath := range importPaths {
-		props := ll.deferredLazyLoads[importPath]
-		sort.Strings(props)
-		j, err := json.Marshal(props)
-		contract.AssertNoError(err)
-		fmt.Fprintf(w, "utilities.lazyLoad(exports, %s, () => require(%q));\n",
-			string(j), importPath)
-	}
-	// Flush the lazy load queue.
-	ll.deferredLazyLoads = map[string][]string{}
+func (*lazyLoadGen) genLazyLoads(w io.Writer, importPath string, properties ...string) {
+	sort.Strings(properties)
+	j, err := json.Marshal(properties)
+	contract.AssertNoError(err)
+	fmt.Fprintf(w, "utilities.lazyLoad(exports, %s, () => require(%q));\n",
+		string(j), importPath)
 }
 
 // Generates TypeScript code that lazily imports and re-exports a
@@ -111,8 +97,7 @@ func (ll *lazyLoadGen) genResourceReexport(w io.Writer, i resourceFileInfo, impo
 		i.resourceClassName,
 		quotedImport)
 
-	ll.deferLazyLoad(i.resourceClassName, importPath)
-	ll.genLazyLoads(w)
+	ll.genLazyLoads(w, importPath, i.resourceClassName)
 }
 
 // Generates TypeScript code that lazily imports and re-exports a
@@ -133,14 +118,10 @@ func (ll *lazyLoadGen) genFunctionReexport(w io.Writer, i functionFileInfo, impo
 	}
 
 	// Re-export function values into the value group, and install lazy loading.
-	for _, f := range i.functions() {
+	funcs := i.functions()
+	for _, f := range funcs {
 		fmt.Fprintf(w, "export const %[1]s: typeof import(%[2]s).%[1]s = null as any;\n",
 			f, quotedImport)
-		ll.deferLazyLoad(f, importPath)
 	}
-	ll.genLazyLoads(w)
-}
-
-func (ll *lazyLoadGen) deferLazyLoad(propertyName, importPath string) {
-	ll.deferredLazyLoads[importPath] = append(ll.deferredLazyLoads[importPath], propertyName)
+	ll.genLazyLoads(w, importPath, funcs...)
 }
