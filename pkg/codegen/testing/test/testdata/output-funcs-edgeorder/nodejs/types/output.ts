@@ -411,4 +411,3 @@ export interface SpecificationResponse {
      */
     value: string;
 }
-

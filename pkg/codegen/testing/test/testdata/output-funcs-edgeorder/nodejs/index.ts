@@ -8,18 +8,18 @@ import * as utilities from "./utilities";
 export { ListConfigurationsArgs, ListConfigurationsResult, ListConfigurationsOutputArgs } from "./listConfigurations";
 export const listConfigurations: typeof import("./listConfigurations").listConfigurations = null as any;
 export const listConfigurationsOutput: typeof import("./listConfigurations").listConfigurationsOutput = null as any;
+utilities.lazyLoad(exports, ["listConfigurations","listConfigurationsOutput"], () => require("./listConfigurations"));
 
 export { ListProductFamiliesArgs, ListProductFamiliesResult, ListProductFamiliesOutputArgs } from "./listProductFamilies";
 export const listProductFamilies: typeof import("./listProductFamilies").listProductFamilies = null as any;
 export const listProductFamiliesOutput: typeof import("./listProductFamilies").listProductFamiliesOutput = null as any;
+utilities.lazyLoad(exports, ["listProductFamilies","listProductFamiliesOutput"], () => require("./listProductFamilies"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["listConfigurations","listConfigurationsOutput"], () => require("./listConfigurations"));
-utilities.lazyLoad(exports, ["listProductFamilies","listProductFamiliesOutput"], () => require("./listProductFamilies"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export enums:
 export * from "./types/enums";

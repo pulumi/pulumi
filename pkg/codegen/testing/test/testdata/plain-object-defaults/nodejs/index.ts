@@ -8,23 +8,23 @@ import * as utilities from "./utilities";
 export { FooArgs } from "./foo";
 export type Foo = import("./foo").Foo;
 export const Foo: typeof import("./foo").Foo = null as any;
+utilities.lazyLoad(exports, ["Foo"], () => require("./foo"));
 
 export { FuncWithAllOptionalInputsArgs, FuncWithAllOptionalInputsResult, FuncWithAllOptionalInputsOutputArgs } from "./funcWithAllOptionalInputs";
 export const funcWithAllOptionalInputs: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputs = null as any;
 export const funcWithAllOptionalInputsOutput: typeof import("./funcWithAllOptionalInputs").funcWithAllOptionalInputsOutput = null as any;
+utilities.lazyLoad(exports, ["funcWithAllOptionalInputs","funcWithAllOptionalInputsOutput"], () => require("./funcWithAllOptionalInputs"));
 
 export { ModuleTestArgs } from "./moduleTest";
 export type ModuleTest = import("./moduleTest").ModuleTest;
 export const ModuleTest: typeof import("./moduleTest").ModuleTest = null as any;
+utilities.lazyLoad(exports, ["ModuleTest"], () => require("./moduleTest"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["Foo"], () => require("./foo"));
-utilities.lazyLoad(exports, ["funcWithAllOptionalInputs","funcWithAllOptionalInputsOutput"], () => require("./funcWithAllOptionalInputs"));
-utilities.lazyLoad(exports, ["ModuleTest"], () => require("./moduleTest"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export sub-modules:
 import * as types from "./types";

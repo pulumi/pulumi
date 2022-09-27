@@ -8,28 +8,28 @@ import * as utilities from "./utilities";
 export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
 export const argFunction: typeof import("./argFunction").argFunction = null as any;
 export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any;
+utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
 
 export { OtherResourceArgs } from "./otherResource";
 export type OtherResource = import("./otherResource").OtherResource;
 export const OtherResource: typeof import("./otherResource").OtherResource = null as any;
+utilities.lazyLoad(exports, ["OtherResource"], () => require("./otherResource"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 export { ResourceArgs } from "./resource";
 export type Resource = import("./resource").Resource;
 export const Resource: typeof import("./resource").Resource = null as any;
+utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
 
 export { TypeUsesArgs } from "./typeUses";
 export type TypeUses = import("./typeUses").TypeUses;
 export const TypeUses: typeof import("./typeUses").TypeUses = null as any;
-
-utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
-utilities.lazyLoad(exports, ["OtherResource"], () => require("./otherResource"));
-utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
-utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
 utilities.lazyLoad(exports, ["TypeUses"], () => require("./typeUses"));
+
 
 // Export enums:
 export * from "./types/enums";
