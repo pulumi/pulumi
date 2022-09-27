@@ -63,7 +63,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		return nil, err
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
+	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, workspace.LanguagePlugin, args, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}

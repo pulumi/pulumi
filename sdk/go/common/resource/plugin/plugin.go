@@ -176,7 +176,7 @@ func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, options ...otgrpc.Option) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind, args, env []string, options ...otgrpc.Option) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -189,7 +189,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(ctx, bin, prefix, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -297,7 +297,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
+func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -313,17 +313,20 @@ func execPlugin(ctx *Context, bin, prefix string, pluginArgs []string, pwd strin
 		pluginDir := filepath.Dir(bin)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		proj, pluginErr := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
-		if pluginErr == nil {
+		if kind == workspace.ResourcePlugin {
+			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+			}
+			runtimeInfo = proj.Runtime
+		} else if kind == workspace.AnalyzerPlugin {
+			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
+			}
 			runtimeInfo = proj.Runtime
 		} else {
-			// Couldn't load PulumiPlugin.yaml try PulumiPolicy.yaml
-			proj, policyErr := workspace.LoadPolicyPack(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
-			if policyErr == nil {
-				runtimeInfo = proj.Runtime
-			} else {
-				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w\nloading PulumiPolicy.yaml: %w", pluginErr, policyErr)
-			}
+			return nil, fmt.Errorf("language plugins must be executable binaries")
 		}
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())

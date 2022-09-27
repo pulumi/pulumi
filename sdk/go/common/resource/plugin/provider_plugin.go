@@ -123,7 +123,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +158,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
 	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
-		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+		workspace.ResourcePlugin, []string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
 	if err != nil {
 		return nil, err
 	}
