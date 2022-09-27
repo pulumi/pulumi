@@ -113,7 +113,7 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
 	}
 
-	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy", "-compat=1.18")
+	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
 	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
 }
 
