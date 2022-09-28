@@ -17,7 +17,9 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
 	"sort"
@@ -164,6 +166,29 @@ type ProgressDisplay struct {
 	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
 	// changed between the last time we printed and now.
 	printedProgressCache map[string]Progress
+
+	// estimates
+	estimates estimates
+}
+
+type estimates struct {
+	start         map[resource.URN]int
+	DurationLower map[string]int
+	DurationUpper map[string]int
+}
+
+func newEstimates() (estimates, error) {
+	data, err := ioutil.ReadFile("/home/kdixler/.pulumi/estimates.json")
+	if err != nil {
+		return estimates{}, err
+	}
+	d := estimates{}
+	err = json.Unmarshal(data, &d)
+	if err != nil {
+		return estimates{}, err
+	}
+	d.start = map[resource.URN]int{}
+	return d, nil
 }
 
 var (
@@ -300,6 +325,8 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	// from to display to the console.
 	progressOutput := make(chan Progress)
 
+	estimates, _ := newEstimates()
+
 	display := &ProgressDisplay{
 		action:                 action,
 		isPreview:              isPreview,
@@ -315,6 +342,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 		printedProgressCache:   make(map[string]Progress),
 		displayOrderCounter:    1,
 		nonInteractiveSpinner:  spinner,
+		estimates:              estimates,
 	}
 
 	// Assume we are not displaying in a terminal by default.
@@ -1103,6 +1131,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
+		display.estimates.start[step.URN] = int(time.Now().Unix())
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
@@ -1416,7 +1445,21 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		case deploy.OpSame:
 			return ""
 		case deploy.OpCreate:
-			return "creating"
+			lower, ok := display.estimates.DurationLower[step.Type.String()]
+			if !ok {
+				return "creating"
+			}
+			upper, ok := display.estimates.DurationUpper[step.Type.String()]
+			if !ok {
+				return "creating"
+			}
+			start, ok := display.estimates.start[step.URN]
+			if !ok {
+				return "creating"
+			}
+			now := int(time.Now().Unix())
+			elapsed := now - start
+			return fmt.Sprintf("creating(%ds/%d-%ds)", elapsed, lower, upper)
 		case deploy.OpUpdate:
 			return "updating"
 		case deploy.OpDelete:
