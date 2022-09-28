@@ -293,6 +293,13 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.StringType,
 	}),
+	"fromBase64": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "value",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
+	}),
 	"toJSON": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "value",

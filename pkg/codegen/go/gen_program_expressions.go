@@ -96,7 +96,17 @@ func (g *generator) genAnonymousFunctionExpression(
 	body, temps := g.lowerExpression(expr.Body, retType)
 	g.genTempsMultiReturn(w, temps, retTypeName)
 
-	g.Fgenf(w, "return %v, nil", body)
+	// g.Fgenf(w, "return %v, nil", body)
+
+	// fromBase64 special case
+	if b, ok := body.(*model.FunctionCallExpression); ok && b.Name == fromBase64Fn {
+		g.Fgenf(w, "value, _ := %v\n", b)
+		g.Fgenf(w, "return pulumi.String(value), nil")
+	} else if strings.HasPrefix(retTypeName, "pulumi") {
+		g.Fgenf(w, "return %s(%v), nil", retTypeName, body)
+	} else {
+		g.Fgenf(w, "return %v, nil", body)
+	}
 	g.Fgenf(w, "\n}")
 }
 
@@ -315,6 +325,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
+	case fromBase64Fn:
+		g.Fgenf(w, "base64.StdEncoding.DecodeString(%v)", expr.Args[0])
 	case "toJSON":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
@@ -1123,6 +1135,7 @@ var functionPackages = map[string][]string{
 	"readFile":         {"io/ioutil"},
 	"filebase64":       {"io/ioutil", "encoding/base64"},
 	"toBase64":         {"encoding/base64"},
+	"fromBase64":       {"encoding/base64"},
 	"toJSON":           {"encoding/json"},
 	"sha1":             {"fmt", "crypto/sha1"},
 	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},

@@ -263,6 +263,7 @@ var functionNamespaces = map[string][]string{
 	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
 	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
 	"toBase64":         {"System"},
+	"fromBase64":       {"System"},
 	"sha1":             {"System.Security.Cryptography", "System.Text"},
 }
 
@@ -515,6 +516,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(%v))", expr.Args[0])
+	case "fromBase64":
+		g.Fgenf(w, "System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionaryOrTuple(w, expr.Args[0])
@@ -642,6 +645,7 @@ func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 
 func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression, destType model.Type) {
 	if len(expr.Items) == 0 {
+		g.Fgenf(w, "null")
 		return
 	}
 

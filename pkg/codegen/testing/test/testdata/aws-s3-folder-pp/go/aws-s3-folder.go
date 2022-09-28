@@ -65,7 +65,7 @@ func main() {
 					return _zero, err
 				}
 				json0 := string(tmpJSON0)
-				return json0, nil
+				return pulumi.String(json0), nil
 			}).(pulumi.StringOutput),
 		})
 		if err != nil {

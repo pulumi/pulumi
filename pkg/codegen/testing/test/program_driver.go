@@ -147,8 +147,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "functions",
 		Description: "Functions",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#8077]
 	},
 	{
 		Directory:   "output-funcs-aws",
