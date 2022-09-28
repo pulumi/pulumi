@@ -8,17 +8,17 @@ import * as utilities from "./utilities";
 export { ComponentArgs } from "./component";
 export type Component = import("./component").Component;
 export const Component: typeof import("./component").Component = null as any;
+utilities.lazyLoad(exports, ["Component"], () => require("./component"));
 
 export { DoFooArgs } from "./doFoo";
 export const doFoo: typeof import("./doFoo").doFoo = null as any;
+utilities.lazyLoad(exports, ["doFoo"], () => require("./doFoo"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["Component"], () => require("./component"));
-utilities.lazyLoad(exports, ["doFoo"], () => require("./doFoo"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export sub-modules:
 import * as types from "./types";

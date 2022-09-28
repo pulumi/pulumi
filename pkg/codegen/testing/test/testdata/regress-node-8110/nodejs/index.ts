@@ -7,13 +7,13 @@ import * as utilities from "./utilities";
 // Export members:
 export { ExampleFuncArgs } from "./exampleFunc";
 export const exampleFunc: typeof import("./exampleFunc").exampleFunc = null as any;
+utilities.lazyLoad(exports, ["exampleFunc"], () => require("./exampleFunc"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["exampleFunc"], () => require("./exampleFunc"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export enums:
 export * from "./types/enums";

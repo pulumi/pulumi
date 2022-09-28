@@ -8,13 +8,13 @@ import * as utilities from "./utilities";
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 export { RegistryGeoReplicationArgs } from "./registryGeoReplication";
 export type RegistryGeoReplication = import("./registryGeoReplication").RegistryGeoReplication;
 export const RegistryGeoReplication: typeof import("./registryGeoReplication").RegistryGeoReplication = null as any;
-
-utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 utilities.lazyLoad(exports, ["RegistryGeoReplication"], () => require("./registryGeoReplication"));
+
 
 const _module = {
     version: utilities.getVersion(),

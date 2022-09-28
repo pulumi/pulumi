@@ -1670,7 +1670,7 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	}
 
 	sort.Slice(ns.types, func(i, j int) bool {
-		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+		return objectTypeLessThan(ns.types[i], ns.types[j])
 	})
 	sort.Slice(ns.enums, func(i, j int) bool {
 		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
@@ -1973,7 +1973,6 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			importPath := fmt.Sprintf(`./%s`, strings.TrimSuffix(rel, ".ts"))
 			ll.genReexport(w, exp, importPath)
 		}
-		ll.genLazyLoads(w)
 	}
 
 	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
@@ -2677,4 +2676,21 @@ process.exit(0);
 		server = fmt.Sprintf(`, "--server", %q`, pluginDownloadURL)
 	}
 	return fmt.Sprintf(installScript, server)
+}
+
+// Used to sort ObjectType values.
+func objectTypeLessThan(a, b *schema.ObjectType) bool {
+	switch strings.Compare(tokenToName(a.Token), tokenToName(b.Token)) {
+	case -1:
+		return true
+	case 0:
+		tIsInput := a.PlainShape != nil
+		otherIsInput := b.PlainShape != nil
+		if !tIsInput && otherIsInput {
+			return true
+		}
+		return false
+	default:
+		return false
+	}
 }

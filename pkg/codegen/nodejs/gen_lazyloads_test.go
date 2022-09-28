@@ -39,6 +39,7 @@ func TestLazyLoadsGeneration(t *testing.T) {
 		assert.Equal(t, `export { MyResArgs } from "./myResource";
 export type MyRes = import("./myResource").MyRes;
 export const MyRes: typeof import("./myResource").MyRes = null as any;
+utilities.lazyLoad(exports, ["MyRes"], () => require("./myResource"));
 
 `,
 			buf.String())
@@ -58,6 +59,7 @@ export const MyRes: typeof import("./myResource").MyRes = null as any;
 		assert.Equal(t, `export { MyRes1Args, MyRes1State } from "./myResource1";
 export type MyRes1 = import("./myResource1").MyRes1;
 export const MyRes1: typeof import("./myResource1").MyRes1 = null as any;
+utilities.lazyLoad(exports, ["MyRes1"], () => require("./myResource1"));
 
 `,
 			buf.String())
@@ -93,6 +95,7 @@ import { MyRes2 } from "./myResource2";
 
 		assert.Equal(t, `export { MyFuncArgs, MyFuncResult } from "./myFunc";
 export const myFunc: typeof import("./myFunc").myFunc = null as any;
+utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
 
 `, buf.String())
 	})
@@ -113,6 +116,7 @@ export const myFunc: typeof import("./myFunc").myFunc = null as any;
 		assert.Equal(t, `export { MyFunc1Args, MyFunc1Result, MyFunc1OutputArgs } from "./myFunc1";
 export const myFunc1: typeof import("./myFunc1").myFunc1 = null as any;
 export const myFunc1Output: typeof import("./myFunc1").myFunc1Output = null as any;
+utilities.lazyLoad(exports, ["myFunc1","myFunc1Output"], () => require("./myFunc1"));
 
 `, buf.String())
 	})
@@ -124,16 +128,6 @@ export const myFunc1Output: typeof import("./myFunc1").myFunc1Output = null as a
 		}, "./myOtherFile")
 
 		assert.Equal(t, `export * from "./myOtherFile";
-`, buf.String())
-	})
-
-	t.Run("check-lazy-loads", func(t *testing.T) { // nolint: paralleltest
-		var buf bytes.Buffer
-		ll.genLazyLoads(&buf)
-		assert.Equal(t, `utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
-utilities.lazyLoad(exports, ["myFunc1","myFunc1Output"], () => require("./myFunc1"));
-utilities.lazyLoad(exports, ["MyRes"], () => require("./myResource"));
-utilities.lazyLoad(exports, ["MyRes1"], () => require("./myResource1"));
 `, buf.String())
 	})
 }

@@ -8,33 +8,33 @@ import * as utilities from "./utilities";
 export { CatArgs } from "./cat";
 export type Cat = import("./cat").Cat;
 export const Cat: typeof import("./cat").Cat = null as any;
+utilities.lazyLoad(exports, ["Cat"], () => require("./cat"));
 
 export { DogArgs } from "./dog";
 export type Dog = import("./dog").Dog;
 export const Dog: typeof import("./dog").Dog = null as any;
+utilities.lazyLoad(exports, ["Dog"], () => require("./dog"));
 
 export { GodArgs } from "./god";
 export type God = import("./god").God;
 export const God: typeof import("./god").God = null as any;
+utilities.lazyLoad(exports, ["God"], () => require("./god"));
 
 export { NoRecursiveArgs } from "./noRecursive";
 export type NoRecursive = import("./noRecursive").NoRecursive;
 export const NoRecursive: typeof import("./noRecursive").NoRecursive = null as any;
+utilities.lazyLoad(exports, ["NoRecursive"], () => require("./noRecursive"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 export { ToyStoreArgs } from "./toyStore";
 export type ToyStore = import("./toyStore").ToyStore;
 export const ToyStore: typeof import("./toyStore").ToyStore = null as any;
-
-utilities.lazyLoad(exports, ["Cat"], () => require("./cat"));
-utilities.lazyLoad(exports, ["Dog"], () => require("./dog"));
-utilities.lazyLoad(exports, ["God"], () => require("./god"));
-utilities.lazyLoad(exports, ["NoRecursive"], () => require("./noRecursive"));
-utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 utilities.lazyLoad(exports, ["ToyStore"], () => require("./toyStore"));
+
 
 // Export sub-modules:
 import * as types from "./types";

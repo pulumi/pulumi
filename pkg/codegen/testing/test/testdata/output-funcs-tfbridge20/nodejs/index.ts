@@ -8,18 +8,18 @@ import * as utilities from "./utilities";
 export { GetAmiIdsArgs, GetAmiIdsResult, GetAmiIdsOutputArgs } from "./getAmiIds";
 export const getAmiIds: typeof import("./getAmiIds").getAmiIds = null as any;
 export const getAmiIdsOutput: typeof import("./getAmiIds").getAmiIdsOutput = null as any;
+utilities.lazyLoad(exports, ["getAmiIds","getAmiIdsOutput"], () => require("./getAmiIds"));
 
 export { ListStorageAccountKeysArgs, ListStorageAccountKeysResult, ListStorageAccountKeysOutputArgs } from "./listStorageAccountKeys";
 export const listStorageAccountKeys: typeof import("./listStorageAccountKeys").listStorageAccountKeys = null as any;
 export const listStorageAccountKeysOutput: typeof import("./listStorageAccountKeys").listStorageAccountKeysOutput = null as any;
+utilities.lazyLoad(exports, ["listStorageAccountKeys","listStorageAccountKeysOutput"], () => require("./listStorageAccountKeys"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["getAmiIds","getAmiIdsOutput"], () => require("./getAmiIds"));
-utilities.lazyLoad(exports, ["listStorageAccountKeys","listStorageAccountKeysOutput"], () => require("./listStorageAccountKeys"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export sub-modules:
 import * as types from "./types";

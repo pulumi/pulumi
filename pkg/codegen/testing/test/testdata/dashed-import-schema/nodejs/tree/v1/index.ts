@@ -8,13 +8,13 @@ import * as utilities from "../../utilities";
 export { NurseryArgs } from "./nursery";
 export type Nursery = import("./nursery").Nursery;
 export const Nursery: typeof import("./nursery").Nursery = null as any;
+utilities.lazyLoad(exports, ["Nursery"], () => require("./nursery"));
 
 export { RubberTreeArgs, RubberTreeState } from "./rubberTree";
 export type RubberTree = import("./rubberTree").RubberTree;
 export const RubberTree: typeof import("./rubberTree").RubberTree = null as any;
-
-utilities.lazyLoad(exports, ["Nursery"], () => require("./nursery"));
 utilities.lazyLoad(exports, ["RubberTree"], () => require("./rubberTree"));
+
 
 // Export enums:
 export * from "../../types/enums/tree/v1";

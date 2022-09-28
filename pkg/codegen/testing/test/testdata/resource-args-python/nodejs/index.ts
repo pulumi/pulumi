@@ -8,18 +8,18 @@ import * as utilities from "./utilities";
 export { PersonArgs } from "./person";
 export type Person = import("./person").Person;
 export const Person: typeof import("./person").Person = null as any;
+utilities.lazyLoad(exports, ["Person"], () => require("./person"));
 
 export { PetArgs } from "./pet";
 export type Pet = import("./pet").Pet;
 export const Pet: typeof import("./pet").Pet = null as any;
+utilities.lazyLoad(exports, ["Pet"], () => require("./pet"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["Person"], () => require("./person"));
-utilities.lazyLoad(exports, ["Pet"], () => require("./pet"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export sub-modules:
 import * as types from "./types";
