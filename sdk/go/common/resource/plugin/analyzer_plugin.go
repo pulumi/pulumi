@@ -153,11 +153,6 @@ func NewPolicyAnalyzer(
 	}
 
 	args := []string{host.ServerAddr(), "."}
-	for k, v := range proj.Runtime.Options() {
-		if vstr := fmt.Sprintf("%v", v); vstr != "" {
-			args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
-		}
-	}
 
 	// Fake the file name for this policy to make "newPlugin" happy
 	pluginPath := filepath.Join(policyPackPath, "policy-pack")
