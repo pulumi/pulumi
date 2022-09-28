@@ -1,15 +1,19 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as azure_native from "@pulumi/azure-native";
 
-const frontDoor = new azure_native.network.FrontDoor("frontDoor", {routingRules: [{
-    routeConfiguration: {
-        odataType: "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-        backendPool: {
-            id: "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
+const frontDoor = new azure_native.network.FrontDoor("frontDoor", {
+    resourceGroupName: "someGroupName",
+    routingRules: [{
+        routeConfiguration: {
+            odataType: "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
+            backendPool: {
+                id: "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
+            },
         },
-    },
-}]});
+    }],
+});
 const endpoint = new azure_native.cdn.Endpoint("endpoint", {
+    origins: [],
     deliveryPolicy: {
         rules: [{
             actions: [

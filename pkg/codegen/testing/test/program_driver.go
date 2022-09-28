@@ -99,7 +99,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Azure Native",
 		Skip:        codegen.NewStringSet("go"),
 		// Blocked on TODO[pulumi/pulumi#8123]
-		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8072]
 		//   TODO[pulumi/pulumi#8073]
