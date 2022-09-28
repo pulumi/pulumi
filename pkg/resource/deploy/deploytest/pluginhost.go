@@ -341,7 +341,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 }
 
 func (host *pluginHost) LanguageRuntime(
-	runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+	root, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }
 

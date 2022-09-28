@@ -47,7 +47,7 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime string,
+func NewLanguageRuntime(host Host, ctx *Context, root, runtime string,
 	options map[string]interface{}) (LanguageRuntime, error) {
 
 	path, err := workspace.GetPluginPath(
@@ -58,12 +58,12 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 
 	contract.Assert(path != "")
 
-	args, err := buildArgsForNewPlugin(host, ctx, options)
+	args, err := buildArgsForNewPlugin(host, root, ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, workspace.LanguagePlugin, args, nil /*env*/)
+	plug, err := newPlugin(ctx, root, path, runtime, workspace.LanguagePlugin, args, nil /*env*/)
 	if err != nil {
 		return nil, err
 	}
@@ -77,8 +77,8 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	}, nil
 }
 
-func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
-	root, err := filepath.Abs(ctx.Root)
+func buildArgsForNewPlugin(host Host, root string, ctx *Context, options map[string]interface{}) ([]string, error) {
+	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}

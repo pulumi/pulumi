@@ -92,13 +92,9 @@ func NewPolicyAnalyzer(
 	// option). For new languages (and eventually for nodejs and python as well) we just use a new method on
 	// the language runtime itself to launch the policy plugin.
 
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
+	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		// For historical reasons, the Node.js plugin name is just "policy".
-		// All other languages have the runtime appended, e.g. "policy-<runtime>".
 		policyAnalyzerName := "policy"
-		if !strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-			policyAnalyzerName = fmt.Sprintf("policy-%s", proj.Runtime.Name())
-		}
 
 		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 		pluginPath, err := workspace.GetPluginPath(
@@ -166,7 +162,8 @@ func NewPolicyAnalyzer(
 	// Fake the file name for this policy to make "newPlugin" happy
 	pluginPath := filepath.Join(policyPackPath, "policy-pack")
 
-	plug, err := newPlugin(ctx, ctx.Pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), workspace.AnalyzerPlugin, args, env)
+	plug, err := newPlugin(ctx, ctx.Pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		workspace.AnalyzerPlugin, args, env)
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.

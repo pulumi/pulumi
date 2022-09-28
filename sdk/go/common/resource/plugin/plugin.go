@@ -176,7 +176,8 @@ func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind, args, env []string, options ...otgrpc.Option) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
+	args, env []string, options ...otgrpc.Option) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -297,7 +298,8 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind, pluginArgs []string, pwd string, env []string) (*plugin, error) {
+func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
+	pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -331,7 +333,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind, plu
 
 		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
 
-		runtime, err := ctx.Host.LanguageRuntime(runtimeInfo.Name(), runtimeInfo.Options())
+		runtime, err := ctx.Host.LanguageRuntime(pluginDir, runtimeInfo.Name(), runtimeInfo.Options())
 		if err != nil {
 			return nil, errors.Wrap(err, "loading runtime")
 		}

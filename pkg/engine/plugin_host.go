@@ -48,6 +48,6 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 }
 
 func (host *clientLanguageRuntimeHost) LanguageRuntime(
-	runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
+	root, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }
