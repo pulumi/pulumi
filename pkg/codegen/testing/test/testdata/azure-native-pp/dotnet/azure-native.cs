@@ -6,6 +6,7 @@ return await Deployment.RunAsync(() =>
 {
     var frontDoor = new AzureNative.Network.FrontDoor("frontDoor", new()
     {
+        ResourceGroupName = "someGroupName",
         RoutingRules = new[]
         {
             new AzureNative.Network.Inputs.RoutingRuleArgs
@@ -24,6 +25,7 @@ return await Deployment.RunAsync(() =>
 
     var endpoint = new AzureNative.Cdn.Endpoint("endpoint", new()
     {
+        Origins = new[] {},
         DeliveryPolicy = new AzureNative.Cdn.Inputs.EndpointPropertiesUpdateParametersDeliveryPolicyArgs
         {
             Rules = new[]
