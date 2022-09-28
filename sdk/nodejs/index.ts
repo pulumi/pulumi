@@ -16,6 +16,7 @@
 import "source-map-support/register";
 
 // Export top-level elements.
+export * from "./builtins";
 export * from "./config";
 export * from "./errors";
 export * from "./invoke";

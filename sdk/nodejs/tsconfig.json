@@ -18,6 +18,7 @@
     },
     "files": [
         "index.ts",
+        "builtins.ts",
         "config.ts",
         "errors.ts",
         "invoke.ts",
