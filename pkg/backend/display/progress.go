@@ -172,9 +172,29 @@ type ProgressDisplay struct {
 }
 
 type estimates struct {
-	start         map[resource.URN]int
-	DurationLower map[string]int
-	DurationUpper map[string]int
+	start     map[resource.URN]int
+	durations durationMap
+}
+
+type durationMap map[string]map[string]durations
+
+type durations struct {
+	DurationLower int
+	DurationUpper int
+}
+
+func (e *estimates) getBounds(op string, typ string) (int, int, error) {
+	opTypeBounds, ok := e.durations[op]
+	if !ok {
+		return 0, 0, fmt.Errorf("invalid op type")
+	}
+	typeBounds, ok := opTypeBounds[typ]
+	if !ok {
+		return 0, 0, fmt.Errorf("invalid resource type")
+	}
+	lower := typeBounds.DurationLower
+	upper := typeBounds.DurationUpper
+	return lower, upper, nil
 }
 
 func newEstimates() (estimates, error) {
@@ -182,13 +202,16 @@ func newEstimates() (estimates, error) {
 	if err != nil {
 		return estimates{}, err
 	}
-	d := estimates{}
+	d := durationMap{}
 	err = json.Unmarshal(data, &d)
 	if err != nil {
 		return estimates{}, err
 	}
-	d.start = map[resource.URN]int{}
-	return d, nil
+	e := estimates{
+		durations: d,
+	}
+	e.start = map[resource.URN]int{}
+	return e, nil
 }
 
 var (
@@ -1441,53 +1464,62 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
-		switch op {
-		case deploy.OpSame:
-			return ""
-		case deploy.OpCreate:
-			lower, ok := display.estimates.DurationLower[step.Type.String()]
-			if !ok {
-				return "creating"
-			}
-			upper, ok := display.estimates.DurationUpper[step.Type.String()]
-			if !ok {
-				return "creating"
-			}
+		getEstimate := func(text string, op string, typ string) string {
 			start, ok := display.estimates.start[step.URN]
 			if !ok {
-				return "creating"
+				return text
 			}
+
 			now := int(time.Now().Unix())
 			elapsed := now - start
-			return fmt.Sprintf("creating(%ds/%d-%ds)", elapsed, lower, upper)
-		case deploy.OpUpdate:
-			return "updating"
-		case deploy.OpDelete:
-			return "deleting"
-		case deploy.OpReplace:
-			return "replacing"
-		case deploy.OpCreateReplacement:
-			return "creating replacement"
-		case deploy.OpDeleteReplaced:
-			return "deleting original"
-		case deploy.OpRead:
-			return "reading"
-		case deploy.OpReadReplacement:
-			return "reading for replacement"
-		case deploy.OpRefresh:
-			return "refreshing"
-		case deploy.OpReadDiscard:
-			return "discarding"
-		case deploy.OpDiscardReplaced:
-			return "discarding original"
-		case deploy.OpImport:
-			return "importing"
-		case deploy.OpImportReplacement:
-			return "importing replacement"
+			if !ok {
+				return text
+			}
+			lower, upper, err := display.estimates.getBounds(string(step.Op), step.Type.String())
+			if err != nil {
+				return fmt.Sprintf("%s(%ds)", text, elapsed)
+			}
+			if lower == upper {
+				return fmt.Sprintf("%s(%ds/~%ds)", text, elapsed, lower)
+			}
+			return fmt.Sprintf("%s(%ds/~%d-%ds)", text, elapsed, lower, upper)
 		}
 
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+		opText := ""
+		switch op {
+		case deploy.OpSame:
+			opText = ""
+		case deploy.OpCreate:
+			opText = "creating"
+		case deploy.OpUpdate:
+			opText = "updating"
+		case deploy.OpDelete:
+			opText = "deleting"
+		case deploy.OpReplace:
+			opText = "replacing"
+		case deploy.OpCreateReplacement:
+			opText = "creating replacement"
+		case deploy.OpDeleteReplaced:
+			opText = "deleting original"
+		case deploy.OpRead:
+			opText = "reading"
+		case deploy.OpReadReplacement:
+			opText = "reading for replacement"
+		case deploy.OpRefresh:
+			opText = "refreshing"
+		case deploy.OpReadDiscard:
+			opText = "discarding"
+		case deploy.OpDiscardReplaced:
+			opText = "discarding original"
+		case deploy.OpImport:
+			opText = "importing"
+		case deploy.OpImportReplacement:
+			opText = "importing replacement"
+		default:
+			contract.Failf("Unrecognized resource step op: %v", op)
+			return ""
+		}
+		return getEstimate(opText, string(step.Op), step.Type.String())
 	}
 	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }
