@@ -157,7 +157,8 @@ func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if step.Op == deploy.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
-		if step.Old.Protect != step.New.Protect {
+
+		if step.Old != nil && step.New != nil && step.Old.Protect != step.New.Protect {
 			return true
 		}
 		return opts.ShowSameResources
