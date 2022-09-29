@@ -64,6 +64,7 @@ message ReadResourceRequest {
     repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
+    bool returnEmptyWhenNotFound = 14;     // when true returns an empty ReadResourceResponse instead of failing
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.

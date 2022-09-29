@@ -257,6 +257,7 @@ export function readResource(res: Resource, parent: Resource | undefined, t: str
                     };
                 }
             } catch (e) {
+                console.log("readResource got an error: ", e);
                 err = e;
                 resp = {
                     getUrn: () => "",

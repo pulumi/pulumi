@@ -574,7 +574,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     aliasesList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+    returnemptywhennotfound: jspb.Message.getBooleanFieldWithDefault(msg, 14, false)
   };
 
   if (includeInstance) {
@@ -663,6 +664,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 14:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setReturnemptywhennotfound(value);
       break;
     default:
       reader.skipField();
@@ -782,6 +787,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       13,
+      f
+    );
+  }
+  f = message.getReturnemptywhennotfound();
+  if (f) {
+    writer.writeBool(
+      14,
       f
     );
   }
@@ -1095,6 +1107,24 @@ proto.pulumirpc.ReadResourceRequest.prototype.getPlugindownloadurl = function() 
  */
 proto.pulumirpc.ReadResourceRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
+/**
+ * optional bool returnEmptyWhenNotFound = 14;
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getReturnemptywhennotfound = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 14, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setReturnemptywhennotfound = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 14, value);
 };
 
 
