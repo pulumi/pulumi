@@ -188,7 +188,9 @@ export function getResource(res: Resource, parent: Resource | undefined, props: 
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
-export function readResource(res: Resource, parent: Resource | undefined, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
+export function readResource(
+    res: Resource, parent: Resource | undefined, t: string, name: string, props: Inputs,
+    opts: ResourceOptions, returnEmptyWhenNotFound: boolean): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
@@ -220,6 +222,7 @@ export function readResource(res: Resource, parent: Resource | undefined, t: str
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
+        req.setReturnemptywhennotfound(returnEmptyWhenNotFound);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
