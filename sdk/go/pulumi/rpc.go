@@ -120,14 +120,20 @@ func expandDependencies(ctx context.Context, deps []Resource) (urnSet, error) {
 	return urns, nil
 }
 
-// marshalInputs turns resource property inputs into a map suitable for marshaling.
 func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, error) {
-	deps := urnSet{}
 	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
 
 	if props == nil {
 		return pmap, pdeps, nil, nil
 	}
+
+	return marshalInputsImpl(reflect.ValueOf(props), props.ElementType())
+}
+
+// marshalInputs turns resource property inputs into a map suitable for marshaling.
+func marshalInputsImpl(pv reflect.Value, rt reflect.Type) (resource.PropertyMap, map[string][]URN, []URN, error) {
+	deps := urnSet{}
+	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
 
 	marshalProperty := func(pname string, pv interface{}, pt reflect.Type, optional bool) error {
 		// Get the underlying value, possibly waiting for an output to arrive.
@@ -153,7 +159,6 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		return nil
 	}
 
-	pv := reflect.ValueOf(props)
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
 			return pmap, pdeps, nil, nil
@@ -162,7 +167,6 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 	}
 	pt := pv.Type()
 
-	rt := props.ElementType()
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 	}
@@ -171,17 +175,13 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 	case reflect.Struct:
 		contract.Assert(rt.Kind() == reflect.Struct)
 		// We use the resolved type to decide how to convert inputs to outputs.
-		rt := props.ElementType()
-		if rt.Kind() == reflect.Ptr {
-			rt = rt.Elem()
-		}
 		getMappedField := mapStructTypes(pt, rt)
 		// Now, marshal each field in the input.
 		numFields := pt.NumField()
 		for i := 0; i < numFields; i++ {
 			destField, _ := getMappedField(reflect.Value{}, i)
-			if destField.Anonymous && destField.Type.Implements(inputType) {
-				ePmap, ePdeps, _, err := marshalInputs(pv.Field(i).Interface().(Input))
+			if destField.Anonymous {
+				ePmap, ePdeps, _, err := marshalInputsImpl(pv.Field(i), pv.Field(i).Type())
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -459,7 +459,7 @@ func marshalInputImpl(v interface{},
 					return resource.PropertyValue{}, nil, err
 				}
 
-				if !fv.IsNull() {
+				if !fv.IsNull() && !(fv.IsObject() && len(fv.ObjectValue()) == 0) {
 					obj[resource.PropertyKey(tag)] = fv
 				}
 				deps = append(deps, d...)
@@ -648,6 +648,8 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {
 	contract.Assert(dest.CanSet())
 
+	// fmt.Printf("Unmarshaling v: %v = %#+v, dest is %v, %v\n", v.TypeString(), v, dest.Type(), dest.Kind())
+
 	// Check for nils and unknowns. The destination will be left with the zero value.
 	if v.IsNull() || v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
 		return false, nil
@@ -660,10 +662,15 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest = elem.Elem()
 	}
 
+	if dest.Type().Implements(promiseType) {
+		// Alternate path involving promises directly.
+	}
+
 	// In the case of assets and archives, turn these into real asset and archive structures.
 	switch {
 	case v.IsAsset():
 		if !assetType.AssignableTo(dest.Type()) {
+			// fmt.Printf("💥 1\n")
 			return false, fmt.Errorf("expected a %s, got an asset", dest.Type())
 		}
 
@@ -675,6 +682,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return secret, nil
 	case v.IsArchive():
 		if !archiveType.AssignableTo(dest.Type()) {
+			// fmt.Printf("💥 2\n")
 			return false, fmt.Errorf("expected a %s, got an archive", dest.Type())
 		}
 
@@ -696,11 +704,13 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		}
 		resV := reflect.ValueOf(res).Elem()
 		if !resV.Type().AssignableTo(dest.Type()) {
+			// fmt.Printf("💥 3\n")
 			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
 		}
 		dest.Set(resV)
 		return secret, nil
 	case v.IsOutput():
+		fmt.Printf("💜💜 v is output\n")
 		if _, err := unmarshalOutput(ctx, v.OutputValue().Element, dest); err != nil {
 			return false, err
 		}
@@ -711,24 +721,28 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 	switch dest.Kind() {
 	case reflect.Bool:
 		if !v.IsBool() {
+			// fmt.Printf("💥 4\n")
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetBool(v.BoolValue())
 		return false, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if !v.IsNumber() {
+			// fmt.Printf("💥 5\n")
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetInt(int64(v.NumberValue()))
 		return false, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if !v.IsNumber() {
+			// fmt.Printf("💥 6\n")
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetUint(uint64(v.NumberValue()))
 		return false, nil
 	case reflect.Float32, reflect.Float64:
 		if !v.IsNumber() {
+			// fmt.Printf("💥 7\n")
 			return false, fmt.Errorf("expected an %v, got a %s", dest.Type(), v.TypeString())
 		}
 		dest.SetFloat(v.NumberValue())
@@ -745,11 +759,13 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 				dest.SetString(string(ref.URN))
 			}
 		default:
+			// fmt.Printf("💥 8\n")
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		return false, nil
 	case reflect.Slice:
 		if !v.IsArray() {
+			// fmt.Printf("💥 9\n")
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 		arr := v.ArrayValue()
@@ -766,6 +782,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return secret, nil
 	case reflect.Map:
 		if !v.IsObject() {
+			// fmt.Printf("💥 10\n")
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
@@ -830,6 +847,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 	case reflect.Struct:
 		typ := dest.Type()
 		if !v.IsObject() {
+			// fmt.Printf("💥 11\n")
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 

@@ -36,6 +36,7 @@ type Output interface {
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
+	isPromise() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -107,8 +108,7 @@ type OutputState struct {
 	known  bool        // true if this output's value is known.
 	secret bool        // true if this output's value is secret
 
-	isPromise bool // true if this value is a Promise and it is unsound to flatten it
-	awaited   bool // true if this value has been used
+	awaited bool // true if this value has been used
 
 	element reflect.Type // the element type of this output.
 	deps    []Resource   // the dependencies associated with this output property.
@@ -268,7 +268,7 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		if ov, ok := o.value.(Output); ok && !ov.getState().isPromise {
+		if ov, ok := o.value.(Output); ok && !ov.isPromise() {
 			o = ov.getState()
 		} else {
 			return o.value, true, secret, deps, nil
@@ -471,10 +471,13 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
+	// fmt.Printf("💥💥💥💥 In applyTwithcontext, element type is: %v\n", o.elementType())
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
 	applierReturnType := fn.Type().Out(0)
+	// fmt.Printf("💥💥💥💥 return type is: %v\n", applierReturnType)
+	// fmt.Printf("💥💥💥💥 I am a: %#+v\n", o)
 
 	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
@@ -496,6 +499,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	result := newOutput(o.join, resultType, o.dependencies()...)
 	go func() {
 		v, known, secret, deps, err := o.getState().await(ctx)
+		// fmt.Printf("💥💥💥💥 Result of awaiting: %#+v\n", o.getState())
 		if err != nil || !known {
 			result.getState().fulfill(nil, known, secret, deps, err)
 			return
