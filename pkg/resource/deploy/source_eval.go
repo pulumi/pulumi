@@ -892,6 +892,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		dependencies:            deps,
 		additionalSecretOutputs: additionalSecretOutputs,
 		done:                    make(chan *ReadResult),
+		returnEmptyWhenNotFound: req.GetReturnEmptyWhenNotFound(),
 	}
 	select {
 	case rm.regReadChan <- event:
@@ -910,6 +911,11 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	contract.Assert(result != nil)
+
+	if result.NotFound {
+		return &pulumirpc.ReadResourceResponse{}, nil
+	}
+
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
@@ -1348,6 +1354,7 @@ type readResourceEvent struct {
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
 	done                    chan *ReadResult
+	returnEmptyWhenNotFound bool
 }
 
 var _ ReadResourceEvent = (*readResourceEvent)(nil)
@@ -1361,6 +1368,7 @@ func (g *readResourceEvent) Provider() string                 { return g.provide
 func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
 func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
 func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *readResourceEvent) ReturnEmptyWhenNotFound() bool    { return g.returnEmptyWhenNotFound }
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }

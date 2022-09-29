@@ -659,6 +659,10 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 
 		// If there is no such resource, return an error indicating as such.
 		if result.Outputs == nil {
+			if s.event.ReturnEmptyWhenNotFound() {
+				complete := func() { s.event.Done(&ReadResult{NotFound: true}) }
+				return resource.StatusOK, complete, nil
+			}
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
 		s.new.Outputs = result.Outputs

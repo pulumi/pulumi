@@ -239,8 +239,8 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 	return err
 }
 
-func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
+func (rm *ResourceMonitor) ReadResourceWith(inputs resource.PropertyMap,
+	req *pulumirpc.ReadResourceRequest) (resource.URN, resource.PropertyMap, error) {
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -251,16 +251,11 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		return "", nil, err
 	}
 
+	reqCopy := *req
+	reqCopy.Properties = ins
+
 	// submit request
-	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
-		Type:       string(t),
-		Name:       name,
-		Id:         string(id),
-		Parent:     string(parent),
-		Provider:   provider,
-		Properties: ins,
-		Version:    version,
-	})
+	resp, err := rm.resmon.ReadResource(context.Background(), &reqCopy)
 	if err != nil {
 		return "", nil, err
 	}
@@ -275,6 +270,18 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 	}
 
 	return resource.URN(resp.Urn), outs, nil
+}
+
+func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
+	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
+	return rm.ReadResourceWith(inputs, &pulumirpc.ReadResourceRequest{
+		Type:     string(t),
+		Name:     name,
+		Id:       string(id),
+		Parent:   string(parent),
+		Provider: provider,
+		Version:  version,
+	})
 }
 
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,

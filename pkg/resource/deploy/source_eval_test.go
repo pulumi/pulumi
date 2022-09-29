@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type testRegEvent struct {
@@ -694,6 +695,64 @@ func TestDisableDefaultProviders(t *testing.T) {
 			assert.Equalf(t, expectedRegisters, registers, "Registers")
 
 		})
+	}
+}
+
+func TestReadResourceNotFoundReturnEmpty(t *testing.T) {
+	runInfo := &EvalRunInfo{
+		Proj:   &workspace.Project{Name: "test"},
+		Target: &Target{Name: "test"},
+	}
+
+	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
+		var pt tokens.Type
+		if parent != "" {
+			pt = parent.Type()
+		}
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+	}
+
+	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+		urn, props, perr := resmon.ReadResourceWith(nil, &pulumirpc.ReadResourceRequest{
+			Type:                    "pkgX:x:typX",
+			Name:                    "resX",
+			Id:                      "idX",
+			ReturnEmptyWhenNotFound: true,
+		})
+		assert.NoError(t, perr)
+		assert.Equal(t, "", string(urn))
+		assert.Equal(t, 0, len(props))
+		return nil
+	}
+	ctx, err := newTestPluginContext(program)
+	assert.NoError(t, err)
+
+	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	assert.Nil(t, res)
+
+	for {
+		event, res := iter.Next()
+		assert.Nil(t, res)
+		if event == nil {
+			break
+		}
+		switch event := event.(type) {
+		case ReadResourceEvent:
+			if event.ReturnEmptyWhenNotFound() {
+				event.Done(&ReadResult{NotFound: true})
+			} else {
+				panic(event)
+			}
+		case RegisterResourceEvent:
+			urn := newURN(event.Goal().Type, string(event.Goal().Name), event.Goal().Parent)
+			event.Done(&RegisterResult{
+				State: resource.NewState(event.Goal().Type, urn, true, false, event.Goal().ID, event.Goal().Properties,
+					resource.PropertyMap{}, event.Goal().Parent, false, false, event.Goal().Dependencies, nil,
+					event.Goal().Provider, nil, false, nil, nil, nil, "", false),
+			})
+		default:
+			panic(event)
+		}
 	}
 }
 

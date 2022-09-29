@@ -125,8 +125,14 @@ type ReadResourceEvent interface {
 	Done(result *ReadResult)
 	// The names of any additional outputs that should be treated as secrets.
 	AdditionalSecretOutputs() []resource.PropertyKey
+	// Configures how to deal with resources that cannot be found.
+	// The default behavior, ReturnEmptyWhenNotFound=false, fails
+	// the with an error. ReturnEmptyWhenNotFound=true instead
+	// succeeds but communicates NotFound status in ReadResult.
+	ReturnEmptyWhenNotFound() bool
 }
 
 type ReadResult struct {
-	State *resource.State
+	State    *resource.State
+	NotFound bool
 }
