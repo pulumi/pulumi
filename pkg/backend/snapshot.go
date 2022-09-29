@@ -453,6 +453,14 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 				rsm.manager.markDone(step.Old())
 			}
 
+			// ReadStep will change its Op to OpSame if it
+			// ends with a notFound=true result. In this
+			// case, do not mark the resources as existing
+			// in the new snapshot.
+			if step.Op() == deploy.OpSame {
+				return true
+			}
+
 			rsm.manager.markNew(step.New())
 		}
 		return true

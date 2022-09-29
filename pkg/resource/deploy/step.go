@@ -566,6 +566,7 @@ type ReadStep struct {
 	old        *resource.State   // the old resource state, if one exists for this urn
 	new        *resource.State   // the new resource state, to be used to query the provider
 	replacing  bool              // whether or not the new resource is replacing the old resource
+	notFound   bool              // will be set to true when the resource cannot be found
 }
 
 // NewReadStep creates a new Read step.
@@ -611,6 +612,10 @@ func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old
 }
 
 func (s *ReadStep) Op() display.StepOp {
+	if s.notFound {
+		return OpSame
+	}
+
 	if s.replacing {
 		return OpReadReplacement
 	}
@@ -660,6 +665,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		// If there is no such resource, return an error indicating as such.
 		if result.Outputs == nil {
 			if s.event.ReturnEmptyWhenNotFound() {
+				s.notFound = true
 				complete := func() { s.event.Done(&ReadResult{NotFound: true}) }
 				return resource.StatusOK, complete, nil
 			}
