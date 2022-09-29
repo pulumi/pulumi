@@ -21,16 +21,27 @@ func (p Promise[T]) ElementType() reflect.Type {
 	return typeOf[T]()
 }
 
-type isPromise interface {
-	isPromise()
+func (Promise[T]) isPromise() bool {
+	return true
 }
 
-func (Promise[T]) isPromise() {}
+func (o *OutputState) isPromise() bool {
+	return false
+}
 
-var promiseType = reflect.TypeOf((*isPromise)(nil)).Elem()
+type _promiseLike interface {
+	_promiseLike() bool
+}
+
+func (Promise[T]) _promiseLike() bool {
+	return true
+}
+
+var promiseType = typeOf[_promiseLike]()
 
 func Cast[T any](o Output) Promise[T] {
 	if o.ElementType().AssignableTo(typeOf[T]()) {
+		// fmt.Printf("🔵🔵🔵 o is: %#v, elementType is: %v\n", o, o.ElementType().Name())
 		return Promise[T]{o.getState()}
 	}
 
@@ -88,10 +99,7 @@ func (p Promise[T]) fulfill(value T, known, secret bool, deps []Resource, err er
 }
 
 func newPromiseState[T any](join *workGroup, deps ...Resource) Promise[T] {
-	var empty T
-	typ := reflect.TypeOf(&empty).Elem()
-	state := newOutputState(join, typ, deps...)
-	state.isPromise = true
+	state := newOutputState(join, typeOf[T](), deps...)
 	return Promise[T]{state}
 }
 
@@ -120,8 +128,20 @@ func ApplyWithContextErr[T, U any](ctx context.Context, o Promise[T], applier fu
 	return Promise[U]{state}
 }
 
+func FlatMap[T, U any](o Promise[T], applier func(v T) Promise[U]) Promise[U] {
+	return FlatMapWithContextError(context.Background(), o, func(v T) (Promise[U], error) { return applier(v), nil })
+}
+
+func FlatMapWithContext[T, U any](ctx context.Context, o Promise[T], applier func(v T) Promise[U]) Promise[U] {
+	return FlatMapWithContextError(ctx, o, func(v T) (Promise[U], error) { return applier(v), nil })
+}
+
+func FlatMapErr[T, U any](o Promise[T], applier func(v T) (Promise[U], error)) Promise[U] {
+	return FlatMapWithContextError(context.Background(), o, applier)
+}
+
 // Monadic bind operation for Promises.
-func bindWithContextErr[T, U any](ctx context.Context, o Promise[T], applier func(v T) (Promise[U], error)) Promise[U] {
+func FlatMapWithContextError[T, U any](ctx context.Context, o Promise[T], applier func(v T) (Promise[U], error)) Promise[U] {
 	oState := o.getState()
 	result := newPromiseState[U](oState.join, oState.deps...)
 
@@ -164,11 +184,11 @@ func pureResult[T any](v T) (T, error) {
 // Flattens a promise by using the identity that Join(p) = bind(x, id), though our "values" are of
 // type (T, error).
 func Join[T any](o Promise[Promise[T]]) Promise[T] {
-	return bindWithContextErr(context.Background(), o, pureResult[Promise[T]])
+	return FlatMapWithContextError(context.Background(), o, pureResult[Promise[T]])
 }
 
 func joinWithContext[T any](ctx context.Context, o Promise[Promise[T]]) Promise[T] {
-	return bindWithContextErr(ctx, o, pureResult[Promise[T]])
+	return FlatMapWithContextError(ctx, o, pureResult[Promise[T]])
 }
 
 func PromiseAll[T any](o Promise[T], os ...Promise[T]) Promise[[]T] {
