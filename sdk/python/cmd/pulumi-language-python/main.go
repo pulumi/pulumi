@@ -85,9 +85,11 @@ func main() {
 	var tracing string
 	var virtualenv string
 	var root string
+	var toolchainFlag string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
 	flag.StringVar(&root, "root", "", "Project root path to use")
+	flag.StringVar(&toolchainFlag, "toolchain", "venv", "Toolchain to use when bootstrapping a python project")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -104,6 +106,12 @@ func main() {
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
+
+
+	toolchain, err := python.ParseToolchain(toolchainFlag)
+	if err != nil && toolchainFlag != "" {
+		cmdutil.Exit(errors.Wrapf(err, "parsing toolchain"))
+	}
 
 	var pythonExec string
 	if givenExecutor == "" {
@@ -151,7 +159,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath, toolchain)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -184,10 +192,13 @@ type pythonLanguageHost struct {
 
 	// if non-empty, points to the resolved directory path of the virtualenv
 	virtualenvPath string
+
+	// toolchain to use when bootstrapping a python project
+	toolchain python.Toolchain
 }
 
 func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
-	virtualenvPath string) pulumirpc.LanguageRuntimeServer {
+	virtualenvPath string, toolchain python.Toolchain) pulumirpc.LanguageRuntimeServer {
 
 	return &pythonLanguageHost{
 		cwd:            cwd,
@@ -196,6 +207,7 @@ func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
 		tracing:        tracing,
 		virtualenv:     virtualenv,
 		virtualenvPath: virtualenvPath,
+		toolchain:      toolchain,
 	}
 }
 
@@ -305,7 +317,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			severity:     pulumirpc.LogSeverity_ERROR,
 		}
 
-		if err := python.InstallDependenciesWithWriters(ctx,
+		if err := python.InstallVenvDependenciesWithWriters(ctx,
 			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
 			return err
 		}
@@ -849,9 +861,16 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	if err := python.InstallDependenciesWithWriters(server.Context(),
-		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
-		return err
+	switch host.toolchain {
+		case python.Venv:
+			if err := python.InstallVenvDependenciesWithWriters(server.Context(),
+				req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+				return err
+			}
+		case python.Poetry:
+			if err := python.InstallPoetryDependenciesWithWriters(server.Context(), req.Directory, true, stdout, stderr); err != nil {
+				return err
+			}
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))

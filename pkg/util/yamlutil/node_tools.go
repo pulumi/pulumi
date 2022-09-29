@@ -22,6 +22,15 @@ func YamlErrorf(node *yaml.Node, format string, a ...interface{}) error {
 // Get attempts to obtain the value at an index in a sequence or in a mapping. Returns the node and true if successful;
 // nil and false if out of bounds or not found; and nil, false, and an error if any error occurs.
 func Get(l *yaml.Node, key interface{}) (*yaml.Node, bool, error) {
+	contains := func(s []string, str string) bool {
+		for _, v := range s {
+			if v == str {
+				return true
+			}
+		}
+	
+		return false
+	}
 	switch l.Kind {
 	case yaml.DocumentNode:
 		// Automatically recurse as documents contain a single element
@@ -40,9 +49,9 @@ func Get(l *yaml.Node, key interface{}) (*yaml.Node, bool, error) {
 				continue
 			}
 
-			switch k := key.(type) {
+			switch key.(type) {
 			case string:
-				if v.Tag == "str" && v.Value == k {
+				if contains([]string{"str", "!!str"}, v.Tag) && v.Value == key {
 					return l.Content[i+1], true, nil
 				}
 			default:

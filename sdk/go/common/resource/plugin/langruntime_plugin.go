@@ -47,7 +47,7 @@ type langhost struct {
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime string,
-	options map[string]interface{}) (LanguageRuntime, error) {
+	options map[string]interface{}, promptArgs map[string]string) (LanguageRuntime, error) {
 
 	path, err := workspace.GetPluginPath(
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil, host.GetProjectPlugins())
@@ -57,7 +57,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 
 	contract.Assert(path != "")
 
-	args, err := buildArgsForNewPlugin(host, ctx, options)
+	args, err := buildArgsForNewPlugin(host, ctx, options, promptArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,15 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	}, nil
 }
 
-func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
+func serializePromptArgs(args map[string]string) []string {
+	var outputArgs []string
+	for key, value := range args {
+		outputArgs = append(outputArgs, fmt.Sprintf("-%s=%v", key, value))
+	}
+	return outputArgs
+}
+
+func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}, promptArgs map[string]string) ([]string, error) {
 	root, err := filepath.Abs(ctx.Root)
 	if err != nil {
 		return nil, err
@@ -86,6 +94,8 @@ func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
+
+	args = append(args, serializePromptArgs(promptArgs)...)
 
 	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
 

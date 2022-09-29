@@ -340,7 +340,7 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 	return plug.(plugin.Provider), nil
 }
 
-func (host *pluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *pluginHost) LanguageRuntime(runtime string, promptArgs map[string]string) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }
 

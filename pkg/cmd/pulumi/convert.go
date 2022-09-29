@@ -110,7 +110,7 @@ func newConvertCmd() *cobra.Command {
 			defer ctx.Close()
 
 			if !generateOnly {
-				if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+				if err := installDependencies(ctx, &proj.Runtime, pwd, map[string]string{}); err != nil {
 					return result.FromError(err)
 				}
 			}

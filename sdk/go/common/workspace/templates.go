@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -27,6 +28,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pkg/errors"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
@@ -479,7 +481,8 @@ func CopyTemplateFiles(
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
 				// Create the destination directory.
-				return os.Mkdir(dest, 0700)
+				newDest := transform(dest, projectName, projectDescription)
+				return os.Mkdir(newDest, 0700)
 			}
 
 			// Read the source file.
@@ -517,6 +520,54 @@ func CopyTemplateFiles(
 			}
 			return err
 		})
+}
+
+type PromptFile struct {
+	Prompts []Prompt `yaml:"prompts"`
+}
+
+type Prompt struct {
+	Name string `yaml:"name"`
+	Type string `yaml:"type"`
+	Items string `yaml:"items,omitempty"`
+	Values []string `yaml:"values,omitempty"`
+	Message string `yaml:"message"`
+	Description string `yaml:"description,omitempty"`
+}
+
+// LoadAdditionalPrompts will check for an existing Pulumi.prompts.yaml file and create prompts as needed
+func LoadAdditionalPrompts(pathArg string) ([]Prompt, error) {
+	filePath := path.Join(pathArg, "Pulumi.prompts.yaml")
+	fmt.Println(filePath)
+	_, err := os.Stat(filePath)	
+	if err != nil {
+		return []Prompt{}, nil
+	}
+
+	filedata, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return []Prompt{}, err
+	}
+
+	var prompts PromptFile
+	err = yaml.Unmarshal(filedata, &prompts)
+	if err != nil {
+		return []Prompt{}, err
+	}
+
+	return prompts.Prompts, err
+
+}
+
+func RemovePromptsFile(basePath string) error {
+	filePath := path.Join(basePath, "Pulumi.prompts.yaml")
+	_, err := os.Stat(filePath)
+	if err != nil {
+		return nil
+	}
+	err = os.Remove(filePath)
+	return err
 }
 
 // LoadPolicyPackTemplate returns a Policy Pack template from a path.

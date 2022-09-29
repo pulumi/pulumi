@@ -1258,7 +1258,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
-			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
+			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/, python.Venv); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		}
