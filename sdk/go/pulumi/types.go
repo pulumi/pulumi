@@ -205,7 +205,7 @@ func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
 	} else if len(theirs) == 0 {
 		return append(make([]Resource, 0, len(ours)), ours...)
 	} else if len(ours) == 0 {
-		return append(make([]Resource, 0, len(ours)), theirs...)
+		return append(make([]Resource, 0, len(theirs)), theirs...)
 	}
 	depSet := make(map[Resource]struct{})
 	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
