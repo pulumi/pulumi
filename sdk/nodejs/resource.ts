@@ -392,7 +392,8 @@ export abstract class Resource {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
-            readResource(this, parent, t, name, props, opts);
+            const idOpts = getIDOptions(opts.id) || {returnEmptyWhenNotFound: false};
+            readResource(this, parent, t, name, props, opts, idOpts.returnEmptyWhenNotFound);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
@@ -781,6 +782,39 @@ export abstract class CustomResource extends Resource {
         this.__pulumiCustomResource = true;
         this.__pulumiType = t;
     }
+
+    /**
+     * Attempts to look up an existing resource state with the given
+     * name, ID and optional extra properties used to qualify the
+     * lookup. If the resource is not found, returns undefined.
+     *
+     * gcp.dns.ManagedZone.get("z1", "gcp-zone-1")
+     *
+     * See also: https://www.pulumi.com/docs/intro/concepts/resources/get/
+     *
+     * @param resourceClass Concrete resource class such as gcp.dns.ManagedZone
+     * @param name The _unique_ name of the resulting resource.
+     * @param id The _unique_ provider ID of the resource to lookup.
+     * @param state Any extra arguments used during the lookup.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static async tryGet<S,R extends CustomResource>(
+        resourceClass: {
+            new (name: string, args: any, opts?: CustomResourceOptions): R;
+            get(name: string, id: Input<ID>, state?: S, opts?: CustomResourceOptions): R;
+        },
+        name: string,
+        id: Input<ID>,
+        state?: S,
+        opts?: CustomResourceOptions
+    ): Promise<R|undefined> {
+        const idWithOptions = withIDOptions(id, {
+            returnEmptyWhenNotFound: true
+        });
+        const res = new resourceClass(name, state, { ...opts, id: idWithOptions });
+        const urn = await res.urn.promise(true);
+        return (urn == "") ? undefined : res;
+    }
 }
 
 (<any>CustomResource).doNotCapture = true;
@@ -1039,6 +1073,9 @@ export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
     }
 
     if (isPromiseOrOutput(source)) {
+        if (typeof dest === "undefined" && !alwaysCreateArray) {
+            return source;
+        }
         return output(source).apply(s => merge(dest, s, alwaysCreateArray));
     }
 
@@ -1115,4 +1152,18 @@ function getStackResource(): ComponentResource | undefined {
     // break the module import cycle between this module and "./runtime/stack".
     const stack: typeof stacklib = require("./runtime/stack");
     return stack.getStackResource();
+}
+
+interface IDOptions {
+    returnEmptyWhenNotFound: boolean;
+}
+
+function getIDOptions(id: Input<ID>): IDOptions|undefined {
+    return (id as any).__idOptions;
+}
+
+function withIDOptions(id: Input<ID>, opts: IDOptions): Input<ID> {
+    const o = Output.create(id);
+    (o as any).__idOptions = opts;
+    return o;
 }
