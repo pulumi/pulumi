@@ -27,8 +27,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -79,7 +83,13 @@ func newConvertCmd() *cobra.Command {
 				}
 			}
 
-			proj, pclProgram, err := yamlgen.Eject(cwd, nil)
+			host, err := newPluginHost()
+			if err != nil {
+				return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
+			}
+			defer contract.IgnoreClose(host)
+			loader := schema.NewPluginLoader(host)
+			proj, pclProgram, err := yamlgen.Eject(cwd, loader)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
 			}
@@ -135,4 +145,19 @@ func newConvertCmd() *cobra.Command {
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	return cmd
+}
+
+func newPluginHost() (plugin.Host, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	if err != nil {
+		return nil, err
+	}
+	return pluginCtx.Host, nil
 }
