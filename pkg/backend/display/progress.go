@@ -173,6 +173,7 @@ type ProgressDisplay struct {
 
 type estimates struct {
 	start     map[resource.URN]int
+	end       map[resource.URN]int
 	durations durationMap
 }
 
@@ -211,6 +212,7 @@ func newEstimates() (estimates, error) {
 		durations: d,
 	}
 	e.start = map[resource.URN]int{}
+	e.end = map[resource.URN]int{}
 	return e, nil
 }
 
@@ -1153,11 +1155,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
-		row.SetStep(step)
 		display.estimates.start[step.URN] = int(time.Now().Unix())
+		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
+		display.estimates.end[step.URN] = int(time.Now().Unix())
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1288,61 +1291,77 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	}
 
 	getDescription := func() string {
+		formatDescription := func(text string) string {
+			start, ok := display.estimates.start[step.URN]
+			if !ok {
+				return text
+			}
+
+			end, ok := display.estimates.end[step.URN]
+			if !ok {
+				return text
+			}
+
+			elapsed := end - start
+			return fmt.Sprintf("%s(%ds)", text, elapsed)
+		}
+
+		opText := ""
 		if failed {
 			switch op {
 			case deploy.OpSame:
-				return "failed"
+				opText = "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				return "creating failed"
+				opText = "creating failed"
 			case deploy.OpUpdate:
-				return "updating failed"
+				opText = "updating failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
-				return "deleting failed"
+				opText = "deleting failed"
 			case deploy.OpReplace:
-				return "replacing failed"
+				opText = "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
-				return "reading failed"
+				opText = "reading failed"
 			case deploy.OpRefresh:
-				return "refreshing failed"
+				opText = "refreshing failed"
 			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				return "discarding failed"
+				opText = "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
-				return "importing failed"
+				opText = "importing failed"
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return ""
+				opText = ""
 			case deploy.OpCreate:
-				return "created"
+				opText = "created"
 			case deploy.OpUpdate:
-				return "updated"
+				opText = "updated"
 			case deploy.OpDelete:
-				return "deleted"
+				opText = "deleted"
 			case deploy.OpReplace:
-				return "replaced"
+				opText = "replaced"
 			case deploy.OpCreateReplacement:
-				return "created replacement"
+				opText = "created replacement"
 			case deploy.OpDeleteReplaced:
-				return "deleted original"
+				opText = "deleted original"
 			case deploy.OpRead:
 				// nolint: goconst
-				return "read"
+				opText = "read"
 			case deploy.OpReadReplacement:
-				return "read for replacement"
+				opText = "read for replacement"
 			case deploy.OpRefresh:
-				return "refresh"
+				opText = "refresh"
 			case deploy.OpReadDiscard:
-				return "discarded"
+				opText = "discarded"
 			case deploy.OpDiscardReplaced:
-				return "discarded original"
+				opText = "discarded original"
 			case deploy.OpImport:
-				return "imported"
+				opText = "imported"
 			case deploy.OpImportReplacement:
-				return "imported replacement"
+				opText = "imported replacement"
 			}
 		}
-
+		return formatDescription(opText)
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
