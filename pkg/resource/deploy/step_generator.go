@@ -54,6 +54,8 @@ type stepGenerator struct {
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
 
+	unsafeURNs map[resource.URN]bool
+
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
 	skippedCreates map[resource.URN]bool
@@ -153,13 +155,31 @@ func (sg *stepGenerator) generateURN(
 	parent resource.URN, ty tokens.Type, name tokens.QName) (resource.URN, result.Result) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
-	if sg.urns[urn] {
+	if sg.urns[urn] && !sg.unsafeURNs[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 		return "", result.Bail()
 	}
 	sg.urns[urn] = true
 	return urn, nil
+}
+
+// Similar to generateURN but without duplicate URN checks. This
+// currently works around issues with CustomResource.tryGet which may
+// fail or succeed, and if it fails it should not mark an URN as used.
+//
+// For example if a user polls with repeated calls to tryGet, the URN
+// check would make the program fail.
+//
+// Crucially, step_generator does now know if tryGet succeds or not as
+// this happens in step_executor, and it is not straightforward to get
+// this info back.
+func (sg *stepGenerator) unsafeGenerateURN(
+	parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
+	urn := sg.deployment.generateURN(parent, ty, name)
+	sg.urns[urn] = true
+	sg.unsafeURNs[urn] = true
+	return urn
 }
 
 // GenerateReadSteps is responsible for producing one or more steps required to service
@@ -172,9 +192,14 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		return nil, res
 	}
 
-	urn, res := sg.generateURN(parent, event.Type(), event.Name())
-	if res != nil {
-		return nil, res
+	var urn resource.URN
+	if event.ReturnEmptyWhenNotFound() {
+		urn = sg.unsafeGenerateURN(parent, event.Type(), event.Name())
+	} else {
+		urn, res = sg.generateURN(parent, event.Type(), event.Name())
+		if res != nil {
+			return nil, res
+		}
 	}
 
 	newState := resource.NewState(event.Type(),
@@ -1789,5 +1814,6 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
+		unsafeURNs:           make(map[resource.URN]bool),
 	}
 }
