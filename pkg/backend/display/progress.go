@@ -1303,7 +1303,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			}
 
 			elapsed := end - start
-			return fmt.Sprintf("%s(%ds)", text, elapsed)
+			return fmt.Sprintf("%s (%d secs)", text, elapsed)
 		}
 
 		opText := ""
@@ -1496,12 +1496,12 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			}
 			lower, upper, err := display.estimates.getBounds(string(step.Op), step.Type.String())
 			if err != nil {
-				return fmt.Sprintf("%s(%ds)", text, elapsed)
+				return fmt.Sprintf("%s (%d secs)", text, elapsed)
 			}
 			if lower == upper {
-				return fmt.Sprintf("%s(%ds/~%ds)", text, elapsed, lower)
+				return fmt.Sprintf("%s (%d/~%d secs)", text, elapsed, lower)
 			}
-			return fmt.Sprintf("%s(%ds/~%d-%ds)", text, elapsed, lower, upper)
+			return fmt.Sprintf("%s (%d/~%d-%d secs)", text, elapsed, lower, upper)
 		}
 
 		opText := ""
