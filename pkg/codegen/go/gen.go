@@ -187,6 +187,24 @@ type pkgContext struct {
 
 	// Determines if we should emit object defaults code
 	disableObjectDefaults bool
+
+	// If we are generating a type that uses generics now
+	isGeneric bool
+}
+
+// Call `f` with both generic states enabled.
+func (pkg *pkgContext) genGeneric(f func(GenericToggle) error) error {
+	defer func(state bool) { pkg.isGeneric = state }(pkg.isGeneric)
+	pkg.isGeneric = false
+	if err := f(GenericToggleNo); err != nil {
+		return fmt.Errorf("non-generic: %w", err)
+	}
+	pkg.isGeneric = true
+	err := f(GenericToggleYes)
+	if err != nil {
+		return fmt.Errorf("generic: %w", err)
+	}
+	return nil
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -408,6 +426,9 @@ func isNilType(t schema.Type) bool {
 }
 
 func (pkg *pkgContext) inputType(t schema.Type) (result string) {
+	if pkg.isGeneric {
+		return fmt.Sprintf("pulumi.Promise[%s]", pkg.typeStringImpl(codegen.UnwrapType(t), false))
+	}
 	switch t := codegen.SimplifyInputUnion(t).(type) {
 	case *schema.OptionalType:
 		return pkg.typeString(t)
@@ -534,6 +555,9 @@ func (pkg *pkgContext) argsType(t schema.Type) string {
 func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		if pkg.isGeneric && argsType {
+			return pkg.typeStringImpl(t.ElementType, argsType)
+		}
 		if input, isInputType := t.ElementType.(*schema.InputType); isInputType {
 			elem := pkg.inputType(input.ElementType)
 			if isNilType(input.ElementType) || elem == "pulumi.Input" {
@@ -552,6 +576,9 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 						return "*" + elem
 					}
 				}
+			}
+			if pkg.isGeneric {
+				return elem
 			}
 			if argsType {
 				return elem + "Ptr"
@@ -693,7 +720,7 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 
 	if !isExternal {
 		name := pkg.tokenToType(t.Token)
-		if t.IsInputShape() {
+		if t.IsInputShape() && !pkg.isGeneric {
 			return name + "Args"
 		}
 		return name
@@ -753,8 +780,21 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 // called with a fully-resolved type (e.g. the result of codegen.ResolvedType). Instead of calling this function, you
 // probably want to call pkgContext.outputType, which ensures that its argument is resolved.
 func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
+	genericOutputOf := func(s string) string {
+		return fmt.Sprintf("pulumi.Promise[%s]", s)
+	}
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		if pkg.isGeneric {
+			switch t := codegen.UnwrapType(t.ElementType).(type) {
+			case *schema.ObjectType:
+				return "*" + pkg.typeStringImpl(t, false)
+			case *schema.ResourceType:
+				return genericOutputOf("*" + pkg.resolveResourceType(t))
+			default:
+				return genericOutputOf("*" + pkg.typeStringImpl(t, false))
+			}
+		}
 		elem := pkg.outputTypeImpl(t.ElementType)
 		if isNilType(t.ElementType) || elem == "pulumi.AnyOutput" {
 			return elem
@@ -774,27 +814,45 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 		}
 		return strings.TrimSuffix(elem, "Output") + "PtrOutput"
 	case *schema.EnumType:
+		if pkg.isGeneric {
+			return genericOutputOf(pkg.resolveEnumType(t))
+		}
 		return pkg.resolveEnumType(t) + "Output"
 	case *schema.ArrayType:
 		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
+		if pkg.isGeneric {
+			return genericOutputOf(en)
+		}
 		if en == "pulumi.Any" {
 			return "pulumi.ArrayOutput"
 		}
 		return en + "ArrayOutput"
 	case *schema.MapType:
 		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
+		if pkg.isGeneric {
+			return genericOutputOf(en)
+		}
 		if en == "pulumi.Any" {
 			return "pulumi.MapOutput"
 		}
 		return en + "MapOutput"
 	case *schema.ObjectType:
+		if pkg.isGeneric {
+			return genericOutputOf(pkg.resolveObjectType(t))
+		}
 		return pkg.resolveObjectType(t) + "Output"
 	case *schema.ResourceType:
+		if pkg.isGeneric {
+			return genericOutputOf(pkg.resolveResourceType(t))
+		}
 		return pkg.resolveResourceType(t) + "Output"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
 			return pkg.outputTypeImpl(t.UnderlyingType)
+		}
+		if pkg.isGeneric {
+			return genericOutputOf(pkg.tokenToType(t.Token))
 		}
 		return pkg.tokenToType(t.Token) + "Output"
 	case *schema.UnionType:
@@ -805,12 +863,18 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 				return pkg.outputTypeImpl(typ.ElementType)
 			}
 		}
+		if pkg.isGeneric {
+			return genericOutputOf("any")
+		}
 		// TODO(pdg): union types
 		return "pulumi.AnyOutput"
 	case *schema.InputType:
 		// We can't make output types for input types. We instead strip the input and try again.
 		return pkg.outputTypeImpl(t.ElementType)
 	default:
+		if pkg.isGeneric {
+			return genericOutputOf(pkg.typeStringImpl(t, false))
+		}
 		switch t {
 		case schema.BoolType:
 			return "pulumi.BoolOutput"
