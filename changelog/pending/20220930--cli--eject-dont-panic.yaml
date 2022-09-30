@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Prevent sending on a closed channel panics during 'pulumi convert'
