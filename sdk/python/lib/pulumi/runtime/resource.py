@@ -803,7 +803,7 @@ async def _add_dependency(
         # Copy the set before iterating so that any concurrent child additions during
         # the dependency computation (which is async, so can be interleaved with other
         # operations including child resource construction which adds children to this
-        # resource) do not trigger modification during iteration errors.  
+        # resource) do not trigger modification during iteration errors.
         child_resources = res._childResources.copy()
         for child in child_resources:
             await _add_dependency(deps, child, from_resource)
