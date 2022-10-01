@@ -17,13 +17,19 @@
 from setuptools import setup, find_packages
 
 
+VERSION = "3.0.0"
+
+
 def readme():
-    with open('README.md', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('README.md', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Pulumi's Python SDK - Development Version"
 
 
 setup(name='pulumi',
-      version='${VERSION}',
+      version=VERSION,
       description='Pulumi\'s Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',
