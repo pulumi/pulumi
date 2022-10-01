@@ -411,50 +411,17 @@ func urlMustParse(rawURL string) *url.URL {
 func (source *fallbackSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 
-	// Try and get this package from public pulumi github
+	// Try and get this package from our public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
 		return nil, err
 	}
 	version, err := public.GetLatestVersion(getHTTPResponse)
-	if err == nil {
-		return version, nil
+	if err != nil {
+		return nil, err
 	}
 
-	// Are we in experimental mode? Try a users private github release
-	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
-		// Check if we have a repo owner set
-		repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
-		var privateErr error
-		if repoOwner == "" {
-			privateErr = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
-		} else {
-			// This could panic on user input, but this is experimental and will be removed at some point
-			private, err := newGithubSource(urlMustParse("github://api.github.com/"+repoOwner), source.name, source.kind)
-			if err != nil {
-				return nil, err
-			}
-			if !private.HasAuthentication() {
-				privateErr = errors.New("no GitHub authentication information provided")
-			} else {
-				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
-					"please use a github download URL instead: " +
-					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
-				version, privateErr = private.GetLatestVersion(getHTTPResponse)
-				if privateErr == nil {
-					return version, nil
-				}
-			}
-		}
-
-		logging.V(1).Infof("cannot find plugin %s on private GitHub releases: %s", source.name, privateErr.Error())
-
-		return nil, fmt.Errorf(
-			"error getting version from Pulumi github: %w\nand from private github: %s",
-			err, privateErr.Error())
-	}
-
-	return nil, err
+	return version, nil
 }
 
 func (source *fallbackSource) Download(
@@ -468,34 +435,6 @@ func (source *fallbackSource) Download(
 	resp, length, err := public.Download(version, opSy, arch, getHTTPResponse)
 	if err == nil {
 		return resp, length, nil
-	}
-
-	// Are we in experimental mode? Try a private github release
-	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
-		// Check if we have a repo owner set
-		repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
-		if repoOwner == "" {
-			err = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
-		} else {
-			var private *githubSource
-			private, err = newGithubSource(urlMustParse("github://api.github.com/"+repoOwner), source.name, source.kind)
-			if err != nil {
-				return nil, -1, err
-			}
-			if !private.HasAuthentication() {
-				err = errors.New("no GitHub authentication information provided")
-			} else {
-				logging.V(1).Infof("downloading plugins based on GITHUB_REPOSITORY_OWNER is deprecated, " +
-					"please use a github download URL instead: " +
-					"https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases")
-				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
-				if err == nil {
-					return resp, length, nil
-				}
-			}
-		}
-
-		logging.V(1).Infof("cannot find plugin %s on private GitHub releases: %s", source.name, err.Error())
 	}
 
 	// Fallback to get.pulumi.com
