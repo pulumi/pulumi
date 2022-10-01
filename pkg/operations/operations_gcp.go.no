@@ -69,7 +69,7 @@ const (
 	gcpFunctionType = tokens.Type("gcp:cloudfunctions/function:Function")
 )
 
-func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) GetLogs(query LogQuery) ([]LogEntry, interface{}, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
@@ -78,11 +78,11 @@ func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	default:
 		// Else this resource kind does not produce any logs.
 		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
-		return nil, nil
+		return nil, nil, nil
 	}
 }
 
-func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery) ([]LogEntry, interface{}, error) {
 	name := state.Outputs["name"].StringValue()
 	project := state.Outputs["project"].StringValue()
 	region := state.Outputs["region"].StringValue()
@@ -115,11 +115,11 @@ func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery
 		entry, err := it.Next()
 		if err == iterator.Done {
 			logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
-			return &logs, nil
+			return logs, nil, nil
 		}
 		if err != nil {
 			logging.V(5).Infof("GetLogs[%v] error iterating logs: %s", state.URN, err)
-			return nil, err
+			return nil, nil, err
 		}
 
 		message, err := getLogEntryMessage(entry)

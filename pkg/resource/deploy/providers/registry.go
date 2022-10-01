@@ -21,6 +21,8 @@ import (
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -429,6 +431,14 @@ func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	closeErr := r.host.CloseProvider(provider)
 	contract.IgnoreError(closeErr)
 	return resource.StatusOK, nil
+}
+
+func (r *Registry) GetResourceLogs(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error) {
+	return nil, "", nil
+}
+
+func (r *Registry) GetResourceMetrics(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error) {
+	return nil, "", nil
 }
 
 func (r *Registry) Read(urn resource.URN, id resource.ID,

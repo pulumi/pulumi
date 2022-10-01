@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -55,8 +54,6 @@ type Stack interface {
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
 	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
-	// list log entries for this stack.
-	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
 	// import the given deployment into this stack.
@@ -113,12 +110,6 @@ func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
-}
-
-// GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s, cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.

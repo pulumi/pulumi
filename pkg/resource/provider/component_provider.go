@@ -177,6 +177,14 @@ func (p *componentProvider) Delete(ctx context.Context, req *pulumirpc.DeleteReq
 	return nil, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 
+func (p *componentProvider) GetResourceLogs(ctx context.Context, req *pulumirpc.GetResourceLogsRequest) (*pulumirpc.GetResourceLogsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "GetResourceLogs is not yet implemented")
+}
+
+func (p *componentProvider) GetResourceMetrics(ctx context.Context, req *pulumirpc.GetResourceMetricsRequest) (*pulumirpc.GetResourceMetricsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "GetResourceMetrics is not yet implemented")
+}
+
 // Invoke dynamically executes a built-in function in the provider.
 func (p *componentProvider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {

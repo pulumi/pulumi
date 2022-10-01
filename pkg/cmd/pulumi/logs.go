@@ -15,18 +15,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	mobytime "github.com/moby/moby/api/types/time"
+	"github.com/spf13/cobra"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
@@ -35,8 +42,26 @@ import (
 // See https://tools.ietf.org/html/rfc5424#section-6.2.3.
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
+type logsInfo struct {
+	root    string
+	project *workspace.Project
+	target  *deploy.Target
+}
+
+func (i *logsInfo) GetRoot() string {
+	return i.root
+}
+
+func (i *logsInfo) GetProject() *workspace.Project {
+	return i.project
+}
+
+func (i *logsInfo) GetTarget() *deploy.Target {
+	return i.target
+}
+
 func newLogsCmd() *cobra.Command {
-	var stack string
+	var stackID string
 	var follow bool
 	var since string
 	var resource string
@@ -56,7 +81,7 @@ func newLogsCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(stackID, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -71,15 +96,48 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
+			proj, root, err := readProject()
+			if err != nil {
+				return fmt.Errorf("reading project: %w", err)
+			}
+
+			untypedDeployment, err := s.ExportDeployment(context.Background())
+			if err != nil {
+				return fmt.Errorf("exporting deployment: %w", err)
+			}
+
+			snapshot, err := stack.DeserializeUntypedDeployment(untypedDeployment, stack.DefaultSecretsProvider)
+			if err != nil {
+				return fmt.Errorf("deserializing deployment: %w", err)
+			}
+
+			info := &logsInfo{
+				root:    root,
+				project: proj,
+				target: &deploy.Target{
+					Name:      s.Ref().Name(),
+					Config:    cfg.Config,
+					Decrypter: cfg.Decrypter,
+					Snapshot:  snapshot,
+				},
+			}
+			sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: opts.Color})
+			providers, err := engine.LoadProviders(info, engine.ProvidersOptions{
+				Diag:       sink,
+				StatusDiag: sink,
+			})
+			if err != nil {
+				return err
+			}
+			tree := operations.NewResourceTree(snapshot.Resources)
+			ops := tree.OperationsProvider(providers)
+
 			startTime, err := parseSince(since, time.Now())
 			if err != nil {
 				return fmt.Errorf("failed to parse argument to '--since' as duration or timestamp: %w", err)
 			}
-			var resourceFilter *operations.ResourceFilter
-			if resource != "" {
-				var rf = operations.ResourceFilter(resource)
-				resourceFilter = &rf
-			}
+
+			resourceFilter := resource
 
 			if !jsonOut {
 				fmt.Printf(
@@ -97,13 +155,24 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(commandContext(), cfg, operations.LogQuery{
-					StartTime:      startTime,
-					ResourceFilter: resourceFilter,
-				})
-				if err != nil {
-					return fmt.Errorf("failed to get logs: %w", err)
+				var entries []*logs.ResourceLogs
+				var token interface{}
+				for {
+					batch, nextToken, err := ops.GetLogs(operations.LogQuery{
+						StartTime:         startTime,
+						ResourceFilter:    resourceFilter,
+						ContinuationToken: token,
+					})
+					if err != nil {
+						return fmt.Errorf("failed to get logs: %w", err)
+					}
+					entries = append(entries, batch...)
+					if nextToken == nil {
+						break
+					}
+					token = nextToken
 				}
+				logs := operations.PivotLogs(entries)
 
 				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
 				if !follow && jsonOut {
@@ -114,7 +183,7 @@ func newLogsCmd() *cobra.Command {
 							eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 							entries = append(entries, logEntryJSON{
-								ID:        logEntry.ID,
+								ID:        string(logEntry.ID),
 								Timestamp: eventTime.UTC().Format(timeFormat),
 								Message:   logEntry.Message,
 							})
@@ -139,7 +208,7 @@ func newLogsCmd() *cobra.Command {
 							)
 						} else {
 							err = printJSON(logEntryJSON{
-								ID:        logEntry.ID,
+								ID:        string(logEntry.ID),
 								Timestamp: eventTime.UTC().Format(timeFormat),
 								Message:   logEntry.Message,
 							})
@@ -162,7 +231,7 @@ func newLogsCmd() *cobra.Command {
 	}
 
 	logsCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackID, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

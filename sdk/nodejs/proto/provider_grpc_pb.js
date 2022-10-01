@@ -21,6 +21,8 @@ var provider_pb = require('./provider_pb.js');
 var plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
+var opentelemetry_proto_logs_v1_logs_pb = require('./opentelemetry/proto/logs/v1/logs_pb.js');
+var opentelemetry_proto_metrics_v1_metrics_pb = require('./opentelemetry/proto/metrics/v1/metrics_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
@@ -174,6 +176,50 @@ function serialize_pulumirpc_DiffResponse(arg) {
 
 function deserialize_pulumirpc_DiffResponse(buffer_arg) {
   return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetResourceLogsRequest(arg) {
+  if (!(arg instanceof provider_pb.GetResourceLogsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetResourceLogsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetResourceLogsRequest(buffer_arg) {
+  return provider_pb.GetResourceLogsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetResourceLogsResponse(arg) {
+  if (!(arg instanceof provider_pb.GetResourceLogsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetResourceLogsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetResourceLogsResponse(buffer_arg) {
+  return provider_pb.GetResourceLogsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetResourceMetricsRequest(arg) {
+  if (!(arg instanceof provider_pb.GetResourceMetricsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetResourceMetricsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetResourceMetricsRequest(buffer_arg) {
+  return provider_pb.GetResourceMetricsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetResourceMetricsResponse(arg) {
+  if (!(arg instanceof provider_pb.GetResourceMetricsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetResourceMetricsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetResourceMetricsResponse(buffer_arg) {
+  return provider_pb.GetResourceMetricsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetSchemaRequest(arg) {
@@ -452,6 +498,28 @@ delete: {
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  getResourceLogs: {
+    path: '/pulumirpc.ResourceProvider/GetResourceLogs',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.GetResourceLogsRequest,
+    responseType: provider_pb.GetResourceLogsResponse,
+    requestSerialize: serialize_pulumirpc_GetResourceLogsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetResourceLogsRequest,
+    responseSerialize: serialize_pulumirpc_GetResourceLogsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetResourceLogsResponse,
+  },
+  getResourceMetrics: {
+    path: '/pulumirpc.ResourceProvider/GetResourceMetrics',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.GetResourceMetricsRequest,
+    responseType: provider_pb.GetResourceMetricsResponse,
+    requestSerialize: serialize_pulumirpc_GetResourceMetricsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetResourceMetricsRequest,
+    responseSerialize: serialize_pulumirpc_GetResourceMetricsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetResourceMetricsResponse,
   },
   // Construct creates a new instance of the provided component resource and returns its state.
 construct: {

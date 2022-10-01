@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
@@ -403,6 +404,70 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 	}
 
 	return &pbempty.Empty{}, nil
+}
+
+func (p *providerServer) GetResourceLogs(ctx context.Context, req *pulumirpc.GetResourceLogsRequest) (*pulumirpc.GetResourceLogsResponse, error) {
+	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	state, err := UnmarshalProperties(req.GetState(), p.unmarshalOptions("state"))
+	if err != nil {
+		return nil, err
+	}
+
+	var startTime time.Time
+	if t := req.GetStartTime(); t != 0 {
+		startTime = time.Unix(0, int64(t))
+	}
+	var endTime time.Time
+	if t := req.GetEndTime(); t != 0 {
+		endTime = time.Unix(0, int64(t))
+	}
+
+	logs, continuationToken, err := p.provider.GetResourceLogs(urn, id, state, GetResourceLogsOptions{
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             int(req.GetCount()),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetResourceLogsResponse{
+		ContinuationToken: continuationToken,
+		ResourceLogs:      logs,
+	}, nil
+}
+
+func (p *providerServer) GetResourceMetrics(ctx context.Context, req *pulumirpc.GetResourceMetricsRequest) (*pulumirpc.GetResourceMetricsResponse, error) {
+	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	state, err := UnmarshalProperties(req.GetState(), p.unmarshalOptions("state"))
+	if err != nil {
+		return nil, err
+	}
+
+	var startTime time.Time
+	if t := req.GetStartTime(); t != 0 {
+		startTime = time.Unix(0, int64(t))
+	}
+	var endTime time.Time
+	if t := req.GetEndTime(); t != 0 {
+		endTime = time.Unix(0, int64(t))
+	}
+
+	metrics, continuationToken, err := p.provider.GetResourceMetrics(urn, id, state, GetResourceMetricsOptions{
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             int(req.GetCount()),
+		ContinuationToken: req.GetContinuationToken(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.GetResourceMetricsResponse{
+		ContinuationToken: continuationToken,
+		ResourceMetrics:   metrics,
+	}, nil
 }
 
 func (p *providerServer) Construct(ctx context.Context,

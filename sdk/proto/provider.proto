@@ -17,6 +17,8 @@ syntax = "proto3";
 import "plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
+import "opentelemetry/proto/logs/v1/logs.proto";
+import "opentelemetry/proto/metrics/v1/metrics.proto";
 
 package pulumirpc;
 
@@ -63,6 +65,9 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+
+    rpc GetResourceLogs(GetResourceLogsRequest) returns (GetResourceLogsResponse) {}
+    rpc GetResourceMetrics(GetResourceMetricsRequest) returns (GetResourceMetricsResponse) {}
 
     // Construct creates a new instance of the provided component resource and returns its state.
     rpc Construct(ConstructRequest) returns (ConstructResponse) {}
@@ -295,6 +300,42 @@ message DeleteRequest {
     string urn = 2;                        // the Pulumi URN for this resource.
     google.protobuf.Struct properties = 3; // the current properties on the resource.
     double timeout = 4;                    // the delete request timeout represented in seconds.
+}
+
+message GetResourceLogsRequest {
+    string id = 1;
+    string urn = 2;
+    google.protobuf.Struct state = 3; // the current properties on the resource.
+
+    fixed64 startTime = 4;
+    fixed64 endTime = 5;
+
+    fixed64 count = 6;
+    string continuationToken = 7;
+}
+
+message GetResourceLogsResponse {
+    string continuationToken = 1;
+
+    repeated opentelemetry.proto.logs.v1.ResourceLogs resourceLogs = 2;
+}
+
+message GetResourceMetricsRequest {
+    string id = 1;
+    string urn = 2;
+    google.protobuf.Struct state = 3; // the current properties on the resource.
+
+    fixed64 startTime = 4;
+    fixed64 endTime = 5;
+
+    fixed64 count = 6;
+    string continuationToken = 7;
+}
+
+message GetResourceMetricsResponse {
+    string continuationToken = 1;
+
+    repeated opentelemetry.proto.metrics.v1.ResourceMetrics resourceMetrics = 2;
 }
 
 message ConstructRequest {

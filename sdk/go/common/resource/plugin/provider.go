@@ -18,6 +18,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
+
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -101,6 +105,9 @@ type Provider interface {
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
+
+	GetResourceLogs(urn resource.URN, id resource.ID, state resource.PropertyMap, options GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error)
+	GetResourceMetrics(urn resource.URN, id resource.ID, state resource.PropertyMap, options GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error)
 }
 
 type GrpcProvider interface {
@@ -329,6 +336,20 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+}
+
+type GetResourceLogsOptions struct {
+	StartTime         time.Time
+	EndTime           time.Time
+	Count             int
+	ContinuationToken string
+}
+
+type GetResourceMetricsOptions struct {
+	StartTime         time.Time
+	EndTime           time.Time
+	Count             int
+	ContinuationToken string
 }
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.

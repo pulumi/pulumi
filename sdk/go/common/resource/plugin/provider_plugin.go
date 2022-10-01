@@ -29,6 +29,8 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -1112,6 +1114,116 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 
 	logging.V(7).Infof("%s success", label)
 	return resource.StatusOK, nil
+}
+
+func (p *provider) GetResourceLogs(urn resource.URN, id resource.ID, state resource.PropertyMap, options GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error) {
+	contract.Assert(urn != "")
+	contract.Assert(id != "")
+
+	label := fmt.Sprintf("%s.GetResourceLogs(%s,%s)", p.label(), urn, id)
+
+	mstate, err := MarshalProperties(state, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// We should only be calling GetResourceLogs if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
+	startTime := uint64(0)
+	if !options.StartTime.IsZero() {
+		startTime = uint64(options.StartTime.UnixNano())
+	}
+	endTime := uint64(0)
+	if !options.EndTime.IsZero() {
+		endTime = uint64(options.EndTime.UnixNano())
+	}
+
+	logs, err := client.GetResourceLogs(p.requestContext(), &pulumirpc.GetResourceLogsRequest{
+		Id:                string(id),
+		Urn:               string(urn),
+		State:             mstate,
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             uint64(options.Count),
+		ContinuationToken: options.ContinuationToken,
+	})
+	if err != nil {
+		logging.V(7).Infof("%s failed: %v", label, err)
+		if rpcerror.Convert(err).Code() == codes.Unimplemented {
+			return nil, "", nil
+		}
+		return nil, "", err
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return logs.ResourceLogs, logs.ContinuationToken, nil
+}
+
+func (p *provider) GetResourceMetrics(urn resource.URN, id resource.ID, state resource.PropertyMap, options GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error) {
+	contract.Assert(urn != "")
+	contract.Assert(id != "")
+
+	label := fmt.Sprintf("%s.GetResourceMetrics(%s,%s)", p.label(), urn, id)
+
+	mstate, err := MarshalProperties(state, MarshalOptions{
+		Label:              label,
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return nil, "", err
+	}
+
+	// We should only be calling GetResourceMetrics if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
+	startTime := uint64(0)
+	if !options.StartTime.IsZero() {
+		startTime = uint64(options.StartTime.UnixNano())
+	}
+	endTime := uint64(0)
+	if !options.EndTime.IsZero() {
+		endTime = uint64(options.EndTime.UnixNano())
+	}
+
+	metrics, err := client.GetResourceMetrics(p.requestContext(), &pulumirpc.GetResourceMetricsRequest{
+		Id:                string(id),
+		Urn:               string(urn),
+		State:             mstate,
+		StartTime:         startTime,
+		EndTime:           endTime,
+		Count:             uint64(options.Count),
+		ContinuationToken: options.ContinuationToken,
+	})
+	if err != nil {
+		logging.V(7).Infof("%s failed: %v", label, err)
+		if rpcerror.Convert(err).Code() == codes.Unimplemented {
+			return nil, "", nil
+		}
+		return nil, "", err
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return metrics.ResourceMetrics, metrics.ContinuationToken, nil
 }
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns

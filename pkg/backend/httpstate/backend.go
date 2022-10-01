@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1223,16 +1222,6 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 		}
 	}
 	return c, nil
-}
-
-func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
-	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-
-	target, targetErr := b.getTarget(ctx, stack.Ref(), cfg.Config, cfg.Decrypter)
-	if targetErr != nil {
-		return nil, targetErr
-	}
-	return filestate.GetLogsForTarget(target, logQuery)
 }
 
 // ExportDeployment exports a deployment _from_ the backend service.

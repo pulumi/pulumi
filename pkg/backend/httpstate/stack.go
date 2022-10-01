@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -169,11 +168,6 @@ func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (s
 
 func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
 	return backend.WatchStack(ctx, s, op, paths)
-}
-
-func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, cfg, query)
 }
 
 func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

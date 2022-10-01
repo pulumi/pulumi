@@ -20,6 +20,8 @@ import (
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -55,6 +57,9 @@ type Provider struct {
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
 	ReadF   func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
+
+	GetResourceLogsF    func(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error)
+	GetResourceMetricsF func(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error)
 
 	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
 		options plugin.ConstructOptions) (plugin.ConstructResult, error)
@@ -176,6 +181,20 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 		}, resource.StatusUnknown, nil
 	}
 	return prov.ReadF(urn, id, inputs, state)
+}
+
+func (prov *Provider) GetResourceLogs(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error) {
+	if prov.GetResourceLogsF != nil {
+		return nil, "", nil
+	}
+	return prov.GetResourceLogsF(urn, id, state, options)
+}
+
+func (prov *Provider) GetResourceMetrics(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error) {
+	if prov.GetResourceMetricsF != nil {
+		return nil, "", nil
+	}
+	return prov.GetResourceMetricsF(urn, id, state, options)
 }
 
 func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,

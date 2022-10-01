@@ -15,12 +15,16 @@
 package operations
 
 import (
-	"sort"
-	"strings"
+	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
+
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -114,116 +118,220 @@ func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 }
 
 // OperationsProvider gets an OperationsProvider for this resource.
-func (r *Resource) OperationsProvider(config map[config.Key]string) Provider {
+func (r *Resource) OperationsProvider(providers *engine.Providers) Provider {
 	return &resourceOperations{
-		resource: r,
-		config:   config,
+		resource:  r,
+		providers: providers,
 	}
 }
 
 // ResourceOperations is an OperationsProvider for Resources
 type resourceOperations struct {
-	resource *Resource
-	config   map[config.Key]string
+	resource  *Resource
+	providers *engine.Providers
 }
 
 var _ Provider = (*resourceOperations)(nil)
 
-// GetLogs gets logs for a Resource
-func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *resourceOperations) GetLogs(query LogQuery) ([]*logs.ResourceLogs, interface{}, error) {
 	if ops.resource == nil {
-		return nil, nil
+		return nil, "", nil
+	}
+
+	if query.EndTime == nil {
+		now := time.Now()
+		query.EndTime = &now
+	}
+	if query.StartTime == nil {
+		t := query.EndTime.Add(-1 * time.Hour)
+		query.StartTime = &t
 	}
 
 	// Only get logs for this resource if it matches the resource filter query
 	if ops.matchesResourceFilter(query.ResourceFilter) {
 		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of
 		// this resource since this resource did match the resource filter.
-		query = LogQuery{
-			StartTime:      query.StartTime,
-			EndTime:        query.EndTime,
-			ResourceFilter: nil,
-		}
+		query.ResourceFilter = ""
+
 		// Try to get an operations provider for this resource, it may be `nil`
 		opsProvider, err := ops.getOperationsProvider()
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		if opsProvider != nil {
-			// If this resource has an operations provider - use it and don't recur into children.  It is the
-			// responsibility of it's GetLogs implementation to aggregate all logs from children, either by passing them
+			// If this resource has an operations provider - use it and don't recur into children. It is the
+			// responsibility of its GetLogs implementation to aggregate all logs from children, either by passing them
 			// through or by filtering specific content out.
-			logsResult, err := opsProvider.GetLogs(query)
+			logsResult, continuationToken, err := opsProvider.GetLogs(query)
 			if err != nil {
-				return logsResult, err
+				return nil, nil, err
 			}
-			if logsResult != nil {
-				return logsResult, nil
-			}
+			return logsResult, continuationToken, nil
 		}
 	}
-	// If this resource did not choose to provide it's own logs, recur into children and collect + aggregate their logs.
-	var logs []LogEntry
+
+	type getLogsResult struct {
+		urn   resource.URN
+		logs  []*logs.ResourceLogs
+		token interface{}
+		err   error
+	}
+
+	tokens, _ := query.ContinuationToken.(map[resource.URN]interface{})
+
+	// If this resource did not choose to provide its own logs, recur into children and collect + aggregate their logs.
+	var logs []*logs.ResourceLogs
+	var nextTokens map[resource.URN]interface{}
 	// Kick off GetLogs on all children in parallel, writing results to shared channels
-	ch := make(chan *[]LogEntry)
-	errch := make(chan error)
+	ch := make(chan getLogsResult)
+	results := 0
 	for _, child := range ops.resource.Children {
-		childOps := &resourceOperations{
-			resource: child,
-			config:   ops.config,
+		childToken, ok := tokens[child.State.URN]
+		if tokens != nil && !ok {
+			continue
 		}
+		results++
+
+		childOps := &resourceOperations{
+			resource:  child,
+			providers: ops.providers,
+		}
+		childQuery := query
+		childQuery.ContinuationToken = childToken
 		go func() {
-			childLogs, err := childOps.GetLogs(query)
-			ch <- childLogs
-			errch <- err
+			childLogs, token, err := childOps.GetLogs(childQuery)
+			ch <- getLogsResult{childOps.resource.State.URN, childLogs, token, err}
 		}()
 	}
 	// Handle results from GetLogs calls as they complete
 	var err error
-	for range ops.resource.Children {
-		childLogs := <-ch
-		childErr := <-errch
-		if childErr != nil {
-			err = multierror.Append(err, childErr)
+	for i := 0; i < results; i++ {
+		result := <-ch
+		if result.err != nil {
+			err = multierror.Append(err, result.err)
+			continue
 		}
-		if childLogs != nil {
-			logs = append(logs, *childLogs...)
+
+		logs = append(logs, result.logs...)
+		if result.token != nil {
+			if nextTokens == nil {
+				nextTokens = map[resource.URN]interface{}{}
+			}
+			nextTokens[result.urn] = result.token
 		}
 	}
 	if err != nil {
-		return &logs, err
+		return nil, nil, err
 	}
-	// Sort
-	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
-	// Remove duplicates
-	var retLogs []LogEntry
-	var lastLogTimestamp int64
-	var lastLogs []LogEntry
-	for _, log := range logs {
-		shouldContinue := false
-		if log.Timestamp == lastLogTimestamp {
-			for _, lastLog := range lastLogs {
-				if log.Message == lastLog.Message {
-					shouldContinue = true
-					break
-				}
-			}
-		} else {
-			lastLogs = nil
+
+	var nextToken interface{}
+	if len(nextTokens) != 0 {
+		nextToken = nextTokens
+	}
+	return logs, nextToken, nil
+}
+
+func (ops *resourceOperations) GetMetrics(query MetricsQuery) ([]*metrics.ResourceMetrics, interface{}, error) {
+	if ops.resource == nil {
+		return nil, "", nil
+	}
+
+	if query.EndTime == nil {
+		now := time.Now()
+		query.EndTime = &now
+	}
+	if query.StartTime == nil {
+		t := query.EndTime.Add(-1 * time.Hour)
+		query.StartTime = &t
+	}
+
+	// Only get logs for this resource if it matches the resource filter query
+	if ops.matchesResourceFilter(query.ResourceFilter) {
+		// Set query to be a new query with `ResourceFilter` nil so that we don't filter out logs from any children of
+		// this resource since this resource did match the resource filter.
+		query.ResourceFilter = ""
+
+		// Try to get an operations provider for this resource, it may be `nil`
+		opsProvider, err := ops.getOperationsProvider()
+		if err != nil {
+			return nil, "", err
 		}
-		if shouldContinue {
+		if opsProvider != nil {
+			// If this resource has an operations provider - use it and don't recur into children. It is the
+			// responsibility of its GetMetrics implementation to aggregate all logs from children, either by passing them
+			// through or by filtering specific content out.
+			logsResult, continuationToken, err := opsProvider.GetMetrics(query)
+			if err != nil {
+				return nil, nil, err
+			}
+			return logsResult, continuationToken, nil
+		}
+	}
+
+	type getMetricsResult struct {
+		urn   resource.URN
+		metrics  []*metrics.ResourceMetrics
+		token interface{}
+		err   error
+	}
+
+	tokens, _ := query.ContinuationToken.(map[resource.URN]interface{})
+
+	// If this resource did not choose to provide its own metrics, recur into children and collect + aggregate their metrics.
+	var metrics []*metrics.ResourceMetrics
+	var nextTokens map[resource.URN]interface{}
+	// Kick off GetMetrics on all children in parallel, writing results to shared channels
+	ch := make(chan getMetricsResult)
+	results := 0
+	for _, child := range ops.resource.Children {
+		childToken, ok := tokens[child.State.URN]
+		if tokens != nil && !ok {
 			continue
 		}
-		lastLogs = append(lastLogs, log)
-		lastLogTimestamp = log.Timestamp
-		retLogs = append(retLogs, log)
+		results++
+
+		childOps := &resourceOperations{
+			resource:  child,
+			providers: ops.providers,
+		}
+		childQuery := query
+		childQuery.ContinuationToken = childToken
+		go func() {
+			childMetrics, token, err := childOps.GetMetrics(childQuery)
+			ch <- getMetricsResult{childOps.resource.State.URN, childMetrics, token, err}
+		}()
 	}
-	return &retLogs, nil
+	// Handle results from GetMetrics calls as they complete
+	var err error
+	for i := 0; i < results; i++ {
+		result := <-ch
+		if result.err != nil {
+			err = multierror.Append(err, result.err)
+			continue
+		}
+
+		metrics = append(metrics, result.metrics...)
+		if result.token != nil {
+			if nextTokens == nil {
+				nextTokens = map[resource.URN]interface{}{}
+			}
+			nextTokens[result.urn] = result.token
+		}
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var nextToken interface{}
+	if len(nextTokens) != 0 {
+		nextToken = nextTokens
+	}
+	return metrics, nextToken, nil
 }
 
 // matchesResourceFilter determines whether this resource matches the provided resource filter.
-func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) bool {
-	if filter == nil {
+func (ops *resourceOperations) matchesResourceFilter(filter ResourceFilter) bool {
+	if filter == "" {
 		// No filter, all resources match it.
 		return true
 	}
@@ -231,15 +339,15 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 		return false
 	}
 	urn := ops.resource.State.URN
-	if resource.URN(*filter) == urn {
+	if resource.URN(filter) == urn {
 		// The filter matched the full URN
 		return true
 	}
-	if string(*filter) == string(urn.Type())+"::"+string(urn.Name()) {
+	if filter == string(urn.Type())+"::"+string(urn.Name()) {
 		// The filter matched the '<type>::<name>' part of the URN
 		return true
 	}
-	if tokens.QName(*filter) == urn.Name() {
+	if tokens.QName(filter) == urn.Name() {
 		// The filter matched the '<name>' part of the URN
 		return true
 	}
@@ -247,23 +355,19 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 }
 
 func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
-	if ops.resource == nil || ops.resource.State == nil {
+	if ops.resource == nil || ops.resource.State == nil || ops.resource.State.Provider == "" {
 		return nil, nil
 	}
 
-	tokenSeparators := strings.Count(ops.resource.State.Type.String(), ":")
-	if tokenSeparators != 2 {
-		return nil, nil
+	ref, err := providers.ParseReference(ops.resource.State.Provider)
+	if err != nil {
+		return nil, err
 	}
 
-	switch ops.resource.State.Type.Package() {
-	case "cloud":
-		return CloudOperationsProvider(ops.config, ops.resource)
-	case "aws":
-		return AWSOperationsProvider(ops.config, ops.resource)
-	case "gcp":
-		return GCPOperationsProvider(ops.config, ops.resource)
-	default:
-		return nil, nil
+	provider, ok := ops.providers.GetProvider(ref)
+	if !ok {
+		return nil, fmt.Errorf("missing provider %q", ops.resource.State.Provider)
 	}
+
+	return &pluginOpsProvider{provider: provider, resource: ops.resource.State}, nil
 }

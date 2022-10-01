@@ -21,7 +21,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -91,11 +90,6 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (d
 
 func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
 	return backend.WatchStack(ctx, s, op, paths)
-}
-
-func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, cfg, query)
 }
 
 func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

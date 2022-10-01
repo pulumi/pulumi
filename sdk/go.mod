@@ -10,8 +10,8 @@ require (
 	github.com/cheggaaa/pb v1.0.18
 	github.com/djherbis/times v1.2.0
 	github.com/gofrs/uuid v3.3.0+incompatible
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/glog v1.0.0
+	github.com/golang/protobuf v1.5.2
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.0.0
@@ -24,15 +24,15 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/mod v0.3.0
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
-	google.golang.org/grpc v1.29.1
+	google.golang.org/grpc v1.42.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0
 	pgregory.net/rapid v0.4.7
@@ -41,6 +41,7 @@ require (
 
 require (
 	github.com/pkg/term v1.1.0
+	go.opentelemetry.io/proto/otlp v0.18.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	lukechampine.com/frand v1.4.2
 )
@@ -54,7 +55,6 @@ require (
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.4.0
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -73,10 +73,9 @@ require (
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	go.uber.org/atomic v1.6.0 // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/text v0.3.3 // indirect
-	google.golang.org/genproto v0.0.0-20200608115520-7c474a2e3482 // indirect
-	google.golang.org/protobuf v1.24.0
+	golang.org/x/text v0.3.5 // indirect
+	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

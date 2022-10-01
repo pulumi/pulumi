@@ -51,7 +51,8 @@ generate::
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
 ifeq ($(PULUMI_TEST_COVERAGE_PATH),)
-build:: build-proto go.ensure
+#build:: build-proto go.ensure
+build::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install:: .ensure.phony go.ensure

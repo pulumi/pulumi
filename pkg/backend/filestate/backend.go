@@ -42,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -723,41 +722,6 @@ func (b *localBackend) GetHistory(
 		return nil, err
 	}
 	return updates, nil
-}
-
-func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-
-	stackName := stack.Ref().Name()
-	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetLogsForTarget(target, query)
-}
-
-// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
-	contract.Assert(target != nil)
-
-	if target.Snapshot == nil {
-		// If the stack has not been deployed yet, return no logs.
-		return nil, nil
-	}
-
-	config, err := target.Config.Decrypt(target.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	components := operations.NewResourceTree(target.Snapshot.Resources)
-	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(query)
-	if logs == nil {
-		return nil, err
-	}
-	return *logs, err
 }
 
 func (b *localBackend) ExportDeployment(ctx context.Context,

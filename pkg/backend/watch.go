@@ -20,18 +20,25 @@ package backend
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/rjeczalik/notify"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Watch watches the project's working directory for changes and automatically updates the active
@@ -49,9 +56,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	go func() {
 		shown := map[operations.LogEntry]bool{}
 		for {
-			logs, err := b.GetLogs(ctx, stack, op.StackConfiguration, operations.LogQuery{
-				StartTime: &startTime,
-			})
+			logs, err := getLogs(ctx, stack, op, startTime)
 			if err != nil {
 				logging.V(5).Infof("failed to get logs: %v", err.Error())
 			}
@@ -61,7 +66,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 					message := strings.TrimRight(logEntry.Message, "\n")
-					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", message)
+					display.PrintfWithWatchPrefix(eventTime, string(logEntry.ID), "%s\n", message)
 
 					shown[logEntry] = true
 				}
@@ -112,4 +117,72 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	}
 
 	return nil
+}
+
+type logsInfo struct {
+	root    string
+	project *workspace.Project
+	target  *deploy.Target
+}
+
+func (i *logsInfo) GetRoot() string {
+	return i.root
+}
+
+func (i *logsInfo) GetProject() *workspace.Project {
+	return i.project
+}
+
+func (i *logsInfo) GetTarget() *deploy.Target {
+	return i.target
+}
+
+func getLogs(ctx context.Context, s Stack, op UpdateOperation, startTime time.Time) ([]operations.LogEntry, error) {
+	untypedDeployment, err := s.ExportDeployment(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("exporting deployment: %w", err)
+	}
+
+	snapshot, err := stack.DeserializeUntypedDeployment(untypedDeployment, stack.DefaultSecretsProvider)
+	if err != nil {
+		return nil, fmt.Errorf("deserializing deployment: %w", err)
+	}
+
+	info := &logsInfo{
+		root:    op.Root,
+		project: op.Proj,
+		target: &deploy.Target{
+			Name:      s.Ref().Name(),
+			Config:    op.StackConfiguration.Config,
+			Decrypter: op.StackConfiguration.Decrypter,
+			Snapshot:  snapshot,
+		},
+	}
+	sink := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: op.Opts.Display.Color})
+	providers, err := engine.LoadProviders(info, engine.ProvidersOptions{
+		Diag:       sink,
+		StatusDiag: sink,
+	})
+	if err != nil {
+		return nil, err
+	}
+	tree := operations.NewResourceTree(snapshot.Resources)
+	ops := tree.OperationsProvider(providers)
+
+	var entries []*logs.ResourceLogs
+	var token interface{}
+	for {
+		batch, nextToken, err := ops.GetLogs(operations.LogQuery{
+			StartTime:         &startTime,
+			ContinuationToken: token,
+		})
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, batch...)
+		if nextToken == nil {
+			break
+		}
+	}
+	return operations.PivotLogs(entries), nil
 }

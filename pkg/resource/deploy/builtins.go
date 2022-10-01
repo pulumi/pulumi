@@ -7,6 +7,8 @@ import (
 	"sort"
 
 	uuid "github.com/gofrs/uuid"
+	logs "go.opentelemetry.io/proto/otlp/logs/v1"
+	metrics "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -21,6 +23,10 @@ type builtinProvider struct {
 
 	backendClient BackendClient
 	resources     *resourceMap
+}
+
+func LoadBuiltinProvider(backendClient BackendClient) plugin.Provider {
+	return newBuiltinProvider(backendClient, &resourceMap{})
 }
 
 func newBuiltinProvider(backendClient BackendClient, resources *resourceMap) *builtinProvider {
@@ -143,6 +149,14 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	return resource.StatusOK, nil
+}
+
+func (p *builtinProvider) GetResourceLogs(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceLogsOptions) ([]*logs.ResourceLogs, string, error) {
+	return nil, "", nil
+}
+
+func (p *builtinProvider) GetResourceMetrics(urn resource.URN, id resource.ID, state resource.PropertyMap, options plugin.GetResourceMetricsOptions) ([]*metrics.ResourceMetrics, string, error) {
+	return nil, "", nil
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,

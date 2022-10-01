@@ -26,8 +26,8 @@ PROTOC="$DOCKER_RUN protoc"
 # dynamic client (written in JS) using the protobuf notion of "details" -- arbitrary protobuf
 # messages packaged up inside of an error. Hence, `JS_PROTO_FILES` includes it and `PROTO_FILES`
 # does not.
-PROTO_FILES=$(find . -name "*.proto" -not -name "status.proto")
-JS_PROTO_FILES=$(find . -name "*.proto")
+PROTO_FILES=$(find . -maxdepth 1 -name "*.proto" -not -name "status.proto")
+JS_PROTO_FILES=$(find . -maxdepth 1 -name "*.proto")
 
 echo "* Generating Protobuf/gRPC SDK files:"
 echo -e "\tVERSION: $($PROTOC --version)"
@@ -37,7 +37,7 @@ GO_PULUMIRPC=./go
 GO_PROTOFLAGS="plugins=grpc"
 echo -e "\tGo: $GO_PULUMIRPC [$GO_PROTOFLAGS]"
 mkdir -p $GO_PULUMIRPC
-$PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC --go_opt=paths=source_relative $PROTO_FILES
+$PROTOC -I./ -I./opentelemetry-proto --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC --go_opt=paths=source_relative $PROTO_FILES
 
 # Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module prologue that mutate
 # the global object, which causes side-by-side bugs in pulumi/pulumi (pulumi/pulumi#2401). The protoc compiler
@@ -52,13 +52,13 @@ $PROTOC --go_out=$GO_PROTOFLAGS:$GO_PULUMIRPC --go_opt=paths=source_relative $PR
 # This sets up the remainder of the protobuf file so that it works fine, but doesn't mess with global.
 $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
     JS_PROTOFLAGS="import_style=commonjs,binary"    && \
-    JS_HACK_PROTOS=$(find . -name "*.proto" -not -name "status.proto") && \
+    JS_HACK_PROTOS=$(find . -maxdepth 1 -name "*.proto" -not -name "status.proto") && \
     echo -e "\tJS: $JS_PULUMIRPC [$JS_PROTOFLAGS]"  && \
     TEMP_DIR=/tmp/nodejs-build                      && \
     echo -e "\tJS temp dir: $TEMP_DIR"              && \
     mkdir -p "$TEMP_DIR"                            && \
     protoc --js_out=$JS_PROTOFLAGS:$JS_PULUMIRPC --grpc_out=minimum_node_version=6:$JS_PULUMIRPC --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin status.proto && \
-    protoc --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $JS_HACK_PROTOS && \
+    protoc -I./ -I./opentelemetry-proto --js_out=$JS_PROTOFLAGS:$TEMP_DIR --grpc_out=minimum_node_version=6:$TEMP_DIR --plugin=protoc-gen-grpc=/usr/bin/grpc_tools_node_protoc_plugin $JS_HACK_PROTOS && \
     sed -i "s/^var global = .*;/var proto = { pulumirpc: {} }, global = proto;/" "$TEMP_DIR"/*.js && \
     sed -i "s/^var grpc = require(.*);/var grpc = require('\''@grpc\/grpc-js'\'');/" "$TEMP_DIR"/*.js && \
     cp "$TEMP_DIR"/*.js "$JS_PULUMIRPC"'
@@ -84,7 +84,7 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     TEMP_DIR="/tmp/python-build" && \
     echo -e "\tPython temp dir: $TEMP_DIR" && \
     mkdir -p "$TEMP_DIR" && \
-    python3 -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" *.proto && \
+    python3 -m grpc_tools.protoc -I./ -I./opentelemetry-proto --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" *.proto && \
     sed -i "s/^import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$TEMP_DIR"/*.py && \
     cp "$TEMP_DIR"/*.py "$PY_PULUMIRPC"'
 

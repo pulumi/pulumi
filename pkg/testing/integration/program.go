@@ -38,11 +38,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
@@ -564,37 +561,37 @@ func init() {
 	pipMutex = fsutil.NewFileMutex(mutexPath)
 }
 
-// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
+//// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
+////
+//// [provider] should be one of "aws" or "azure"
+//func GetLogs(
+//	t *testing.T,
+//	provider, region string,
+//	stackInfo RuntimeValidationStackInfo,
+//	query operations.LogQuery) []operations.LogEntry {
 //
-// [provider] should be one of "aws" or "azure"
-func GetLogs(
-	t *testing.T,
-	provider, region string,
-	stackInfo RuntimeValidationStackInfo,
-	query operations.LogQuery) *[]operations.LogEntry {
-
-	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment, stack.DefaultSecretsProvider)
-	assert.NoError(t, err)
-
-	tree := operations.NewResourceTree(snap.Resources)
-	if !assert.NotNil(t, tree) {
-		return nil
-	}
-
-	cfg := map[config.Key]string{
-		config.MustMakeKey(provider, "region"): region,
-	}
-	ops := tree.OperationsProvider(cfg)
-
-	// Validate logs from example
-	logs, err := ops.GetLogs(query)
-	if !assert.NoError(t, err) {
-		return nil
-	}
-
-	return logs
-}
-
+//	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment, stack.DefaultSecretsProvider)
+//	assert.NoError(t, err)
+//
+//	tree := operations.NewResourceTree(snap.Resources)
+//	if !assert.NotNil(t, tree) {
+//		return nil
+//	}
+//
+//	cfg := map[config.Key]string{
+//		config.MustMakeKey(provider, "region"): region,
+//	}
+//	ops := tree.OperationsProvider(cfg)
+//
+//	// Validate logs from example
+//	logs, err := ops.GetLogs(query)
+//	if !assert.NoError(t, err) {
+//		return nil
+//	}
+//
+//	return logs
+//}
+//
 func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	// If we're just listing tests, simply print this test's directory.
 	if listDirs {

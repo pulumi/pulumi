@@ -8,7 +8,6 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 
 require (
-	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.22.0
 	github.com/aws/aws-sdk-go v1.40.34
 	github.com/blang/semver v3.5.1+incompatible
@@ -55,7 +54,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/api v0.74.0
-	google.golang.org/genproto v0.0.0-20220405205423-9d709892a2bf
+	google.golang.org/genproto v0.0.0-20220405205423-9d709892a2bf // indirect
 	google.golang.org/grpc v1.45.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.9-0.20200217094205-6773bdf39b7f
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -151,11 +150,13 @@ require (
 
 require (
 	github.com/edsrzf/mmap-go v1.1.0
+	github.com/guptarohit/asciigraph v0.5.5
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.2.0
 	github.com/pulumi/pulumi-yaml v0.5.1
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
+	go.opentelemetry.io/proto/otlp v0.18.0
 )
 
 require (

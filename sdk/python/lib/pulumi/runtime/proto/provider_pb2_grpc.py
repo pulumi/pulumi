@@ -83,6 +83,16 @@ class ResourceProviderStub(object):
                 request_serializer=provider__pb2.DeleteRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.GetResourceLogs = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/GetResourceLogs',
+                request_serializer=provider__pb2.GetResourceLogsRequest.SerializeToString,
+                response_deserializer=provider__pb2.GetResourceLogsResponse.FromString,
+                )
+        self.GetResourceMetrics = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/GetResourceMetrics',
+                request_serializer=provider__pb2.GetResourceMetricsRequest.SerializeToString,
+                response_deserializer=provider__pb2.GetResourceMetricsResponse.FromString,
+                )
         self.Construct = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Construct',
                 request_serializer=provider__pb2.ConstructRequest.SerializeToString,
@@ -208,6 +218,18 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetResourceLogs(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetResourceMetrics(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Construct(self, request, context):
         """Construct creates a new instance of the provided component resource and returns its state.
         """
@@ -307,6 +329,16 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Delete,
                     request_deserializer=provider__pb2.DeleteRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetResourceLogs': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetResourceLogs,
+                    request_deserializer=provider__pb2.GetResourceLogsRequest.FromString,
+                    response_serializer=provider__pb2.GetResourceLogsResponse.SerializeToString,
+            ),
+            'GetResourceMetrics': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetResourceMetrics,
+                    request_deserializer=provider__pb2.GetResourceMetricsRequest.FromString,
+                    response_serializer=provider__pb2.GetResourceMetricsResponse.SerializeToString,
             ),
             'Construct': grpc.unary_unary_rpc_method_handler(
                     servicer.Construct,
@@ -558,6 +590,40 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Delete',
             provider__pb2.DeleteRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetResourceLogs(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetResourceLogs',
+            provider__pb2.GetResourceLogsRequest.SerializeToString,
+            provider__pb2.GetResourceLogsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetResourceMetrics(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetResourceMetrics',
+            provider__pb2.GetResourceMetricsRequest.SerializeToString,
+            provider__pb2.GetResourceMetricsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

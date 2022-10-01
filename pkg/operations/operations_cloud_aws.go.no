@@ -19,7 +19,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -30,16 +30,16 @@ import (
 
 // CloudOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/cloud-aws` implementation.
-func CloudOperationsProvider(config map[config.Key]string, component *Resource) (Provider, error) {
+func CloudOperationsProvider(providers *engine.Providers, component *Resource) (Provider, error) {
 	prov := &cloudOpsProvider{
-		config:    config,
+		providers: providers,
 		component: component,
 	}
 	return prov, nil
 }
 
 type cloudOpsProvider struct {
-	config    map[config.Key]string
+	providers *engine.Providers
 	component *Resource
 }
 
@@ -57,7 +57,7 @@ const (
 	awsLogGroupTypeName       = "aws:cloudwatch/logGroup:LogGroup"
 )
 
-func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *cloudOpsProvider) GetLogs(query LogQuery) ([]LogEntry, interface{}, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	switch state.Type {
@@ -69,22 +69,22 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
-			return nil, nil
+			return nil, nil, nil
 		}
-		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, _, err := serverlessFunction.OperationsProvider(ops.providers).GetLogs(query)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		contract.Assertf(rawLogs != nil, "expect aws:serverless:Function to provide logs")
 		var logs []LogEntry
-		for _, rawLog := range *rawLogs {
+		for _, rawLog := range rawLogs {
 			extractedLog := extractLambdaLogMessage(rawLog.Message, name)
 			if extractedLog != nil {
 				logs = append(logs, *extractedLog)
 			}
 		}
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
-		return &logs, nil
+		return logs, nil, nil
 	case cloudLogCollectorType:
 		// A LogCollector has an aws:serverless:Function which is wired up to receive logs from all other compute in the
 		// program.  These logs are batched and then console.log'd into the log collector lambdas own logs, so we must
@@ -98,23 +98,23 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
-			return nil, nil
+			return nil, nil, nil
 		}
-		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, _, err := serverlessFunction.OperationsProvider(ops.providers).GetLogs(query)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		contract.Assertf(rawLogs != nil, "expect aws:serverless:Function to provide logs")
 		// Extract out the encoded and batched logs
 		var logs []LogEntry
-		for _, rawLog := range *rawLogs {
+		for _, rawLog := range rawLogs {
 			extractedLog := extractLambdaLogMessage(rawLog.Message, name)
 			if extractedLog != nil {
 				// Decode the JSON blog of data from within the log entries, which will itself be a nested log entry.
 				var logMessage encodedLogMessage
 				err := json.Unmarshal([]byte(extractedLog.Message), &logMessage)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				// Reverse engineer the name of the function that was the source of this message from the LogGroup name.
 				match := functionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
@@ -137,7 +137,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			}
 		}
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
-		return &logs, nil
+		return logs, nil, nil
 	case cloudServiceType, cloudTaskType:
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
 		// populated by user code within containers, so we can safely project these logs back unmodified.
@@ -146,15 +146,15 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		logGroup, ok := ops.component.GetChild(awsLogGroupTypeName, name)
 		if !ok {
 			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)
-			return nil, nil
+			return nil, nil, nil
 		}
-		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
+		rawLogs, _, err := logGroup.OperationsProvider(ops.providers).GetLogs(query)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		contract.Assertf(rawLogs != nil, "expect aws:cloudwatch/logGroup:LogGroup to provide logs")
 		var logs []LogEntry
-		for _, rawLog := range *rawLogs {
+		for _, rawLog := range rawLogs {
 			logs = append(logs, LogEntry{
 				ID:        name,
 				Message:   rawLog.Message,
@@ -162,11 +162,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			})
 		}
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
-		return &logs, nil
+		return logs, nil, nil
 	default:
 		// Else this resource kind does not produce any logs.
 		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
-		return nil, nil
+		return nil, nil, nil
 	}
 }
 
