@@ -47,7 +47,6 @@ import (
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -652,6 +651,19 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 		t.Parallel()
 	}
 
+	if os.Getenv("PULUMI_TEST_USE_SERVICE") == "true" {
+		opts.RequireService = true
+	}
+	if opts.RequireService {
+		// This token is set in CI jobs, so this escape hatch is here to enable a smooth local dev
+		// experience, i.e.: running "make" and not seeing many failures due to a missing token.
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+	} else if opts.CloudURL == "" {
+		opts.CloudURL = MakeTempBackend(t)
+	}
+
 	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
 	// have run deferred functions and cleaned up, if the panic reaches toplevel it will kill the process and prevent
 	// other tests running in parallel from cleaning up.
@@ -686,6 +698,12 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 			}
 			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
 		}
+	}
+
+	if opts.Quick {
+		opts.SkipPreview = true
+		opts.SkipExportImport = true
+		opts.SkipEmptyPreviewUpdate = true
 	}
 }
 
@@ -747,27 +765,9 @@ type ProgramTester struct {
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	stackName := opts.GetStackName()
 	maxStepTries := 1
-	if os.Getenv("PULUMI_TEST_USE_SERVICE") == "true" {
-		opts.RequireService = true
-	}
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
-	if opts.Quick {
-		opts.SkipPreview = true
-		opts.SkipExportImport = true
-		opts.SkipEmptyPreviewUpdate = true
-	}
-	if opts.RequireService {
-		// This token is set in CI jobs, so this escape hatch is here to enable a smooth local dev
-		// experience, i.e.: running "make" and not seeing many failures due to a missing token.
-		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
-		}
-	} else if opts.CloudURL == "" {
-		opts.CloudURL = MakeTempBackend(t)
-	}
-
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
