@@ -378,56 +378,6 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
-	t.Run("Test Downloading From GitHub Private Releases", func(t *testing.T) {
-		t.Setenv("PULUMI_EXPERIMENTAL", "true")
-		t.Setenv("GITHUB_REPOSITORY_OWNER", "private")
-		t.Setenv("GITHUB_TOKEN", token)
-		version := semver.MustParse("1.22.0")
-		spec := PluginSpec{
-			PluginDownloadURL: "",
-			Name:              "private",
-			Version:           &version,
-			Kind:              PluginKind("resource"),
-		}
-		source, err := spec.GetSource()
-		assert.NoError(t, err)
-		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			// Test that the asset isn't on pulumi github
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-private/releases/tags/v1.22.0" {
-				return nil, -1, errors.New("404 not found")
-			}
-
-			if req.URL.String() == "https://api.github.com/repos/private/pulumi-private/releases/tags/v1.22.0" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
-				assert.Equal(t, "application/json", req.Header.Get("Accept"))
-				// Minimal JSON from the releases API to get the test to pass
-				return newMockReadCloserString(`{
-					"assets": [
-					  {
-						"url": "https://api.github.com/repos/private/pulumi-private/releases/assets/654321",
-						"name": "pulumi-private_1.22.0_checksums.txt"
-					  },
-					  {
-						"url": "https://api.github.com/repos/private/pulumi-private/releases/assets/123456",
-						"name": "pulumi-resource-private-v1.22.0-darwin-amd64.tar.gz"
-					  }
-					]
-				  }
-				`)
-			}
-
-			assert.Equal(t, "https://api.github.com/repos/private/pulumi-private/releases/assets/123456", req.URL.String())
-			assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
-			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
-			return newMockReadCloser(expectedBytes)
-		}
-		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
-		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
-		assert.NoError(t, err)
-		assert.Equal(t, int(l), len(readBytes))
-		assert.Equal(t, expectedBytes, readBytes)
-	})
 	t.Run("Test Downloading From Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("4.32.0")
@@ -631,39 +581,6 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
 		assert.Equal(t, "GetLatestVersion is not supported for plugins using PluginDownloadURL", err.Error())
-	})
-	t.Run("Test GetLatestVersion From GitHub Private Releases", func(t *testing.T) {
-		t.Setenv("PULUMI_EXPERIMENTAL", "true")
-		t.Setenv("GITHUB_REPOSITORY_OWNER", "private")
-		t.Setenv("GITHUB_TOKEN", token)
-		spec := PluginSpec{
-			PluginDownloadURL: "",
-			Name:              "private",
-			Kind:              PluginKind("resource"),
-		}
-		expectedVersion := semver.MustParse("1.0.2")
-		source, err := spec.GetSource()
-		assert.NoError(t, err)
-		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			// Test that the asset isn't on github
-			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-private/releases/latest" {
-				return nil, -1, errors.New("404 not found")
-			}
-
-			if req.URL.String() == "https://api.github.com/repos/private/pulumi-private/releases/latest" {
-				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authorization"))
-				assert.Equal(t, "application/json", req.Header.Get("Accept"))
-				// Minimal JSON from the releases API to get the test to pass
-				return newMockReadCloserString(`{
-					"tag_name": "v1.0.2"
-				}`)
-			}
-
-			panic("Unexpected call to getHTTPResponse")
-		}
-		version, err := source.GetLatestVersion(getHTTPResponse)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedVersion, *version)
 	})
 	t.Run("Test GetLatestVersion From Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
