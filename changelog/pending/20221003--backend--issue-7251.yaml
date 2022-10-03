@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend
+  description: Allows CLI auth for Azure blob storage
