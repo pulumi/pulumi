@@ -26,14 +26,6 @@ func NewPassphraseSecretsManager(stackName tokens.Name, configFile string,
 	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
-	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName.Q())
-		if err != nil {
-			return nil, err
-		}
-		configFile = f
-	}
-
 	info, err := workspace.LoadProjectStack(configFile)
 	if err != nil {
 		return nil, err
