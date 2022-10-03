@@ -66,6 +66,22 @@ class CallResult:
         self.failures = failures
 
 
+class InvokeResult:
+    """InvokeResult represents the results of a call to `Provider.invoke`."""
+
+    outputs: Inputs
+    """The outputs returned by the invoked function, if any."""
+
+    failures: Optional[Sequence[CheckFailure]]
+    """Any validation failures that occurred."""
+
+    def __init__(
+        self, outputs: Inputs, failures: Optional[Sequence[CheckFailure]] = None
+    ) -> None:
+        self.outputs = outputs
+        self.failures = failures
+
+
 class Provider:
     """Provider represents an object that implements the resources and
     functions for a particular Pulumi package.
@@ -102,6 +118,15 @@ class Provider:
 
     def call(self, token: str, args: Inputs) -> CallResult:
         """Call calls the indicated function.
+
+        :param str token: The token of the function to call.
+        :param Inputs args: The inputs to the function.
+        """
+
+        raise Exception(f"Unknown method {token}")
+
+    def invoke(self, token: str, args: Inputs) -> InvokeResult:
+        """Invoke calls the indicated function.
 
         :param str token: The token of the function to call.
         :param Inputs args: The inputs to the function.

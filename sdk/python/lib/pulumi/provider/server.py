@@ -26,7 +26,7 @@ import grpc
 import grpc.aio
 
 from google.protobuf import struct_pb2
-from pulumi.provider.provider import Provider, CallResult, ConstructResult
+from pulumi.provider.provider import InvokeResult, Provider, CallResult, ConstructResult
 from pulumi.resource import (
     ProviderResource,
     Resource,
@@ -287,6 +287,29 @@ class ProviderServicer(ResourceProviderServicer):
                 for f in result.failures
             ]
         return proto.CallResponse(**resp)
+
+    async def _invoke_response(self, result: InvokeResult):
+        ret = await rpc.serialize_properties(inputs=result.outputs)
+        # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
+        resp = {
+            "return": ret,
+        }
+        if result.failures:
+            resp["failures"] = [
+                proto.CheckFailure(property=f.property, reason=f.reason)
+                for f in result.failures
+            ]
+        return proto.InvokeResponse(**resp)
+
+    async def Invoke(  # pylint: disable=invalid-overridden-method
+        self, request: proto.InvokeRequest, context
+    ) -> proto.InvokeResponse:
+        args = rpc.deserialize_properties(
+            request.args, keep_unknowns=True, keep_internal=False
+        )
+        result = self.provider.invoke(token=request.tok, args=args)
+        response = await self._invoke_response(result)
+        return response
 
     async def Configure(  # pylint: disable=invalid-overridden-method
         self, request, context
