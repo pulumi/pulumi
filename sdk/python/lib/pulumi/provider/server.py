@@ -264,7 +264,7 @@ class ProviderServicer(ResourceProviderServicer):
             ).items()
         }
 
-    async def _call_response(self, result: CallResult):
+    async def _call_response(self, result: CallResult) -> proto.CallResponse:
         # Note: ret_deps is populated by rpc.serialize_properties.
         ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
@@ -288,7 +288,7 @@ class ProviderServicer(ResourceProviderServicer):
             ]
         return proto.CallResponse(**resp)
 
-    async def _invoke_response(self, result: InvokeResult):
+    async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
         ret = await rpc.serialize_properties(inputs=result.outputs)
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
         resp = {
