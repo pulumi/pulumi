@@ -289,9 +289,13 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.CallResponse(**resp)
 
     async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
-        ret = await rpc.serialize_properties(inputs=result.outputs)
+        # Note: ret_deps is populated by rpc.serialize_properties but unused
+        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret = await rpc.serialize_properties(
+            inputs=result.outputs, property_deps=ret_deps
+        )
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
-        resp = {
+        resp: Dict[str, Any] = {
             "return": ret,
         }
         if result.failures:
@@ -305,7 +309,7 @@ class ProviderServicer(ResourceProviderServicer):
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
         args = rpc.deserialize_properties(
-            request.args, keep_unknowns=True, keep_internal=False
+            request.args, keep_unknowns=False, keep_internal=False
         )
         result = self.provider.invoke(token=request.tok, args=args)
         response = await self._invoke_response(result)

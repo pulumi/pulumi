@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Mapping, Any
 
 from pulumi import ResourceOptions, Input, Inputs
 
@@ -69,14 +69,16 @@ class CallResult:
 class InvokeResult:
     """InvokeResult represents the results of a call to `Provider.invoke`."""
 
-    outputs: Inputs
+    outputs: Mapping[str, Any]
     """The outputs returned by the invoked function, if any."""
 
     failures: Optional[Sequence[CheckFailure]]
     """Any validation failures that occurred."""
 
     def __init__(
-        self, outputs: Inputs, failures: Optional[Sequence[CheckFailure]] = None
+        self,
+        outputs: Mapping[str, Any],
+        failures: Optional[Sequence[CheckFailure]] = None,
     ) -> None:
         self.outputs = outputs
         self.failures = failures
@@ -125,7 +127,7 @@ class Provider:
 
         raise Exception(f"Unknown method {token}")
 
-    def invoke(self, token: str, args: Inputs) -> InvokeResult:
+    def invoke(self, token: str, args: Mapping[str, Any]) -> InvokeResult:
         """Invoke calls the indicated function.
 
         :param str token: The token of the function to call.
