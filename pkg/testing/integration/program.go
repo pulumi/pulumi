@@ -1162,7 +1162,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		}
 
 		if err = pt.TestPreviewUpdateAndEdits(); err != nil {
-			return fmt.Errorf("running test preview, update, and edits: %w", err)
+			return fmt.Errorf("running test preview, update, and edits (updateTest): %w", err)
 		}
 	}
 
@@ -1313,7 +1313,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
-		return initErr
+		return fmt.Errorf("initial failure: %w", initErr)
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
@@ -1321,7 +1321,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		pt.t.Log("Roundtripping checkpoint via stack export and stack import")
 
 		if err := pt.exportImport(dir); err != nil {
-			return err
+			return fmt.Errorf("empty preview + update: %w", err)
 		}
 	}
 
@@ -1332,9 +1332,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		}
 		pt.t.Logf("Performing empty preview and update%s", msg)
 		if err := pt.PreviewAndUpdate(
-			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
+			dir, "empty", pt.opts.ExpectFailure, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
-			return err
+			return fmt.Errorf("empty preview: %w", err)
 		}
 	}
 
