@@ -68,40 +68,23 @@ type nullCloser struct{}
 func (c *nullCloser) Close() error { return nil }
 
 type pipeWriter struct {
-	sendToStdout bool
-	server       pulumirpc.LanguageRuntime_InstallDependenciesServer
+	send func([]byte) error
 }
 
 func (w *pipeWriter) Write(p []byte) (int, error) {
-	data := pulumirpc.InstallDependenciesResponse{}
-	if w.sendToStdout {
-		data.Stdout = p
-	} else {
-		data.Stderr = p
-	}
-
-	err := w.server.Send(&data)
+	err := w.send(p)
 	if err != nil {
 		return 0, err
 	}
-
 	return len(p), nil
 }
 
-// MakeStreams returns a pair of streams for use with the language runtimes InstallDependencies method
-func MakeStreams(
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+func makeStreams(
+	sendStdout func([]byte) error, sendStderr func([]byte) error,
 	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
 
-	stderr := &pipeWriter{
-		server:       server,
-		sendToStdout: false,
-	}
-
-	stdout := &pipeWriter{
-		server:       server,
-		sendToStdout: true,
-	}
+	stderr := &pipeWriter{send: sendStderr}
+	stdout := &pipeWriter{send: sendStdout}
 
 	if isTerminal {
 		logging.V(11).Infoln("Opening pseudo terminal")
@@ -133,4 +116,34 @@ func MakeStreams(
 	}
 
 	return &nullCloser{}, stdout, stderr, nil
+}
+
+// Returns a pair of streams for use with the language runtimes InstallDependencies method
+func MakeInstallDependenciesStreams(
+	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
+
+	return makeStreams(
+		func(b []byte) error {
+			return server.Send(&pulumirpc.InstallDependenciesResponse{Stdout: b})
+		},
+		func(b []byte) error {
+			return server.Send(&pulumirpc.InstallDependenciesResponse{Stderr: b})
+		},
+		isTerminal)
+}
+
+// Returns a pair of streams for use with the language runtimes RunPlugin method
+func MakeRunPluginStreams(
+	server pulumirpc.LanguageRuntime_RunPluginServer,
+	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
+
+	return makeStreams(
+		func(b []byte) error {
+			return server.Send(&pulumirpc.RunPluginResponse{Output: &pulumirpc.RunPluginResponse_Stdout{Stdout: b}})
+		},
+		func(b []byte) error {
+			return server.Send(&pulumirpc.RunPluginResponse{Output: &pulumirpc.RunPluginResponse_Stderr{Stderr: b}})
+		},
+		isTerminal)
 }

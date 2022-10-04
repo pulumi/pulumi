@@ -68,7 +68,8 @@ func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version
 func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
-func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(
+	root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
 func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {

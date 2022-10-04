@@ -125,14 +125,14 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 		contract.Assert(path != "")
 
-		// Runtime options are passed as environment variables to the provider.
+		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
+		// dynamic providers to do things like lookup the virtual environment to use.
 		env := os.Environ()
 		for k, v := range options {
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
-
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			[]string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
+			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +192,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	env := os.Environ()
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
-		[]string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
+		workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,8 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -77,4 +79,8 @@ func (p *languageRuntime) About() (plugin.AboutInfo, error) {
 func (p *languageRuntime) GetProgramDependencies(
 	info plugin.ProgInfo, transitiveDependencies bool) ([]plugin.DependencyInfo, error) {
 	return nil, nil
+}
+
+func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
 }

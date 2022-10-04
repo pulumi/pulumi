@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Engine and Golang support for language plugins starting providers directly.

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
 	"github.com/blang/semver"
@@ -48,6 +49,9 @@ type LanguageRuntime interface {
 
 	// GetProgramDependencies returns information about the dependencies for the given program.
 	GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+
+	// RunPlugin executes a plugin program and returns its result asynchronously.
+	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
 }
 
 type DependencyInfo struct {
@@ -59,6 +63,13 @@ type AboutInfo struct {
 	Executable string
 	Version    string
 	Metadata   map[string]string
+}
+
+type RunPluginInfo struct {
+	Pwd     string
+	Program string
+	Args    []string
+	Env     []string
 }
 
 // ProgInfo contains minimal information about the program to be run.
