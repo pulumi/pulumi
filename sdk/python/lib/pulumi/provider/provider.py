@@ -132,4 +132,4 @@ class Provider:
         :param Inputs args: The inputs to the function.
         """
 
-        raise Exception(f"Unknown method {token}")
+        raise Exception(f"Unknown function {token}")
