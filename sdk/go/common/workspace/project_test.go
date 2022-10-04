@@ -365,7 +365,8 @@ func TestNamespacedConfigValuesAreInheritedCorrectly(t *testing.T) {
 name: test
 runtime: dotnet
 config:
-  aws:region: us-west-1`
+  aws:region: us-west-1
+  instanceSize: t3.micro`
 
 	projectStackYaml := `
 config:
@@ -391,7 +392,8 @@ func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
 name: test
 runtime: dotnet
 config:
-  aws:region: us-west-1`
+  aws:region: us-west-1
+  instanceSize: t3.micro`
 
 	projectStackYaml := `
 config:
