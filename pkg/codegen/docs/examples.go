@@ -60,6 +60,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 		Snippets: map[string]string{},
 	}
 	var nextTitle string
+	var nextInferredTitle string
 	// Push any examples we have found. Since `pushExamples` is called between sections,
 	// it needs to behave correctly when no examples were found.
 	pushExamples := func() {
@@ -72,11 +73,15 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 
 			examples = append(examples, currentSection)
 		}
+		if nextTitle == "" {
+			nextTitle = nextInferredTitle
+		}
 		currentSection = exampleSection{
 			Snippets: map[string]string{},
 			Title:    nextTitle,
 		}
 		nextTitle = ""
+		nextInferredTitle = ""
 	}
 	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
 		// ast.Walk visits each node twice. The first time descending and the second time
@@ -119,6 +124,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 					nextTitle = title
 				}
 			}
+			return ast.WalkSkipChildren, nil
 
 		case *ast.FencedCodeBlock:
 			language := string(n.Language(source))
@@ -141,7 +147,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 			} else {
 				// Since we might find out we are done with the previous section only
 				// after we have consumed the next title, we store the title.
-				nextTitle = title
+				nextInferredTitle = title
 			}
 		}
 
