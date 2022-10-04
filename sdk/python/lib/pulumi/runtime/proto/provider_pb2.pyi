@@ -120,3 +120,11 @@ class GetSchemaRequest:
 class GetSchemaResponse:
     def __init__(self, schema: str):
         pass
+
+class InvokeRequest:
+    tok: str
+    args: Struct
+
+class InvokeResponse:
+    def __init__(self, **kwargs) -> None:
+        pass
