@@ -135,7 +135,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 			currentSection.Snippets[language] = snippet
 		case *ast.Text:
 			// We only want to change the title before we collect any snippets
-			title := strings.TrimSuffix(string(n.Text([]byte(source))), ":")
+			title := strings.TrimSuffix(string(n.Text(source)), ":")
 			if currentSection.Title == "" && len(currentSection.Snippets) == 0 {
 				currentSection.Title = title
 			} else {

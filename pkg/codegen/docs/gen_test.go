@@ -528,6 +528,7 @@ func TestGeneratePackage(t *testing.T) {
 }
 
 func TestDecomposeDocstring(t *testing.T) {
+	t.Parallel()
 	awsVpcDocs := "Provides a VPC resource.\n" +
 		"\n" +
 		"{{% examples %}}\n" +
