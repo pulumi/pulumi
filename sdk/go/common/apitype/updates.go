@@ -216,6 +216,17 @@ type PatchUpdateCheckpointRequest struct {
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
+// PatchUpdateUntypedCheckpointRequest defines the body of a request to a patch update checkpoint endpoint of the service
+// API, where `UntypedDeloyment` is an `apitype.UntypedDeployment`. Whereas the PatchUpdateCheckpointRequest API is subject
+// to the service reformatting how a checkpoint is persisted, PatchUpdateUntypedCheckpointRequest enables the CLI to define
+// the exact format.
+// Designed to be compatible with the PatchUpdateCheckpointDeltaRequest API, where formatting is critical in calculating
+// textual diffs.
+type PatchUpdateUntypedCheckpointRequest struct {
+	Version           int             `json:"version"`
+	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
+}
+
 // PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch
 // update checkpoint endpoint of the service API. It is semantically equivalent to the PatchUpdateCheckpointRequest, but
 // instead of transferring the entire Deployment as a JSON blob, it encodes it as a textual diff against the last-saved
