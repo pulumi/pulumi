@@ -157,9 +157,7 @@ func newDestroyCmd() *cobra.Command {
 				sm = snap.SecretsManager
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
-				applyProjectConfig: true,
-			})
+			cfg, err := getStackConfiguration(ctx, s, sm)
 
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))

@@ -274,3 +274,28 @@ $`
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
+
+func TestBasicConfigGetRetrievedValueFromProject(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: pulumi-test
+runtime: go
+config:
+  first-value:
+    type: string
+    default: first`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	stdout, _ := e.RunCommand("pulumi", "config", "get", "first-value")
+	assert.Equal(t, "first", strings.Trim(stdout, "\r\n"))
+}

@@ -228,7 +228,7 @@ func (singleton *projectStackLoader) load(project *Project, path string) (*Proje
 	// is valid configuration and will be rewritten in the form
 	//
 	//     config:
-	//       {projectName}:instanceSize:t3.micro
+	//       {projectName}:instanceSize: t3.micro
 	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
 	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
 

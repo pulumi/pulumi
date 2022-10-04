@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
@@ -57,6 +58,12 @@ func newLogsCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			// Fetch the project.
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
 			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
@@ -67,13 +74,14 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("getting secrets manager: %w", err)
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm, StackConfigOptions{
-				// we don't need project config here
-				applyProjectConfig: false,
-			})
-
+			cfg, err := getStackConfiguration(ctx, s, sm)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
+			}
+
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			startTime, err := parseSince(since, time.Now())

@@ -536,7 +536,127 @@ config:
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
 	assert.NotNil(t, configError, "there should be a config type error")
-	assert.Contains(t, configError.Error(), "Stack 'dev' missing configuration value 'values'")
+	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration value 'values'")
+}
+
+func TestStackConfigErrorsWhenMissingTwoStackValueForConfigTypeWithNoDefault(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  another:
+    type: string
+  values:
+    type: array
+    items: 
+      type: string`
+
+	projectStackYaml := ``
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'another' and 'values'")
+}
+
+func TestStackConfigErrorsWhenMissingMultipleStackValueForConfigTypeWithNoDefault(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  hello:
+    type: integer
+  values:
+    type: array
+    items: 
+      type: string
+  world:
+    type: string`
+
+	projectStackYaml := ``
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
+}
+
+func TestStackConfigErrorsWhenUsingConfigValuesNotDefinedByProject(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  hello:
+    type: integer`
+
+	projectStackYaml := `
+config:
+  hello: 21
+  world: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	expectedErrorMsg := "Stack 'dev' uses configuration value 'world' which is not defined by the project configuration"
+	assert.Contains(t, configError.Error(), expectedErrorMsg)
+}
+
+func TestStackConfigErrorsWhenUsingMultipleConfigValuesNotDefinedByProject(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  hello:
+    type: integer`
+
+	projectStackYaml := `
+config:
+  hello: 21
+  world: 42
+  another: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.NotNil(t, configError, "there should be a config type error")
+	expectedErrorMsg := "Stack 'dev' uses configuration values 'another' and 'world'" +
+		" which are not defined by the project configuration"
+	assert.Contains(t, configError.Error(), expectedErrorMsg)
+}
+
+func TestStackConfigDoesNotErrorWhenProjectHasNotDefinedConfig(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet`
+
+	projectStackYaml := `
+config:
+  hello: 21
+  world: 42
+  another: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	assert.Nil(t, configError, "there should not be a config type error")
 }
 
 func TestProjectLoadYAML(t *testing.T) {

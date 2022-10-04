@@ -39,10 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type StackConfigOptions struct {
-	applyProjectConfig bool
-}
-
 func newConfigCmd() *cobra.Command {
 	var stack string
 	var showSecrets bool
@@ -987,8 +983,7 @@ func looksLikeSecret(k config.Key, v string) bool {
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(
 	ctx context.Context, stack backend.Stack,
-	sm secrets.Manager,
-	options StackConfigOptions) (backend.StackConfiguration, error) {
+	sm secrets.Manager) (backend.StackConfiguration, error) {
 	var cfg config.Map
 	project, _, err := readProject()
 	defaultStackConfig := backend.StackConfiguration{}
@@ -1005,14 +1000,6 @@ func getStackConfiguration(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
 		}
 	} else {
-		if options.applyProjectConfig {
-			stackName := stack.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, project, workspaceStack.Config)
-			if configErr != nil {
-				return defaultStackConfig, configErr
-			}
-		}
-
 		cfg = workspaceStack.Config
 	}
 

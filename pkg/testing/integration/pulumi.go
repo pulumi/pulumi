@@ -38,6 +38,15 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	assert.NoError(e, err, "writing %s file", filePath)
 }
 
+// CreateBasicPulumiRepo will initialize the environment with a basic Pulumi repository and
+// project file definition. Returns the repo owner and name used.
+func CreatePulumiRepo(e *testing.Environment, projectFileContent string) {
+	e.RunCommand("git", "init")
+	filePath := path.Join(e.CWD, fmt.Sprintf("%s.yaml", workspace.ProjectFile))
+	err := ioutil.WriteFile(filePath, []byte(projectFileContent), os.ModePerm)
+	assert.NoError(e, err, "writing %s file", filePath)
+}
+
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.
 // Assumes .pulumi is in the current working directory. Fails the test on IO errors.
 func GetStacks(e *testing.Environment) ([]string, *string) {
