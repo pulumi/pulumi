@@ -55,10 +55,30 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 
 	var examplesShortcode *schema.Shortcode
 	var exampleShortcode *schema.Shortcode
-	var title string
-	var snippets map[string]string
 	var examples []exampleSection
+	currentSection := exampleSection{
+		Snippets: map[string]string{},
+	}
+	var nextTitle string
+	// Push any examples we have found. Since `pushExamples` is called between sections,
+	// it needs to behave correctly when no examples were found.
+	pushExamples := func() {
+		if len(currentSection.Snippets) > 0 {
+			examples = append(examples, currentSection)
+		}
+		currentSection = exampleSection{
+			Snippets: map[string]string{},
+			Title:    nextTitle,
+		}
+		nextTitle = ""
+	}
 	err := ast.Walk(parsed, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
+		// ast.Walk visits each node twice. The first time descending and the second time
+		// ascending. We only want to view the nodes while descending, so we skip when
+		// `enter` is false.
+		if !enter {
+			return ast.WalkContinue, nil
+		}
 		if shortcode, ok := n.(*schema.Shortcode); ok {
 			name := string(shortcode.Name)
 			switch name {
@@ -68,49 +88,67 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 				}
 			case schema.ExampleShortcode:
 				if exampleShortcode == nil {
-					exampleShortcode, title, snippets = shortcode, "", map[string]string{}
+					exampleShortcode = shortcode
+					currentSection.Title, currentSection.Snippets = "", map[string]string{}
 				} else if !enter && shortcode == exampleShortcode {
 					for _, l := range dctx.snippetLanguages {
-						if _, ok := snippets[l]; !ok {
-							snippets[l] = defaultMissingExampleSnippetPlaceholder
+						if _, ok := currentSection.Snippets[l]; !ok {
+							currentSection.Snippets[l] = defaultMissingExampleSnippetPlaceholder
 						}
 					}
 
-					examples = append(examples, exampleSection{
-						Title:    title,
-						Snippets: snippets,
-					})
-
+					pushExamples()
 					exampleShortcode = nil
 				}
 			}
 			return ast.WalkContinue, nil
 		}
+
+		// We check to make sure we are in an examples section.
 		if exampleShortcode == nil {
 			return ast.WalkContinue, nil
 		}
 
 		switch n := n.(type) {
 		case *ast.Heading:
-			if n.Level == 3 && title == "" {
-				title = strings.TrimSpace(schema.RenderDocsToString(source, n))
-			}
-		case *ast.FencedCodeBlock:
-			language := string(n.Language(source))
-			if !languages.Has(language) {
-				return ast.WalkContinue, nil
-			}
-			if _, ok := snippets[language]; ok {
-				return ast.WalkContinue, nil
+			if n.Level == 3 {
+				title := strings.TrimSpace(schema.RenderDocsToString(source, n))
+				if currentSection.Title == "" && len(currentSection.Snippets) == 0 {
+					currentSection.Title = title
+				} else {
+					nextTitle = title
+				}
 			}
 
+		case *ast.FencedCodeBlock:
+			language := string(n.Language(source))
 			snippet := schema.RenderDocsToString(source, n)
-			snippets[language] = snippet
+			if !languages.Has(language) || len(snippet) == 0 {
+				return ast.WalkContinue, nil
+			}
+			if _, ok := currentSection.Snippets[language]; ok {
+				// We have the same language appearing multiple times in a {{% examples
+				// %}} without an {{% example %}} to break them up. We are going to just
+				// pretend there was an {{% example %}}
+				pushExamples()
+			}
+			currentSection.Snippets[language] = snippet
+		case *ast.Text:
+			// We only want to change the title before we collect any snippets
+			title := strings.TrimSuffix(string(n.Text([]byte(source))), ":")
+			if currentSection.Title == "" && len(currentSection.Snippets) == 0 {
+				currentSection.Title = title
+			} else {
+				// Since we might find out we are done with the previous section only
+				// after we have consumed the next title, we store the title.
+				nextTitle = title
+			}
 		}
 
 		return ast.WalkContinue, nil
 	})
 	contract.AssertNoError(err)
+	pushExamples()
 
 	if examplesShortcode != nil {
 		p := examplesShortcode.Parent()
