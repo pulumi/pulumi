@@ -588,9 +588,6 @@ func TestDecomposeDocstring(t *testing.T) {
 		"```csharp\n" +
 		"VPC with CIDR from AWS IPAM: csharp\n" +
 		"```\n" +
-		"```go\n" +
-		"VPC with CIDR from AWS IPAM: go\n" +
-		"```\n" +
 		"```java\n" +
 		"VPC with CIDR from AWS IPAM: java\n" +
 		"```\n" +
@@ -641,7 +638,7 @@ func TestDecomposeDocstring(t *testing.T) {
 				Title: "VPC with CIDR from AWS IPAM",
 				Snippets: map[string]string{
 					"csharp":     "```csharp\nVPC with CIDR from AWS IPAM: csharp\n```\n",
-					"go":         "```go\nVPC with CIDR from AWS IPAM: go\n```\n",
+					"go":         "Coming soon!",
 					"java":       "```java\nVPC with CIDR from AWS IPAM: java\n```\n",
 					"python":     "```python\nVPC with CIDR from AWS IPAM: python\n```\n",
 					"typescript": "\n```typescript\nVPC with CIDR from AWS IPAM: typescript\n```\n",

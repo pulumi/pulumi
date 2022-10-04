@@ -64,6 +64,12 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	// it needs to behave correctly when no examples were found.
 	pushExamples := func() {
 		if len(currentSection.Snippets) > 0 {
+			for _, l := range dctx.snippetLanguages {
+				if _, ok := currentSection.Snippets[l]; !ok {
+					currentSection.Snippets[l] = defaultMissingExampleSnippetPlaceholder
+				}
+			}
+
 			examples = append(examples, currentSection)
 		}
 		currentSection = exampleSection{
@@ -91,12 +97,6 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 					exampleShortcode = shortcode
 					currentSection.Title, currentSection.Snippets = "", map[string]string{}
 				} else if !enter && shortcode == exampleShortcode {
-					for _, l := range dctx.snippetLanguages {
-						if _, ok := currentSection.Snippets[l]; !ok {
-							currentSection.Snippets[l] = defaultMissingExampleSnippetPlaceholder
-						}
-					}
-
 					pushExamples()
 					exampleShortcode = nil
 				}
