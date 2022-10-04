@@ -1331,8 +1331,8 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 			msg = "(no changes expected)"
 		}
 		pt.t.Logf("Performing empty preview and update%s", msg)
-		if err := pt.PreviewAndUpdate(
-			dir, "empty", pt.opts.ExpectFailure, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
+		if err := pt.PreviewAndUpdate(dir, "empty", pt.opts.ExpectFailure,
+			!pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
 			return fmt.Errorf("empty preview: %w", err)
 		}
