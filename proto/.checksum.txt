@@ -8,7 +8,7 @@
 1949619858 9233 proto/pulumi/analyzer.proto
 2889436496 3240 proto/pulumi/engine.proto
 3421371250 793 proto/pulumi/errors.proto
-3300935796 5024 proto/pulumi/language.proto
+2209961833 5023 proto/pulumi/language.proto
 2700626499 1743 proto/pulumi/plugin.proto
 1451439690 19667 proto/pulumi/provider.proto
 3448262075 10699 proto/pulumi/resource.proto

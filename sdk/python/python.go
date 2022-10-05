@@ -20,18 +20,41 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/util/yamlutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"gopkg.in/yaml.v3"
 )
 
 const (
 	windows             = "windows"
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
+
+type Toolchain string 
+const (
+	Poetry Toolchain       = "poetry"
+	Venv Toolchain         = "venv"
+	Pyenv Toolchain        = "pyenv"
+)
+
+func ParseToolchain(toolchain string) (Toolchain, error) {
+	switch toolchain {
+	case "poetry":
+		return Poetry, nil
+	case "venv":
+		return Venv, nil
+	case "pyenv":
+		return Pyenv, nil
+	default:
+		return "", fmt.Errorf("unknown toolchain %q", toolchain)
+	}
+}
 
 // Find the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
@@ -89,6 +112,14 @@ func Command(ctx context.Context, arg ...string) (*exec.Cmd, error) {
 		return exec.CommandContext(ctx, shimCmd, arg...), nil
 	}
 	return exec.CommandContext(ctx, pythonPath, arg...), nil
+}
+
+func PoetryCommand(ctx context.Context, arg ...string) (*exec.Cmd, error) {
+	poetryPath, err := exec.LookPath("poetry")
+	if err != nil {
+		return nil, errors.Errorf("Failed to locate poetry on your PATH.  Have you installed poetry?")
+	}
+	return exec.CommandContext(ctx, poetryPath, arg...), nil
 }
 
 // resolveWindowsExecutionAlias performs a lookup for python among UWP
@@ -221,17 +252,100 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
-	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
+func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool, toolchain Toolchain) error {
+	switch toolchain {
+		case Venv:
+			return InstallVenvDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
+		case Poetry:
+			return InstallPoetryDependenciesWithWriters(ctx, root, showOutput, os.Stdout, os.Stderr)
+		default:
+			return errors.Errorf("unsupported toolchain %q", toolchain)
+	}
 }
 
-func InstallDependenciesWithWriters(ctx context.Context,
+func InstallPoetryDependenciesWithWriters(ctx context.Context,
+	root string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	print := func(message string) {
+		if showOutput {
+			fmt.Fprintf(infoWriter, "%s", message)
+		}
+	}
+	os.Remove(path.Join(root, "requirements.txt"))
+	print("Creating poetry environment and installing dependencies...")
+	cmd, err := PoetryCommand(ctx, "install")
+	if err != nil {
+		return err
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if len(output) > 0 {
+			fmt.Fprintf(errorWriter, "%s", string(output))
+		}
+		return errors.Errorf("failed to install dependencies")
+	}
+	fmt.Fprintf(infoWriter, "%s", string(output))
+	envCmd, err := PoetryCommand(ctx, "env", "info", "--path")
+	if err != nil {
+		return err
+	}
+	envPath, err := envCmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	pulumiYamlFilepath := filepath.Join(root, "Pulumi.yaml")
+	filedata, err := os.ReadFile(pulumiYamlFilepath)
+	if err != nil {
+		return err
+	}
+	var workspaceDocument yaml.Node
+	err = yaml.Unmarshal(filedata, &workspaceDocument)
+	if err != nil {
+		return err
+	}
+	err = yamlutil.Delete(&workspaceDocument, "runtime")
+	if err != nil {
+		return err
+	}
+	projectName, found, err := yamlutil.Get(&workspaceDocument, "name")
+	if err != nil {
+		return err
+	}
+	if found {
+		err = yamlutil.Insert(&workspaceDocument, "main", strings.TrimSpace(fmt.Sprintf(`src/%s`, string(projectName.Value))))
+	}
+	if err != nil {
+		return err
+	}
+	err = yamlutil.Insert(&workspaceDocument, "runtime", strings.TrimSpace(fmt.Sprintf(`
+name: python
+options:
+  virtualenv: %s
+`, string(envPath))))
+	if err != nil {
+		return err
+	}
+	contract.Assert(len(workspaceDocument.Content) == 1)
+	projFile, err := yaml.Marshal(workspaceDocument.Content[0])
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(pulumiYamlFilepath, projFile, 0600)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func InstallVenvDependenciesWithWriters(ctx context.Context,
 	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
 	print := func(message string) {
 		if showOutput {
 			fmt.Fprintf(infoWriter, "%s\n", message)
 		}
 	}
+
+	os.Remove(path.Join(root, "pyproject.toml"))
 
 	print("Creating virtual environment...")
 

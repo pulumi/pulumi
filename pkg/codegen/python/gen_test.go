@@ -147,7 +147,7 @@ func buildVirtualEnv(ctx context.Context) error {
 		}
 	}
 
-	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/)
+	err = python.InstallDependencies(ctx, hereDir, venvDir, false /*showOutput*/, "venv")
 	if err != nil {
 		return err
 	}

@@ -142,7 +142,7 @@ func (src *querySource) forkRun() {
 
 func runLangPlugin(src *querySource) result.Result {
 	rt := src.runinfo.Proj.Runtime.Name()
-	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
+	langhost, err := src.plugctx.Host.LanguageRuntime(rt, make(map[string]string))
 	if err != nil {
 		return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
 	}

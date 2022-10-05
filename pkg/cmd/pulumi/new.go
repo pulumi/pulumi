@@ -237,6 +237,21 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	prompts, _ := workspace.LoadAdditionalPrompts(template.Dir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		fmt.Println(err)
+		return err
+	}
+
+	promptArgs := make(map[string]string)
+	for index := 0; index < len(prompts); index++ {
+		promptKey, promptValue, err := getAdditionalPromptData(prompts[index], opts)
+		if err != nil {
+			return err
+		}
+		promptArgs[promptKey] = promptValue
+	}
+
 	// Actually copy the files.
 	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
@@ -251,6 +266,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Load the project, update the name & description, remove the template section, and save it.
 	proj, path, err := readProjectWithPath()
 	root := filepath.Dir(path)
+	if err != nil {
+		return err
+	}
+
+	err = workspace.RemovePromptsFile(root)
 	if err != nil {
 		return err
 	}
@@ -293,6 +313,13 @@ options:
 				if err != nil {
 					return err
 				}
+			}
+		}
+
+		for key, value := range promptArgs {
+			err = yamlutil.Insert(&workspaceDocument, key, value)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -356,7 +383,7 @@ options:
 
 		defer pluginCtx.Close()
 
-		if err := installDependencies(pluginCtx, &proj.Runtime, pwd); err != nil {
+		if err := installDependencies(pluginCtx, &proj.Runtime, pwd, promptArgs); err != nil {
 			return err
 		}
 	}
@@ -375,6 +402,46 @@ options:
 	}
 
 	return nil
+}
+
+func getAdditionalPromptData(prompt workspace.Prompt, opts display.Options) (string, string, error) {
+	key, value, err := "", "", error(nil)
+	switch prompt.Type {
+	case "enum":
+		key, value, err = getEnumPrompt(prompt, opts)
+	}
+	return key, value, err
+}
+
+func getEnumPrompt(prompt workspace.Prompt, opts display.Options) (string, string, error) {
+	const chooseTemplateErr = "no template selected; please use `pulumi new` to choose one"
+	if !opts.IsInteractive {
+		return "", "", errors.New(chooseTemplateErr)
+	}
+
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
+
+	nopts := len(prompt.Values)
+	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+	message := fmt.Sprintf(prompt.Message)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+
+	cmdutil.EndKeypadTransmitMode()
+
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message:  message,
+		Options:  prompt.Values,
+		PageSize: pageSize,
+	}, &option, nil); err != nil {
+		return "", "", errors.New(chooseTemplateErr)
+	}
+
+
+	return prompt.Name, option, nil
 }
 
 // Ensure the directory exists and uses it as the current working
@@ -687,10 +754,10 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string) error {
+func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string, promptArgs map[string]string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name(), promptArgs)
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}

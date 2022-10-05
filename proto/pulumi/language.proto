@@ -32,7 +32,7 @@ service LanguageRuntime {
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 
     // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-    rpc  InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
+    rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 
     // About returns information about the runtime for this language.
     rpc About(google.protobuf.Empty) returns (AboutResponse) {}
