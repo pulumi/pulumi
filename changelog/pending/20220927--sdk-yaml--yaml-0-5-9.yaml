@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: "[Updates Pulumi YAML to v0.5.9](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.8)"
