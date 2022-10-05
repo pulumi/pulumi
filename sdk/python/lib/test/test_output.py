@@ -256,3 +256,42 @@ class OutputApplyTests(unittest.TestCase):
         test_output = Output.from_input('anything').apply(lambda _: bad_output)
         self.assertEqual(await test_output.is_secret(), False)
         self.assertEqual(await test_output.is_known(), False)
+
+class OutputAllTests(unittest.TestCase):
+    @pulumi_test
+    async def test_args(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(o1, o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, [1, "hi"])
+
+    @pulumi_test
+    async def test_kwargs(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(x=o1, y=o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, {"x": 1, "y": "hi"})
+
+class OutputFormatTests(unittest.TestCase):
+    @pulumi_test
+    async def test_nothing(self):
+        x = Output.format("blank format")
+        x_val = await x.future()
+        self.assertEqual(x_val, "blank format")
+
+    @pulumi_test
+    async def test_simple(self):
+        i = Output.from_input(1)
+        x = Output.format("{0}", i)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1")
+
+    @pulumi_test
+    async def test_args_and_kwags(self):
+        i = Output.from_input(1)
+        s = Output.from_input("hi")
+        x = Output.format("{0}, {s}", i, s=s)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1, hi")
