@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/python
+  description: Fixes dangling type-refs generated under compatibility=tfbridge20 for schemas that refer to types aross modules.
