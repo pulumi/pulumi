@@ -99,15 +99,15 @@ type Plugins struct {
 }
 
 type ProjectConfigItemsType struct {
-	Type  string                  `json:"type" yaml:"type"`
-	Items *ProjectConfigItemsType `json:"items" yaml:"items"`
+	Type  string                  `json:"type,omitempty" yaml:"type,omitempty"`
+	Items *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 type ProjectConfigType struct {
-	Type        string                  `json:"type" yaml:"type"`
-	Description string                  `json:"description" yaml:"description"`
-	Items       *ProjectConfigItemsType `json:"items" yaml:"items"`
-	Default     interface{}             `json:"default" yaml:"default"`
+	Type        string                  `json:"type,omitempty" yaml:"type,omitempty"`
+	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
+	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
+	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
 }
 
 // Project is a Pulumi project manifest.
@@ -350,6 +350,9 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 	return typeName
 }
 
+// ValidateConfig validates the config value against its config type definition.
+// We use this to validate the default config values alongside their type definition but
+// also to validate config values coming from individual stacks.
 func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
 
 	if typeName == "string" {
