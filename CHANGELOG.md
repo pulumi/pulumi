@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.41.1 (2022-10-05)
+
+
+### Features
+
+- [backend] Allows CLI auth for Azure blob storage
+  [#10900](https://github.com/pulumi/pulumi/pulls/10900)
+
+- [cli/{about,plugin}] Remove experimental feature for plugins from private github releases. This is now supported by `github:` plugin urls, see https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases.
+  [#10896](https://github.com/pulumi/pulumi/pulls/10896)
+
+- [sdk/go] Adds an `UnsafeAwaitOutput` function to the Go SDK. This permits a workaround for component providers and other advanced scenarios where resources created are conditional on an output.
+  [#10877](https://github.com/pulumi/pulumi/pulls/10877)
+
+- [sdk/python] Add invoke to Provider interface.
+  [#10906](https://github.com/pulumi/pulumi/pulls/10906)
+
+- [sdk/python] Add Output.format to the python SDK.
+  [#10919](https://github.com/pulumi/pulumi/pulls/10919)
+
+- [yaml] [Updates Pulumi YAML to v0.5.9](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.9)
+  [#10937](https://github.com/pulumi/pulumi/pulls/10937)
+
+
+### Bug Fixes
+
+- [cli] Prevent sending on a closed channel panics during 'pulumi convert'
+  [#10893](https://github.com/pulumi/pulumi/pulls/10893)
+
+- [programgen/go] Fix codegen for `__apply` functions
+  [#10775](https://github.com/pulumi/pulumi/pulls/10775)
+
+- [sdk/go] Go programs run with Go 1.17 or below failed due to go mod tidy being run with -compat=1.18. The change is reverted.
+  [#10865](https://github.com/pulumi/pulumi/pulls/10865)
+
+- [sdk/go] Fixed bug in (ours, theirs) to (theirs, theirs)
+  [#10881](https://github.com/pulumi/pulumi/pulls/10881)
+
+- [sdk/python] Fix KeyError in UpdateSummary.
+  [#10907](https://github.com/pulumi/pulumi/pulls/10907)
+
+- [sdkgen/nodejs] Fixes a bug with lazy-loaded modules that caused mixins to observe unexpected null values.
+  [#10871](https://github.com/pulumi/pulumi/pulls/10871)
+
 ## 3.40.2 (2022-09-27)
 
 
