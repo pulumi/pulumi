@@ -1,6 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: >
-    Go programs run with Go 1.17 or below failed due to go mod tidy being run with -compat=1.18. The
-    change is reverted.
