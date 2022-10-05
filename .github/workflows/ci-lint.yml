@@ -30,6 +30,12 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Tidy
         run: make tidy
+      - name: Fail if go mod not tidy
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error go.mod not tidy"
+            exit 1
+          fi
       - name: Lint
         run: make lint
 
