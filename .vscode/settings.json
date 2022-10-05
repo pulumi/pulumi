@@ -1,5 +1,5 @@
 {
-    "go.buildTags": "all smoke",
+    "go.buildTags": "all,smoke",
     "go.testTimeout": "1h",
     "gopls": {
         // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
