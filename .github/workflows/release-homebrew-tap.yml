@@ -37,6 +37,7 @@ on:
 
 env:
   PULUMI_VERSION: ${{ inputs.version }}
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
 
 jobs:
   update-homebrew-tap:
@@ -79,8 +80,6 @@ jobs:
       - name: Push formula
         working-directory: homebrew-tap
         if: ${{ !inputs.dry-run }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
 
