@@ -42,7 +42,7 @@ class GetPolicyDocumentResult:
 
     @property
     @pulumi.getter
-    def statements(self) -> Optional[Sequence['_x.outputs.GetPolicyDocumentStatement']]:
+    def statements(self) -> Optional[Sequence['_x.outputs.GetPolicyDocumentStatementResult']]:
         return pulumi.get(self, "statements")
 
 
