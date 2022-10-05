@@ -24,7 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const IndexToken = "index"
+const (
+	IndexToken   = "index"
+	fromBase64Fn = "fromBase64"
+)
 
 type generator struct {
 	// The formatter to use when generating code.
@@ -42,6 +45,7 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
+	tmpVarCount         int
 	configCreated       bool
 	externalCache       *Cache
 
@@ -808,6 +812,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			assignment = "="
 		}
 	}
+	if name == "_" {
+		assignment = "="
+	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
@@ -815,6 +822,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			// OutputVersionedInvoke does not return an error
 			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
 			if noError {
+				if name == "_" {
+					assignment = "="
+				}
 				g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
 			} else {
 				g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
@@ -823,10 +833,30 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
-		case "join", "toBase64", "mimeType",
+		case pcl.IntrinsicApply:
+			if name == "_" {
+				assignment = "="
+			}
+			g.Fgenf(w, "%s %s ", name, assignment)
+			g.genApply(w, expr)
+			g.Fgenf(w, "\n")
+		case "join", "mimeType",
 			"fileArchive", "remoteArchive", "assetArchive",
-			"fileAsset", "stringAsset", "remoteAsset":
-			g.Fgenf(w, "%s := %.3v;\n", name, expr)
+			"fileAsset", "stringAsset", "remoteAsset",
+			"toBase64":
+			if name == "_" {
+				assignment = "="
+			}
+			g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
+		case fromBase64Fn:
+			tmpVar := fmt.Sprintf("%s%d", "tmpVar", g.tmpVarCount)
+			g.Fgenf(w, "%s, _ %s %.3v;\n", tmpVar, assignment, expr)
+			if name == "_" {
+				assignment = ":="
+			}
+			g.Fgenf(w, "%s %s string(%s)\n", name, assignment, tmpVar)
+			g.tmpVarCount++
+			g.isErrAssigned = true
 		}
 	default:
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)
@@ -874,7 +904,13 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 				g.Fgenf(w, "}\n")
 			}
 		default:
-			g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+			switch v.Type() {
+			// Go will default to interpreting integers (i.e. 3) as ints, even if the config is Number
+			case model.NumberType:
+				g.Fgenf(w, "%s := float64(%.3v);\n", v.Name(), expr)
+			default:
+				g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+			}
 		}
 		switch v.Type() {
 		case model.StringType:

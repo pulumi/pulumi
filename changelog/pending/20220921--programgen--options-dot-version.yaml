@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Support resource option "version" in `pulumi convert` to select specific provider SDK versions.

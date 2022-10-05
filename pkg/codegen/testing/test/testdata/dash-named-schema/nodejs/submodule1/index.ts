@@ -8,8 +8,8 @@ import * as utilities from "../utilities";
 export { ModuleResourceArgs } from "./moduleResource";
 export type ModuleResource = import("./moduleResource").ModuleResource;
 export const ModuleResource: typeof import("./moduleResource").ModuleResource = null as any;
-
 utilities.lazyLoad(exports, ["ModuleResource"], () => require("./moduleResource"));
+
 
 const _module = {
     version: utilities.getVersion(),

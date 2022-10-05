@@ -8,13 +8,13 @@ import * as utilities from "./utilities";
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 export { StaticPageArgs } from "./staticPage";
 export type StaticPage = import("./staticPage").StaticPage;
 export const StaticPage: typeof import("./staticPage").StaticPage = null as any;
-
-utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 utilities.lazyLoad(exports, ["StaticPage"], () => require("./staticPage"));
+
 
 // Export sub-modules:
 import * as types from "./types";

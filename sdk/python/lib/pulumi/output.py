@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
+T3 = TypeVar("T3")
 T_co = TypeVar("T_co", covariant=True)
 U = TypeVar("U")
 
@@ -498,6 +499,43 @@ class Output(Generic[T_co]):
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
         return Output.all(*transformed_items).apply("".join)  # type: ignore
 
+    @staticmethod
+    def format(
+        format_string: Input[str], *args: Input[object], **kwargs: Input[object]
+    ) -> "Output[str]":
+        """
+        Perform a string formatting operation.
+
+        This has the same semantics as `str.format` except it handles Input types.
+
+        :param Input[str] format_string: A formatting string
+        :param Input[object] args: Positional arguments for the format string
+        :param Input[object] kwargs: Keyword arguments for the format string
+        :return: A formatted output string.
+        :rtype: Output[str]
+        """
+
+        if args and kwargs:
+            return _map3_output(
+                Output.from_input(format_string),
+                Output.all(*args),
+                Output.all(**kwargs),
+                lambda str, args, kwargs: str.format(*args, **kwargs),
+            )
+        if args:
+            return _map2_output(
+                Output.from_input(format_string),
+                Output.all(*args),
+                lambda str, args: str.format(*args),
+            )
+        if kwargs:
+            return _map2_output(
+                Output.from_input(format_string),
+                Output.all(**kwargs),
+                lambda str, kwargs: str.format(**kwargs),
+            )
+        return Output.from_input(format_string).apply(lambda str: str.format())
+
     def __str__(self) -> str:
         return """Calling __str__ on an Output[T] is not supported.
 
@@ -575,6 +613,38 @@ def _map2_output(
         future=asyncio.ensure_future(fut()),
         is_known=o1.is_known() and o2.is_known(),
         is_secret=o2.is_secret() or o2.is_secret(),
+    )
+
+
+def _map3_output(
+    o1: Output[T1], o2: Output[T2], o3: Output[T3], transform: Callable[[T1, T2, T3], U]
+) -> Output[U]:
+    """
+    Joins three outputs and transforms their result with a pure function.
+    Similar to `all` but does not deeply await.
+    """
+
+    async def fut() -> U:
+        v1 = await o1.future()
+        v2 = await o2.future()
+        v3 = await o3.future()
+        return (
+            transform(v1, v2, v3)
+            if (v1 is not None) and (v2 is not None) and (v3 is not None)
+            else cast(U, UNKNOWN)
+        )
+
+    async def res() -> Set["Resource"]:
+        r1 = await o1.resources()
+        r2 = await o2.resources()
+        r3 = await o3.resources()
+        return r1 | r2 | r3
+
+    return Output(
+        resources=asyncio.ensure_future(res()),
+        future=asyncio.ensure_future(fut()),
+        is_known=o1.is_known() and o2.is_known() and o3.is_known(),
+        is_secret=o2.is_secret() or o2.is_secret() or o3.is_secret(),
     )
 
 

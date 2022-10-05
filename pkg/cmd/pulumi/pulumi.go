@@ -382,7 +382,8 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo(ctx)
 	if err != nil {
-		logging.V(3).Infof("error fetching latest version information: %s", err)
+		logging.V(3).Infof("error fetching latest version information "+
+			"(set `PULUMI_SKIP_UPDATE_CHECK=true` to skip update checks): %s", err)
 	}
 
 	if oldestAllowedVer.GT(curVer) {

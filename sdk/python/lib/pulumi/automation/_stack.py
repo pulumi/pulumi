@@ -61,7 +61,7 @@ class UpdateSummary:
         config: Mapping[str, dict],
         # post-update info
         result: str,
-        end_time: datetime,
+        end_time: Optional[datetime] = None,
         version: Optional[int] = None,
         deployment: Optional[str] = None,
         resource_changes: Optional[OpMap] = None,
@@ -659,7 +659,9 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT),
+                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                if "endTime" in summary_json
+                else None,
                 version=summary_json["version"] if "version" in summary_json else None,
                 deployment=summary_json["Deployment"]
                 if "Deployment" in summary_json

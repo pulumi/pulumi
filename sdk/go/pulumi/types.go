@@ -205,7 +205,7 @@ func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
 	} else if len(theirs) == 0 {
 		return append(make([]Resource, 0, len(ours)), ours...)
 	} else if len(ours) == 0 {
-		return append(make([]Resource, 0, len(ours)), theirs...)
+		return append(make([]Resource, 0, len(theirs)), theirs...)
 	}
 	depSet := make(map[Resource]struct{})
 	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
@@ -549,6 +549,31 @@ func UnsafeUnknownOutput(deps []Resource) Output {
 	output, _, _ := NewOutput()
 	output.getState().resolve(nil, false, false, deps)
 	return output
+}
+
+// UnsafeAwaitOutputResult is an output from a Pulumi function or resource that has been resolved.
+//
+// This is a low level API and should be used with care.
+type UnsafeAwaitOutputResult struct {
+	Value        interface{} // The value of the output. If unknown (in a dry-run), the value will be nil.
+	Known        bool        // True if the value is known.
+	Secret       bool        // True if the value is a secret.
+	Dependencies []Resource  // The resources that this output depends on.
+}
+
+// UnsafeAwaitOutput blocks until the output is resolved and returns the resolved value and
+// metadata.
+//
+// This is a low level API and should be used with care.
+func UnsafeAwaitOutput(ctx context.Context, o Output) (UnsafeAwaitOutputResult, error) {
+	value, known, secret, deps, err := o.getState().await(ctx)
+
+	return UnsafeAwaitOutputResult{
+		Value:        value,
+		Known:        known,
+		Secret:       secret,
+		Dependencies: deps,
+	}, err
 }
 
 // ToSecretWithContext wraps the input in an Output marked as secret

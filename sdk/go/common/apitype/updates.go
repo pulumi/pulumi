@@ -216,6 +216,24 @@ type PatchUpdateCheckpointRequest struct {
 	Deployment json.RawMessage `json:"deployment,omitempty"`
 }
 
+// PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch
+// update checkpoint endpoint of the service API. It is semantically equivalent to the PatchUpdateCheckpointRequest, but
+// instead of transferring the entire Deployment as a JSON blob, it encodes it as a textual diff against the last-saved
+// deployment. This conserves bandwidth on large resources.
+type PatchUpdateCheckpointDeltaRequest struct {
+	// Protocol version.
+	Version int `json:"version"`
+
+	// SHA256 hash of the result of aplying the DeploymentDelta to the previously saved deployment.
+	CheckpointHash string `json:"checkpointHash"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
+
+	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
+	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
+}
+
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.
 // No longer sent from the CLI, but the type definition is still required for backwards compat with older clients.
 type AppendUpdateLogEntryRequest struct {

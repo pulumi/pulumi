@@ -57,16 +57,20 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	}
 
 	sm, err := func() (secrets.Manager, error) {
+		configFile, err := getProjectStackPath(s)
+		if err != nil {
+			return nil, err
+		}
+
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
+			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider)
 		}
 
 		if ps.EncryptionSalt != "" {
-			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
+			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
 		}
 
-		return s.DefaultSecretManager(stackConfigFile)
+		return s.DefaultSecretManager(configFile)
 	}()
 	if err != nil {
 		return nil, err

@@ -1,0 +1,6 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: >
+    Adds an `UnsafeAwaitOutput` function to the Go SDK. This permits a workaround for component
+    providers and other advanced scenarios where resources created are conditional on an output.

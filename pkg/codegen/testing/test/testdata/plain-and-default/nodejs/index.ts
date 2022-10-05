@@ -8,13 +8,13 @@ import * as utilities from "./utilities";
 export { ModuleResourceArgs } from "./moduleResource";
 export type ModuleResource = import("./moduleResource").ModuleResource;
 export const ModuleResource: typeof import("./moduleResource").ModuleResource = null as any;
+utilities.lazyLoad(exports, ["ModuleResource"], () => require("./moduleResource"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
-
-utilities.lazyLoad(exports, ["ModuleResource"], () => require("./moduleResource"));
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
 
 // Export enums:
 export * from "./types/enums";

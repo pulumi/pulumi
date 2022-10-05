@@ -8,28 +8,28 @@ import * as utilities from "./utilities";
 export { ArgFunctionArgs, ArgFunctionResult, ArgFunctionOutputArgs } from "./argFunction";
 export const argFunction: typeof import("./argFunction").argFunction = null as any;
 export const argFunctionOutput: typeof import("./argFunction").argFunctionOutput = null as any;
+utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
 
 export { CatArgs } from "./cat";
 export type Cat = import("./cat").Cat;
 export const Cat: typeof import("./cat").Cat = null as any;
+utilities.lazyLoad(exports, ["Cat"], () => require("./cat"));
 
 export { ComponentArgs } from "./component";
 export type Component = import("./component").Component;
 export const Component: typeof import("./component").Component = null as any;
+utilities.lazyLoad(exports, ["Component"], () => require("./component"));
 
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 export { WorkloadArgs } from "./workload";
 export type Workload = import("./workload").Workload;
 export const Workload: typeof import("./workload").Workload = null as any;
-
-utilities.lazyLoad(exports, ["argFunction","argFunctionOutput"], () => require("./argFunction"));
-utilities.lazyLoad(exports, ["Cat"], () => require("./cat"));
-utilities.lazyLoad(exports, ["Component"], () => require("./component"));
-utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 utilities.lazyLoad(exports, ["Workload"], () => require("./workload"));
+
 
 // Export sub-modules:
 import * as types from "./types";

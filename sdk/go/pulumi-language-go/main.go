@@ -553,7 +553,7 @@ func (host *goLanguageHost) InstallDependencies(
 		return err
 	}
 
-	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
+	cmd := exec.Command(gobin, "mod", "tidy")
 	cmd.Dir = req.Directory
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = stdout, stderr

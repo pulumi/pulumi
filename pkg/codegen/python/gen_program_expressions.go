@@ -200,6 +200,7 @@ var functionImports = map[string][]string{
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
 	"toBase64":         {"base64"},
+	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
 	"sha1":             {"hashlib"},
 	"stack":            {"pulumi"},
@@ -373,6 +374,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
+	case "fromBase64":
+		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	case "sha1":

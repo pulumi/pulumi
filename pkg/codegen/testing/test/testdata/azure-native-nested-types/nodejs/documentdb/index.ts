@@ -8,8 +8,8 @@ import * as utilities from "../utilities";
 export { SqlResourceSqlContainerArgs } from "./sqlResourceSqlContainer";
 export type SqlResourceSqlContainer = import("./sqlResourceSqlContainer").SqlResourceSqlContainer;
 export const SqlResourceSqlContainer: typeof import("./sqlResourceSqlContainer").SqlResourceSqlContainer = null as any;
-
 utilities.lazyLoad(exports, ["SqlResourceSqlContainer"], () => require("./sqlResourceSqlContainer"));
+
 
 const _module = {
     version: utilities.getVersion(),

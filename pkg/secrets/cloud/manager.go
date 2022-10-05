@@ -29,7 +29,6 @@ import (
 	_ "gocloud.dev/secrets/hashivault"    // support for hashivault://
 	"google.golang.org/api/cloudkms/v1"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -59,19 +58,19 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
 	u, err := netUrl.Parse(url)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse the secrets provider URL")
+		return nil, fmt.Errorf("unable to parse the secrets provider URL: %w", err)
 	}
 
 	switch u.Scheme {
 	case gcpkms.Scheme:
 		credentials, err := authhelpers.ResolveGoogleCredentials(ctx, cloudkms.CloudkmsScope)
 		if err != nil {
-			return nil, errors.Wrap(err, "missing google credentials")
+			return nil, fmt.Errorf("missing google credentials: %w", err)
 		}
 
 		kmsClient, _, err := gcpkms.Dial(ctx, credentials.TokenSource)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to connect to gcpkms")
+			return nil, fmt.Errorf("failed to connect to gcpkms: %w", err)
 		}
 		opener := gcpkms.URLOpener{
 			Client: kmsClient,
