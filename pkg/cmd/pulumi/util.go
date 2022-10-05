@@ -162,6 +162,11 @@ func commandContext() context.Context {
 func createSecretsManager(
 	ctx context.Context, stack backend.Stack, secretsProvider string,
 	rotatePassphraseSecretsProvider bool) error {
+	configFile, err := getProjectStackPath(stack)
+	if err != nil {
+		return err
+	}
+
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
@@ -169,19 +174,19 @@ func createSecretsManager(
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if isDefaultSecretsProvider {
-		_, err := stack.DefaultSecretManager(stackConfigFile)
+		_, err = stack.DefaultSecretManager(configFile)
 		return err
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), configFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), configFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
