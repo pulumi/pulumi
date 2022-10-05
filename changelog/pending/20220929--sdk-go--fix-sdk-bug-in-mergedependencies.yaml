@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Fixed bug in (ours, theirs) to (theirs, theirs)
