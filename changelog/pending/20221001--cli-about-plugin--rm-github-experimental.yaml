@@ -1,7 +1,0 @@
-changes:
-- type: feat
-  scope: cli/about,plugin
-  description: >
-        Remove experimental feature for plugins from private github releases.
-        This is now supported by `github:` plugin urls, see
-        https://www.pulumi.com/docs/guides/pulumi-packages/how-to-author/#support-for-github-releases.
