@@ -529,7 +529,7 @@ async function prepareResource(label: string, res: Resource, parent: Resource | 
         }
 
         const providerRefs: Map<string, string> = new Map<string, string>();
-        if (remote) {
+        if (remote || !custom) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
             // the <ProviderResource[]> casts are safe because expandProviders

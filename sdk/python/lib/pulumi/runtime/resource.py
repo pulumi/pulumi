@@ -154,7 +154,7 @@ async def prepare_resource(
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
     provider_refs: Dict[str, Optional[str]] = {}
-    if remote and opts is not None:
+    if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
             # If we were given providers, wait for them to resolve and construct provider references from them.

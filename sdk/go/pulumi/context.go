@@ -632,7 +632,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, res, false)
+		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, res, false /* remote */, true /* custom */)
 		if err != nil {
 			return
 		}
@@ -817,7 +817,7 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote)
+		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom)
 		if err != nil {
 			return
 		}
@@ -1251,11 +1251,11 @@ type resourceInputs struct {
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
-	state *resourceState, remote bool) (*resourceInputs, error) {
+	state *resourceState, remote, custom bool) (*resourceInputs, error) {
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote)
+	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote, custom)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -1363,7 +1363,8 @@ type resourceOpts struct {
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, opts *resourceOptions, remote bool,
+func (ctx *Context) getOpts(
+	res Resource, t string, provider ProviderResource, opts *resourceOptions, remote, custom bool,
 ) (resourceOpts, error) {
 
 	var importID ID
@@ -1409,7 +1410,7 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 	}
 
 	var providerRefs map[string]string
-	if remote {
+	if remote || !custom {
 		if opts.Providers != nil {
 			providerRefs = make(map[string]string, len(opts.Providers))
 			for name, provider := range opts.Providers {

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -41,7 +42,7 @@ func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
 	opts ...pulumi.ResourceOption) (*Resource, error) {
 	args := &ResourceArgs{Echo: echo}
 	var resource Resource
-	err := ctx.RegisterResource(providerName+":index:Resource", name, args, &resource, opts...)
+	err := ctx.RegisterResource("testcomponent:index:Resource", name, args, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +59,23 @@ type Component struct {
 
 type ComponentArgs struct {
 	Echo pulumi.Input `pulumi:"echo"`
+}
+
+func NewComponentComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*Component, error) {
+	component := &Component{}
+	err := ctx.RegisterComponentResource(providerName+":index:ComponentComponent", name, component, opts...)
+	if err != nil {
+		return nil, err
+	}
+	err = ctx.RegisterRemoteComponentResource("testcomponent:index:Component", name+"-child", pulumi.Map{
+		"echo": pulumi.String("checkExpected"),
+	}, &Component{}, pulumi.Parent(component))
+	if err != nil {
+		return nil, err
+	}
+
+	err = ctx.RegisterResourceOutputs(component, pulumi.Map{})
+	return component, err
 }
 
 func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
@@ -101,7 +119,7 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 	return component, nil
 }
 
-const providerName = "testcomponent"
+const providerName = "secondtestcomponent"
 const version = "0.0.1"
 
 var currentID int
@@ -119,8 +137,6 @@ type Provider struct {
 	host    *provider.HostClient
 	name    string
 	version string
-
-	expectResourceArg bool
 }
 
 func makeProvider(host *provider.HostClient, name, version string) (pulumirpc.ResourceProviderServer, error) {
@@ -139,11 +155,6 @@ func (p *Provider) Create(ctx context.Context,
 		return nil, fmt.Errorf("Unknown resource type '%s'", typ)
 	}
 
-	if s, ok := req.GetProperties().Fields["echo"].AsInterface().(string); ok &&
-		s == "checkExpected" && !p.expectResourceArg {
-		return nil, fmt.Errorf("did not receive configured provider")
-	}
-
 	id := currentID
 	currentID++
 
@@ -157,21 +168,28 @@ func (p *Provider) Construct(ctx context.Context,
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
 		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 
-		if typ != providerName+":index:Component" {
+		switch strings.TrimPrefix(typ, providerName+":index:") {
+		case "Component":
+			args := &ComponentArgs{}
+			if err := inputs.CopyTo(args); err != nil {
+				return nil, fmt.Errorf("setting args: %w", err)
+			}
+
+			component, err := NewComponent(ctx, name, args, options)
+			if err != nil {
+				return nil, fmt.Errorf("creating component: %w", err)
+			}
+
+			return pulumiprovider.NewConstructResult(component)
+		case "ComponentComponent":
+			component, err := NewComponentComponent(ctx, name, options)
+			if err != nil {
+				return nil, fmt.Errorf("creating component: %w", err)
+			}
+			return pulumiprovider.NewConstructResult(component)
+		default:
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
-
-		args := &ComponentArgs{}
-		if err := inputs.CopyTo(args); err != nil {
-			return nil, fmt.Errorf("setting args: %w", err)
-		}
-
-		component, err := NewComponent(ctx, name, args, options)
-		if err != nil {
-			return nil, fmt.Errorf("creating component: %w", err)
-		}
-
-		return pulumiprovider.NewConstructResult(component)
 	})
 }
 
@@ -187,9 +205,6 @@ func (p *Provider) DiffConfig(ctx context.Context,
 
 func (p *Provider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
-	if _, ok := req.GetArgs().Fields["expectResourceArg"]; ok {
-		p.expectResourceArg = true
-	}
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,

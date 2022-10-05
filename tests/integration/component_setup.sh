@@ -44,6 +44,12 @@ setup_go() (
   if [ -d "testcomponent-go" ]; then
     cd testcomponent-go
     go build -o "pulumi-resource-testcomponent$(go env GOEXE)"
+    cd ..
+  fi
+  if [ -d "testcomponent2-go" ]; then
+    cd testcomponent2-go
+    go build -o "pulumi-resource-secondtestcomponent$(go env GOEXE)"
+    cd ..
   fi
 )
 
