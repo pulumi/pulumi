@@ -24,7 +24,9 @@ import (
 )
 
 func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error) {
-	return awaitWithContext(context.Background(), out)
+	result, err := UnsafeAwaitOutput(context.Background(), out)
+
+	return result.Value, result.Known, result.Secret, result.Dependencies, err
 }
 
 func TestBasicOutputs(t *testing.T) {
