@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PULUMI_VERSION="${1}"
+export PULUMI_VERSION="${1}"
 TAP_FILE="${2:-"./.github/scripts/homebrew-tap.rb}"}"
 TAP_FILE="$(realpath "${TAP_FILE}")"
 
