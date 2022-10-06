@@ -61,7 +61,7 @@ jobs:
           # TODO unify with sdk/python/Makefile once that does not use pipenv
           cp README.md sdk/python/lib
           cd sdk/python/lib
-          sed -i.bak "s/\${VERSION}/$PYPI_VERSION/g" setup.py
+          sed -i.bak "s/^VERSION = .*/VERSION = \"$PYPI_VERSION\"/g" setup.py
           rm setup.py.bak
           python3 -m venv venv
           source venv/bin/activate
