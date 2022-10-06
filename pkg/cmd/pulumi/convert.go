@@ -52,80 +52,12 @@ func newConvertCmd() *cobra.Command {
 			"\n" +
 			"The YAML program to convert will default to the manifest in the current working directory.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-
-			var projectGenerator projectGeneratorFunc
-			switch language {
-			case "csharp", "c#":
-				projectGenerator = dotnet.GenerateProject
-			case "go":
-				projectGenerator = gogen.GenerateProject
-			case "typescript":
-				projectGenerator = nodejs.GenerateProject
-			case "python": // nolint: goconst
-				projectGenerator = python.GenerateProject
-			case "java": // nolint: goconst
-				projectGenerator = javagen.GenerateProject
-			case "yaml": // nolint: goconst
-				projectGenerator = yamlgen.GenerateProject
-			default:
-				return result.Errorf("cannot generate programs for %q language", language)
-			}
-
 			cwd, err := os.Getwd()
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not resolve current working directory"))
 			}
 
-			if outDir != "." {
-				err := os.MkdirAll(outDir, 0755)
-				if err != nil {
-					return result.FromError(fmt.Errorf("could not create output directory: %w", err))
-				}
-			}
-
-			host, err := newPluginHost()
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
-			}
-			defer contract.IgnoreClose(host)
-			loader := schema.NewPluginLoader(host)
-			proj, pclProgram, err := yamlgen.Eject(cwd, loader)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
-			}
-
-			err = projectGenerator(outDir, *proj, pclProgram)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
-			}
-
-			// Project should now exist at outDir. Run installDependencies in that directory
-			// Change the working directory to the specified directory.
-			if err := os.Chdir(outDir); err != nil {
-				return result.FromError(fmt.Errorf("changing the working directory: %w", err))
-			}
-
-			// Load the project, to
-			proj, root, err := readProject()
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			projinfo := &engine.Projinfo{Proj: proj, Root: root}
-			pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			defer ctx.Close()
-
-			if !generateOnly {
-				if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
-					return result.FromError(err)
-				}
-			}
-
-			return nil
+			return runConvert(cwd, language, outDir, generateOnly)
 		}),
 	}
 
@@ -145,6 +77,77 @@ func newConvertCmd() *cobra.Command {
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
 
 	return cmd
+}
+
+func runConvert(cwd string, language string, outDir string, generateOnly bool) result.Result {
+	var projectGenerator projectGeneratorFunc
+	switch language {
+	case "csharp", "c#":
+		projectGenerator = dotnet.GenerateProject
+	case "go":
+		projectGenerator = gogen.GenerateProject
+	case "typescript":
+		projectGenerator = nodejs.GenerateProject
+	case "python": // nolint: goconst
+		projectGenerator = python.GenerateProject
+	case "java": // nolint: goconst
+		projectGenerator = javagen.GenerateProject
+	case "yaml": // nolint: goconst
+		projectGenerator = yamlgen.GenerateProject
+	default:
+		return result.Errorf("cannot generate programs for %q language", language)
+	}
+
+	if outDir != "." {
+		err := os.MkdirAll(outDir, 0755)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+		}
+	}
+
+	host, err := newPluginHost()
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
+	}
+	defer contract.IgnoreClose(host)
+	loader := schema.NewPluginLoader(host)
+	proj, pclProgram, err := yamlgen.Eject(cwd, loader)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+	}
+
+	err = projectGenerator(outDir, *proj, pclProgram)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+	}
+
+	// Project should now exist at outDir. Run installDependencies in that directory
+	// Change the working directory to the specified directory.
+	if err := os.Chdir(outDir); err != nil {
+		return result.FromError(fmt.Errorf("changing the working directory: %w", err))
+	}
+
+	// Load the project, to
+	proj, root, err := readProject()
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	if err != nil {
+		return result.FromError(err)
+	}
+
+	// defer ctx.Close()
+
+	if !generateOnly {
+		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+			return result.FromError(err)
+		}
+	}
+
+	return nil
 }
 
 func newPluginHost() (plugin.Host, error) {

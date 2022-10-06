@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Fixes a bug with lazy-loaded modules that caused mixins to observe unexpected null values.
