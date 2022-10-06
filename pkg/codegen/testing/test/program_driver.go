@@ -83,6 +83,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "python-regress-10914",
+		Description: "Python regression test for #10914",
+		SkipCompile: allProgLanguages.Except("python"),
+	},
+	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
