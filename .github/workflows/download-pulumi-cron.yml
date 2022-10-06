@@ -99,7 +99,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: winget install pulumi
-        rune: winget install pulumi
+        run: winget install pulumi
       - name: Pulumi Version Details
         id: vars
         shell: bash
