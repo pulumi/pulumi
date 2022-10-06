@@ -237,46 +237,48 @@ func Test_isStringType(t *testing.T) {
 	}
 }
 
-// This test asserts that modContext.getRelativePath()
-// returns the right relative path, regardless of whether
-// the file is a resource definition or an Input/Output declaration
-// from /types/
+// This test asserts that getRelativePath()
+// returns the right relative path. This smoke test
+// functions to pin the expected behavior to prevent regressions.
 func TestGetRelativePath(t *testing.T) {
 	t.Parallel()
 	type TestCase struct {
-		mod      string
-		dirRoot  string
+		filename string
 		expected string
 	}
+	// Recall that arguments are assumed to be directory names,
+	// even if they contain an extension.
 	var cases = []TestCase{
 		{
-			mod:      "foo",
-			dirRoot:  "",
+			filename: "foo.ts",
 			expected: "..",
 		}, {
-			mod:      "foo/bar",
-			dirRoot:  "",
+			filename: "foo/bar",
 			expected: "../..",
 		}, {
-			mod:      "types/accessanalyzer/input",
-			dirRoot:  "",
+			filename: "types/accessanalyzer/input",
 			expected: "../../..",
 		}, {
-			mod:      "input",
-			dirRoot:  "types/accessanalyzer",
+			filename: "types/accessanalyzer/nested/input.ts",
+			expected: "../../../..",
+		}, {
+			filename: "types",
+			expected: "..",
+		}, {
+			filename: "./types/aws",
 			expected: "../..",
-		},
-	}
+		}, {
+			filename: "./types",
+			expected: "..",
+		}}
 	for _, tc := range cases {
-		var ctx = &modContext{mod: tc.mod}
-		var observed = ctx.getRelativePath(tc.dirRoot)
+		var observed = getRelativePath(tc.filename)
 		require.Equal(
 			t,
 			tc.expected,
 			observed,
-			"Case (%s, %s): Expected %s, Observed %s",
-			tc.mod,
-			tc.dirRoot,
+			"Case (%s): Expected %s, Observed %s",
+			tc.filename,
 			tc.expected,
 			observed,
 		)

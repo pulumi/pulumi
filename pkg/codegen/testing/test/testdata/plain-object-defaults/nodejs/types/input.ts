@@ -4,7 +4,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
-
 import * as utilities from "../utilities";
 
 /**
@@ -146,40 +145,6 @@ export function typArgsProvideDefaults(val: TypArgs): TypArgs {
         val: (val.val) ?? "mod main",
     };
 }
-export namespace mod1 {
-    /**
-     * A test for namespaces (mod 1)
-     */
-    export interface TypArgs {
-        val?: pulumi.Input<string>;
-    }
-    /**
-     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
-     */
-    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
-        return {
-            ...val,
-            val: (val.val) ?? (utilities.getEnv("PULUMI_EXAMPLE_MOD1_DEFAULT") || "mod1"),
-        };
-    }
-}
+export * as mod1 from "./mod1";
 
-export namespace mod2 {
-    /**
-     * A test for namespaces (mod 2)
-     */
-    export interface TypArgs {
-        mod1?: pulumi.Input<inputs.mod1.TypArgs>;
-        val?: pulumi.Input<string>;
-    }
-    /**
-     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
-     */
-    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
-        return {
-            ...val,
-            mod1: (val.mod1 ? pulumi.output(val.mod1).apply(inputs.mod1.typArgsProvideDefaults) : undefined),
-            val: (val.val) ?? "mod2",
-        };
-    }
-}
+export * as mod2 from "./mod2";

@@ -5,14 +5,4 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
-export namespace nested {
-    export interface Baz {
-        hello?: string;
-        world?: string;
-    }
-
-    export interface BazArgs {
-        hello?: pulumi.Input<string>;
-        world?: pulumi.Input<string>;
-    }
-}
+export * as nested from "./nested";
