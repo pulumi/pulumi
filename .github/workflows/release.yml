@@ -201,4 +201,5 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
+      dry-run: false
     secrets: inherit
