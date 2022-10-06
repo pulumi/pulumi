@@ -526,3 +526,126 @@ func TestGeneratePackage(t *testing.T) {
 		TestCases:  test.PulumiPulumiSDKTests,
 	})
 }
+
+func TestDecomposeDocstring(t *testing.T) {
+	t.Parallel()
+	awsVpcDocs := "Provides a VPC resource.\n" +
+		"\n" +
+		"{{% examples %}}\n" +
+		"## Example Usage\n" +
+		"{{% example %}}\n" +
+		"\n" +
+		"Basic usage:\n" +
+		"\n" +
+		"```typescript\n" +
+		"Basic usage: typescript\n" +
+		"```\n" +
+		"```python\n" +
+		"Basic usage: python\n" +
+		"```\n" +
+		"```csharp\n" +
+		"Basic usage: csharp\n" +
+		"```\n" +
+		"```go\n" +
+		"Basic usage: go\n" +
+		"```\n" +
+		"```java\n" +
+		"Basic usage: java\n" +
+		"```\n" +
+		"```yaml\n" +
+		"Basic usage: yaml\n" +
+		"```\n" +
+		"\n" +
+		"Basic usage with tags:\n" +
+		"\n" +
+		"```typescript\n" +
+		"Basic usage with tags: typescript\n" +
+		"```\n" +
+		"```python\n" +
+		"Basic usage with tags: python\n" +
+		"```\n" +
+		"```csharp\n" +
+		"Basic usage with tags: csharp\n" +
+		"```\n" +
+		"```go\n" +
+		"Basic usage with tags: go\n" +
+		"```\n" +
+		"```java\n" +
+		"Basic usage with tags: java\n" +
+		"```\n" +
+		"```yaml\n" +
+		"Basic usage with tags: yaml\n" +
+		"```\n" +
+		"\n" +
+		"VPC with CIDR from AWS IPAM:\n" +
+		"\n" +
+		"```typescript\n" +
+		"VPC with CIDR from AWS IPAM: typescript\n" +
+		"```\n" +
+		"```python\n" +
+		"VPC with CIDR from AWS IPAM: python\n" +
+		"```\n" +
+		"```csharp\n" +
+		"VPC with CIDR from AWS IPAM: csharp\n" +
+		"```\n" +
+		"```java\n" +
+		"VPC with CIDR from AWS IPAM: java\n" +
+		"```\n" +
+		"```yaml\n" +
+		"VPC with CIDR from AWS IPAM: yaml\n" +
+		"```\n" +
+		"{{% /example %}}\n" +
+		"{{% /examples %}}\n" +
+		"\n" +
+		"## Import\n" +
+		"\n" +
+		"VPCs can be imported using the `vpc id`, e.g.,\n" +
+		"\n" +
+		"```sh\n" +
+		" $ pulumi import aws:ec2/vpc:Vpc test_vpc vpc-a01106c2\n" +
+		"```\n" +
+		"\n" +
+		" "
+	dctx := newDocGenContext()
+
+	info := dctx.decomposeDocstring(awsVpcDocs)
+	assert.Equal(t, docInfo{
+		description: "Provides a VPC resource.\n",
+		examples: []exampleSection{
+			{
+				Title: "Basic usage",
+				Snippets: map[string]string{
+					"csharp":     "```csharp\nBasic usage: csharp\n```\n",
+					"go":         "```go\nBasic usage: go\n```\n",
+					"java":       "```java\nBasic usage: java\n```\n",
+					"python":     "```python\nBasic usage: python\n```\n",
+					"typescript": "\n```typescript\nBasic usage: typescript\n```\n",
+					"yaml":       "```yaml\nBasic usage: yaml\n```\n",
+				},
+			},
+			{
+				Title: "Basic usage with tags",
+				Snippets: map[string]string{
+					"csharp":     "```csharp\nBasic usage with tags: csharp\n```\n",
+					"go":         "```go\nBasic usage with tags: go\n```\n",
+					"java":       "```java\nBasic usage with tags: java\n```\n",
+					"python":     "```python\nBasic usage with tags: python\n```\n",
+					"typescript": "\n```typescript\nBasic usage with tags: typescript\n```\n",
+					"yaml":       "```yaml\nBasic usage with tags: yaml\n```\n",
+				},
+			},
+			{
+				Title: "VPC with CIDR from AWS IPAM",
+				Snippets: map[string]string{
+					"csharp":     "```csharp\nVPC with CIDR from AWS IPAM: csharp\n```\n",
+					"go":         "Coming soon!",
+					"java":       "```java\nVPC with CIDR from AWS IPAM: java\n```\n",
+					"python":     "```python\nVPC with CIDR from AWS IPAM: python\n```\n",
+					"typescript": "\n```typescript\nVPC with CIDR from AWS IPAM: typescript\n```\n",
+					"yaml":       "```yaml\nVPC with CIDR from AWS IPAM: yaml\n```\n",
+				},
+			},
+		},
+		importDetails: "\n\nVPCs can be imported using the `vpc id`, e.g.,\n\n```sh\n $ pulumi import aws:ec2/vpc:Vpc test_vpc vpc-a01106c2\n```\n"},
+		info)
+}
