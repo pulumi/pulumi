@@ -319,7 +319,12 @@ config:
     type: string
     default: first
   second-value:
-    type: string`
+    type: string
+  third-value:
+    type: array
+    items:
+      type: string
+    default: [third]`
 
 	integration.CreatePulumiRepo(e, pulumiProject)
 	e.SetBackend(e.LocalURL())
@@ -330,7 +335,10 @@ config:
 	var config map[string]interface{}
 	jsonError := json.Unmarshal([]byte(stdout), &config)
 	assert.Nil(t, jsonError)
-	assert.Equal(t, 2, len(config))
+	assert.Equal(t, 3, len(config))
 	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]interface{})["value"])
 	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]interface{})["value"])
+	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})
+	assert.Equal(t, "[\"third\"]", thirdValue["value"])
+	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
 }
