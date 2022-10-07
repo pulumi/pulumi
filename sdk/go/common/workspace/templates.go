@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -104,7 +105,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 	// See if there's a Pulumi.yaml in the directory.
 	template, err := LoadTemplate(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
 		return []Template{template}, nil
@@ -128,7 +129,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 			}
 
 			template, err := LoadTemplate(filepath.Join(path, name))
-			if err != nil && !os.IsNotExist(err) {
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return nil, err
 			} else if err == nil {
 				result = append(result, template)
@@ -154,7 +155,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 	// See if there's a PulumiPolicy.yaml in the directory.
 	template, err := LoadPolicyPackTemplate(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
 		return []PolicyPackTemplate{template}, nil
@@ -178,7 +179,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 			}
 
 			template, err := LoadPolicyPackTemplate(filepath.Join(path, name))
-			if err != nil && !os.IsNotExist(err) {
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return nil, err
 			} else if err == nil {
 				result = append(result, template)
@@ -349,7 +350,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 		// Provide a nicer error message when the template can't be found (dir doesn't exist).
 		_, err := os.Stat(subDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
 			}
 			contract.IgnoreError(err)
