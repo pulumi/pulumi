@@ -182,7 +182,7 @@ func ValidateProject(raw interface{}) error {
 	var ok bool
 	var obj map[string]interface{}
 	if obj, ok = result.(map[string]interface{}); !ok {
-		return fmt.Errorf("expected an object")
+		return fmt.Errorf("expected project to be an object, was '%T'", result)
 	}
 
 	// Couple of manual errors to match Validate
