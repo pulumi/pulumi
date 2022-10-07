@@ -13,11 +13,12 @@
 // limitations under the License.
 
 import { RunError } from "./errors";
+import { getProject } from "./metadata";
 import { Output } from "./output";
+import { getConfig } from "./runtime/config";
 
 function makeSecret<T>(value: T): Output<T> {
-    const output = require("./output");
-    return new output.Output(
+    return new Output(
         [], Promise.resolve(value),
         /*isKnown:*/ Promise.resolve(true), /*isSecret:*/ Promise.resolve(true),
         Promise.resolve([]));
@@ -39,8 +40,7 @@ export class Config {
 
     constructor(name?: string) {
         if (name === undefined) {
-            const metadata = require("./metadata");
-            name = metadata.getProject() as string;
+            name = getProject() as string;
         }
 
         if (name.endsWith(":config")) {
@@ -60,9 +60,8 @@ export class Config {
                                                opts?: StringConfigOptions<K>,
                                                use?: (...args: any[]) => any,
                                                insteadOf?: (...args: any[]) => any): K | undefined {
-        const config = require("./runtime/config");
         const fullKey = this.fullKey(key);
-        const v: string | undefined = config.getConfig(fullKey);
+        const v: string | undefined = getConfig(fullKey);
         if (v === undefined) {
             return undefined;
         }
