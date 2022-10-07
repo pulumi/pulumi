@@ -30,6 +30,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -373,8 +374,11 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-	if ref != "" {
+	logging.V(10).Infof(
+		"Attempting to fetch from %s at commit %s@%s for subdirectory '%s'",
+		url, ref, commit, subDirectory)
 
+	if ref != "" {
 		// Different reference attempts to cycle through
 		// We default to master then main in that order. We need to order them to avoid breaking
 		// already existing processes for repos that already have a master and main branch.
@@ -405,6 +409,7 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 
 	// Verify the sub directory exists.
 	fullPath := filepath.Join(path, filepath.FromSlash(subDirectory))
+	logging.V(10).Infof("Cloned %s at commit %s@%s to %s", url, ref, commit, fullPath)
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		return "", err
