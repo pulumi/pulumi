@@ -44,6 +44,54 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 	return literal.Val.AsString(), call.Args[0].Range(), true
 }
 
+// annotateObjectProperties annotates the properties of an object expression with the types of the corresponding
+// properties in the schema. This is used to provide type information for invoke calls that didn't have type annotations.
+//
+// this function will recursively annotate the properties of objects that are nested within the object expression type.
+func annotateObjectProperties(modelType model.Type, schemaType schema.Type, topLevelAnnotate bool) {
+	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
+		schemaType = optionalType.ElementType
+	}
+
+	if objectType, ok := modelType.(*model.ObjectType); ok {
+		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok {
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range schemaObjectType.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+			// top-level annotation, only when needed
+			if topLevelAnnotate {
+				objectType.Annotations = append(objectType.Annotations, schemaType)
+			}
+
+			// now for each property, annotate it with the associated type from the schema
+			for propertyName, propertyType := range objectType.Properties {
+				if associatedType, ok := schemaProperties[propertyName]; ok {
+					annotateObjectProperties(propertyType, associatedType, true)
+				}
+			}
+		}
+	}
+
+	if arrayType, ok := modelType.(*model.ListType); ok {
+		underlyingArrayType := arrayType.ElementType
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType, true)
+		}
+	}
+
+	if tupleType, ok := modelType.(*model.TupleType); ok {
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			elementTypes := tupleType.ElementTypes
+			for _, elemType := range elementTypes {
+				annotateObjectProperties(elemType, underlyingSchemaArrayType, true)
+			}
+		}
+	}
+}
+
 func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
@@ -89,6 +137,13 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
+	}
+
+	// annotate the input args on the expression with the input type of the function
+	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
+		// only annotate objects starting from the properties of the object expression
+		topLevelAnnotate := false
+		annotateObjectProperties(argsObject.Type(), fn.Inputs, topLevelAnnotate)
 	}
 
 	return sig, nil

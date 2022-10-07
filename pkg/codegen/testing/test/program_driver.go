@@ -85,7 +85,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "python-regress-10914",
 		Description: "Python regression test for #10914",
-		SkipCompile: allProgLanguages.Except("python"),
+		Skip:        allProgLanguages.Except("python"),
 	},
 	{
 		Directory:   "aws-optionals",
