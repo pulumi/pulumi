@@ -234,8 +234,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		version = pluginInfo.Version
 	}
 
-	// don't ues the cache if there is a valid version
-	if pluginInfo.SchemaPath != "" && version == nil {
+	if pluginInfo.SchemaPath != "" && version != nil {
 		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil

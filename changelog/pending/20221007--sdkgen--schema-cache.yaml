@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: Re-enables caching the schemas of versioned provider plugins.
