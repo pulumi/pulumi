@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Fix cloning templates from Azure DevOps repos.
