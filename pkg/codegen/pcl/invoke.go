@@ -45,9 +45,11 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 }
 
 // annotateObjectProperties annotates the properties of an object expression with the types of the corresponding
-// properties in the schema. This is used to provide type information for invoke calls that didn't have type annotations.
+// properties in the schema. This is used to provide type information
+// for invoke calls that didn't have type annotations.
 //
-// this function will recursively annotate the properties of objects that are nested within the object expression type.
+// this function will recursively annotate the properties of objects
+// that are nested within the object expression type.
 func annotateObjectProperties(modelType model.Type, schemaType schema.Type, topLevelAnnotate bool) {
 	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
 		schemaType = optionalType.ElementType
