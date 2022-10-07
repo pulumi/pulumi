@@ -141,7 +141,7 @@ func newLoginCmd() *cobra.Command {
 					return fmt.Errorf("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = httpstate.Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
 					cloudURL, err := workspace.GetCurrentCloudURL()
