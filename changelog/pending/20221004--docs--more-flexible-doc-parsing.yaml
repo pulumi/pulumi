@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: docs
-  description: Allow more flexible parsing when extracting examples from doc comments
