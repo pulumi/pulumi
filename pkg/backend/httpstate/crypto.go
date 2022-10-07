@@ -25,13 +25,9 @@ import (
 func NewServiceSecretsManager(s Stack, stackName tokens.Name, configFile string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
-	project, path, err := workspace.DetectProjectStackPath(stackName.Q())
+	project, _, err := workspace.DetectProjectStackPath(stackName.Q())
 	if err != nil {
 		return nil, err
-	}
-
-	if configFile == "" {
-		configFile = path
 	}
 
 	info, err := workspace.LoadProjectStack(project, configFile)
