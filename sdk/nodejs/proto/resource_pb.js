@@ -1297,7 +1297,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
     aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
-    pulumi_alias_pb.Alias.toObject, includeInstance)
+    pulumi_alias_pb.Alias.toObject, includeInstance),
+    trigger: (f = msg.getTrigger()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1444,6 +1445,11 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_alias_pb.Alias;
       reader.readMessage(value,pulumi_alias_pb.Alias.deserializeBinaryFromReader);
       msg.addAliases(value);
+      break;
+    case 27:
+      var value = new google_protobuf_struct_pb.Value;
+      reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
+      msg.setTrigger(value);
       break;
     default:
       reader.skipField();
@@ -1651,6 +1657,14 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       26,
       f,
       pulumi_alias_pb.Alias.serializeBinaryToWriter
+    );
+  }
+  f = message.getTrigger();
+  if (f != null) {
+    writer.writeMessage(
+      27,
+      f,
+      google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
   }
 };
@@ -2628,6 +2642,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(opt_valu
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
   return this.setAliasesList([]);
+};
+
+
+/**
+ * optional google.protobuf.Value trigger = 27;
+ * @return {?proto.google.protobuf.Value}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getTrigger = function() {
+  return /** @type{?proto.google.protobuf.Value} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 27));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Value|undefined} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setTrigger = function(value) {
+  return jspb.Message.setWrapperField(this, 27, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearTrigger = function() {
+  return this.setTrigger(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasTrigger = function() {
+  return jspb.Message.getField(this, 27) != null;
 };
 
 

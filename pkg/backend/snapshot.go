@@ -264,6 +264,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		}
 	}
 
+	if !old.Trigger.DeepEquals(new.Trigger) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Trigger")
+		return true
+	}
+
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint.
 

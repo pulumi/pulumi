@@ -200,6 +200,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* customTimeouts */
 		"",    /* importID */
 		false, /* retainOnDelete */
+		resource.NewNullProperty(),
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -500,7 +501,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.Trigger)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -829,37 +830,56 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
 	prov plugin.Provider, goal *resource.Goal, randomSeed []byte) ([]Step, result.Result) {
-
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
 
-	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
-	// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
-	// report the message contained in the error.
-	if _, ok := err.(plugin.DiffUnavailableError); ok {
-		diff = plugin.DiffResult{Changes: plugin.DiffSome}
-		sg.deployment.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
-	} else if err != nil {
-		return nil, result.FromError(err)
-	}
+	// We might be triggering a replace if we have an old state and it's trigger value is different, we don't
+	// even need to bother doing a diff in this case because we know this replacement. Note that we treat Null
+	// as a special case for "no trigger", that is if Trigger goes from Null to anything, or from anything to
+	// Null it does not cause a replace.
+	triggerReplace := !new.Trigger.IsNull() && !old.Trigger.IsNull() && !new.Trigger.DeepEquals(old.Trigger)
+	// TODO: THIS IS INTERESTING!!! We don't really want DeepEquals here because we could have unknowns so we
+	// actually have a tri-state here, of (equal, not-equal, unknown). If equal that's easy, we're not doing a
+	// replace, likewise if not-equal we _are_ doing a replace, but the unknown state is tricky because it
+	// means we _might_ be doing a replace! That results in a maybe_replace_maybe_update step which we don't
+	// currently have. This is _very_ similar to our loop support (index resource option) where we would end
+	// up with things like maybe_delete_maybe_update. For now we just handle this the same as
+	// replaceOnChanges, i.e. unknown means assume a replace.
 
-	// Ensure that we received a sensible response.
-	if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
-		return nil, result.Errorf(
-			"unrecognized diff state for %s: %d", urn, diff.Changes)
+	var diff plugin.DiffResult
+	if triggerReplace {
+		// Return that there is a diff, but don't fill in any details.
+		diff = plugin.DiffResult{Changes: plugin.DiffSome}
+	} else {
+		var err error
+		diff, err = sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
+		// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
+		// report the message contained in the error.
+		if _, ok := err.(plugin.DiffUnavailableError); ok {
+			diff = plugin.DiffResult{Changes: plugin.DiffSome}
+			sg.deployment.ctx.Diag.Warningf(diag.RawMessage(urn, err.Error()))
+		} else if err != nil {
+			return nil, result.FromError(err)
+		}
+
+		// Ensure that we received a sensible response.
+		if diff.Changes != plugin.DiffNone && diff.Changes != plugin.DiffSome {
+			return nil, result.Errorf(
+				"unrecognized diff state for %s: %d", urn, diff.Changes)
+		}
 	}
 
 	hasInitErrors := len(old.InitErrors) > 0
 
 	// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
-	diff, err = applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
+	diff, err := applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
 
 	// If there were changes check for a replacement vs. an in-place update.
 	if diff.Changes == plugin.DiffSome {
-		if diff.Replace() {
+		if diff.Replace() || triggerReplace {
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.

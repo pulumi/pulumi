@@ -326,6 +326,8 @@ type ResourceV3 struct {
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
 	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
 	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
+	// An extra value to track, that if changed should trigger a replace.
+	Trigger interface{} `json:"trigger,omitempty" yaml:"trigger,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

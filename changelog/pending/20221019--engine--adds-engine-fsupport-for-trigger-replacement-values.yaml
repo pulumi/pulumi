@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Adds engine [Fsupport for trigger replacement values.

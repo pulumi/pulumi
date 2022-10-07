@@ -137,6 +137,8 @@ type GoalPlan struct {
 	ID resource.ID
 	// an optional config object for resource options
 	CustomTimeouts resource.CustomTimeouts
+	// the resource's trigger replacement value.
+	Trigger resource.PropertyValue
 }
 
 func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
@@ -188,6 +190,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		Aliases:                 goal.Aliases,
 		ID:                      goal.ID,
 		CustomTimeouts:          goal.CustomTimeouts,
+		Trigger:                 goal.Trigger,
 	}
 }
 
@@ -335,6 +338,7 @@ func checkMissingPlan(
 		Aliases:                 oldState.GetAliases(),
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
+		Trigger:                 oldState.Trigger,
 	}
 
 	rp := ResourcePlan{Goal: goal}
@@ -628,6 +632,11 @@ func (rp *ResourcePlan) checkGoal(
 				return fmt.Errorf("dependencies for %v changed: %v", k, message)
 			}
 		}
+	}
+
+	// Check that either both resources have the same trigger, or that it's unknown
+	if !programGoal.Trigger.DeepEqualsIncludeUnknowns(rp.Goal.Trigger) {
+		return fmt.Errorf("resource trigger changed (expected %v)", rp.Goal.Trigger)
 	}
 
 	return nil

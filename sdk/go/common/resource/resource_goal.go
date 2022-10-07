@@ -40,6 +40,7 @@ type Goal struct {
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete bool
+	Trigger        PropertyValue // the resource's trigger replacement value.
 }
 
 // NewGoal allocates a new resource goal state.
@@ -47,7 +48,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool) *Goal {
+	replaceOnChanges []string, retainOnDelete bool, trigger PropertyValue) *Goal {
 
 	g := &Goal{
 		Type:                    t,
@@ -67,6 +68,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		ID:                      id,
 		ReplaceOnChanges:        replaceOnChanges,
 		RetainOnDelete:          retainOnDelete,
+		Trigger:                 trigger,
 	}
 
 	if customTimeouts != nil {

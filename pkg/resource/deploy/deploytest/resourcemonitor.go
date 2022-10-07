@@ -105,6 +105,7 @@ type ResourceOptions struct {
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
+	Trigger                 resource.PropertyValue
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -123,6 +124,16 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   rm.supportsSecrets,
+		KeepResources: rm.supportsResourceReferences,
+	})
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	// marshal trigger
+	trigger, err := plugin.MarshalPropertyValue("trigger", opts.Trigger, plugin.MarshalOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   rm.supportsSecrets,
 		KeepResources: rm.supportsResourceReferences,
@@ -222,6 +233,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,
+		Trigger:                    trigger,
 	}
 
 	// submit request

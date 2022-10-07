@@ -4116,3 +4116,201 @@ func TestPendingDeleteOrder(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 }
+
+func TestTrigger(t *testing.T) {
+	t.Parallel()
+
+	cloudState := map[string]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						return "", news, resource.StatusOK, nil
+					}
+
+					id := fmt.Sprintf("%d", len(cloudState))
+					cloudState[id] = news
+					return resource.ID(id), news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					delete(cloudState, string(id))
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	trigger := resource.NewPropertyValue(1)
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true,
+			deploytest.ResourceOptions{
+				Trigger: trigger,
+			})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have made cloud resource 0
+	assert.Contains(t, cloudState, "0")
+
+	// Change the trigger, and run another update this should cause a replace
+	trigger = resource.NewPropertyValue(2)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have made cloud resource 1 and deleted cloud resource 0
+	assert.Contains(t, cloudState, "1")
+}
+
+func TestTrigger_FromNull(t *testing.T) {
+	t.Parallel()
+
+	cloudState := map[string]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						return "", news, resource.StatusOK, nil
+					}
+
+					id := fmt.Sprintf("%d", len(cloudState))
+					cloudState[id] = news
+					return resource.ID(id), news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					delete(cloudState, string(id))
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	trigger := resource.NewNullProperty()
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true,
+			deploytest.ResourceOptions{
+				Trigger: trigger,
+			})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have made cloud resource 0
+	assert.Contains(t, cloudState, "0")
+
+	// Change the trigger from null to something, and run another update this should NOT cause a replace
+	trigger = resource.NewPropertyValue(2)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have left the cloud resource alone
+	assert.Contains(t, cloudState, "0")
+}
+
+func TestTrigger_ToNull(t *testing.T) {
+	t.Parallel()
+
+	cloudState := map[string]resource.PropertyMap{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						return "", news, resource.StatusOK, nil
+					}
+
+					id := fmt.Sprintf("%d", len(cloudState))
+					cloudState[id] = news
+					return resource.ID(id), news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					delete(cloudState, string(id))
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	trigger := resource.NewPropertyValue(1)
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true,
+			deploytest.ResourceOptions{
+				Trigger: trigger,
+			})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have made cloud resource 0
+	assert.Contains(t, cloudState, "0")
+
+	// Change the trigger from something to null, and run another update this should NOT cause a replace
+	trigger = resource.NewNullProperty()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Len(t, cloudState, 1)
+	// This should have left the cloud resource alone
+	assert.Contains(t, cloudState, "0")
+}

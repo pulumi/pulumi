@@ -85,7 +85,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
 		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
 		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts,
-		s.ImportID, s.RetainOnDelete)
+		s.ImportID, s.RetainOnDelete, s.Trigger)
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
