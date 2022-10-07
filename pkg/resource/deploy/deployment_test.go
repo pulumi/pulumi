@@ -44,6 +44,6 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, &fixedSource{}, nil, false, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, false, &fixedSource{}, nil, false, nil)
 	assert.NoError(t, err)
 }

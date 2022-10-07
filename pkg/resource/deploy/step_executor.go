@@ -173,11 +173,15 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	if se.deployment.plan != nil {
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
 		if !ok {
-			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
+			if res := se.deployment.PlanError(urn, fmt.Errorf("no plan for resource %v", urn)); res != nil {
+				return res
+			}
 		}
 
 		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
-			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			if res := se.deployment.PlanError(urn, fmt.Errorf("resource violates plan: %w", err)); res != nil {
+				return res
+			}
 		}
 	}
 
@@ -187,7 +191,10 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
 		} else {
-			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+			if res := se.deployment.PlanError(urn, fmt.Errorf(
+				"this should already have a plan from when we called register resources")); res != nil {
+				return res
+			}
 		}
 	}
 

@@ -256,16 +256,25 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
-					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+					if res := sg.deployment.PlanError(s.URN(), fmt.Errorf(
+						"%v is not allowed by the plan: no more steps were expected for this resource", s.Op())); res != nil {
+						return nil, res
+					}
 				}
 				constraint := resourcePlan.Ops[0]
 				if !ConstrainedTo(s.Op(), constraint) {
-					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+					if res := sg.deployment.PlanError(s.URN(), fmt.Errorf(
+						"%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)); res != nil {
+						return nil, res
+					}
 				}
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
-					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+					if res := sg.deployment.PlanError(s.URN(), fmt.Errorf(
+						"%v is not allowed by the plan: no steps were expected for this resource", s.Op())); res != nil {
+						return nil, res
+					}
 				}
 			}
 		}
@@ -279,7 +288,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 			resourcePlan, ok := sg.deployment.newPlans.get(urn)
 			if !ok {
-				return nil, result.Errorf("Expected a new resource plan for %v", urn)
+				if res := sg.deployment.PlanError(s.URN(), fmt.Errorf("expected a new resource plan for %v", urn)); res != nil {
+					return nil, res
+				}
 			}
 			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 		}
@@ -617,11 +628,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			if old == nil {
 				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
 			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
+				if res := sg.deployment.PlanError(urn, fmt.Errorf("resource %s violates plan: %w", urn, err)); res != nil {
+					return nil, res
+				}
 			}
 		} else {
 			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
+				if res := sg.deployment.PlanError(urn, fmt.Errorf("resource %s violates plan: %w", urn, err)); res != nil {
+					return nil, res
+				}
 			}
 		}
 	}

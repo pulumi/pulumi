@@ -78,6 +78,7 @@ func newUpCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var planFilePath string
+	var enforcePreviewPlan bool
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions) result.Result {
@@ -164,9 +165,10 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
-			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
+			// If we're skipping preview or we've already got a plan there's no need to generate a plan.
+			GeneratePlan: !skipPreview && planFilePath == "",
+			// If the user has given us a plan then we want to enforce it, or if they've opted for --enforce-preview-plan
+			EnforcePlan: planFilePath != "" || enforcePreviewPlan,
 		}
 
 		if planFilePath != "" {
@@ -355,9 +357,10 @@ func newUpCmd() *cobra.Command {
 			Parallel:         parallel,
 			Debug:            debug,
 			Refresh:          refreshOption,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
-			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
+			// If we're skipping preview or we've already got a plan there's no need to generate a plan.
+			GeneratePlan: !skipPreview && planFilePath == "",
+			// If the user has given us a plan then we want to enforce it, or if they've opted for --enforce-preview-plan
+			EnforcePlan: planFilePath != "" || enforcePreviewPlan,
 		}
 
 		// TODO for the URL case:
@@ -570,12 +573,15 @@ func newUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
-		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
+		"Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
-	if !hasExperimentalCommands() {
-		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
-	}
+	// This defaults to true in experimental mode, else false. Eventually this will just default to true
+	// always, but we want to check with people just reporting warnings to start.
+	cmd.PersistentFlags().BoolVar(
+		&enforcePreviewPlan, "enforce-preview-plan", hasExperimentalCommands(),
+		"If true any plan violations from the plan generated at preview time will be treated as errors, "+
+			"else they are just reported as warnings. Does nothing if --skip-preview or --plan are provided.")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

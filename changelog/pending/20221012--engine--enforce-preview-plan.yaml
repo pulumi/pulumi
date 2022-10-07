@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: "\"up\" will now warn about differences between preview and up. These warnings can be turned into erros with --enforce-preview-plan."
