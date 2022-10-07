@@ -496,6 +496,17 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["plugin", "install", kind, name, version]);
     }
     /**
+     * Installs a plugin in the Workspace, from a third party server.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     * @param kind the kind of plugin, defaults to "resource"
+     * @param server the server to install the plugin from
+     */
+    async installPluginFromServer(name: string, version: string, kind = "resource", server: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", kind, name, version, "--server", server]);
+    }
+    /**
      * Removes a plugin from the Workspace matching the specified name and version.
      *
      * @param name the optional name of the plugin.
@@ -514,6 +525,7 @@ export class LocalWorkspace implements Workspace {
         args.push("--yes");
         await this.runPulumiCmd(args);
     }
+    
     /**
      * Returns a list of all plugins installed in the Workspace.
      */

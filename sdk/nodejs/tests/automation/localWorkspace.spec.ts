@@ -57,6 +57,7 @@ describe("LocalWorkspace", () => {
     it(`adds/removes/lists plugins successfully`, asyncTest(async () => {
         const ws = await LocalWorkspace.create({});
         await ws.installPlugin("aws", "v3.0.0");
+        await ws.installPluginFromServer("scaleway", "v1.2.0", "resource", "github://api.github.com/lbrlabs");
         await ws.removePlugin("aws", "3.0.0");
         await ws.listPlugins();
     }));
