@@ -76,7 +76,7 @@ func TestProjectLoadJSON(t *testing.T) {
 
 	// Test wrong type
 	_, err := writeAndLoad("\"hello  \"")
-	assert.Equal(t, "expected an object", err.Error())
+	assert.Equal(t, "expected project to be an object, was 'string'", err.Error())
 
 	// Test lack of name
 	_, err = writeAndLoad("{}")
@@ -139,7 +139,7 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test wrong type
 	_, err := writeAndLoad("\"hello\"")
-	assert.Equal(t, "expected an object", err.Error())
+	assert.Equal(t, "expected project to be an object, was 'string'", err.Error())
 
 	// Test bad key
 	_, err = writeAndLoad("4: hello")
