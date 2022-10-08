@@ -147,13 +147,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Random Pet",
 	},
 	{
-		Directory:   "aws-resource-options",
-		Description: "Resource Options",
-		MockPluginVersions: map[string]string{
-			"aws": "4.38.0",
-		},
-	},
-	{
 		Directory:   "aws-secret",
 		Description: "Secret",
 	},
