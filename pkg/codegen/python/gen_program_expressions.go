@@ -340,14 +340,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			})
 		}
 
-		if funcCall, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
-			if argsObject, ok := funcCall.Args[0].(*model.ObjectConsExpression); ok {
+		switch arg := expr.Args[1].(type) {
+		case *model.FunctionCallExpression:
+			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
 				genFuncArgs(argsObject)
 			}
-		}
 
-		if argsObject, ok := expr.Args[1].(*model.ObjectConsExpression); ok {
-			genFuncArgs(argsObject)
+		case *model.ObjectConsExpression:
+			genFuncArgs(arg)
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)

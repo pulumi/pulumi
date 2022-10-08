@@ -50,45 +50,54 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 //
 // this function will recursively annotate the properties of objects
 // that are nested within the object expression type.
-func annotateObjectProperties(modelType model.Type, schemaType schema.Type, topLevelAnnotate bool) {
+func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
 		schemaType = optionalType.ElementType
 	}
 
-	if objectType, ok := modelType.(*model.ObjectType); ok {
+	switch arg := modelType.(type) {
+	case *model.ObjectType:
 		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok {
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range schemaObjectType.Properties {
 				schemaProperties[schemaProperty.Name] = schemaProperty.Type
 			}
-			// top-level annotation, only when needed
-			if topLevelAnnotate {
-				objectType.Annotations = append(objectType.Annotations, schemaType)
-			}
 
+			// top-level annotation for the type itself
+			arg.Annotations = append(arg.Annotations, schemaType)
 			// now for each property, annotate it with the associated type from the schema
-			for propertyName, propertyType := range objectType.Properties {
+			for propertyName, propertyType := range arg.Properties {
 				if associatedType, ok := schemaProperties[propertyName]; ok {
-					annotateObjectProperties(propertyType, associatedType, true)
+					annotateObjectProperties(propertyType, associatedType)
 				}
 			}
 		}
-	}
-
-	if arrayType, ok := modelType.(*model.ListType); ok {
-		underlyingArrayType := arrayType.ElementType
+	case *model.ListType:
+		underlyingArrayType := arg.ElementType
 		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
 			underlyingSchemaArrayType := schemaArrayType.ElementType
-			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType, true)
+			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType)
 		}
-	}
 
-	if tupleType, ok := modelType.(*model.TupleType); ok {
+	case *model.TupleType:
 		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
 			underlyingSchemaArrayType := schemaArrayType.ElementType
-			elementTypes := tupleType.ElementTypes
+			elementTypes := arg.ElementTypes
 			for _, elemType := range elementTypes {
-				annotateObjectProperties(elemType, underlyingSchemaArrayType, true)
+				annotateObjectProperties(elemType, underlyingSchemaArrayType)
+			}
+		}
+	case *model.UnionType:
+		if schemaUnionType, ok := schemaType.(*schema.UnionType); ok {
+			modelElementTypes := arg.ElementTypes
+			schemaElementTypes := schemaUnionType.ElementTypes
+			if len(modelElementTypes) == len(schemaElementTypes) {
+				// annotate each type inside the model union with its corresponding
+				// schema type from the schema union.
+				// Assuming here that they match based on the index (ordered), is this correct?
+				for i := range modelElementTypes {
+					annotateObjectProperties(modelElementTypes[i], schemaElementTypes[i])
+				}
 			}
 		}
 	}
@@ -143,9 +152,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 
 	// annotate the input args on the expression with the input type of the function
 	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
-		// only annotate objects starting from the properties of the object expression
-		topLevelAnnotate := false
-		annotateObjectProperties(argsObject.Type(), fn.Inputs, topLevelAnnotate)
+		annotateObjectProperties(argsObject.Type(), fn.Inputs)
 	}
 
 	return sig, nil
