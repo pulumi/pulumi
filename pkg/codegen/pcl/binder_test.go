@@ -2,6 +2,7 @@ package pcl
 
 import (
 	"bytes"
+	"github.com/hashicorp/hcl/v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -62,8 +63,22 @@ func TestBindProgram(t *testing.T) {
 					t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 				}
 
-				_, diags, err := BindProgram(parser.Files, PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
-				assert.NoError(t, err)
+				var bindError error
+				var diags hcl.Diagnostics
+				if fileName == "simple-range.pp" {
+					// simple-range.pp requires AllowMissingVariables
+					_, diags, bindError = BindProgram(
+						parser.Files,
+						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])),
+						AllowMissingVariables)
+				} else {
+					// all other PCL files use a more restrict program bind
+					_, diags, bindError = BindProgram(
+						parser.Files,
+						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
+				}
+
+				assert.NoError(t, bindError)
 				if diags.HasErrors() {
 					t.Fatalf("failed to bind program: %v", diags)
 				}
