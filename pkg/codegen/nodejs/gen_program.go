@@ -529,7 +529,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
+				g.Fgenf(w, "%sfor (let range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
