@@ -505,20 +505,20 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
-func (in *asset) ToAssetOutput() AssetOutput {
-	return ToOutput(in).(AssetOutput)
+func (a *asset) ToAssetOutput() AssetOutput {
+	return ToOutput(a).(AssetOutput)
 }
 
-func (in *asset) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
-	return ToOutputWithContext(ctx, in).(AssetOutput)
+func (a *asset) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
+	return ToOutputWithContext(ctx, a).(AssetOutput)
 }
 
-func (in *asset) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return in.ToAssetOrArchiveOutputWithContext(context.Background())
+func (a *asset) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
+	return a.ToAssetOrArchiveOutputWithContext(context.Background())
 }
 
-func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return in.ToAssetOutputWithContext(ctx).ToAssetOrArchiveOutputWithContext(ctx)
+func (a *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
+	return a.ToAssetOutputWithContext(ctx).ToAssetOrArchiveOutputWithContext(ctx)
 }
 
 // AssetOutput is an Output that returns Asset values.

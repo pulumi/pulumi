@@ -32,7 +32,7 @@ func WithMocksWithOrganization(organization, project, stack string, mocks MockRe
 	}
 }
 
-// MockResourceArgs is used to construct call Mock
+// MockCallArgs is used to construct call Mock
 type MockCallArgs struct {
 	// Token indicates which function is being called. This token is of the form "package:module:function".
 	Token string

@@ -54,11 +54,11 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 
 // Spinner represents a very simple progress reporter.
 type Spinner interface {
-	// Print the next frame of the spinner. After Tick() has been called, there should be no writes to Stdout before
+	// Tick Print the next frame of the spinner. After Tick() has been called, there should be no writes to Stdout before
 	// calling Reset().
 	Tick()
 
-	// Called to release ownership of stdout, so others may write to it.
+	// Reset Called to release ownership of stdout, so others may write to it.
 	Reset()
 }
 

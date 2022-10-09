@@ -33,7 +33,7 @@ const (
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
 
-// Find the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
+// CommandPath Find the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
 // `python` will be looked for.
 func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {

@@ -717,7 +717,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 		Args: rpcArgs,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Invoke(%s, ...): error: %v", tok, err)
+		return nil, fmt.Errorf("invoke(%s, ...): error: %v", tok, err)
 	}
 
 	// If there were any failures from the provider, return them.

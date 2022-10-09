@@ -30,8 +30,8 @@ import (
 type ID string
 
 // String converts a resource ID into a string.
-func (id ID) String() string {
-	return string(id)
+func (id *ID) String() string {
+	return string(*id)
 }
 
 // StringPtr converts an optional ID into an optional string.
@@ -90,27 +90,27 @@ func NewUniqueHexID(prefix string, randlen, maxlen int) (ID, error) {
 	return ID(u), err
 }
 
-// NewFixedUniqueHex generates a new "random" hex string for use by resource providers. It will take the optional prefix
-// and append randlen random characters (defaulting to 8 if not > 0).  The result must not exceed maxlen total
-// characterss (if > 0).  Note that capping to maxlen necessarily increases the risk of collisions.
+// NewUniqueHexV2 generates a new "random" hex string for use by resource providers. It will take the optional prefix
+// and append randLen random characters (defaulting to 8 if not > 0).  The result must not exceed maxLen total
+// characters (if > 0).  Note that capping to maxLen necessarily increases the risk of collisions.
 // The randomness for this method is a function of urn and sequenceNumber iff sequenceNUmber > 0, else it falls back to
 // a non-deterministic source of randomness.
-func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen int) (string, error) {
-	if randlen <= 0 {
-		randlen = 8
+func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randLen, maxLen int) (string, error) {
+	if randLen <= 0 {
+		randLen = 8
 	}
-	if maxlen > 0 && len(prefix)+randlen > maxlen {
+	if maxLen > 0 && len(prefix)+randLen > maxLen {
 		return "", errors.Errorf(
-			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
+			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randLen, maxLen)
 	}
 
 	if sequenceNumber == 0 {
 		// No sequence number fallback to old logic
-		return NewUniqueHex(prefix, randlen, maxlen)
+		return NewUniqueHex(prefix, randLen, maxLen)
 	}
 
-	if randlen > 32 {
-		return "", errors.Errorf("randLen is longer than 32, %d", randlen)
+	if randLen > 32 {
+		return "", errors.Errorf("randLen is longer than 32, %d", randLen)
 	}
 
 	// TODO(seqnum) This is seeded by urn and sequence number, and urn has the stack and project names in it.
@@ -127,7 +127,7 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 	bs := hasher.Sum(nil)
 	contract.Assert(len(bs) == 64)
 
-	return prefix + hex.EncodeToString(bs)[:randlen], nil
+	return prefix + hex.EncodeToString(bs)[:randLen], nil
 }
 
 // NewUniqueName generates a new "random" string primarily intended for use by resource providers for

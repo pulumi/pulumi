@@ -543,7 +543,7 @@ func ToSecret(input interface{}) Output {
 	return ToSecretWithContext(context.Background(), input)
 }
 
-// Creates an unknown output. This is a low level API and should not be used in programs as this
+// UnsafeUnknownOutput Creates an unknown output. This is a low level API and should not be used in programs as this
 // will cause "pulumi up" to fail if called and used during a non-dryrun deployment.
 func UnsafeUnknownOutput(deps []Resource) Output {
 	output, _, _ := NewOutput()
@@ -1096,8 +1096,8 @@ func convert(v interface{}, to reflect.Type) interface{} {
 	return rv.Convert(to).Interface()
 }
 
-// TODO: ResourceOutput and the init() should probably be code generated.
 // ResourceOutput is an Output that returns Resource values.
+// TODO: ResourceOutput and the init() should probably be code generated.
 type ResourceOutput struct{ *OutputState }
 
 // ElementType returns the element type of this Output (Resource).
@@ -1113,7 +1113,7 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 	return o
 }
 
-// An Input type carrying Resource values.
+// ResourceInput is an Input type carrying Resource values.
 //
 // Unfortunately `Resource` values do not implement `ResourceInput` in
 // the current version. Use `NewResourceInput` instead.

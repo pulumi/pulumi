@@ -49,7 +49,7 @@ func ParseKey(s string) (Key, error) {
 		return Key{namespace: s[:idx], name: s[idx+1:]}, nil
 	case 2:
 		if mm, err := tokens.ParseModuleMember(s); err == nil {
-			if mm.Module().Name() == tokens.ModuleName("config") {
+			if mm.Module().Name() == "config" {
 				return Key{
 					namespace: mm.Module().Package().String(),
 					name:      mm.Name().String(),
@@ -62,15 +62,15 @@ func ParseKey(s string) (Key, error) {
 		"(configuration keys should be of the form `<namespace>:<name>`)", s)
 }
 
-func (k Key) Namespace() string {
+func (k *Key) Namespace() string {
 	return k.namespace
 }
 
-func (k Key) Name() string {
+func (k *Key) Name() string {
 	return k.name
 }
 
-func (k Key) MarshalJSON() ([]byte, error) {
+func (k *Key) MarshalJSON() ([]byte, error) {
 	return json.Marshal(k.String())
 }
 
@@ -90,7 +90,7 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (k Key) MarshalYAML() (interface{}, error) {
+func (k *Key) MarshalYAML() (interface{}, error) {
 	return k.String(), nil
 }
 
@@ -110,7 +110,7 @@ func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (k Key) String() string {
+func (k *Key) String() string {
 	return k.namespace + ":" + k.name
 }
 

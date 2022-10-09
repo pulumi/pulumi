@@ -154,7 +154,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	return p, nil
 }
 
-// Create a new provider by loading the plugin binary located at `path`.
+// NewProviderFromPath Create a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
 	plug, err := newPlugin(ctx, ctx.Pwd, path, "",

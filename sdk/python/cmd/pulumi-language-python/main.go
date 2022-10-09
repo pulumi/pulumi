@@ -348,10 +348,10 @@ var packagesWithoutPlugins = map[string]struct{}{
 }
 
 type pythonPackage struct {
-	Name     string                   `json:"name"`
-	Version  string                   `json:"version"`
-	Location string                   `json:"location"`
-	plugin   *plugin.PulumiPluginJSON `json:"-"`
+	Name     string `json:"name"`
+	Version  string `json:"version"`
+	Location string `json:"location"`
+	plugin   *plugin.PulumiPluginJSON
 }
 
 // Returns if pkg is a pulumi package.
@@ -513,7 +513,7 @@ func determinePluginDependency(
 // Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
 	if len(packageVersion) == 0 {
-		return "", fmt.Errorf("Cannot parse empty string")
+		return "", fmt.Errorf("cannot parse empty string")
 	}
 	// Verify ASCII
 	for i := 0; i < len(packageVersion); i++ {
@@ -536,7 +536,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 	// Explicitly err on epochs
 	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
-		return "", fmt.Errorf("Epochs are not supported")
+		return "", fmt.Errorf("epochs are not supported")
 	}
 
 	segments := []string{}
@@ -644,7 +644,7 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 	return output, err
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	args := []string{host.exec}
 	args = append(args, host.constructArguments(req)...)
@@ -937,7 +937,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	var result []pipDependency
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
+		return nil, fmt.Errorf("failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
 	}
 
 	dependencies := make([]*pulumirpc.DependencyInfo, len(result))

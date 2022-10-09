@@ -232,7 +232,7 @@ func normalizeVersion(version string) (string, error) {
 func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load pulumi-plugin.json: %w", err)
+		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
 	}
 
 	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
@@ -396,7 +396,7 @@ func runProgram(bin string, env []string) *pulumirpc.RunResponse {
 	}
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
@@ -628,7 +628,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 	cmd := exec.Command(ex, cmdArgs...)
 	var out []byte
 	if out, err = cmd.Output(); err != nil {
-		return nil, fmt.Errorf("Failed to get modules: %w", err)
+		return nil, fmt.Errorf("failed to get modules: %w", err)
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(out))
@@ -639,7 +639,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 			if err == io.EOF {
 				break
 			}
-			return nil, fmt.Errorf("Failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
+			return nil, fmt.Errorf("failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
 		}
 		parsed = append(parsed, m)
 

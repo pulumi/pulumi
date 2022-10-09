@@ -17,12 +17,10 @@ package diag
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"io"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -67,7 +65,7 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 	contract.Require(stdout != nil, "stdout")
 	contract.Require(stderr != nil, "stderr")
 	// Discard debug output by default unless requested.
-	debug := ioutil.Discard
+	debug := io.Discard
 	if opts.Debug {
 		debug = stdout
 	}
