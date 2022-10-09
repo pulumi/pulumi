@@ -146,9 +146,10 @@ func TestStackInitValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr,
-			"error: could not get cloud url: could not load current project: "+
-				"invalid YAML file: yaml: line 1: did not find expected key")
+		assert.Contains(t, stderr, "error: could not get cloud url: could not load current project: could not unmarshal '")
+		// Project path is printed between these two 's, but due to macos having multiple paths for temporary
+		// files we don't try to check the path in the test.
+		assert.Contains(t, stderr, "': invalid YAML file: yaml: line 1: did not find expected key")
 	})
 }
 
