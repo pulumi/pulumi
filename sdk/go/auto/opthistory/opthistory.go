@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package optup contains functional options to be used with stack history operations
+// Package opthistory contains functional options to be used with stack history operations
 // github.com/sdk/v3/go/x/auto Stack.History(ctx, pageSize, page, ...opthistory.Option)
 package opthistory
 
-// Show config secrets when they appear.
+// ShowSecrets configures whether to show config secrets when they appear.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show

@@ -43,13 +43,13 @@ type VCSKind = string
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
-	// The host name for GitLab.
+	// GitLabHostName The host name for GitLab.
 	GitLabHostName VCSKind = "gitlab.com"
-	// The host name for GitHub.
+	// GitHubHostName The host name for GitHub.
 	GitHubHostName VCSKind = "github.com"
-	// The host name for Azure DevOps
+	// AzureDevOpsHostName The host name for Azure DevOps
 	AzureDevOpsHostName VCSKind = "dev.azure.com"
-	// The host name for Bitbucket
+	// BitbucketHostName The host name for Bitbucket
 	BitbucketHostName VCSKind = "bitbucket.org"
 )
 

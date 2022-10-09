@@ -88,7 +88,7 @@ func (w *pipeWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// Returns a pair of streams for use with the language runtimes InstallDependencies method
+// MakeStreams returns a pair of streams for use with the language runtimes InstallDependencies method
 func MakeStreams(
 	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {

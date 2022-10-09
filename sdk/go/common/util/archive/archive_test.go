@@ -138,7 +138,7 @@ func doArchiveTest(t *testing.T, path string, files ...fileContents) {
 }
 
 func archiveContents(prefixPathInsideTar, path string, files ...fileContents) ([]byte, error) {
-	dir, err := ioutil.TempDir("", "archive-test")
+	dir, err := os.MkdirTemp("", "archive-test")
 	if err != nil {
 		return nil, err
 	}

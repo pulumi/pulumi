@@ -25,7 +25,7 @@ import (
 type Mapper interface {
 	// Decode decodes a JSON-like object into the target pointer to a structure.
 	Decode(obj map[string]interface{}, target interface{}) MappingError
-	// DecodeField decodes a single JSON-like value (with a given type and name) into a target pointer to a structure.
+	// DecodeValue decodes a single JSON-like value (with a given type and name) into a target pointer to a structure.
 	DecodeValue(obj map[string]interface{}, ty reflect.Type, key string, target interface{}, optional bool) FieldError
 	// Encode encodes an object into a JSON-like in-memory object.
 	Encode(source interface{}) (map[string]interface{}, MappingError)

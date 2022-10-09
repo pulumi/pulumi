@@ -36,7 +36,7 @@ func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc
 	return otgrpc.OpenTracingServerInterceptor(tracer, options...)
 }
 
-// Like OpenTracingServerInterceptor but for instrumenting streaming gRPC calls.
+// OpenTracingStreamServerInterceptor is OpenTracingServerInterceptor for instrumenting streaming gRPC calls.
 func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span,
 	options ...otgrpc.Option) grpc.StreamServerInterceptor {
 
@@ -61,7 +61,7 @@ func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInte
 	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
 }
 
-// Like OpenTracingClientInterceptor but for streaming gRPC calls.
+// OpenTracingStreamClientInterceptor is OpenTracingClientInterceptor for streaming gRPC calls.
 func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamClientInterceptor {
 	options = append(append(options,
 		// Do not trace calls to the empty method

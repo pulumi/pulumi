@@ -112,7 +112,7 @@ func (eng *hostServer) GetRootResource(ctx context.Context,
 	return &response, nil
 }
 
-// SetRootResources sets the current root resource's URN. Generally only called on startup when the Stack resource is
+// SetRootResource sets the current root resource's URN. Generally only called on startup when the Stack resource is
 // registered.
 func (eng *hostServer) SetRootResource(ctx context.Context,
 	req *lumirpc.SetRootResourceRequest) (*lumirpc.SetRootResourceResponse, error) {

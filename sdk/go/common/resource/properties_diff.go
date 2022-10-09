@@ -55,7 +55,7 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
-// Returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
+// AnyChanges returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
 // diff is nil. Otherwise returns false.
 func (diff *ObjectDiff) AnyChanges() bool {
 	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
@@ -393,7 +393,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	return v.V == other.V
 }
 
-// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+// DiffIncludeUnknowns returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)

@@ -434,7 +434,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
@@ -789,18 +789,18 @@ type yarnLockTree struct {
 func parseYarnLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("yarn")
 	if err != nil {
-		return nil, fmt.Errorf("Found %s but no yarn executable: %w", path, err)
+		return nil, fmt.Errorf("found %s but no yarn executable: %w", path, err)
 	}
 	cmdArgs := []string{"list", "--json"}
 	cmd := exec.Command(ex, cmdArgs...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
+		return nil, fmt.Errorf("failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
 	}
 
 	var lock yarnLock
 	if err = json.Unmarshal(out, &lock); err != nil {
-		return nil, fmt.Errorf("Failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
+		return nil, fmt.Errorf("failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
 	}
 	leafs := lock.Data.Trees
 
@@ -809,11 +809,11 @@ func parseYarnLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
 	// Has the form name@version
 	splitName := func(index int, nameVersion string) (string, string, error) {
 		if nameVersion == "" {
-			return "", "", fmt.Errorf("Expected \"name\" in dependency %d", index)
+			return "", "", fmt.Errorf("expected \"name\" in dependency %d", index)
 		}
 		split := strings.LastIndex(nameVersion, "@")
 		if split == -1 {
-			return "", "", fmt.Errorf("Failed to parse name and version from %s", nameVersion)
+			return "", "", fmt.Errorf("failed to parse name and version from %s", nameVersion)
 		}
 		return nameVersion[:split], nameVersion[split+1:], nil
 	}
@@ -849,17 +849,17 @@ type npmPackage struct {
 func parseNpmLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
 	ex, err := executable.FindExecutable("npm")
 	if err != nil {
-		return nil, fmt.Errorf("Found %s but not npm: %w", path, err)
+		return nil, fmt.Errorf("found %s but not npm: %w", path, err)
 	}
 	cmdArgs := []string{"ls", "--json", "--depth=0"}
 	cmd := exec.Command(ex, cmdArgs...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf(`Failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
+		return nil, fmt.Errorf(`failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
 	}
 	file := npmFile{}
 	if err = json.Unmarshal(out, &file); err != nil {
-		return nil, fmt.Errorf(`Failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
+		return nil, fmt.Errorf(`failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
 	}
 	result := make([]*pulumirpc.DependencyInfo, len(file.Dependencies))
 	var i int
@@ -880,7 +880,7 @@ func crossCheckPackageJSONFile(path string, file []byte,
 
 	var body packageJSON
 	if err := json.Unmarshal(file, &body); err != nil {
-		return nil, fmt.Errorf("Could not parse %s: %w", path, err)
+		return nil, fmt.Errorf("could not parse %s: %w", path, err)
 	}
 	dependencies := make(map[string]string)
 	for k, v := range body.Dependencies {
@@ -939,19 +939,19 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 			return nil, err
 		}
 	} else if os.IsNotExist(err) {
-		return nil, fmt.Errorf("Could not find either %s or %s", yarnFile, npmFile)
+		return nil, fmt.Errorf("could not find either %s or %s", yarnFile, npmFile)
 	} else {
-		return nil, fmt.Errorf("Could not get node dependency data: %w", err)
+		return nil, fmt.Errorf("could not get node dependency data: %w", err)
 	}
 	if !req.TransitiveDependencies {
 		file, err := ioutil.ReadFile(packageFile)
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("Could not find %s. "+
+			return nil, fmt.Errorf("could not find %s. "+
 				"Please include this in your report and run "+
 				`pulumi about --transitive" to get a list of used packages`,
 				packageFile)
 		} else if err != nil {
-			return nil, fmt.Errorf("Could not read %s: %w", packageFile, err)
+			return nil, fmt.Errorf("could not read %s: %w", packageFile, err)
 		}
 		result, err = crossCheckPackageJSONFile(packageFile, file, result)
 		if err != nil {

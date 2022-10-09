@@ -372,7 +372,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	case os.IsNotExist(err):
 		break
 	case err != nil:
-		return nil, fmt.Errorf("Failed to read version file: %w", err)
+		return nil, fmt.Errorf("failed to read version file: %w", err)
 	}
 
 	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
@@ -403,7 +403,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 
 	_, err = semver.ParseTolerant(version)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid package version: %w", err)
+		return nil, fmt.Errorf("invalid package version: %w", err)
 	}
 
 	result := &pulumirpc.PluginDependency{
@@ -545,7 +545,7 @@ func (w *logWriter) LogToUser(val string) (int, error) {
 	return len(val), nil
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	config, err := host.constructConfig(req)
 	if err != nil {
@@ -769,7 +769,7 @@ func (host *dotnetLanguageHost) GetProgramDependencies(
 	}
 	cmd := exec.Command(ex, cmdArgs...)
 	if out, err = cmd.Output(); err != nil {
-		return nil, fmt.Errorf("Failed to call \"%s\": %w", ex, err)
+		return nil, fmt.Errorf("failed to call \"%s\": %w", ex, err)
 	}
 	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
 	var packages []*pulumirpc.DependencyInfo
@@ -793,7 +793,7 @@ func (host *dotnetLanguageHost) GetProgramDependencies(
 				// Transitive package => name version
 				version = 1
 			} else {
-				return nil, fmt.Errorf("Failed to parse \"%s\"", p)
+				return nil, fmt.Errorf("failed to parse \"%s\"", p)
 			}
 			packages = append(packages, &pulumirpc.DependencyInfo{
 				Name:    nameRequiredVersion[0],

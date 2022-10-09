@@ -288,7 +288,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
+		return TemplateRepository{}, fmt.Errorf("failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{

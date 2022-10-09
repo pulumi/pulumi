@@ -222,7 +222,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 				continue
 			}
 
-			pdeps := []string{}
+			pdeps := make([]string, 0, 1)
 			for _, d := range pd {
 				pdeps = append(pdeps, string(d))
 			}
@@ -604,7 +604,7 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Disabled, nil
 
 	default:
-		return "", fmt.Errorf("Invalid enforcement level %d", el)
+		return "", fmt.Errorf("invalid enforcement level %d", el)
 	}
 }
 
@@ -615,8 +615,7 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 
 	props := make(map[string]JSONSchema)
 	for k, v := range unmarshalMap(schema.GetProperties()) {
-		s := v.(map[string]interface{})
-		props[k] = JSONSchema(s)
+		props[k] = v.(JSONSchema)
 	}
 
 	return &AnalyzerPolicyConfigSchema{

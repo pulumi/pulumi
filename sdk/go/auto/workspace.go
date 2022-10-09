@@ -107,7 +107,7 @@ type Workspace interface {
 	// ImportStack imports the specified deployment state into a pre-existing stack.
 	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
-	// Outputs get the current set of Stack outputs from the last Stack.Up().
+	// StackOutputs gets the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
 }
 

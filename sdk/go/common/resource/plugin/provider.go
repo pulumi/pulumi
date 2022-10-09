@@ -227,7 +227,7 @@ type DiffResult struct {
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
-// Computes the detailed diff of Updated, Added and Deleted keys.
+// NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
 func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]PropertyDiff {
 	if diff == nil {
 		return map[string]PropertyDiff{}
