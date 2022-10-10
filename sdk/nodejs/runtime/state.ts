@@ -128,3 +128,10 @@ export const getStore = () => {
     }
     return localStore;
 };
+
+(<any>getStore).captureReplacement = () => {
+    const store = getStore();
+
+    const funcToSerialize = () => store;
+    return funcToSerialize;
+};

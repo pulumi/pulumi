@@ -41,6 +41,16 @@ export function hasTrueBooleanMember(obj: any, memberName: string | number | sym
     return val === true;
 }
 
+/** @internal */
+export function hasFunctionMember(obj: any, memberName: string | number | symbol): boolean {
+    if (obj === undefined || obj === null) {
+        return false;
+    }
+
+    const val = obj[memberName];
+    return val instanceof Function;
+}
+
 // Workaround errors we sometimes get on some machines saying that Object.values is not available.
 /** @internal */
 export function values(obj: object): any[] {

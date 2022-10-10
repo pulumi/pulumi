@@ -18,7 +18,7 @@ import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
-import { hasTrueBooleanMember } from "../../utils";
+import { hasFunctionMember, hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap } from "./parseFunction";
 import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
@@ -869,6 +869,16 @@ async function getOrCreateEntryAsync(
         const errorFunc = () => { throw new Error(message); };
 
         obj = errorFunc;
+    }
+
+    if (obj instanceof Function && hasFunctionMember(obj, "captureReplacement")) {
+        const funcToSerialize = obj.captureReplacement();
+
+        if (!(funcToSerialize instanceof Function)) {
+            throw new Error("Result of 'captureReplacement' is not a function.");
+        }
+
+        obj = funcToSerialize;
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder
