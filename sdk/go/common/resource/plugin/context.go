@@ -67,7 +67,7 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 		disableProviderPreview, parentSpan, plugins)
 }
 
-// NewContextWithRoot Variation of NewContext that also sets known project Root. Additionally accepts Plugins
+// NewContextWithRoot a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {

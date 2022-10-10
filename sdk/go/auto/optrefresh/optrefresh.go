@@ -87,7 +87,7 @@ func UserAgent(agent string) Option {
 	})
 }
 
-// ShowSecrets Show config secrets when they appear in the config.
+// ShowSecrets show config secrets when they appear in the config.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show
