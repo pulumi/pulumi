@@ -95,6 +95,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
+		Directory:   "simple-range",
+		Description: "Simple range as int expression translation",
+	},
+	{
 		Directory:   "azure-native",
 		Description: "Azure Native",
 		Skip:        codegen.NewStringSet("go"),
@@ -293,7 +297,11 @@ func TestProgramCodegen(
 			}
 
 			program, diags, err := pcl.BindProgram(parser.Files,
-				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)))
+				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)),
+				// needed for simple-range test
+				pcl.AllowMissingVariables,
+			)
+
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
