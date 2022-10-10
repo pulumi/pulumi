@@ -36,7 +36,9 @@ func UppercaseFirst(s string) string {
 	if s == "" {
 		return ""
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }
 
 func ModifyStringAroundDelimeter(str, delim string, modifyNext func(next string) string) string {
