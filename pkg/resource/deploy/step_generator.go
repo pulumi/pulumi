@@ -253,16 +253,21 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
+		logging.V(5).Infof("Checking step %s for %s", s.Op(), s.URN())
+
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
 				constraint := resourcePlan.Ops[0]
+				// We remove the Op from the list before doing the constraint check.
+				// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
+				// This op has been attempted, it just might fail its constraint.
+				resourcePlan.Ops = resourcePlan.Ops[1:]
 				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
-				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
 				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
@@ -601,11 +606,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 		inputDiff := oldInputs.Diff(inputs)
 
-		// Generate the output goal plan
-		newResourcePlan := &ResourcePlan{
-			Seed: randomSeed,
-			Goal: NewGoalPlan(inputDiff, goal)}
-		sg.deployment.newPlans.set(urn, newResourcePlan)
+		// Generate the output goal plan, if we're recreating this it should already exist
+		if recreating {
+			plan, ok := sg.deployment.newPlans.get(urn)
+			if !ok {
+				return nil, result.FromError(fmt.Errorf("no plan for resource %v", urn))
+			}
+			// The plan will have had it's Ops already partially filled in for the delete operation, but we
+			// now have the information needed to fill in Seed and Goal.
+			plan.Seed = randomSeed
+			plan.Goal = NewGoalPlan(inputDiff, goal)
+		} else {
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(inputDiff, goal)}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
+		}
 	}
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.

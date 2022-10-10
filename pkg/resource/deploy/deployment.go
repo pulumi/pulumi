@@ -151,6 +151,10 @@ func (m *resourcePlans) set(urn resource.URN, plan *ResourcePlan) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
+	if _, ok := m.plans.ResourcePlans[urn]; ok {
+		panic(fmt.Sprintf("tried to set resource plan for %s but it's already been set", urn))
+	}
+
 	m.plans.ResourcePlans[urn] = plan
 }
 

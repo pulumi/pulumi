@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a bug in update plans handling resources being replaced due to other resources being deleted before replacement.
