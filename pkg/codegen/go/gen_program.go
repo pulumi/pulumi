@@ -699,8 +699,16 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if isValUsed {
 			valVar = "val0"
 		}
+		if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
+			g.Indented(func() {
+				g.Fgenf(w, "%skey0 := index\n", g.Indent)
+				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+			})
+		} else {
+			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
+		}
 
-		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
 		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
@@ -857,6 +865,8 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			g.Fgenf(w, "%s %s string(%s)\n", name, assignment, tmpVar)
 			g.tmpVarCount++
 			g.isErrAssigned = true
+		default:
+			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)

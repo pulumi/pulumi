@@ -83,6 +83,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "read-file-func",
+		Description: "ReadFile function translation works",
+	},
+	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
@@ -93,6 +97,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8070]
+	},
+	{
+		Directory:   "simple-range",
+		Description: "Simple range as int expression translation",
 	},
 	{
 		Directory:   "azure-native",
@@ -293,7 +301,11 @@ func TestProgramCodegen(
 			}
 
 			program, diags, err := pcl.BindProgram(parser.Files,
-				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)))
+				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)),
+				// needed for simple-range test
+				pcl.AllowMissingVariables,
+			)
+
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

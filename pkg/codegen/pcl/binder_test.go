@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -62,8 +64,24 @@ func TestBindProgram(t *testing.T) {
 					t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 				}
 
-				_, diags, err := BindProgram(parser.Files, PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
-				assert.NoError(t, err)
+				var bindError error
+				var diags hcl.Diagnostics
+				if fileName == "simple-range.pp" {
+					// simple-range.pp requires AllowMissingVariables
+					// TODO: remove this once we have a better way to handle this
+					// https://github.com/pulumi/pulumi/issues/10985
+					_, diags, bindError = BindProgram(
+						parser.Files,
+						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])),
+						AllowMissingVariables)
+				} else {
+					// all other PCL files use a more restrict program bind
+					_, diags, bindError = BindProgram(
+						parser.Files,
+						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
+				}
+
+				assert.NoError(t, bindError)
 				if diags.HasErrors() {
 					t.Fatalf("failed to bind program: %v", diags)
 				}
