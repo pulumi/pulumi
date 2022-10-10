@@ -83,6 +83,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "read-file-func",
+		Description: "ReadFile function translation works",
+	},
+	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:

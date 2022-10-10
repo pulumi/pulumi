@@ -865,6 +865,8 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			g.Fgenf(w, "%s %s string(%s)\n", name, assignment, tmpVar)
 			g.tmpVarCount++
 			g.isErrAssigned = true
+		default:
+			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)
