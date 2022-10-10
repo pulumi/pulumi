@@ -2,11 +2,12 @@ package pcl
 
 import (
 	"bytes"
-	"github.com/hashicorp/hcl/v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/hashicorp/hcl/v2"
 
 	"github.com/stretchr/testify/assert"
 
@@ -67,6 +68,8 @@ func TestBindProgram(t *testing.T) {
 				var diags hcl.Diagnostics
 				if fileName == "simple-range.pp" {
 					// simple-range.pp requires AllowMissingVariables
+					// TODO: remove this once we have a better way to handle this
+					// https://github.com/pulumi/pulumi/issues/10985
 					_, diags, bindError = BindProgram(
 						parser.Files,
 						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])),
