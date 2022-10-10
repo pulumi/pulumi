@@ -105,10 +105,6 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	return safeName, nil
 }
 
-func camel(s string) string {
-	return cgstrings.Camel(s)
-}
-
 // Title converts the input string to a title case
 // where only the initial letter is upper-cased.
 // It also removes $-prefix if any.
