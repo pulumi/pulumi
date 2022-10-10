@@ -1,14 +1,14 @@
 package main
 
 import (
-	"git.example.org/thirdparty"
-	"git.example.org/thirdparty/module"
+	"git.example.org/thirdparty/sdk/go/pkg"
+	"git.example.org/thirdparty/sdk/go/pkg/module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := thirdparty.NewThing(ctx, "Other", &thirdparty.ThingArgs{
+		_, err := pkg.NewThing(ctx, "Other", &pkg.ThingArgs{
 			Idea: pulumi.String("Support Third Party"),
 		})
 		if err != nil {
@@ -26,7 +26,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = thirdparty.NewProvider(ctx, "Provider", &thirdparty.ProviderArgs{
+		_, err = pkg.NewProvider(ctx, "Provider", &pkg.ProviderArgs{
 			ObjectProp: pulumi.StringMap{
 				"prop1": pulumi.String("foo"),
 				"prop2": pulumi.String("bar"),
