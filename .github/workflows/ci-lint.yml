@@ -38,6 +38,19 @@ jobs:
           fi
       - name: Lint
         run: make lint
+  codegen-tests-lint:
+    name: Lint codegen test files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Check diff between pu/pu and pu/yaml tests
+        run: |
+          cd pkg
+          curl https://codeload.github.com/pulumi/pulumi-yaml/tar.gz/main | tar -xz --strip=2 pulumi-yaml-main/pkg/pulumiyaml/testing/test/testdata
+          for dir in codegen/testing/test/testdata/*; if [[ $dir == *-pp ]] then diff $dir/${$(basename $dir)/-pp/".pp"} pulumiyaml/testing/test/testdata/$(basename $dir)/$(basename ${dir/-pp/".pp"}); rv=$? if [[ $rv -ne 0 ]] then echo "tests in pu/pu and pu/yaml differ"; exit 1 ; fi
+          rm -r pulumiyaml
 
   protobuf-lint:
     name: Lint Protobufs
