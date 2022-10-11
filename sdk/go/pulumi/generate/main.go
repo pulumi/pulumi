@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
-// +build ignore
-
 package main
 
 import (
@@ -44,6 +41,12 @@ type builtin struct {
 	DefaultConfig  string
 	RegisterInput  bool
 	defaultValue   string
+
+	// Used with the "array-contravariance" strategy to attempt to convert []interface{} slices to
+	// []T.
+	InnerElementType string
+
+	Strategy string
 }
 
 func (b builtin) DefineInputType() bool {
@@ -233,6 +236,11 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			item:          p,
 			Example:       fmt.Sprintf("%sArray{%s}", name, p.Example),
 			RegisterInput: true,
+
+			InnerElementType: p.Type,
+		}
+		if p.Type != "interface{}" {
+			arrType.Strategy = "array-contravariance"
 		}
 		builtins = append(builtins, arrType)
 		mapType := &builtin{
@@ -312,7 +320,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 }
 
 func main() {
-	templates, err := template.New("templates").Funcs(funcs).ParseGlob("./templates/*")
+	templates, err := template.New("templates").Funcs(funcs).ParseGlob("./generate/templates/*")
 	if err != nil {
 		log.Fatalf("failed to parse templates: %v", err)
 	}
