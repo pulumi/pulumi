@@ -164,6 +164,21 @@ type ProgressDisplay struct {
 	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
 	// changed between the last time we printed and now.
 	printedProgressCache map[string]Progress
+
+	// Structure that tracks the time taken to perform an action on a resource.
+	opStopwatch opStopwatch
+}
+
+type opStopwatch struct {
+	start map[resource.URN]time.Time
+	end   map[resource.URN]time.Time
+}
+
+func newOpStopwatch() opStopwatch {
+	return opStopwatch{
+		start: map[resource.URN]time.Time{},
+		end:   map[resource.URN]time.Time{},
+	}
 }
 
 var (
@@ -300,6 +315,8 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	// from to display to the console.
 	progressOutput := make(chan Progress)
 
+	opStopwatch := newOpStopwatch()
+
 	display := &ProgressDisplay{
 		action:                 action,
 		isPreview:              isPreview,
@@ -315,6 +332,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 		printedProgressCache:   make(map[string]Progress),
 		displayOrderCounter:    1,
 		nonInteractiveSpinner:  spinner,
+		opStopwatch:            opStopwatch,
 	}
 
 	// Assume we are not displaying in a terminal by default.
@@ -1102,10 +1120,19 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
+
+		// Register the resource update start time to calculate duration
+		// and time elapsed.
+		display.opStopwatch.start[step.URN] = time.Now()
+
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
+
+		// Register the resource update end time to calculate duration
+		// to display.
+		display.opStopwatch.end[step.URN] = time.Now()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1236,63 +1263,84 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	}
 
 	getDescription := func() string {
+		opText := ""
 		if failed {
 			switch op {
 			case deploy.OpSame:
-				return "failed"
+				opText = "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				return "creating failed"
+				opText = "creating failed"
 			case deploy.OpUpdate:
-				return "updating failed"
+				opText = "updating failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
-				return "deleting failed"
+				opText = "deleting failed"
 			case deploy.OpReplace:
-				return "replacing failed"
+				opText = "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
-				return "reading failed"
+				opText = "reading failed"
 			case deploy.OpRefresh:
-				return "refreshing failed"
+				opText = "refreshing failed"
 			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				return "discarding failed"
+				opText = "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
-				return "importing failed"
+				opText = "importing failed"
+			default:
+				contract.Failf("Unrecognized resource step op: %v", op)
+				return ""
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return ""
+				opText = ""
 			case deploy.OpCreate:
-				return "created"
+				opText = "created"
 			case deploy.OpUpdate:
-				return "updated"
+				opText = "updated"
 			case deploy.OpDelete:
-				return "deleted"
+				opText = "deleted"
 			case deploy.OpReplace:
-				return "replaced"
+				opText = "replaced"
 			case deploy.OpCreateReplacement:
-				return "created replacement"
+				opText = "created replacement"
 			case deploy.OpDeleteReplaced:
-				return "deleted original"
+				opText = "deleted original"
 			case deploy.OpRead:
 				// nolint: goconst
-				return "read"
+				opText = "read"
 			case deploy.OpReadReplacement:
-				return "read for replacement"
+				opText = "read for replacement"
 			case deploy.OpRefresh:
-				return "refresh"
+				opText = "refresh"
 			case deploy.OpReadDiscard:
-				return "discarded"
+				opText = "discarded"
 			case deploy.OpDiscardReplaced:
-				return "discarded original"
+				opText = "discarded original"
 			case deploy.OpImport:
-				return "imported"
+				opText = "imported"
 			case deploy.OpImportReplacement:
-				return "imported replacement"
+				opText = "imported replacement"
+			default:
+				contract.Failf("Unrecognized resource step op: %v", op)
+				return ""
 			}
 		}
+		start, ok := display.opStopwatch.start[step.URN]
+		if !ok {
+			return opText
+		}
 
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+		end, ok := display.opStopwatch.end[step.URN]
+		if !ok {
+			return opText
+		}
+
+		opDuration := end.Sub(start).Seconds()
+		if opDuration < 1 {
+			// Display a more fine-grain duration as the operation
+			// has completed.
+			return fmt.Sprintf("%s (%.2fs)", opText, opDuration)
+		}
+		return fmt.Sprintf("%s (%ds)", opText, int(opDuration))
 	}
 
 	if failed {
@@ -1412,39 +1460,50 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
+		opText := ""
 		switch op {
 		case deploy.OpSame:
-			return ""
+			opText = ""
 		case deploy.OpCreate:
-			return "creating"
+			opText = "creating"
 		case deploy.OpUpdate:
-			return "updating"
+			opText = "updating"
 		case deploy.OpDelete:
-			return "deleting"
+			opText = "deleting"
 		case deploy.OpReplace:
-			return "replacing"
+			opText = "replacing"
 		case deploy.OpCreateReplacement:
-			return "creating replacement"
+			opText = "creating replacement"
 		case deploy.OpDeleteReplaced:
-			return "deleting original"
+			opText = "deleting original"
 		case deploy.OpRead:
-			return "reading"
+			opText = "reading"
 		case deploy.OpReadReplacement:
-			return "reading for replacement"
+			opText = "reading for replacement"
 		case deploy.OpRefresh:
-			return "refreshing"
+			opText = "refreshing"
 		case deploy.OpReadDiscard:
-			return "discarding"
+			opText = "discarding"
 		case deploy.OpDiscardReplaced:
-			return "discarding original"
+			opText = "discarding original"
 		case deploy.OpImport:
-			return "importing"
+			opText = "importing"
 		case deploy.OpImportReplacement:
-			return "importing replacement"
+			opText = "importing replacement"
+		default:
+			contract.Failf("Unrecognized resource step op: %v", op)
+			return ""
 		}
 
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+		// Calculate operation time elapsed.
+		start, ok := display.opStopwatch.start[step.URN]
+		if !ok {
+			return opText
+		}
+
+		secondsElapsed := time.Now().Sub(start).Seconds()
+		return fmt.Sprintf("%s (%ds)", opText, int(secondsElapsed))
+
 	}
 	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }
