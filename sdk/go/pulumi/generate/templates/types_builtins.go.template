@@ -218,10 +218,10 @@ func (a AnyOutput) As{{.Name}}Output() {{.Name}}Output {
 				return nil, nil
 			}
 			out := make([]{{.InnerElementType}}, len(array))
-			for i := range array {
-				value, ok := array[i].({{.InnerElementType}})
+			for i, v := range array {
+				value, ok := v.({{.InnerElementType}})
 				if !ok {
-					return nil, fmt.Errorf("expected value of type {{.InnerElementType}}, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type {{.InnerElementType}}, got %T", i, v)
 				}
 				out[i] = value
 			}

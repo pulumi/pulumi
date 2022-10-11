@@ -5020,10 +5020,10 @@ func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
 				return nil, nil
 			}
 			out := make([]Archive, len(array))
-			for i := range array {
-				value, ok := array[i].(Archive)
+			for i, v := range array {
+				value, ok := v.(Archive)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type Archive, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type Archive, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5097,10 +5097,10 @@ func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
 				return nil, nil
 			}
 			out := make([]Asset, len(array))
-			for i := range array {
-				value, ok := array[i].(Asset)
+			for i, v := range array {
+				value, ok := v.(Asset)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type Asset, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type Asset, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5174,10 +5174,10 @@ func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
 				return nil, nil
 			}
 			out := make([]AssetOrArchive, len(array))
-			for i := range array {
-				value, ok := array[i].(AssetOrArchive)
+			for i, v := range array {
+				value, ok := v.(AssetOrArchive)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type AssetOrArchive, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type AssetOrArchive, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5260,10 +5260,10 @@ func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
 				return nil, nil
 			}
 			out := make([]bool, len(array))
-			for i := range array {
-				value, ok := array[i].(bool)
+			for i, v := range array {
+				value, ok := v.(bool)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type bool, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type bool, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5346,10 +5346,10 @@ func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
 				return nil, nil
 			}
 			out := make([]float64, len(array))
-			for i := range array {
-				value, ok := array[i].(float64)
+			for i, v := range array {
+				value, ok := v.(float64)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type float64, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type float64, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5432,10 +5432,10 @@ func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
 				return nil, nil
 			}
 			out := make([]ID, len(array))
-			for i := range array {
-				value, ok := array[i].(ID)
+			for i, v := range array {
+				value, ok := v.(ID)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type ID, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type ID, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5581,10 +5581,10 @@ func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
 				return nil, nil
 			}
 			out := make([]int, len(array))
-			for i := range array {
-				value, ok := array[i].(int)
+			for i, v := range array {
+				value, ok := v.(int)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type int, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type int, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5667,10 +5667,10 @@ func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
 				return nil, nil
 			}
 			out := make([]string, len(array))
-			for i := range array {
-				value, ok := array[i].(string)
+			for i, v := range array {
+				value, ok := v.(string)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type string, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type string, got %T", i, v)
 				}
 				out[i] = value
 			}
@@ -5753,10 +5753,10 @@ func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
 				return nil, nil
 			}
 			out := make([]URN, len(array))
-			for i := range array {
-				value, ok := array[i].(URN)
+			for i, v := range array {
+				value, ok := v.(URN)
 				if !ok {
-					return nil, fmt.Errorf("expected value of type URN, got %T", array[i])
+					return nil, fmt.Errorf("[%d]: expected value of type URN, got %T", i, v)
 				}
 				out[i] = value
 			}
