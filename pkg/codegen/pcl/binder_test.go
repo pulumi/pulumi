@@ -10,14 +10,19 @@ import (
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 var fileToMockPlugins = map[string]map[string]string{
 	"aws-resource-options.pp": {
 		"aws": "4.38.0",
+	},
+	"modpath.pp": {
+		"other": "0.1.0",
 	},
 }
 
@@ -51,34 +56,25 @@ func TestBindProgram(t *testing.T) {
 
 				path := filepath.Join(folderPath, fileName)
 				contents, err := ioutil.ReadFile(path)
-				if err != nil {
-					t.Fatalf("could not read %v: %v", path, err)
-				}
+				require.NoErrorf(t, err, "could not read %v", path)
 
 				parser := syntax.NewParser()
 				err = parser.ParseFile(bytes.NewReader(contents), fileName)
-				if err != nil {
-					t.Fatalf("could not read %v: %v", path, err)
-				}
-				if parser.Diagnostics.HasErrors() {
-					t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-				}
+				require.NoErrorf(t, err, "could not read %v", path)
+				require.False(t, parser.Diagnostics.HasErrors(), "failed to parse files")
 
 				var bindError error
 				var diags hcl.Diagnostics
+				loader := Loader(schema.NewOfflinePluginLoader(
+					utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
 				if fileName == "simple-range.pp" {
 					// simple-range.pp requires AllowMissingVariables
 					// TODO: remove this once we have a better way to handle this
 					// https://github.com/pulumi/pulumi/issues/10985
-					_, diags, bindError = BindProgram(
-						parser.Files,
-						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])),
-						AllowMissingVariables)
+					_, diags, bindError = BindProgram(parser.Files, loader, AllowMissingVariables)
 				} else {
 					// all other PCL files use a more restrict program bind
-					_, diags, bindError = BindProgram(
-						parser.Files,
-						PluginHost(utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
+					_, diags, bindError = BindProgram(parser.Files, loader)
 				}
 
 				assert.NoError(t, bindError)

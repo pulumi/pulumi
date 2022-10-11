@@ -210,6 +210,11 @@ require (
 			// add the module based on the import generated in the .go files, but it will always get the
 			// latest version.
 
+			if info, ok := p.Language["go"]; ok {
+				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
+					gomod.WriteString(fmt.Sprintf(" %s v%s\n", info.ModulePath, p.Version.String()))
+				}
+			}
 			continue
 		}
 
