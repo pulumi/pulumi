@@ -434,7 +434,7 @@ func getPluginVersion(info packageJSON) (string, error) {
 // nodejs, we have no problem calling this synchronously, and can block until we get the
 // response which we can then synchronously send to nodejs.
 
-// Run is RPC endpoint for LanguageRuntimeServer::Run
+// Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 

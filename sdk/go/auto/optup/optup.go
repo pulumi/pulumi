@@ -115,7 +115,7 @@ func Plan(path string) Option {
 	})
 }
 
-// ShowSecrets show config secrets when they appear.
+// ShowSecrets configures whether to show config secrets when they appear.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show

@@ -16,7 +16,7 @@
 // github.com/sdk/v3/go/x/auto Stack.History(ctx, pageSize, page, ...opthistory.Option)
 package opthistory
 
-// ShowSecrets show config secrets when they appear.
+// ShowSecrets configures whether to show config secrets when they appear.
 func ShowSecrets(show bool) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ShowSecrets = &show

@@ -545,7 +545,7 @@ func (w *logWriter) LogToUser(val string) (int, error) {
 	return len(val), nil
 }
 
-// Run is RPC endpoint for LanguageRuntimeServer::Run
+// Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	config, err := host.constructConfig(req)
 	if err != nil {
