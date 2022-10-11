@@ -32,7 +32,7 @@ import (
 
 func TestGenerateLanguageDefinition(t *testing.T) {
 	t.Parallel()
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath, nil))
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {

@@ -170,16 +170,18 @@ version=$(word 2,$(subst !, ,$@))
 schema-%: curl.ensure jq.ensure
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
-	@[ -f pkg/codegen/testing/test/testdata/${name}.json ] || \
+	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
-	 	| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}.json
+		| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}-${version}.json
 	@# Confirm that the correct version is present. If not, error out.
-	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}.json)" &&        \
+	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}-${version}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
 		fi
-get_schemas: schema-aws!4.26.0          \
+get_schemas: \
+			 schema-aws!4.26.0          \
+			 schema-aws!5.16.2          \
 			 schema-azure-native!1.29.0 \
 			 schema-azure!4.18.0        \
 			 schema-kubernetes!3.7.2    \

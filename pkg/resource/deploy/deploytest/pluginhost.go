@@ -397,25 +397,43 @@ func (host *pluginHost) CloseProvider(provider plugin.Provider) error {
 func (host *pluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
 	return nil
 }
+func (host *pluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
+	return nil
+}
 func (host *pluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	plugins := make([]workspace.PluginInfo, 0, len(host.pluginLoaders))
+
 	for _, v := range host.pluginLoaders {
-		if v.kind == kind && v.name == name {
-			// TODO: for multi-version testing, support multiple versions of plugins concurrently. Not
-			// allowed at present time.
-			return &workspace.PluginInfo{
-				Kind:       kind,
-				Name:       name,
-				Path:       v.path,
-				Version:    &v.version,
-				SchemaPath: filepath.Join(v.path, name+".json"),
-				// SchemaTime not set as caching is indefinite.
-			}, nil
+		p := workspace.PluginInfo{
+			Kind:       v.kind,
+			Name:       v.name,
+			Path:       v.path,
+			Version:    &v.version,
+			SchemaPath: filepath.Join(v.path, name+"-"+v.version.String()+".json"),
+			// SchemaTime not set as caching is indefinite.
 		}
+		plugins = append(plugins, p)
 	}
 
-	return nil, nil
+	var semverRange semver.Range
+	if version == nil {
+		semverRange = func(v semver.Version) bool {
+			return true
+		}
+	} else {
+		// Require an exact match:
+		semverRange = version.EQ
+	}
+
+	match, err := workspace.SelectCompatiblePlugin(plugins, kind, name, semverRange)
+	if err == nil {
+		return &match, nil
+	}
+	return nil, fmt.Errorf("could not locate a compatible plugin in deploytest, the makefile and "+
+		"& constructor of the plugin host must define the location of the schema: %w", err)
 }
+
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginSpec, error) {
 	return host.languageRuntime.GetRequiredPlugins(info)

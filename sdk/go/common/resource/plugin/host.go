@@ -74,6 +74,9 @@ type Host interface {
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
+	// InstallPlugin installs a given plugin if it's not available.
+	InstallPlugin(plugin workspace.PluginSpec) error
+
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
 
@@ -431,6 +434,28 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	}
 
 	return result
+}
+
+func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
+	if !workspace.HasPlugin(pkgPlugin) {
+		// TODO: schema and provider versions
+		// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
+		// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
+		if pkgPlugin.Version == nil {
+			return nil
+		}
+
+		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+		}
+		defer os.Remove(tarball.Name())
+		if err := pkgPlugin.InstallWithContext(host.ctx.baseContext, workspace.TarPlugin(tarball), false); err != nil {
+			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
+		}
+	}
+
+	return nil
 }
 
 func (host *defaultHost) ResolvePlugin(

@@ -74,6 +74,9 @@ func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRunt
 func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
 	return nil
 }
+func (host *testPluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
+	return nil
+}
 func (host *testPluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
 	return nil, nil
