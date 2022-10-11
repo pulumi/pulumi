@@ -37,7 +37,8 @@ type pluginLoader struct {
 	host    plugin.Host
 	entries map[string]PackageReference
 
-	cacheOptions pluginLoaderCacheOptions
+	cacheOptions       pluginLoaderCacheOptions
+	disableDownloading bool
 }
 
 // Caching options intended for benchmarking or debugging:
@@ -55,6 +56,13 @@ func NewPluginLoader(host plugin.Host) ReferenceLoader {
 		host:    host,
 		entries: map[string]PackageReference{},
 	}
+}
+
+// NewOfflinePluginLoader creates a loader that will not download missing packages
+func NewOfflinePluginLoader(host plugin.Host) ReferenceLoader {
+	l := NewPluginLoader(host).(*pluginLoader)
+	l.disableDownloading = true
+	return l
 }
 
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
@@ -89,6 +97,9 @@ func (l *pluginLoader) setPackage(key string, p PackageReference) PackageReferen
 
 // ensurePlugin downloads and installs the specified plugin if it does not already exist.
 func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
+	if l.disableDownloading {
+		return nil
+	}
 	// TODO: schema and provider versions
 	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
 	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.

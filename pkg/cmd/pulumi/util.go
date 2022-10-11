@@ -121,7 +121,7 @@ func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) 
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Current(ctx, cmdutil.Diag(), url)
+	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url)
 }
 
 func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
@@ -137,7 +137,7 @@ func currentBackend(ctx context.Context, opts display.Options) (backend.Backend,
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Login(ctx, cmdutil.Diag(), url, opts)
+	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.

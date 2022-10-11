@@ -48,6 +48,10 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
 			OpAndVersion: "v4.38.0",
 		},
+		"modpath": {
+			Pkg:          "git.example.org/thirdparty/sdk",
+			OpAndVersion: "v0.1.0",
+		},
 	}
 
 	test.TestProgramCodegen(t,
@@ -69,6 +73,16 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 					MockPluginVersions: map[string]string{
 						"aws": "4.38.0",
 					},
+				},
+				{
+					Directory:   "modpath",
+					Description: "Check that modpath is respected",
+					MockPluginVersions: map[string]string{
+						"other": "0.1.0",
+					},
+					// We don't compile because the test relies on the `other` package,
+					// which does not exist.
+					SkipCompile: codegen.NewStringSet("go"),
 				},
 			},
 

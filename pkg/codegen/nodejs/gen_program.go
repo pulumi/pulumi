@@ -525,7 +525,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
+			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {

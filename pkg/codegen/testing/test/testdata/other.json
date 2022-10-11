@@ -36,7 +36,8 @@
 			"packageName": "third_party"
 		},
 		"go": {
-			"importBasePath": "git.example.org/thirdparty"
+			"importBasePath": "git.example.org/thirdparty/sdk/go/pkg",
+			"modulePath": "git.example.org/thirdparty/sdk"
 		}
 	},
 	"provider": {
