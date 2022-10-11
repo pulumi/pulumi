@@ -301,9 +301,11 @@ class LocalWorkspace(Workspace):
 
     def install_plugin(self, name: str, version: str) -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", "resource", name, version])
-        
+
     def install_plugin_from_server(self, name: str, version: str, server: str) -> None:
-        self._run_pulumi_cmd_sync(["plugin", "install", "resource", name, version, "--server", server])
+        self._run_pulumi_cmd_sync(
+            ["plugin", "install", "resource", name, version, "--server", server]
+        )
 
     def remove_plugin(
         self,

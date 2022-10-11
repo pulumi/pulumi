@@ -383,7 +383,8 @@ func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version
 
 // InstallPluginFromServer acquires the plugin matching the specified name and version from a third party server.
 func (l *LocalWorkspace) InstallPluginFromServer(ctx context.Context, name string, version string, server string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "install", "resource", name, version, "--server", server)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(
+		ctx, "plugin", "install", "resource", name, version, "--server", server)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to install plugin"), stdout, stderr, errCode)
 	}
