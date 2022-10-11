@@ -179,6 +179,14 @@ schema-%: curl.ensure jq.ensure
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
 		fi
+# Related files:
+#
+# pkg/codegen/testing/utils/host.go depends on this list, update that file on changes.
+#
+# pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.2, update that file on changes.
+#
+# As a courtesy to reviewers, please make changes to this list and the committed schema files in a
+# separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
 			 schema-aws!4.26.0          \
 			 schema-aws!5.16.2          \
