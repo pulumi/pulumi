@@ -304,6 +304,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description:      "Generate a resource with secret properties",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:   "regress-py-tfbridge-611",
+		Description: "Regresses pulumi/pulumi-terraform-bridge#611",
+		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
+	},
 }
 
 var genSDKOnly bool

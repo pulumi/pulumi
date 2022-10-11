@@ -76,19 +76,19 @@ func TestProjectLoadJSON(t *testing.T) {
 
 	// Test wrong type
 	_, err := writeAndLoad("\"hello  \"")
-	assert.Equal(t, "expected an object", err.Error())
+	assert.Contains(t, err.Error(), "expected project to be an object, was 'string'")
 
 	// Test lack of name
 	_, err = writeAndLoad("{}")
-	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
 
 	// Test bad name
 	_, err = writeAndLoad("{\"name\": \"\"}")
-	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a non-empty string 'name' attribute")
 
 	// Test missing runtime
 	_, err = writeAndLoad("{\"name\": \"project\"}")
-	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": 4}")
@@ -139,27 +139,27 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test wrong type
 	_, err := writeAndLoad("\"hello\"")
-	assert.Equal(t, "expected an object", err.Error())
+	assert.Contains(t, err.Error(), "expected project to be an object, was 'string'")
 
 	// Test bad key
 	_, err = writeAndLoad("4: hello")
-	assert.Equal(t, "expected only string keys, got '%!s(int=4)'", err.Error())
+	assert.Contains(t, err.Error(), "expected only string keys, got '%!s(int=4)'")
 
 	// Test nested bad key
 	_, err = writeAndLoad("hello:\n    6: bad")
-	assert.Equal(t, "expected only string keys, got '%!s(int=6)'", err.Error())
+	assert.Contains(t, err.Error(), "expected only string keys, got '%!s(int=6)'")
 
 	// Test lack of name
 	_, err = writeAndLoad("{}")
-	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
 
 	// Test bad name
 	_, err = writeAndLoad("name:")
-	assert.Equal(t, "project is missing a non-empty string 'name' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a non-empty string 'name' attribute")
 
 	// Test missing runtime
 	_, err = writeAndLoad("name: project")
-	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
+	assert.Contains(t, err.Error(), "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = writeAndLoad("name: project\nruntime: 4")
