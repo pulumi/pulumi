@@ -492,8 +492,8 @@ export class LocalWorkspace implements Workspace {
      * @param version the version of the plugin e.g. "v1.0.0".
      * @param kind the kind of plugin, defaults to "resource"
      */
-    async installPlugin(name: string, version: string, kind = "resource"): Promise<void> {
-        await this.runPulumiCmd(["plugin", "install", kind, name, version]);
+    async installPlugin(name: string, version: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", "resource", name, version]);
     }
     /**
      * Installs a plugin in the Workspace, from a third party server.
@@ -503,8 +503,8 @@ export class LocalWorkspace implements Workspace {
      * @param kind the kind of plugin, defaults to "resource"
      * @param server the server to install the plugin from
      */
-    async installPluginFromServer(name: string, version: string, kind = "resource", server: string): Promise<void> {
-        await this.runPulumiCmd(["plugin", "install", kind, name, version, "--server", server]);
+    async installPluginFromServer(name: string, version: string, server: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", "resource", name, version, "--server", server]);
     }
     /**
      * Removes a plugin from the Workspace matching the specified name and version.
@@ -514,8 +514,8 @@ export class LocalWorkspace implements Workspace {
      *  e.g. "1.0.0", ">1.0.0".
      * @param kind he kind of plugin, defaults to "resource".
      */
-    async removePlugin(name?: string, versionRange?: string, kind = "resource"): Promise<void> {
-        const args = ["plugin", "rm", kind];
+    async removePlugin(name?: string, versionRange?: string): Promise<void> {
+        const args = ["plugin", "rm", "resource"];
         if (name) {
             args.push(name);
         }
@@ -525,7 +525,6 @@ export class LocalWorkspace implements Workspace {
         args.push("--yes");
         await this.runPulumiCmd(args);
     }
-    
     /**
      * Returns a list of all plugins installed in the Workspace.
      */

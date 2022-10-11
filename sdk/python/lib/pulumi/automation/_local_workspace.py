@@ -299,19 +299,18 @@ class LocalWorkspace(Workspace):
             stack_list.append(stack)
         return stack_list
 
-    def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
-        self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
+    def install_plugin(self, name: str, version: str) -> None:
+        self._run_pulumi_cmd_sync(["plugin", "install", "resource", name, version])
         
-    def install_plugin_from_server(self, name: str, version: str, kind: str = "resource", server: str) -> None:
-        self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version, "--server", server])
+    def install_plugin_from_server(self, name: str, version: str, server: str) -> None:
+        self._run_pulumi_cmd_sync(["plugin", "install", "resource", name, version, "--server", server])
 
     def remove_plugin(
         self,
         name: Optional[str] = None,
         version_range: Optional[str] = None,
-        kind: str = "resource",
     ) -> None:
-        args = ["plugin", "rm", kind]
+        args = ["plugin", "rm", "resource"]
         if name:
             args.append(name)
         if version_range:
