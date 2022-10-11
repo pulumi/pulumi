@@ -66,10 +66,11 @@ jobs:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@v2
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+      # TODO: https://github.com/pulumi/pulumi/issues/11000, this step causes spurious errors.
+      # - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+      #   uses: actions/setup-dotnet@v2
+      #   with:
+      #     dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - run: mkdir -p "${{ runner.temp }}/opt/pulumi/nuget"
       - name: Add NuGet packages as a local NuGet source
         run: |
