@@ -152,7 +152,7 @@ func MeasureText(text string) int {
 	return uniseg.GraphemeClusterCount(clean)
 }
 
-func (table Table) ToStringWithGap(columnGap string) string {
+func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of

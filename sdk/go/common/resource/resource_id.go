@@ -30,8 +30,8 @@ import (
 type ID string
 
 // String converts a resource ID into a string.
-func (id *ID) String() string {
-	return string(*id)
+func (id ID) String() string {
+	return string(id)
 }
 
 // StringPtr converts an optional ID into an optional string.

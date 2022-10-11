@@ -622,7 +622,7 @@ func (info *PluginInfo) Spec() PluginSpec {
 	return PluginSpec{Name: info.Name, Kind: info.Kind, Version: info.Version}
 }
 
-func (info *PluginInfo) String() string {
+func (info PluginInfo) String() string {
 	var version string
 	if v := info.Version; v != nil {
 		version = fmt.Sprintf("-%s", v)
@@ -1094,11 +1094,12 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 	})
 }
 
-// InstallWithContext installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
-// Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp directory
-// to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners opening
-// files in the temp directory. To address this, we now extract the tarball directly into the final directory, and use
-// file locks to prevent concurrent installs.
+// InstallWithContext installs a plugin's tarball into the cache. It validates that plugin names are in the expected
+// format. Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp
+// directory to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners
+// opening files in the temp directory. To address this, we now extract the tarball directly into the final directory,
+// and use file locks to prevent concurrent installs.
+//
 // Each plugin has its own file lock, with the same name as the plugin directory, with a `.lock` suffix.
 // During installation an empty file with a `.partial` suffix is created, indicating that installation is in-progress.
 // The `.partial` file is deleted when installation is complete, indicating that the plugin has finished installing.

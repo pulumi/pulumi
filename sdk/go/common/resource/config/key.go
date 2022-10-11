@@ -70,7 +70,7 @@ func (k *Key) Name() string {
 	return k.name
 }
 
-func (k *Key) MarshalJSON() ([]byte, error) {
+func (k Key) MarshalJSON() ([]byte, error) {
 	return json.Marshal(k.String())
 }
 
@@ -90,7 +90,7 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (k *Key) MarshalYAML() (interface{}, error) {
+func (k Key) MarshalYAML() (interface{}, error) {
 	return k.String(), nil
 }
 
@@ -110,7 +110,7 @@ func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (k *Key) String() string {
+func (k Key) String() string {
 	return k.namespace + ":" + k.name
 }
 

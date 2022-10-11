@@ -348,7 +348,7 @@ func (info *ProjectRuntimeInfo) SetOption(key string, value interface{}) {
 	info.options[key] = value
 }
 
-func (info *ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
+func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
 	if info.options == nil || len(info.options) == 0 {
 		return info.name, nil
 	}
@@ -359,7 +359,7 @@ func (info *ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
-func (info *ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
+func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 	if info.options == nil || len(info.options) == 0 {
 		return json.Marshal(info.name)
 	}

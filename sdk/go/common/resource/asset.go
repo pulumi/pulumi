@@ -351,11 +351,11 @@ func (a *Asset) readPath() (*Blob, error) {
 }
 
 func (a *Asset) readURI() (*Blob, error) {
-	url, isUrl, err := a.GetURIURL()
+	url, isURL, err := a.GetURIURL()
 	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(isUrl, "Expected a URI-based asset")
+	contract.Assertf(isURL, "Expected a URI-based asset")
 	switch s := url.Scheme; s {
 	case "http", "https":
 		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
@@ -885,11 +885,11 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 
 func (a *Archive) readURI() (ArchiveReader, error) {
 	// To read a URI-based archive, fetch the contents remotely and use the extension to pick the format to use.
-	url, isurl, err := a.GetURIURL()
+	url, isURL, err := a.GetURIURL()
 	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(isurl, "Expected a URI-based asset")
+	contract.Assertf(isURL, "Expected a URI-based asset")
 
 	format := detectArchiveFormat(url.Path)
 	if format == NotArchive {
