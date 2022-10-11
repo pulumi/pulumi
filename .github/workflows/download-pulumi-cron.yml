@@ -98,7 +98,13 @@ jobs:
     name: Install Pulumi with WinGet on Windows
     runs-on: windows-latest
     steps:
-      - name: winget install pulumi
+      - name: Install WinGet CLI
+        shell: powershell
+        run:
+          Add-AppxPackage -Path 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
+          $wingetAlreadyInstalled = Get-AppPackage -name 'Microsoft.DesktopAppInstaller'
+          if (!$wingetAlreadyInstalled) Add-AppxPackage -Path https://aka.ms/getwinget
+      - name: Install Pulumi Using Winget
         run: winget install pulumi
       - name: Pulumi Version Details
         id: vars
