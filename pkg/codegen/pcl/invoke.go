@@ -48,7 +48,7 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 // properties in the schema. This is used to provide type information
 // for invoke calls that didn't have type annotations.
 //
-// this function will recursively annotate the properties of objects
+// This function will recursively annotate the properties of objects
 // that are nested within the object expression type.
 func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
