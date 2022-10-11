@@ -88,18 +88,8 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			}
 		}
 	case *model.UnionType:
-		if schemaUnionType, ok := schemaType.(*schema.UnionType); ok {
-			modelElementTypes := arg.ElementTypes
-			schemaElementTypes := schemaUnionType.ElementTypes
-			if len(modelElementTypes) == len(schemaElementTypes) {
-				// annotate each type inside the model union with its corresponding
-				// schema type from the schema union.
-				// Assuming here that they match based on the index (ordered), is this correct?
-				for i := range modelElementTypes {
-					annotateObjectProperties(modelElementTypes[i], schemaElementTypes[i])
-				}
-			}
-		}
+		// TODO https://github.com/pulumi/pulumi/issues/10993
+		// We need to handle the case where the schema type is a union type.
 	}
 }
 
