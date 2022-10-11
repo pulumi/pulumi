@@ -36,11 +36,11 @@ import (
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
 var TracingEndpoint string
 
-// TracingToFile Deprecated. TracingToFile=true if pulumi was called with a file://
-// scheme URL (--tracing=file:///...). Even in this case
-// TracingEndpoint will now have the tcp:// scheme and will point to a
-// proxy server that will append traces to the user-specified file.
-// Plugins should respect TracingEndpoint and ignore TracingToFile.
+// TracingToFile indicates if pulumi was called with a file:// scheme URL (--tracing=file:///...).
+//
+// Deprecated: Even in this case TracingEndpoint will now have the tcp:// scheme and will point to a
+// proxy server that will append traces to the user-specified file. Plugins should respect
+// TracingEndpoint and ignore TracingToFile.
 var TracingToFile bool
 
 var TracingRootSpan opentracing.Span
