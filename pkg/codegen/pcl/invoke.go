@@ -88,8 +88,16 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			}
 		}
 	case *model.UnionType:
-		// TODO https://github.com/pulumi/pulumi/issues/10993
-		// We need to handle the case where the schema type is a union type.
+		// sometimes optional schema types are represented as unions: None | T
+		// in this case, we want to collapse the union and annotate the underlying type T
+		if len(arg.ElementTypes) == 2 && arg.ElementTypes[0] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[1], schemaType)
+		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[0], schemaType)
+		} else {
+			// TODO https://github.com/pulumi/pulumi/issues/10993
+			// We need to handle the case where the schema type is a union type.
+		}
 	}
 }
 
