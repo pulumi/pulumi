@@ -19,6 +19,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 )
 
@@ -5010,11 +5011,25 @@ func (a AnyOutput) AsArchiveOutput() ArchiveOutput {
 }
 
 // AsArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []Archive and returns a `ArchiveArrayOutput` with that value. AsArchiveArrayOutput panics if the value
-// was not the expected type.
+// []Archive or []interface{} and returns a `ArchiveArrayOutput` with that value.
+// AsArchiveArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
-	return a.ApplyT(func(i interface{}) []Archive {
-		return i.([]Archive)
+	return a.ApplyT(func(i interface{}) ([]Archive, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]Archive, len(array))
+			for i, v := range array {
+				value, ok := v.(Archive)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type Archive, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]Archive), nil
 	}).(ArchiveArrayOutput)
 }
 
@@ -5073,11 +5088,25 @@ func (a AnyOutput) AsAssetOutput() AssetOutput {
 }
 
 // AsAssetArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []Asset and returns a `AssetArrayOutput` with that value. AsAssetArrayOutput panics if the value
-// was not the expected type.
+// []Asset or []interface{} and returns a `AssetArrayOutput` with that value.
+// AsAssetArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
-	return a.ApplyT(func(i interface{}) []Asset {
-		return i.([]Asset)
+	return a.ApplyT(func(i interface{}) ([]Asset, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]Asset, len(array))
+			for i, v := range array {
+				value, ok := v.(Asset)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type Asset, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]Asset), nil
 	}).(AssetArrayOutput)
 }
 
@@ -5136,11 +5165,25 @@ func (a AnyOutput) AsAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 // AsAssetOrArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []AssetOrArchive and returns a `AssetOrArchiveArrayOutput` with that value. AsAssetOrArchiveArrayOutput panics if the value
-// was not the expected type.
+// []AssetOrArchive or []interface{} and returns a `AssetOrArchiveArrayOutput` with that value.
+// AsAssetOrArchiveArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
-	return a.ApplyT(func(i interface{}) []AssetOrArchive {
-		return i.([]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) ([]AssetOrArchive, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]AssetOrArchive, len(array))
+			for i, v := range array {
+				value, ok := v.(AssetOrArchive)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type AssetOrArchive, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]AssetOrArchive), nil
 	}).(AssetOrArchiveArrayOutput)
 }
 
@@ -5208,11 +5251,25 @@ func (a AnyOutput) AsBoolPtrOutput() BoolPtrOutput {
 }
 
 // AsBoolArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []bool and returns a `BoolArrayOutput` with that value. AsBoolArrayOutput panics if the value
-// was not the expected type.
+// []bool or []interface{} and returns a `BoolArrayOutput` with that value.
+// AsBoolArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
-	return a.ApplyT(func(i interface{}) []bool {
-		return i.([]bool)
+	return a.ApplyT(func(i interface{}) ([]bool, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]bool, len(array))
+			for i, v := range array {
+				value, ok := v.(bool)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type bool, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]bool), nil
 	}).(BoolArrayOutput)
 }
 
@@ -5280,11 +5337,25 @@ func (a AnyOutput) AsFloat64PtrOutput() Float64PtrOutput {
 }
 
 // AsFloat64ArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []float64 and returns a `Float64ArrayOutput` with that value. AsFloat64ArrayOutput panics if the value
-// was not the expected type.
+// []float64 or []interface{} and returns a `Float64ArrayOutput` with that value.
+// AsFloat64ArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
-	return a.ApplyT(func(i interface{}) []float64 {
-		return i.([]float64)
+	return a.ApplyT(func(i interface{}) ([]float64, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]float64, len(array))
+			for i, v := range array {
+				value, ok := v.(float64)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type float64, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]float64), nil
 	}).(Float64ArrayOutput)
 }
 
@@ -5352,11 +5423,25 @@ func (a AnyOutput) AsIDPtrOutput() IDPtrOutput {
 }
 
 // AsIDArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []ID and returns a `IDArrayOutput` with that value. AsIDArrayOutput panics if the value
-// was not the expected type.
+// []ID or []interface{} and returns a `IDArrayOutput` with that value.
+// AsIDArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
-	return a.ApplyT(func(i interface{}) []ID {
-		return i.([]ID)
+	return a.ApplyT(func(i interface{}) ([]ID, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]ID, len(array))
+			for i, v := range array {
+				value, ok := v.(ID)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type ID, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]ID), nil
 	}).(IDArrayOutput)
 }
 
@@ -5487,11 +5572,25 @@ func (a AnyOutput) AsIntPtrOutput() IntPtrOutput {
 }
 
 // AsIntArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []int and returns a `IntArrayOutput` with that value. AsIntArrayOutput panics if the value
-// was not the expected type.
+// []int or []interface{} and returns a `IntArrayOutput` with that value.
+// AsIntArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
-	return a.ApplyT(func(i interface{}) []int {
-		return i.([]int)
+	return a.ApplyT(func(i interface{}) ([]int, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]int, len(array))
+			for i, v := range array {
+				value, ok := v.(int)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type int, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]int), nil
 	}).(IntArrayOutput)
 }
 
@@ -5559,11 +5658,25 @@ func (a AnyOutput) AsStringPtrOutput() StringPtrOutput {
 }
 
 // AsStringArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []string and returns a `StringArrayOutput` with that value. AsStringArrayOutput panics if the value
-// was not the expected type.
+// []string or []interface{} and returns a `StringArrayOutput` with that value.
+// AsStringArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
-	return a.ApplyT(func(i interface{}) []string {
-		return i.([]string)
+	return a.ApplyT(func(i interface{}) ([]string, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]string, len(array))
+			for i, v := range array {
+				value, ok := v.(string)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type string, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]string), nil
 	}).(StringArrayOutput)
 }
 
@@ -5631,11 +5744,25 @@ func (a AnyOutput) AsURNPtrOutput() URNPtrOutput {
 }
 
 // AsURNArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []URN and returns a `URNArrayOutput` with that value. AsURNArrayOutput panics if the value
-// was not the expected type.
+// []URN or []interface{} and returns a `URNArrayOutput` with that value.
+// AsURNArrayOutput panics if the value was not the expected type or a compatible array.
 func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
-	return a.ApplyT(func(i interface{}) []URN {
-		return i.([]URN)
+	return a.ApplyT(func(i interface{}) ([]URN, error) {
+		if array, ok := i.([]interface{}); ok {
+			if len(array) == 0 {
+				return nil, nil
+			}
+			out := make([]URN, len(array))
+			for i, v := range array {
+				value, ok := v.(URN)
+				if !ok {
+					return nil, fmt.Errorf("[%d]: expected value of type URN, got %T", i, v)
+				}
+				out[i] = value
+			}
+			return out, nil
+		}
+		return i.([]URN), nil
 	}).(URNArrayOutput)
 }
 

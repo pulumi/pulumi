@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
-// +build ignore
-
+// nolint: lll
 package main
 
 import (
@@ -44,10 +42,18 @@ type builtin struct {
 	DefaultConfig  string
 	RegisterInput  bool
 	defaultValue   string
+
+	// Used with the "array-contravariance" strategy to attempt to convert []interface{} slices to
+	// []T.
+	InnerElementType string
+
+	Strategy string
 }
 
+const AssetOrArchiveType = "AssetOrArchive"
+
 func (b builtin) DefineInputType() bool {
-	return b.inputType == "" && b.Type != "AssetOrArchive"
+	return b.inputType == "" && b.Type != AssetOrArchiveType
 }
 
 func (b builtin) DefinePtrType() bool {
@@ -59,7 +65,7 @@ func (b builtin) PtrType() string {
 }
 
 func (b builtin) DefineInputMethods() bool {
-	return b.Type != "AssetOrArchive"
+	return b.Type != AssetOrArchiveType
 }
 
 func (b builtin) ImplementsPtrType() bool {
@@ -170,9 +176,9 @@ func (b builtin) ElemExample() string {
 }
 
 var builtins = makeBuiltins([]*builtin{
-	{Name: "Archive", Type: "Archive", inputType: "*archive", implements: []string{"AssetOrArchive"}, Example: "NewFileArchive(\"foo.zip\")"},
-	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{"AssetOrArchive"}, Example: "NewFileAsset(\"foo.txt\")"},
-	{Name: "AssetOrArchive", Type: "AssetOrArchive", Example: "NewFileArchive(\"foo.zip\")"},
+	{Name: "Archive", Type: "Archive", inputType: "*archive", implements: []string{AssetOrArchiveType}, Example: "NewFileArchive(\"foo.zip\")"},
+	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{AssetOrArchiveType}, Example: "NewFileAsset(\"foo.txt\")"},
+	{Name: AssetOrArchiveType, Type: AssetOrArchiveType, Example: "NewFileArchive(\"foo.zip\")"},
 	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false", elemExample: "true", RegisterInput: true, defaultValue: "Bool(false)"},
 	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0", elemExample: "999.9", RegisterInput: true, defaultValue: "Float64(0)"},
 	{Name: "ID", Type: "ID", inputType: "ID", implements: []string{"String"}, Example: "ID(\"foo\")", RegisterInput: true, defaultValue: "ID(\"\")"},
@@ -213,7 +219,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			name = p.Name
 		}
 		switch name {
-		case "Archive", "Asset", "AssetOrArchive", "":
+		case "Archive", "Asset", AssetOrArchiveType, "":
 			// do nothing
 		default:
 			builtins = append(builtins, &builtin{
@@ -233,6 +239,11 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			item:          p,
 			Example:       fmt.Sprintf("%sArray{%s}", name, p.Example),
 			RegisterInput: true,
+
+			InnerElementType: p.Type,
+		}
+		if p.Type != "interface{}" {
+			arrType.Strategy = "array-contravariance"
 		}
 		builtins = append(builtins, arrType)
 		mapType := &builtin{
@@ -312,7 +323,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 }
 
 func main() {
-	templates, err := template.New("templates").Funcs(funcs).ParseGlob("./templates/*")
+	templates, err := template.New("templates").Funcs(funcs).ParseGlob("./generate/templates/*")
 	if err != nil {
 		log.Fatalf("failed to parse templates: %v", err)
 	}
@@ -352,7 +363,10 @@ func main() {
 			log.Fatalf("failed to pipe stderr from gofmt: %v", err)
 		}
 		go func() {
-			io.Copy(os.Stderr, stderr)
+			_, err := io.Copy(os.Stderr, stderr)
+			if err != nil {
+				panic(fmt.Sprintf("unexpected error running gofmt: %v", err))
+			}
 		}()
 		if err := gofmt.Run(); err != nil {
 			log.Fatalf("failed to gofmt %v: %v", fullname, err)
