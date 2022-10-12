@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Add InstallPluginFromServer method
+- type: feat
+  scope: auto/nodejs
+  description: Add InstallPluginFromServer
+- type: feat
+  scope: auto/python
+  description: Add install_plugin_from_server
