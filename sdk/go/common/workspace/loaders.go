@@ -143,14 +143,20 @@ type projectStackLoader struct {
 
 // Rewrite config values to make them namespaced. Using the project name as the default namespace
 // for example:
-//     config:
-//       instanceSize: t3.micro
+//
+//	config:
+//	  instanceSize: t3.micro
 //
 // is valid configuration and will be rewritten in the form
 //
-//     config:
-//       {projectName}:instanceSize:t3.micro
+//	config:
+//	  {projectName}:instanceSize:t3.micro
 func stackConfigNamespacedWithProject(project *Project, projectStack map[string]interface{}) map[string]interface{} {
+	if project == nil {
+		// return the original config if we don't have a project
+		return projectStack
+	}
+
 	config, ok := projectStack["config"]
 	if ok {
 		configAsMap, isMap := config.(map[string]interface{})
