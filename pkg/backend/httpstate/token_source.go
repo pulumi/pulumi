@@ -22,11 +22,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+type tokenSourceCapability interface {
+	GetToken() (string, error)
+}
+
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
 type tokenSource struct {
 	requests chan tokenRequest
 	done     chan bool
 }
+
+var _ tokenSourceCapability = &tokenSource{}
 
 type tokenRequest chan<- tokenResponse
 
