@@ -666,7 +666,7 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test wrong type
 	_, err := loadProjectFromText(t, "\"hello\"")
-	assert.Equal(t, "expected an object", err.Error())
+	assert.Contains(t, err.Error(), "expected project to be an object")
 
 	// Test bad key
 	_, err = loadProjectFromText(t, "4: hello")
