@@ -46,6 +46,18 @@ type State struct {
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 }
 
+func (s *State) GetAliasURNs() []URN {
+	return s.Aliases
+}
+
+func (s *State) GetAliases() []Alias {
+	aliases := make([]Alias, len(s.Aliases))
+	for i, alias := range s.Aliases {
+		aliases[i] = Alias{URN: alias}
+	}
+	return aliases
+}
+
 // NewState creates a new resource value from existing resource state information.
 func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	inputs PropertyMap, outputs PropertyMap, parent URN, protect bool,

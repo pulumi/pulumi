@@ -67,6 +67,8 @@ type stepGenerator struct {
 
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
+	// a map from current URN of the resource to the old URN that it was aliased from.
+	aliases map[resource.URN]resource.URN
 }
 
 func (sg *stepGenerator) isTargetedUpdate() bool {
@@ -326,6 +328,80 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	return steps, nil
 }
 
+func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.Alias) resource.URN {
+	if alias.URN != "" {
+		return alias.URN
+	}
+
+	n := alias.Name
+	if n == "" {
+		n = string(goal.Name)
+	}
+	t := alias.Type
+	if t == "" {
+		t = string(goal.Type)
+	}
+
+	var parentType tokens.Type
+	// If alias.NoParent is true then parentType is blank, else we need to look if a parent URN is given
+	if !alias.NoParent() {
+		parentURN := alias.Parent
+		if parentURN == "" {
+			parentURN = goal.Parent
+		}
+
+		if parentURN != "" && parentURN.Type() != resource.RootStackType {
+			// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
+			parentType = parentURN.QualifiedType()
+		}
+	}
+
+	project := alias.Project
+	if project == "" {
+		project = sg.deployment.source.Project().String()
+	}
+	stack := alias.Stack
+	if stack == "" {
+		stack = sg.deployment.Target().Name.String()
+	}
+
+	return resource.NewURN(tokens.QName(stack), tokens.PackageName(project), parentType, tokens.Type(t), tokens.QName(n))
+}
+
+// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's
+// parent. This may involve changing the name of the resource in cases where the resource has a named derived
+// from the name of the parent, and the parent name changed.
+func (sg *stepGenerator) inheritedChildAlias(
+	childType tokens.Type,
+	childName, parentName tokens.QName,
+	parentAlias resource.URN) resource.URN {
+	// If the child name has the parent name as a prefix, then we make the assumption that
+	// it was constructed from the convention of using '{name}-details' as the name of the
+	// child resource.  To ensure this is aliased correctly, we must then also replace the
+	// parent aliases name in the prefix of the child resource name.
+	//
+	// For example:
+	// * name: "newapp-function"
+	// * options.parent.__name: "newapp"
+	// * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+	// * parentAliasName: "app"
+	// * aliasName: "app-function"
+	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+
+	aliasName := childName
+	if strings.HasPrefix(childName.String(), parentName.String()) {
+		aliasName = tokens.QName(
+			parentAlias.Name().String() +
+				strings.TrimPrefix(childName.String(), parentName.String()))
+	}
+	return resource.NewURN(
+		sg.deployment.Target().Name.Q(),
+		sg.deployment.source.Project(),
+		parentAlias.Type(),
+		childType,
+		aliasName)
+}
+
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
@@ -343,6 +419,26 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return nil, res
 	}
 
+	// Generate the aliases for this resource
+	aliases := make(map[resource.URN]struct{}, 0)
+	for _, alias := range goal.Aliases {
+		urn := sg.collapseAliasToUrn(goal, alias)
+		aliases[urn] = struct{}{}
+	}
+	// Now multiply out any aliases our parent had.
+	if goal.Parent != "" {
+		if parentAlias, has := sg.aliases[goal.Parent]; has {
+			aliases[sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)] = struct{}{}
+			for _, alias := range goal.Aliases {
+				childAlias := sg.collapseAliasToUrn(goal, alias)
+				aliasedChildType := childAlias.Type()
+				aliasedChildName := childAlias.Name()
+				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
+				aliases[inheritedAlias] = struct{}{}
+			}
+		}
+	}
+
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
@@ -350,8 +446,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var oldOutputs resource.PropertyMap
 	var old *resource.State
 	var hasOld bool
-	var alias []resource.URN
-	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+	var alias []resource.Alias
+	aliases[urn] = struct{}{}
+	for urnOrAlias := range aliases {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
@@ -369,7 +466,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
 				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
 				// resource's other possible aliases.
-				alias = []resource.URN{urnOrAlias}
+				alias = []resource.Alias{{URN: urnOrAlias}}
+				// Save the alias actually being used so we can look it up later if anything has this as a parent
+				sg.aliases[urn] = urnOrAlias
 			}
 			break
 		}
@@ -386,11 +485,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputs = processedInputs
 	}
 
+	aliasUrns := make([]resource.URN, len(alias))
+	for i, a := range alias {
+		aliasUrns[i] = a.URN
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, alias, &goal.CustomTimeouts, "", goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -535,7 +639,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.Aliases,
+				Aliases:                 new.GetAliases(),
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
@@ -1720,7 +1824,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 					IgnoreChanges:           goal.IgnoreChanges,
 					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 v.Aliases,
+					Aliases:                 v.GetAliases(),
 					CustomTimeouts:          v.CustomTimeouts,
 				},
 			},
@@ -1789,5 +1893,6 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
+		aliases:              make(map[resource.URN]resource.URN),
 	}
 }

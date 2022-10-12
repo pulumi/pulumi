@@ -36,7 +36,7 @@ import grpc
 
 from . import rpc, settings, known_types
 from .. import log
-from ..runtime.proto import provider_pb2, resource_pb2
+from ..runtime.proto import provider_pb2, resource_pb2, alias_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
 from .resource_cycle_breaker import declare_dependency
@@ -579,7 +579,7 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=resolver.aliases,
+                aliases=[alias_pb2.Alias(urn=alias) for alias in resolver.aliases],
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,

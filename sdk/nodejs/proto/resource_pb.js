@@ -21,6 +21,8 @@ var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_
 goog.object.extend(proto, google_protobuf_struct_pb);
 var pulumi_provider_pb = require('./provider_pb.js');
 goog.object.extend(proto, pulumi_provider_pb);
+var pulumi_alias_pb = require('./alias_pb.js');
+goog.object.extend(proto, pulumi_alias_pb);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);
@@ -529,7 +531,7 @@ proto.pulumirpc.SupportsFeatureResponse.prototype.setHassupport = function(value
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6,10,11];
+proto.pulumirpc.ReadResourceRequest.repeatedFields_ = [6,10];
 
 
 
@@ -572,7 +574,6 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     version: jspb.Message.getFieldWithDefault(msg, 8, ""),
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
-    aliasesList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
@@ -651,10 +652,6 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.addAdditionalsecretoutputs(value);
-      break;
-    case 11:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addAliases(value);
       break;
     case 12:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -761,13 +758,6 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeRepeatedString(
       10,
-      f
-    );
-  }
-  f = message.getAliasesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      11,
       f
     );
   }
@@ -1026,43 +1016,6 @@ proto.pulumirpc.ReadResourceRequest.prototype.clearAdditionalsecretoutputsList =
 
 
 /**
- * repeated string aliases = 11;
- * @return {!Array<string>}
- */
-proto.pulumirpc.ReadResourceRequest.prototype.getAliasesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 11));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.pulumirpc.ReadResourceRequest} returns this
- */
-proto.pulumirpc.ReadResourceRequest.prototype.setAliasesList = function(value) {
-  return jspb.Message.setField(this, 11, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.pulumirpc.ReadResourceRequest} returns this
- */
-proto.pulumirpc.ReadResourceRequest.prototype.addAliases = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 11, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.ReadResourceRequest} returns this
- */
-proto.pulumirpc.ReadResourceRequest.prototype.clearAliasesList = function() {
-  return this.setAliasesList([]);
-};
-
-
-/**
  * optional bool acceptResources = 12;
  * @return {boolean}
  */
@@ -1285,7 +1238,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23,26];
 
 
 
@@ -1332,7 +1285,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 13, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 14)) == null ? undefined : f,
-    aliasesList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
+    aliasurnsList: (f = jspb.Message.getRepeatedField(msg, 15)) == null ? undefined : f,
     importid: jspb.Message.getFieldWithDefault(msg, 16, ""),
     customtimeouts: (f = msg.getCustomtimeouts()) && proto.pulumirpc.RegisterResourceRequest.CustomTimeouts.toObject(includeInstance, f),
     deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 18, false),
@@ -1342,7 +1295,9 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
+    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
+    aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
+    pulumi_alias_pb.Alias.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -1440,7 +1395,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       break;
     case 15:
       var value = /** @type {string} */ (reader.readString());
-      msg.addAliases(value);
+      msg.addAliasurns(value);
       break;
     case 16:
       var value = /** @type {string} */ (reader.readString());
@@ -1484,6 +1439,11 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 25:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRetainondelete(value);
+      break;
+    case 26:
+      var value = new pulumi_alias_pb.Alias;
+      reader.readMessage(value,pulumi_alias_pb.Alias.deserializeBinaryFromReader);
+      msg.addAliases(value);
       break;
     default:
       reader.skipField();
@@ -1610,7 +1570,7 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getAliasesList();
+  f = message.getAliasurnsList();
   if (f.length > 0) {
     writer.writeRepeatedString(
       15,
@@ -1683,6 +1643,14 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
     writer.writeBool(
       25,
       f
+    );
+  }
+  f = message.getAliasesList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      26,
+      f,
+      pulumi_alias_pb.Alias.serializeBinaryToWriter
     );
   }
 };
@@ -2367,10 +2335,10 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearAdditionalsecretoutputsLi
 
 
 /**
- * repeated string aliases = 15;
+ * repeated string aliasURNs = 15;
  * @return {!Array<string>}
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.getAliasesList = function() {
+proto.pulumirpc.RegisterResourceRequest.prototype.getAliasurnsList = function() {
   return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 15));
 };
 
@@ -2379,7 +2347,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getAliasesList = function() {
  * @param {!Array<string>} value
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.setAliasesList = function(value) {
+proto.pulumirpc.RegisterResourceRequest.prototype.setAliasurnsList = function(value) {
   return jspb.Message.setField(this, 15, value || []);
 };
 
@@ -2389,7 +2357,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setAliasesList = function(valu
  * @param {number=} opt_index
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(value, opt_index) {
+proto.pulumirpc.RegisterResourceRequest.prototype.addAliasurns = function(value, opt_index) {
   return jspb.Message.addToRepeatedField(this, 15, value, opt_index);
 };
 
@@ -2398,8 +2366,8 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(value, o
  * Clears the list making it empty but non-null.
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
-  return this.setAliasesList([]);
+proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasurnsList = function() {
+  return this.setAliasurnsList([]);
 };
 
 
@@ -2622,6 +2590,44 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getRetainondelete = function()
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setRetainondelete = function(value) {
   return jspb.Message.setProto3BooleanField(this, 25, value);
+};
+
+
+/**
+ * repeated Alias aliases = 26;
+ * @return {!Array<!proto.pulumirpc.Alias>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAliasesList = function() {
+  return /** @type{!Array<!proto.pulumirpc.Alias>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_alias_pb.Alias, 26));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.Alias>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setAliasesList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 26, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.Alias=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.Alias}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 26, opt_value, proto.pulumirpc.Alias, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
+  return this.setAliasesList([]);
 };
 
 

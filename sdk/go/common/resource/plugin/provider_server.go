@@ -443,9 +443,9 @@ func (p *providerServer) Construct(ctx context.Context,
 		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
-	aliases := make([]resource.URN, len(req.GetAliases()))
+	aliases := make([]resource.Alias, len(req.GetAliases()))
 	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.URN(urn)
+		aliases[i] = resource.Alias{URN: resource.URN(urn)}
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {

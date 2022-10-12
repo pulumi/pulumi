@@ -19,13 +19,13 @@ import * as utils from "../utils";
 
 import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
-import { expandProviders } from "../resource";
 import {
     ComponentResource,
     ComponentResourceOptions,
     createUrn,
     CustomResource,
     CustomResourceOptions,
+    expandProviders,
     ID,
     ProviderResource,
     Resource,
@@ -310,7 +310,7 @@ export function registerResource(res: Resource, parent: Resource | undefined, t:
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setAliasesList(resop.aliases);
+        req.setAliasurnsList(resop.aliases);
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
         req.setRemote(remote);

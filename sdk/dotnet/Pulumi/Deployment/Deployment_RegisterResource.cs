@@ -53,7 +53,7 @@ namespace Pulumi
             request.Parent = prepareResult.ParentUrn;
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
-            request.Aliases.AddRange(prepareResult.Aliases);
+            request.AliasURNs.AddRange(prepareResult.AliasURNs);
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
             foreach (var (key, resourceUrns) in prepareResult.PropertyToDirectDependencyUrns)

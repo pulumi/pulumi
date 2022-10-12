@@ -78,12 +78,12 @@ func TestDuplicateAlias(t *testing.T) {
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Aliases: []resource.URN{resURN},
+			AliasURNs: []resource.URN{resURN},
 		})
 		require.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-			Aliases: []resource.URN{resURN},
+			AliasURNs: []resource.URN{resURN},
 		})
 		assert.Error(t, err)
 		return nil
