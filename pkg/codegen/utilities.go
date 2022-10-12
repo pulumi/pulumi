@@ -86,6 +86,17 @@ func (ss StringSet) Subtract(other StringSet) StringSet {
 	return result
 }
 
+func (ss StringSet) Union(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		result.Add(v)
+	}
+	for v := range other {
+		result.Add(v)
+	}
+	return result
+}
+
 type Set map[interface{}]struct{}
 
 func (s Set) Add(v interface{}) {

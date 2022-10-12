@@ -3,6 +3,8 @@ package test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -33,6 +36,7 @@ type ProgramTest struct {
 	SkipCompile    codegen.StringSet
 	// optional map of (mock plugin name to versions) to load for specific tests.
 	MockPluginVersions map[string]string
+	BindOptions        []pcl.BindOption
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -83,6 +87,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS IAM Policy",
 	},
 	{
+		Directory:   "python-regress-10914",
+		Description: "Python regression test for #10914",
+		Skip:        allProgLanguages.Except("python"),
+	},
+	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
@@ -93,6 +102,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8070]
+	},
+	{
+		Directory:   "simple-range",
+		Description: "Simple range as int expression translation",
+		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables},
 	},
 	{
 		Directory:   "azure-native",
@@ -293,7 +307,9 @@ func TestProgramCodegen(
 			}
 
 			program, diags, err := pcl.BindProgram(parser.Files,
-				pcl.PluginHost(utils.NewHost(testdataPath, tt.MockPluginVersions)))
+				append(tt.BindOptions,
+					pcl.Loader(schema.NewOfflinePluginLoader(
+						utils.NewHost(testdataPath, tt.MockPluginVersions))))...)
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
@@ -358,6 +374,7 @@ func TestProgramCodegen(
 func CheckVersion(t *testing.T, dir, depFilePath string, expectedVersionMap map[string]PkgVersionInfo) {
 	depFile, err := os.Open(depFilePath)
 	require.NoError(t, err)
+	defer depFile.Close()
 
 	// Splits on newlines by default.
 	scanner := bufio.NewScanner(depFile)
@@ -388,7 +405,16 @@ func CheckVersion(t *testing.T, dir, depFilePath string, expectedVersionMap map[
 			}
 		}
 	}
-	require.True(t, match)
+	require.Truef(t, match, "Did not find expected package version pair (%q,%q). Searched in:\n%s",
+		expectedPkg, expectedVersion, newLazyStringer(func() string {
+			// Reset the read on the file
+			_, err := depFile.Seek(0, io.SeekStart)
+			require.NoError(t, err)
+			buf := new(strings.Builder)
+			_, err = io.Copy(buf, depFile)
+			require.NoError(t, err)
+			return buf.String()
+		}).String())
 }
 
 func GenProjectCleanUp(t *testing.T, dir, depFilePath, outfilePath string) {
@@ -396,4 +422,22 @@ func GenProjectCleanUp(t *testing.T, dir, depFilePath, outfilePath string) {
 	os.Remove(outfilePath)
 	os.Remove(dir + "/.gitignore")
 	os.Remove(dir + "/Pulumi.yaml")
+}
+
+type lazyStringer struct {
+	cache string
+	f     func() string
+}
+
+func (l lazyStringer) String() string {
+	if l.cache == "" {
+		l.cache = l.f()
+	}
+	return l.cache
+}
+
+// The `fmt` `%s` calls .String() if the object is not a string itself. We can delay
+// computing expensive display logic until and unless we actually will use it.
+func newLazyStringer(f func() string) fmt.Stringer {
+	return lazyStringer{f: f}
 }

@@ -89,8 +89,16 @@ func title(s string) string {
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
+type modLocator struct {
+	// Returns defining modlue for a given ObjectType. Returns nil
+	// for types that are not being generated in the current
+	// GeneratePacakge call.
+	objectTypeMod func(*schema.ObjectType) *modContext
+}
+
 type modContext struct {
 	pkg              *schema.Package
+	modLocator       *modLocator
 	mod              string
 	pyPkgName        string
 	types            []*schema.ObjectType
@@ -131,13 +139,21 @@ func (mod *modContext) addChild(child *modContext) {
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
-	details, ok := mod.typeDetails[t]
+	m := mod
+
+	if mod.modLocator != nil {
+		if actualMod := mod.modLocator.objectTypeMod(t); actualMod != nil {
+			m = actualMod
+		}
+	}
+
+	details, ok := m.typeDetails[t]
 	if !ok {
 		details = &typeDetails{}
-		if mod.typeDetails == nil {
-			mod.typeDetails = map[*schema.ObjectType]*typeDetails{}
+		if m.typeDetails == nil {
+			m.typeDetails = map[*schema.ObjectType]*typeDetails{}
 		}
-		mod.typeDetails[t] = details
+		m.typeDetails[t] = details
 	}
 	return details
 }
@@ -2423,6 +2439,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		suffix = "(dict)"
 	}
 
+	name = pythonCase(name)
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {
@@ -2616,6 +2633,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	}
 
 	// group resources, types, and functions into modules
+	// modules map will contain modContext entries for all modules in current package (pkg)
 	modules := map[string]*modContext{}
 
 	var getMod func(modName string, p *schema.Package) *modContext
@@ -2764,6 +2782,22 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		}
 		mod := getMod(modName, pkg)
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
+	}
+
+	// Setup modLocator so that mod.typeDetails finds the right
+	// modContext for every ObjectType.
+	modLocator := &modLocator{
+		objectTypeMod: func(t *schema.ObjectType) *modContext {
+			if t.Package != pkg {
+				return nil
+			}
+
+			return getModFromToken(t.Token, t.Package)
+		},
+	}
+
+	for _, mod := range modules {
+		mod.modLocator = modLocator
 	}
 
 	return modules, nil

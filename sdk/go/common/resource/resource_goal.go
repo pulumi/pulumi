@@ -34,7 +34,7 @@ type Goal struct {
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
 	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
-	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
+	Aliases                 []Alias               // additional structured Aliases that should be assigned.
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
@@ -46,7 +46,7 @@ type Goal struct {
 func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
-	additionalSecretOutputs []PropertyKey, aliases []URN, id ID, customTimeouts *CustomTimeouts,
+	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
 	replaceOnChanges []string, retainOnDelete bool) *Goal {
 
 	g := &Goal{

@@ -169,7 +169,9 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
-			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
+			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// which will be constrained to during the update phase.
+			GeneratePlan: hasExperimentalCommands(),
 		}
 
 		if planFilePath != "" {
@@ -359,11 +361,13 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks:  engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:          parallel,
-			Debug:             debug,
-			Refresh:           refreshOption,
-			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
+			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:         parallel,
+			Debug:            debug,
+			Refresh:          refreshOption,
+			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
+			// which will be constrained to during the update phase.
+			GeneratePlan: hasExperimentalCommands(),
 		}
 
 		// TODO for the URL case:

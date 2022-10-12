@@ -44,6 +44,63 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 	return literal.Val.AsString(), call.Args[0].Range(), true
 }
 
+// annotateObjectProperties annotates the properties of an object expression with the types of the corresponding
+// properties in the schema. This is used to provide type information
+// for invoke calls that didn't have type annotations.
+//
+// This function will recursively annotate the properties of objects
+// that are nested within the object expression type.
+func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
+	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
+		schemaType = optionalType.ElementType
+	}
+
+	switch arg := modelType.(type) {
+	case *model.ObjectType:
+		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok {
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range schemaObjectType.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+
+			// top-level annotation for the type itself
+			arg.Annotations = append(arg.Annotations, schemaType)
+			// now for each property, annotate it with the associated type from the schema
+			for propertyName, propertyType := range arg.Properties {
+				if associatedType, ok := schemaProperties[propertyName]; ok {
+					annotateObjectProperties(propertyType, associatedType)
+				}
+			}
+		}
+	case *model.ListType:
+		underlyingArrayType := arg.ElementType
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType)
+		}
+
+	case *model.TupleType:
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			elementTypes := arg.ElementTypes
+			for _, elemType := range elementTypes {
+				annotateObjectProperties(elemType, underlyingSchemaArrayType)
+			}
+		}
+	case *model.UnionType:
+		// sometimes optional schema types are represented as unions: None | T
+		// in this case, we want to collapse the union and annotate the underlying type T
+		if len(arg.ElementTypes) == 2 && arg.ElementTypes[0] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[1], schemaType)
+		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[0], schemaType)
+		} else {
+			// TODO https://github.com/pulumi/pulumi/issues/10993
+			// We need to handle the case where the schema type is a union type.
+		}
+	}
+}
+
 func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
@@ -89,6 +146,11 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
+	}
+
+	// annotate the input args on the expression with the input type of the function
+	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
+		annotateObjectProperties(argsObject.Type(), fn.Inputs)
 	}
 
 	return sig, nil

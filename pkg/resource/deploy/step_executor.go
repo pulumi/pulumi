@@ -181,8 +181,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		}
 	}
 
-	// If we're in experimental mode save these new outputs to the plan
-	if se.opts.ExperimentalPlans {
+	// If we're generating plans save these new outputs to the plan
+	if se.opts.GeneratePlan {
 		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
@@ -352,8 +352,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			se.deployment.news.set(newState.URN, newState)
 		}
 
-		// If we're in experimental mode update the resource's outputs in the generated plan.
-		if se.opts.ExperimentalPlans {
+		// If we're generating plans update the resource's outputs in the generated plan.
+		if se.opts.GeneratePlan {
 			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
 				resourcePlan.Outputs = newState.Outputs
 			}

@@ -131,8 +131,8 @@ type GoalPlan struct {
 	IgnoreChanges []string
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
-	// additional URNs that should be aliased to this resource.
-	Aliases []resource.URN
+	// Structured Alias objects to be assigned to this resource
+	Aliases []resource.Alias
 	// the expected ID of the resource, if any.
 	ID resource.ID
 	// an optional config object for resource options
@@ -248,12 +248,55 @@ func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed b
 		}
 	}
 
+	if len(adds) == 0 && len(deletes) == 0 {
+		return "", false
+	}
+
 	sort.Strings(adds)
 	sort.Strings(deletes)
+
+	if len(adds) != 0 {
+		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
+	}
+	if len(deletes) != 0 {
+		if len(adds) != 0 {
+			message += "; "
+		}
+		message += fmt.Sprintf("deleted %v", strings.Join(deletes, ", "))
+	}
+	return message, true
+}
+
+func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, changed bool) {
+
+	setA := map[resource.Alias]struct{}{}
+	for _, s := range a {
+		setA[s] = struct{}{}
+	}
+
+	setB := map[resource.Alias]struct{}{}
+	for _, s := range b {
+		setB[s] = struct{}{}
+	}
+
+	var adds, deletes []string
+	for s := range setA {
+		if _, has := setB[s]; !has {
+			deletes = append(deletes, fmt.Sprintf("%v", s))
+		}
+	}
+	for s := range setB {
+		if _, has := setA[s]; !has {
+			adds = append(adds, fmt.Sprintf("%v", s))
+		}
+	}
 
 	if len(adds) == 0 && len(deletes) == 0 {
 		return "", false
 	}
+
+	sort.Strings(adds)
+	sort.Strings(deletes)
 
 	if len(adds) != 0 {
 		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
@@ -289,7 +332,7 @@ func checkMissingPlan(
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 oldState.Aliases,
+		Aliases:                 oldState.GetAliases(),
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
 	}
@@ -562,14 +605,14 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("additionalSecretOutputs changed: %v", message)
 	}
 
-	// Check that the alias sets are identical.
-	if message, changed := rp.diffURNs(rp.Goal.Aliases, programGoal.Aliases); changed {
-		return fmt.Errorf("aliases changed: %v", message)
-	}
-
 	// Check that the dependencies match.
 	if message, changed := rp.diffURNs(rp.Goal.Dependencies, programGoal.Dependencies); changed {
 		return fmt.Errorf("dependencies changed: %v", message)
+	}
+
+	// Check that the actual alias sets are identical.
+	if message, changed := rp.diffAliases(rp.Goal.Aliases, programGoal.Aliases); changed {
+		return fmt.Errorf("aliases changed: %v", message)
 	}
 
 	// Check that the property diffs meet the constraints set in the plan

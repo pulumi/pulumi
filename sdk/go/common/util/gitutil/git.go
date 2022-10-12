@@ -32,6 +32,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.
@@ -280,6 +281,7 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 }
 
 func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 	if u, err := url.Parse(rawurl); err == nil && u.Hostname() == AzureDevOpsHostName {
 		// system-installed git is used to clone Azure DevOps repositories
 		// due to https://github.com/go-git/go-git/issues/64
@@ -346,7 +348,7 @@ func gitCloneOrPullSystemGit(url string, referenceName plumbing.ReferenceName, p
 	if _, err := os.Stat(filepath.Join(path, ".git")); os.IsNotExist(err) {
 		// Repo does not exist, clone it.
 		gitArgs = []string{
-			"clone", url,
+			"clone", url, ".",
 		}
 		// For shallow clones, use a depth of 1.
 		if shallow {

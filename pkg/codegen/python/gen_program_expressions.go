@@ -318,29 +318,36 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
-			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				indenter := func(f func()) { f() }
-				if len(obj.Items) > 1 {
-					indenter = g.Indented
-				}
-				indenter(func() {
-					for i, item := range obj.Items {
-						// Ignore non-literal keys
-						key, ok := item.Key.(*model.LiteralValueExpression)
-						if !ok || !key.Value.Type().Equals(cty.String) {
-							continue
-						}
-
-						keyVal := PyName(key.Value.AsString())
-						if i == 0 {
-							g.Fgenf(w, "%s=%.v", keyVal, item.Value)
-						} else {
-							g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
-						}
-					}
-				})
+		genFuncArgs := func(objectExpr *model.ObjectConsExpression) {
+			indenter := func(f func()) { f() }
+			if len(objectExpr.Items) > 1 {
+				indenter = g.Indented
 			}
+			indenter(func() {
+				for i, item := range objectExpr.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+					keyVal := PyName(key.Value.AsString())
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		switch arg := expr.Args[1].(type) {
+		case *model.FunctionCallExpression:
+			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+				genFuncArgs(argsObject)
+			}
+
+		case *model.ObjectConsExpression:
+			genFuncArgs(arg)
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)

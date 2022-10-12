@@ -42,6 +42,7 @@ jobs:
       release-notes: "${{ fromJSON(steps.notes.outputs.release-notes) }}"
     env:
       GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      GH_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
     steps:
       - uses: actions/checkout@v3
         with:

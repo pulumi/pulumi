@@ -61,7 +61,7 @@ jobs:
           # TODO unify with sdk/python/Makefile once that does not use pipenv
           cp README.md sdk/python/lib
           cd sdk/python/lib
-          sed -i.bak "s/\${VERSION}/$PYPI_VERSION/g" setup.py
+          sed -i.bak "s/^VERSION = .*/VERSION = \"$PYPI_VERSION\"/g" setup.py
           rm setup.py.bak
           python3 -m venv venv
           source venv/bin/activate
@@ -137,10 +137,11 @@ jobs:
           version: ${{ inputs.version }}
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@v2
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+      # TODO: https://github.com/pulumi/pulumi/issues/11000, this step causes spurious errors.
+      # - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+      #   uses: actions/setup-dotnet@v2
+      #   with:
+      #     dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Build the .NET SDK package
         run: |
           cd sdk/dotnet

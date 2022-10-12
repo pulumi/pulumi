@@ -35,6 +35,7 @@ import (
 
 func newDestroyCmd() *cobra.Command {
 	var debug bool
+	var remove bool
 	var stack string
 
 	var message string
@@ -69,7 +70,8 @@ func newDestroyCmd() *cobra.Command {
 			"loaded from the associated state file in the workspace.  After running to completion,\n" +
 			"all of this stack's resources and associated state are deleted.\n" +
 			"\n" +
-			"The stack itself is not deleted. Use `pulumi stack rm` to delete the stack.\n" +
+			"The stack itself is not deleted. Use `pulumi stack rm` or the \n" +
+			"`--remove` flag to delete the stack.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdutil.NoArgs,
@@ -228,13 +230,24 @@ func newDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
+
 			if res == nil && protectedCount > 0 && !jsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
-			} else if res == nil && len(*targets) == 0 && !jsonDisplay {
-				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
-					"associated with the stack are still maintained. \nIf you want to remove the stack "+
-					"completely, run `pulumi stack rm %s`.\n", s.Ref())
+			} else if res == nil && len(*targets) == 0 {
+				if !jsonDisplay && !remove {
+					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
+						"associated with the stack are still maintained. \nIf you want to remove the stack "+
+						"completely, run `pulumi stack rm %s`.\n", s.Ref())
+				} else if remove {
+					_, err = s.Remove(ctx, false)
+					if err != nil {
+						return result.FromError(err)
+					} else if !jsonDisplay {
+						fmt.Printf("The resources in the stack have been deleted, and the history and " +
+							"configuration removed.\n")
+					}
+				}
 			} else if res != nil && res.Error() == context.Canceled {
 				return result.FromError(errors.New("destroy cancelled"))
 			}
@@ -245,6 +258,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
+	cmd.PersistentFlags().BoolVar(
+		&remove, "remove", false,
+		"Remove the stack after all resources in the stack have been deleted")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")

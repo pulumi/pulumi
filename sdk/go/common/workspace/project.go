@@ -203,16 +203,15 @@ func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[st
 // RewriteShorthandConfigValues rewrites short-hand version of configuration into a configuration type
 // for example the following config block definition:
 //
-//     config:
-//        instanceSize: t3.mirco
+//	config:
+//	   instanceSize: t3.mirco
 //
 // will be rewritten into a typed value:
 //
-//     config:
-//       instanceSize:
-//         type: string
-//         default: t3.mirco
-//
+//	config:
+//	  instanceSize:
+//	    type: string
+//	    default: t3.mirco
 func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
 	configMap, foundConfig := project["config"]
 
@@ -279,7 +278,7 @@ func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) 
 	var ok bool
 	var obj map[string]interface{}
 	if obj, ok = result.(map[string]interface{}); !ok {
-		return nil, fmt.Errorf("expected an object")
+		return nil, fmt.Errorf("expected project to be an object, was '%T'", result)
 	}
 
 	return obj, nil

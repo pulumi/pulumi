@@ -94,6 +94,29 @@ jobs:
         run: |
           echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
           exit 1
+  windows-winget-install:
+    name: Install Pulumi with WinGet on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Install WinGet CLI
+        shell: powershell
+        run:
+          Add-AppxPackage -Path 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
+          $wingetAlreadyInstalled = Get-AppPackage -name 'Microsoft.DesktopAppInstaller'
+          if (!$wingetAlreadyInstalled) Add-AppxPackage -Path https://aka.ms/getwinget
+      - name: Install Pulumi Using Winget
+        run: winget install pulumi
+      - name: Pulumi Version Details
+        id: vars
+        shell: bash
+        run: |
+          echo "::set-output name=installed-version::$(pulumi version)"
+          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+      - name: Error if incorrect version found
+        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
+        run: |
+          echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
+          exit 1
   windows-direct-install:
     name: Install Pulumi via script on Windows
     runs-on: windows-latest
@@ -124,6 +147,18 @@ jobs:
           $downloadUrl = "https://get.pulumi.com/releases/sdk/pulumi-v${latestVersion}-windows-x64.zip"
           $tempZip = New-Item -Type File (Join-Path $env:TEMP ([System.IO.Path]::ChangeExtension(([System.IO.Path]::GetRandomFileName()), "zip")))
           Invoke-WebRequest https://get.pulumi.com/releases/sdk/pulumi-v${latestVersion}-windows-x64.zip -OutFile $tempZip
+      - run: ls -la
+        shell: bash
+  windows-verify-msi-download-link:
+    name: Verify Direct MSI Download link on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Direct Download
+        shell: pwsh
+        run: |
+          $latestVersion = (Invoke-WebRequest -UseBasicParsing https://www.pulumi.com/latest-version).Content.Trim()
+          $tempMsi = New-Item -Type File (Join-Path $env:TEMP ([System.IO.Path]::ChangeExtension(([System.IO.Path]::GetRandomFileName()), "msi")))
+          Invoke-WebRequest https://github.com/pulumi/pulumi-winget/releases/download/v${latestVersion}/pulumi-${latestVersion}-windows-x64.msi -OutFile $tempMsi
       - run: ls -la
         shell: bash
   install-via-gha:

@@ -196,7 +196,9 @@ func newPreviewCmd() *cobra.Command {
 					DisableOutputValues:       disableOutputValues(),
 					UpdateTargets:             targetURNs,
 					TargetDependents:          targetDependents,
-					ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
+					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
+					// experimental mode to just get more testing of it.
+					GeneratePlan: hasExperimentalCommands() || planFilePath != "",
 				},
 				Display: displayOpts,
 			}

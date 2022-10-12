@@ -87,23 +87,23 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 
 	marshaller, err := marshallerForPath(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not read '%s': %w", path, err)
 	}
 
 	b, err := readFileStripUTF8BOM(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read '%s': %w", path, err)
 	}
 
 	var raw interface{}
 	err = marshaller.Unmarshal(b, &raw)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
 	}
 
 	err = ValidateProject(raw)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not validate '%s': %w", path, err)
 	}
 
 	// just before marshalling, we will rewrite the config values
@@ -128,7 +128,7 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 
 	err = project.Validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
 	}
 
 	singleton.internal[path] = &project

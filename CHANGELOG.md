@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.42.0 (2022-10-07)
+
+
+### Bug Fixes
+
+- [cli/new] Fix cloning templates from Azure DevOps repos.
+  [#10954](https://github.com/pulumi/pulumi/pull/10954)
+
+- [docs] Allow more flexible parsing when extracting examples from doc comments
+  [#10913](https://github.com/pulumi/pulumi/pull/10913)
+
+- [sdkgen/python] Fixes dangling type-refs generated under compatibility=tfbridge20 for schemas that refer to types aross modules.
+  [#10935](https://github.com/pulumi/pulumi/pull/10935)
+
 ## 3.41.1 (2022-10-05)
 
 

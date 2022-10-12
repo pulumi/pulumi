@@ -220,10 +220,11 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			return changes, res
 		}
 
-		// If we had an original plan use it, else if we're in experimental mode use the newly generated plan
+		// If we had an original plan use it, else use the newly generated plan (might be nil if we've turned
+		// plan generation off)
 		if originalPlan != nil {
 			op.Opts.Engine.Plan = originalPlan
-		} else if op.Opts.ExperimentalPlans {
+		} else {
 			op.Opts.Engine.Plan = plan
 		}
 	}
