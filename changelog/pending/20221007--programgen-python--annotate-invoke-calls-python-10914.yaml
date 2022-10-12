@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/python
+  description: Recursively annotate expressions under invoke calls with their associated schema types

@@ -393,7 +393,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case intrinsicOutput:
 		// if we are calling Output.Create(FuncInvokeAsync())
 		// then we can simplify to just FuncInvoke() which already returns Output
-		if funcExpr, isFunc := expr.Args[0].(*model.FunctionCallExpression); isFunc {
+		if funcExpr, isFunc := expr.Args[0].(*model.FunctionCallExpression); isFunc && funcExpr.Name == pcl.Invoke {
 			_, fullFunctionName := g.functionName(funcExpr.Args[0])
 			g.Fprintf(w, "%s.Invoke(", fullFunctionName)
 			functionParts := strings.Split(fullFunctionName, ".")
@@ -412,7 +412,17 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
 				}
 			} else {
-				g.Fgenf(w, "%v", funcExpr.Args[1])
+				if objectExpr, ok := funcExpr.Args[1].(*model.ObjectConsExpression); ok {
+					g.withinFunctionInvoke(func() {
+						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
+						inputTypeName := functionName + "InvokeArgs"
+						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
+						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName)
+					})
+				} else {
+					g.Fgenf(w, "%v", funcExpr.Args[1])
+				}
+
 			}
 
 			g.Fprint(w, ")")
