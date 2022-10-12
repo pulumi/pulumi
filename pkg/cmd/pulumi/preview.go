@@ -138,7 +138,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "")
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
