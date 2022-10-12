@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -134,6 +135,13 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 	})
 }
 
+type loggingWriter struct{}
+
+func (loggingWriter) Write(bytes []byte) (int, error) {
+	logging.Infof(string(bytes))
+	return len(bytes), nil
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
 	var cwd string
@@ -205,6 +213,11 @@ func NewPulumiCmd() *cobra.Command {
 			if logging.Verbose >= 11 {
 				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
 			}
+
+			// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
+			// that so that log messages go to the logging package that we use everywhere else instead.
+			loggingWriter := &loggingWriter{}
+			log.SetOutput(loggingWriter)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
