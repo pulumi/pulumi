@@ -74,7 +74,7 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("getting secrets manager: %w", err)
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm)
+			cfg, err := getStackConfiguration(ctx, s, proj, sm)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

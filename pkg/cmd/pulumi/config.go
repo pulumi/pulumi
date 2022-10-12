@@ -982,14 +982,13 @@ func looksLikeSecret(k config.Key, v string) bool {
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(
-	ctx context.Context, stack backend.Stack,
+	ctx context.Context,
+	stack backend.Stack,
+	project *workspace.Project,
 	sm secrets.Manager) (backend.StackConfiguration, error) {
 	var cfg config.Map
-	project, _, err := readProject()
+
 	defaultStackConfig := backend.StackConfiguration{}
-	if err != nil {
-		return defaultStackConfig, err
-	}
 
 	workspaceStack, err := loadProjectStack(project, stack)
 	if err != nil || workspaceStack == nil {
