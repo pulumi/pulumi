@@ -87,11 +87,12 @@ jobs:
         if: ${{ matrix.language == 'python' }}
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        if: ${{ matrix.language == 'dotnet' }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+      # TODO: https://github.com/pulumi/pulumi/issues/11000, this step causes spurious errors.
+      # - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+      #   if: ${{ matrix.language == 'dotnet' }}
+      #   uses: actions/setup-dotnet@v1
+      #   with:
+      #     dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
         uses: actions/setup-node@v3
