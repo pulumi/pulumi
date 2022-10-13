@@ -20,6 +20,11 @@ func main() {
 					&corev1.ContainerArgs{
 						Name:  pulumi.String("nginx"),
 						Image: pulumi.String("nginx:1.14-alpine"),
+						Ports: corev1.ContainerPortArray{
+							&corev1.ContainerPortArgs{
+								ContainerPort: pulumi.Int(80),
+							},
+						},
 						Resources: &corev1.ResourceRequirementsArgs{
 							Limits: pulumi.StringMap{
 								"memory": pulumi.String("20Mi"),

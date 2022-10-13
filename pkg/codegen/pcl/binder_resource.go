@@ -42,6 +42,82 @@ func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
 	return diagnostics
 }
 
+func annotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
+	if optionalType, ok := attributeType.(*schema.OptionalType); ok {
+		return annotateAttributeValue(expr, optionalType.ElementType)
+	}
+
+	switch attrValue := expr.(type) {
+	case *model.ObjectConsExpression:
+		if schemaObjectType, ok := attributeType.(*schema.ObjectType); ok {
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range schemaObjectType.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+
+			for _, item := range attrValue.Items {
+				keyLiteral, isLit := item.Key.(*model.LiteralValueExpression)
+				if isLit {
+					correspondingSchemaType, ok := schemaProperties[keyLiteral.Value.AsString()]
+					if ok {
+						item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+					}
+				}
+			}
+			return attrValue.WithType(func(attrValueType model.Type) *model.ObjectConsExpression {
+				annotateObjectProperties(attrValueType, attributeType)
+				return attrValue
+			})
+		}
+
+		return attrValue
+
+	case *model.TupleConsExpression:
+		if schemaArrayType, ok := attributeType.(*schema.ArrayType); ok {
+			elementType := schemaArrayType.ElementType
+			for _, arrayExpr := range attrValue.Expressions {
+				annotateAttributeValue(arrayExpr, elementType)
+			}
+		}
+
+		return attrValue
+	case *model.FunctionCallExpression:
+		if attrValue.Name == IntrinsicConvert {
+			converterArg := attrValue.Args[0]
+			annotateAttributeValue(converterArg, attributeType)
+		}
+
+		return attrValue
+	default:
+		return expr
+	}
+}
+
+func AnnotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
+	return annotateAttributeValue(expr, attributeType)
+}
+
+func AnnotateResourceInputs(node *Resource) {
+	resourceProperties := make(map[string]*schema.Property)
+	for _, property := range node.Schema.Properties {
+		resourceProperties[property.Name] = property
+	}
+
+	// add type annotations to the attributes
+	// and their nested objects
+	for index := range node.Inputs {
+		attr := node.Inputs[index]
+		if property, ok := resourceProperties[attr.Name]; ok {
+			node.Inputs[index] = &model.Attribute{
+				Tokens: attr.Tokens,
+				Name:   attr.Name,
+				Syntax: attr.Syntax,
+				Value:  AnnotateAttributeValue(attr.Value, property.Type),
+			}
+		}
+	}
+}
+
 // bindResourceTypes binds the input and output types for a resource.
 func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
@@ -110,6 +186,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	outputType := model.NewObjectType(outputProperties, &schema.ObjectType{Properties: properties})
 
 	node.InputType, node.OutputType = inputType, outputType
+
 	return diagnostics
 }
 

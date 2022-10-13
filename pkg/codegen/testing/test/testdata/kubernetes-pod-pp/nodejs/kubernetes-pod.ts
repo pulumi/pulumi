@@ -12,6 +12,9 @@ const bar = new kubernetes.core.v1.Pod("bar", {
         containers: [{
             name: "nginx",
             image: "nginx:1.14-alpine",
+            ports: [{
+                containerPort: 80,
+            }],
             resources: {
                 limits: {
                     memory: "20Mi",

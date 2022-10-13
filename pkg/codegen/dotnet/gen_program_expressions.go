@@ -663,6 +663,42 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false)
 }
 
+func propertyNameOverrides(exprType model.Type) map[string]string {
+	overrides := make(map[string]string)
+	schemaType, ok := pcl.GetSchemaForType(exprType)
+	if !ok {
+		return overrides
+	}
+
+	switch arg := schemaType.(type) {
+	case *schema.ObjectType:
+		for _, property := range arg.Properties {
+			foundOverride := false
+			if csharp, ok := property.Language["csharp"]; ok {
+				if options, ok := csharp.(CSharpPropertyInfo); ok {
+					overrides[property.Name] = options.Name
+					foundOverride = true
+				}
+			}
+
+			if !foundOverride {
+				overrides[property.Name] = property.Name
+			}
+		}
+	}
+
+	return overrides
+}
+
+func resolvePropertyName(property string, overrides map[string]string) string {
+	foundOverride, ok := overrides[property]
+	if ok {
+		return propertyName(foundOverride)
+	}
+
+	return propertyName(property)
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer, expr *model.ObjectConsExpression, destTypeName string, implicitTypeName bool) {
 
@@ -678,12 +714,14 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			g.Fgenf(w, "new %s", typeName)
 		}
 
+		propertyNames := propertyNameOverrides(expr.Type())
 		g.Fgenf(w, "\n%s{\n", g.Indent)
 		g.Indented(func() {
 			for _, item := range expr.Items {
 				g.Fgenf(w, "%s", g.Indent)
 				lit := item.Key.(*model.LiteralValueExpression)
-				g.Fprint(w, propertyName(lit.Value.AsString()))
+				propertyKey := lit.Value.AsString()
+				g.Fprint(w, resolvePropertyName(propertyKey, propertyNames))
 				g.Fgenf(w, " = %.v,\n", item.Value)
 			}
 		})

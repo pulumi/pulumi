@@ -10,6 +10,7 @@ resource bar "kubernetes:core/v1:Pod" {
             {
                 name = "nginx"
                 image = "nginx:1.14-alpine"
+                ports = [{ containerPort = 80 }]
                 resources = {
                     limits = {
                         memory = "20Mi"

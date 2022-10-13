@@ -1456,6 +1456,10 @@ func (x *ObjectConsExpression) Type() Type {
 	return x.exprType
 }
 
+func (x *ObjectConsExpression) WithType(updateType func(Type) *ObjectConsExpression) *ObjectConsExpression {
+	return updateType(x.exprType)
+}
+
 func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 

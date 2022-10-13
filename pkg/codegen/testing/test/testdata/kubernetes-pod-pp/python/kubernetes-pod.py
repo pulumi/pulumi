@@ -12,6 +12,9 @@ bar = kubernetes.core.v1.Pod("bar",
         containers=[kubernetes.core.v1.ContainerArgs(
             name="nginx",
             image="nginx:1.14-alpine",
+            ports=[kubernetes.core.v1.ContainerPortArgs(
+                container_port=80,
+            )],
             resources=kubernetes.core.v1.ResourceRequirementsArgs(
                 limits={
                     "memory": "20Mi",
