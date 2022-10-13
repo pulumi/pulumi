@@ -157,22 +157,16 @@ type Project struct {
 }
 
 func isPrimitiveValue(value interface{}) (string, bool) {
-	_, isLiteralBoolean := value.(bool)
-	if isLiteralBoolean {
-		return "boolean", true
-	}
-
-	_, isLiteralInt := value.(int)
-	if isLiteralInt {
-		return "integer", true
-	}
-
-	_, isLiteralString := value.(string)
-	if isLiteralString {
+	switch value.(type) {
+	case string:
 		return "string", true
+	case int:
+		return "integer", true
+	case bool:
+		return "boolean", true
+	default:
+		return "", false
 	}
-
-	return "", false
 }
 
 // RewriteConfigPathIntoStackConfigDir checks if the project is using the old "config" property
@@ -302,15 +296,6 @@ func ValidateProject(raw interface{}) error {
 	if _, ok := project["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
-
-	project, rewriteError := RewriteConfigPathIntoStackConfigDir(project)
-
-	// when defining both config and stackConfigDir as strings in the same project
-	if rewriteError != nil {
-		return rewriteError
-	}
-
-	project = RewriteShorthandConfigValues(project)
 
 	// Let everything else be caught by jsonschema
 	if err = ProjectSchema.Validate(project); err == nil {

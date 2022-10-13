@@ -139,13 +139,8 @@ func (c Value) ToObject() (interface{}, error) {
 	return c.unmarshalObjectJSON()
 }
 
-// MarshalValue returns the underlying content of the config value
-func (c Value) MarshalValue() (interface{}, error) {
-	return c.marshalValue()
-}
-
 func (c Value) MarshalJSON() ([]byte, error) {
-	v, err := c.marshalValue()
+	v, err := c.MarshalValue()
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +158,7 @@ func (c *Value) UnmarshalJSON(b []byte) error {
 }
 
 func (c Value) MarshalYAML() (interface{}, error) {
-	return c.marshalValue()
+	return c.MarshalValue()
 }
 
 func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -207,7 +202,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 	return nil
 }
 
-func (c Value) marshalValue() (interface{}, error) {
+func (c Value) MarshalValue() (interface{}, error) {
 	if c.object {
 		return c.unmarshalObjectJSON()
 	}
