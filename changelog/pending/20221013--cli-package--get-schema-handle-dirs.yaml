@@ -1,0 +1,5 @@
+changes:
+  - type: fix
+    scope: cli/package
+    description: >
+      Require a path separator for path based binaries. This allows us to distinguish between ./myProvider (execute the binary at path) and myProvider (execute the installed plugin).
