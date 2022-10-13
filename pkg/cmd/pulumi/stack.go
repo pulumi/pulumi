@@ -90,38 +90,38 @@ func newStackCmd() *cobra.Command {
 			}
 
 			if snap != nil {
-				if t := snap.Manifest.Time; t.IsZero() && startTime == "" {
-					fmt.Printf("    Last update time unknown\n")
-				} else if startTime == "" {
-					fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
-				}
-				var cliver string
-				if snap.Manifest.Version == "" {
-					cliver = "?"
-				} else {
-					cliver = snap.Manifest.Version
-				}
-				fmt.Printf("    Pulumi version: %s\n", cliver)
-				for _, plugin := range snap.Manifest.Plugins {
-					var plugver string
-					if plugin.Version == nil {
-						plugver = "?"
-					} else {
-						plugver = plugin.Version.String()
+				t := snap.Manifest.Time.Local()
+				if startTime == "" {
+					// If a stack update is not in progress
+					if !t.IsZero() && t.Before(time.Now()) {
+						// If the update time is in the future, best to not display something incorrect based on
+						// inaccurate clocks.
+						fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
 					}
-					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
+				}
+				if snap.Manifest.Version != "" {
+					fmt.Printf("    Pulumi version used: %s\n", snap.Manifest.Version)
+				}
+				for _, p := range snap.Manifest.Plugins {
+					var pluginVersion string
+					if p.Version == nil {
+						pluginVersion = "?"
+					} else {
+						pluginVersion = p.Version.String()
+					}
+					fmt.Printf("    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
 				}
 			} else {
 				fmt.Printf("    No updates yet; run `pulumi up`\n")
 			}
 
 			// Now show the resources.
-			var rescnt int
+			var resourceCount int
 			if snap != nil {
-				rescnt = len(snap.Resources)
+				resourceCount = len(snap.Resources)
 			}
-			fmt.Printf("Current stack resources (%d):\n", rescnt)
-			if rescnt == 0 {
+			fmt.Printf("Current stack resources (%d):\n", resourceCount)
+			if resourceCount == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
 				rows, ok := renderTree(snap, showURNs, showIDs)
@@ -197,15 +197,15 @@ func printStackOutputs(outputs map[string]interface{}) {
 	if len(outputs) == 0 {
 		fmt.Printf("    No output values currently in this stack\n")
 	} else {
-		var outkeys []string
-		for outkey := range outputs {
-			outkeys = append(outkeys, outkey)
+		var outKeys []string
+		for v := range outputs {
+			outKeys = append(outKeys, v)
 		}
-		sort.Strings(outkeys)
+		sort.Strings(outKeys)
 
 		rows := []cmdutil.TableRow{}
 
-		for _, key := range outkeys {
+		for _, key := range outKeys {
 			rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
 		}
 

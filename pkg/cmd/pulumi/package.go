@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -106,24 +107,41 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		}
 		version = &v
 	}
-	info, err := os.Stat(pkg)
-	if os.IsNotExist(err) {
-		if strings.ContainsRune(pkg, filepath.Separator) {
-			// We infer that we were given a file path, so we assume that this is a file.
-			// The file was not found, so we exit.
-			return nil, err
-		}
+
+	isExecutable := func(info fs.FileInfo) bool {
+		return info.Mode()&0111 != 0 && !info.IsDir()
+	}
+
+	// No file separators, so we try to look up the schema
+	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
+	if !strings.ContainsRune(pkg, filepath.Separator) && !strings.ContainsRune(pkg, '/') {
 		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil)
 		if err != nil {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		return schema.NewPluginLoader(host).LoadPackage(pkg, version)
+		schema, err := schema.NewPluginLoader(host).LoadPackage(pkg, version)
+		if err != nil {
+			// There is an executable with the same name, so suggest that
+			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
+				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
+			}
+		}
+		return schema, err
+
+	}
+
+	// We were given a path to a binary, so invoke that.
+
+	info, err := os.Stat(pkg)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("could not find file %s", pkg)
 	} else if err != nil {
 		return nil, err
-	}
-	// We were given a path to a binary, so invoke that.
-	if info.Mode()&0111 == 0 {
+	} else if !isExecutable(info) {
+		if p, err := filepath.Abs(pkg); err == nil {
+			pkg = p
+		}
 		return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 	}
 
