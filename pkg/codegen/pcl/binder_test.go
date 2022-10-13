@@ -17,15 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var fileToMockPlugins = map[string]map[string]string{
-	"aws-resource-options.pp": {
-		"aws": "4.38.0",
-	},
-	"modpath.pp": {
-		"other": "0.1.0",
-	},
-}
-
 func TestBindProgram(t *testing.T) {
 	t.Parallel()
 
@@ -65,8 +56,7 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := Loader(schema.NewOfflinePluginLoader(
-					utils.NewHost(testdataPath, fileToMockPlugins[fileName])))
+				loader := Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
 				if fileName == "simple-range.pp" {
 					// simple-range.pp requires AllowMissingVariables
 					// TODO: remove this once we have a better way to handle this

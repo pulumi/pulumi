@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -29,14 +28,13 @@ import (
 var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
 
 type ProgramTest struct {
-	Directory      string
-	Description    string
-	Skip           codegen.StringSet
-	ExpectNYIDiags codegen.StringSet
-	SkipCompile    codegen.StringSet
-	// optional map of (mock plugin name to versions) to load for specific tests.
-	MockPluginVersions map[string]string
+	Directory          string
+	Description        string
+	Skip               codegen.StringSet
+	ExpectNYIDiags     codegen.StringSet
+	SkipCompile        codegen.StringSet
 	BindOptions        []pcl.BindOption
+	MockPluginVersions map[string]string
 }
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
@@ -146,13 +144,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "random-pet",
 		Description: "Random Pet",
-	},
-	{
-		Directory:   "aws-resource-options",
-		Description: "Resource Options",
-		MockPluginVersions: map[string]string{
-			"aws": "4.38.0",
-		},
 	},
 	{
 		Directory:   "aws-secret",
@@ -306,10 +297,12 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := pcl.BindProgram(parser.Files,
-				append(tt.BindOptions,
-					pcl.Loader(schema.NewOfflinePluginLoader(
-						utils.NewHost(testdataPath, tt.MockPluginVersions))))...)
+			opts := []pcl.BindOption{
+				pcl.PluginHost(utils.NewHost(testdataPath)),
+			}
+			opts = append(opts, tt.BindOptions...)
+
+			program, diags, err := pcl.BindProgram(parser.Files, opts...)
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

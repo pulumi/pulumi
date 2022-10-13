@@ -28,9 +28,13 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
 	expectedVersion := map[string]test.PkgVersionInfo{
-		"aws-resource-options": {
+		"aws-resource-options-4.26": {
 			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
-			OpAndVersion: "Version=\"4.38.0\"",
+			OpAndVersion: "Version=\"4.26.0\"",
+		},
+		"aws-resource-options-5.16.2": {
+			Pkg:          "<PackageReference Include=\"Pulumi.Aws\"",
+			OpAndVersion: "Version=\"5.16.2\"",
 		},
 	}
 
@@ -45,11 +49,12 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			GenProgram: GenerateProgram,
 			TestCases: []test.ProgramTest{
 				{
-					Directory:   "aws-resource-options",
+					Directory:   "aws-resource-options-4.26",
 					Description: "Resource Options",
-					MockPluginVersions: map[string]string{
-						"aws": "4.38.0",
-					},
+				},
+				{
+					Directory:   "aws-resource-options-5.16.2",
+					Description: "Resource Options",
 				},
 			},
 

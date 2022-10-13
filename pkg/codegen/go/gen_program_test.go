@@ -44,9 +44,13 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
 	expectedVersion := map[string]test.PkgVersionInfo{
-		"aws-resource-options": {
+		"aws-resource-options-4.26": {
 			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v4",
-			OpAndVersion: "v4.38.0",
+			OpAndVersion: "v4.26.0",
+		},
+		"aws-resource-options-5.16.2": {
+			Pkg:          "github.com/pulumi/pulumi-aws/sdk/v5",
+			OpAndVersion: "v5.16.2",
 		},
 		"modpath": {
 			Pkg:          "git.example.org/thirdparty/sdk",
@@ -68,11 +72,12 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			},
 			TestCases: []test.ProgramTest{
 				{
-					Directory:   "aws-resource-options",
+					Directory:   "aws-resource-options-4.26",
 					Description: "Resource Options",
-					MockPluginVersions: map[string]string{
-						"aws": "4.38.0",
-					},
+				},
+				{
+					Directory:   "aws-resource-options-5.16.2",
+					Description: "Resource Options",
 				},
 				{
 					Directory:   "modpath",
@@ -105,7 +110,7 @@ func TestCollectImports(t *testing.T) {
 	pulumiVals := pulumiImports.SortedValues()
 	assert.Equal(t, 0, len(stdVals))
 	assert.Equal(t, 1, len(pulumiVals))
-	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3\"", pulumiVals[0])
+	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3\"", pulumiVals[0])
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
@@ -122,7 +127,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath, nil)))
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}

@@ -2,7 +2,6 @@ package schema
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -37,8 +36,7 @@ type pluginLoader struct {
 	host    plugin.Host
 	entries map[string]PackageReference
 
-	cacheOptions       pluginLoaderCacheOptions
-	disableDownloading bool
+	cacheOptions pluginLoaderCacheOptions
 }
 
 // Caching options intended for benchmarking or debugging:
@@ -56,13 +54,6 @@ func NewPluginLoader(host plugin.Host) ReferenceLoader {
 		host:    host,
 		entries: map[string]PackageReference{},
 	}
-}
-
-// NewOfflinePluginLoader creates a loader that will not download missing packages
-func NewOfflinePluginLoader(host plugin.Host) ReferenceLoader {
-	l := NewPluginLoader(host).(*pluginLoader)
-	l.disableDownloading = true
-	return l
 }
 
 func newPluginLoaderWithOptions(host plugin.Host, cacheOptions pluginLoaderCacheOptions) ReferenceLoader {
@@ -93,38 +84,6 @@ func (l *pluginLoader) setPackage(key string, p PackageReference) PackageReferen
 
 	l.entries[key] = p
 	return p
-}
-
-// ensurePlugin downloads and installs the specified plugin if it does not already exist.
-func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
-	if l.disableDownloading {
-		return nil
-	}
-	// TODO: schema and provider versions
-	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
-	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
-	if version == nil {
-		return nil
-	}
-
-	pkgPlugin := workspace.PluginSpec{
-		Kind:    workspace.ResourcePlugin,
-		Name:    pkg,
-		Version: version,
-	}
-
-	if !workspace.HasPlugin(pkgPlugin) {
-		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
-		if err != nil {
-			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
-		}
-		defer os.Remove(tarball.Name())
-		if err := pkgPlugin.InstallWithContext(context.Background(), workspace.TarPlugin(tarball), false); err != nil {
-			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
-		}
-	}
-
-	return nil
 }
 
 func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
@@ -220,7 +179,12 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 }
 
 func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {
-	if err := l.ensurePlugin(pkg, version); err != nil {
+	err := l.host.InstallPlugin(workspace.PluginSpec{
+		Kind:    workspace.ResourcePlugin,
+		Name:    pkg,
+		Version: version,
+	})
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -234,8 +198,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 		version = pluginInfo.Version
 	}
 
-	// don't ues the cache if there is a valid version
-	if pluginInfo.SchemaPath != "" && version == nil {
+	if pluginInfo.SchemaPath != "" && version != nil {
 		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil
