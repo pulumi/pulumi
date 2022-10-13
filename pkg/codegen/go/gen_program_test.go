@@ -110,7 +110,7 @@ func TestCollectImports(t *testing.T) {
 	pulumiVals := pulumiImports.SortedValues()
 	assert.Equal(t, 0, len(stdVals))
 	assert.Equal(t, 1, len(pulumiVals))
-	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3\"", pulumiVals[0])
+	assert.Equal(t, "\"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3\"", pulumiVals[0])
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
