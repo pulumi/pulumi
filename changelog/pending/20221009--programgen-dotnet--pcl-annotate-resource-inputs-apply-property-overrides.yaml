@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/dotnet
+  description: Annotate deeply nested objects with their schema types and apply property name overrides

@@ -21,6 +21,13 @@ return await Deployment.RunAsync(() =>
                 {
                     Name = "nginx",
                     Image = "nginx:1.14-alpine",
+                    Ports = new[]
+                    {
+                        new Kubernetes.Types.Inputs.Core.V1.ContainerPortArgs
+                        {
+                            ContainerPortValue = 80,
+                        },
+                    },
                     Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
                     {
                         Limits = 

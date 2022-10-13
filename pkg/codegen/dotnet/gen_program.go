@@ -653,6 +653,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		}
 	}
 
+	pcl.AnnotateResourceInputs(r)
+
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 	argsName := g.resourceArgsTypeName(r)
