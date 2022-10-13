@@ -16,3 +16,4 @@ scopes:
   programgen: [dotnet, go, java, nodejs, python, yaml]
   sdkgen: [dotnet, go, java, nodejs, python, yaml]
   protobuf: []
+  yaml: []
