@@ -75,6 +75,7 @@
             "description":"A map of configuration keys to their types. Using config directory location relative to the location of Pulumi.yaml is a deprecated use of this key. Use stackConfigDir instead.",
             "type":[
                 "object",
+                "string",
                 "null"
             ],
             "additionalProperties":{
