@@ -321,8 +321,7 @@ describe("LocalWorkspace", () => {
         const stacks = await Promise.all(stackNames.map(async stackName => LocalWorkspace.createStack({ stackName, projectName, program })));
         await stacks.map(stack => stack.workspace.removeStack(stack.name));
     }));
-    // Skipping this for now as it tests something which is in progress
-    it.skip(`runs through the stack lifecycle with multiple inline programs in parallel`, asyncTest(async () => {
+    it(`runs through the stack lifecycle with multiple inline programs in parallel`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -333,17 +332,18 @@ describe("LocalWorkspace", () => {
         };
         const projectName = "inline_node";
         const stackNames = Array.from(Array(10).keys()).map(_ => fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`));
-        const stacks = await Promise.all(stackNames.map(async stackName => LocalWorkspace.createStack({ stackName, projectName, program })));
 
-        const stackConfig: ConfigMap = {
-            "bar": { value: "abc" },
-            "buzz": { value: "secret", secret: true },
-        };
-        await Promise.all(stacks.map(async stack => stack.setAllConfig(stackConfig)));
+        const testStackLifetime = async (stackName: string) => {
+            const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
-        // pulumi up
-        const upResponses = await Promise.all(stacks.map(async stack => stack.up({ userAgent })));
-        upResponses.map(upRes => {
+            const stackConfig: ConfigMap = {
+                "bar": { value: "abc" },
+                "buzz": { value: "secret", secret: true },
+            };
+            await stack.setAllConfig(stackConfig);
+
+            // pulumi up
+            const upRes = await stack.up({ userAgent }); // pulumi up
             assert.strictEqual(Object.keys(upRes.outputs).length, 3);
             assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
             assert.strictEqual(upRes.outputs["exp_static"].secret, false);
@@ -353,30 +353,25 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
             assert.strictEqual(upRes.summary.kind, "update");
             assert.strictEqual(upRes.summary.result, "succeeded");
-        });
 
-        // pulumi preview
-        const preResponses = await Promise.all(stacks.map(async stack => stack.preview({ userAgent })));
-        preResponses.map(preRes => {
+            // pulumi preview
+            const preRes = await stack.preview({ userAgent }); // pulumi preview
             assert.strictEqual(preRes.changeSummary.same, 1);
-        });
 
-        // pulumi refresh
-        const refResponses = await Promise.all(stacks.map(async stack => await stack.refresh({ userAgent })));
-
-        refResponses.map(refRes => {
+            // pulumi refresh
+            const refRes = await stack.refresh({ userAgent });
             assert.strictEqual(refRes.summary.kind, "refresh");
             assert.strictEqual(refRes.summary.result, "succeeded");
-        });
 
-        // pulumi destroy
-        const destroyResponses = await Promise.all(stacks.map(async stack => await stack.destroy({ userAgent })));
-        destroyResponses.map(destroyRes => {
+            // pulumi destroy
+            const destroyRes = await stack.destroy({ userAgent });
             assert.strictEqual(destroyRes.summary.kind, "destroy");
             assert.strictEqual(destroyRes.summary.result, "succeeded");
-        });
 
-        await Promise.all(stacks.map(async stack => stack.workspace.removeStack(stack.name)));
+            await stack.workspace.removeStack(stack.name);
+        };
+
+        await Promise.all(stackNames.map(async stackName => await testStackLifetime(stackName)));
     }));
     it(`handles events`, asyncTest(async () => {
         const program = async () => {

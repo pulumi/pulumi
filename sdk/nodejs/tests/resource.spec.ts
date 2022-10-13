@@ -43,7 +43,7 @@ describe("createUrn", () => {
     after(() => {
         runtime._setProject(undefined);
         runtime._setStack(undefined);
-    });
+    })
 
     it("handles name and type", asyncTest(async () => {
         const urn = await createUrn("n", "t").promise();
@@ -78,7 +78,7 @@ describe("allAliases", () => {
     after(() => {
         runtime._setProject(undefined);
         runtime._setStack(undefined);
-    });
+    })
 
     const testCases = [
         {

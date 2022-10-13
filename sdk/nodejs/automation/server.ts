@@ -54,8 +54,6 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 throw new Error(leakMessage);
             }
         }
-        // these are globals and we need to clean up after ourselves
-        settings.resetOptions("", "", -1, "", "", false, "");
     }
 
     getRequiredPlugins(call: any, callback: any): void {
@@ -84,6 +82,8 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 config[<string>k] = <string>v;
             }
             runtimeConfig.setAllConfig(config, req.getConfigsecretkeysList() || []);
+
+            process.setMaxListeners(settings.getMaximumListeners());
 
             process.on("uncaughtException", uncaughtHandler);
             // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
