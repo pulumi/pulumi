@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display,engine
+  description: Use of unsupported ResourceOptions on components will no longer raise resource warnings, instead they are just logged to the diagnostic error stream.

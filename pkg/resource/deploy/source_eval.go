@@ -1260,12 +1260,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 // This function is intended to validate options passed to component resources,
 // so urn is expected to refer to a component.
 func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check func() bool) {
-	var msg = fmt.Sprintf("The option '%s' has no effect on component resources.", optName)
 	if check() {
-		rm.diagostics.Warningf(diag.Message(
-			urn,
-			msg,
-		))
+		logging.V(10).Infof("The option '%s' has no automatic effect on component resource '%s', "+
+			"ensure it is handled correctly in the component code.", optName, urn)
 	}
 }
 
