@@ -1228,26 +1228,6 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	return resourcesToDelete, nil
 }
 
-// GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
-// called at the start of a deployment in order to find all resources that are pending deletion from the previous
-// deployment.
-func (sg *stepGenerator) GeneratePendingDeletes() []Step {
-	var dels []Step
-	if prev := sg.deployment.prev; prev != nil {
-		logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
-		for i := len(prev.Resources) - 1; i >= 0; i-- {
-			res := prev.Resources[i]
-			if res.Delete {
-				logging.V(7).Infof(
-					"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
-				sg.pendingDeletes[res] = true
-				dels = append(dels, NewDeleteStep(sg.deployment, res))
-			}
-		}
-	}
-	return dels
-}
-
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
 // steps, where each list can be executed in parallel but a previous list must be executed to completion before
 // advancing to the next list.
