@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Fixes int constant range expressions for go 
