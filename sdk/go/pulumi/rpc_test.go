@@ -238,7 +238,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	if assert.Nil(t, err) {
 		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
 		assert.Equal(t, 10, len(deps))
-		assert.Equal(t, 10, len(pdeps))
+		assert.Equal(t, 25, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
@@ -586,7 +586,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		const resourceFields = 10
 		assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
 		assert.Equal(t, 0, len(deps))
-		assert.Equal(t, 0, len(pdeps))
+		assert.Equal(t, 15, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
@@ -1756,4 +1756,21 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 	}
+}
+
+func TestMarshalInputsPropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	pmap, pdeps, deps, err := marshalInputs(testInputs{
+		S: String("a string"),
+		A: Bool(true),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"s": resource.NewStringProperty("a string"),
+		"a": resource.NewBoolProperty(true),
+	}, pmap)
+	assert.Equal(t, []URN{}, deps)
+	// Expect a non-empty property deps map, even when there aren't any deps.
+	assert.Equal(t, map[string][]URN{"s": {}, "a": {}}, pdeps)
 }
