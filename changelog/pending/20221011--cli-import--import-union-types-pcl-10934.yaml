@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Handle importing resource properties that are typed as a union
