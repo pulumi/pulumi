@@ -21,7 +21,6 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per
@@ -88,8 +87,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	// Capitalize and make a valid identifier.
-	safeName = enumTitle(safeName)
-	safeName = makeValidIdentifier(safeName)
+	safeName = makeValidIdentifier(Title(safeName))
 
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
@@ -103,20 +101,4 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	safeName = typeName + safeName
 
 	return safeName, nil
-}
-
-// Title converts the input string to a title case
-// where only the initial letter is upper-cased.
-// It also removes $-prefix if any.
-func enumTitle(s string) string {
-	if s == "" {
-		return ""
-	}
-	if s[0] == '$' {
-		return Title(s[1:])
-	}
-	s = cgstrings.UppercaseFirst(s)
-	return cgstrings.ModifyStringAroundDelimeter(s, "-", func(next string) string {
-		return "_" + cgstrings.UppercaseFirst(next)
-	})
 }
