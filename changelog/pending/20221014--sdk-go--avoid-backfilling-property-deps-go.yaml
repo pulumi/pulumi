@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Avoid backfilling property deps for Go
