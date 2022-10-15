@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/go
-  description: Add `modulePath` to go, allowing accurate `go.mod` files for prerelease packages

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.43.1 (2022-10-15)
+
+
+### Bug Fixes
+
+- [sdkgen/{go,python}] Revert 10738, fixing python class generation
+  [#11033](https://github.com/pulumi/pulumi/pulls/11033)
+
 ## 3.42.0 (2022-10-07)
 
 

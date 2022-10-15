@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/new
-  description: Add --remove flag to`pulumi destroy`
