@@ -102,6 +102,8 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			set(test.RandomSchema)
 		case "eks":
 			set(test.EksSchema)
+		case "docker":
+			set(test.DockerSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}

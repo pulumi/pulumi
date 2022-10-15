@@ -217,9 +217,11 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		}
 	}
 
-	if mod == pkg.mod {
-		return name
+	if mod == pkg.mod && mod == "" {
+		// then fully qualify the type name with the package
+		return pkg.pkg.Name + "." + name
 	}
+
 	if mod == "" {
 		mod = packageRoot(pkg.pkg)
 	}
