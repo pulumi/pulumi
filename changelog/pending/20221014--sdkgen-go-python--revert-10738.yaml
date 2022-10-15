@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go,python
-  description: Revert 10738, fixing python class generation
