@@ -1712,11 +1712,14 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 
 	// Declare a new file to store the contents exposed at this directory level.
 	var dirRoot = path.Join(parent, ns.name)
+	// var filename, fileType string
 	var filename string
 	if ctx.input {
 		filename = path.Join(dirRoot, "input.ts")
+		// fileType = "input"
 	} else {
 		filename = path.Join(dirRoot, "output.ts")
+		// fileType = "output"
 	}
 	var file = newIOFile(filename)
 	// We start every file with the header information.
@@ -1762,7 +1765,7 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 		}
 		// At this level, we export any nested definitions from
 		// the next level.
-		fmt.Fprintf(file.writer(), "export * as %s from \"./%s\";\n", child.name, child.name)
+		// fmt.Fprintf(file.writer(), "export * as %s from \"./%s/%s\";\n", child.name, child.name, fileType)
 		nestedFiles, err := child.intoIOFiles(ctx, dirRoot)
 		if err != nil {
 			return nil, err
@@ -1784,8 +1787,8 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 		var indexPath = path.Join(dirRoot, "index.ts")
 		var file = newIOFile(indexPath)
 		ctx.mod.genHeader(file.writer(), nil, nil, nil)
-		fmt.Fprintf(file.writer(), "export * from \"./%s\";\n", "input")
-		fmt.Fprintf(file.writer(), "export * from \"./%s\";\n", "output")
+		fmt.Fprintf(file.writer(), "export * as inputs from \"./%s\";\n", "input")
+		fmt.Fprintf(file.writer(), "export * as outputs from \"./%s\";\n", "output")
 		files = append(files, file)
 	}
 

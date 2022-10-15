@@ -145,6 +145,4 @@ export function typArgsProvideDefaults(val: TypArgs): TypArgs {
         val: (val.val) ?? "mod main",
     };
 }
-export * as mod1 from "./mod1";
 
-export * as mod2 from "./mod2";
