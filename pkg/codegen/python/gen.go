@@ -29,11 +29,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -79,14 +79,6 @@ func (imports imports) strings() []string {
 	}
 	sort.Strings(result)
 	return result
-}
-
-func title(s string) string {
-	if s == "" {
-		return ""
-	}
-	runes := []rune(s)
-	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
 type modLocator struct {
@@ -301,7 +293,7 @@ func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	return title(components[2])
+	return cgstrings.UppercaseFirst(components[2])
 }
 
 func tokenToModule(tok string, pkg *schema.Package, moduleNameOverrides map[string]string) string {
@@ -1479,7 +1471,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 	genReturnType := func(method *schema.Method) string {
 		obj := method.Function.Outputs
-		name := pyClassName(title(method.Name)) + "Result"
+		name := pyClassName(cgstrings.UppercaseFirst(method.Name)) + "Result"
 
 		// Produce a class definition with optional """ comment.
 		fmt.Fprintf(w, "    @pulumi.output_type\n")
