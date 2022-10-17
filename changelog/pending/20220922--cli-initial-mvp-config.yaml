@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli
-  description: Implement initial MVP for hierarchical and structured project configuration
+  description: Implement initial MVP for hierarchical and structured project configuration.
