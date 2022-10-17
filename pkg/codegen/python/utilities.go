@@ -197,6 +197,6 @@ func pythonCase(s string) string {
 		underscores += "_"
 		return true
 	})
-	c := cgstrings.Camel(noUnderscores)
+	c := cgstrings.Unhyphenate(noUnderscores)
 	return underscores + cgstrings.UppercaseFirst(c)
 }

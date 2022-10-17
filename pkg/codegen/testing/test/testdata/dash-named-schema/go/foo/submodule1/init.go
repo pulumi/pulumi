@@ -21,6 +21,8 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "foo-bar:submodule1:FOOEncryptedBarClass":
+		r = &FOOEncryptedBarClass{}
 	case "foo-bar:submodule1:ModuleResource":
 		r = &ModuleResource{}
 	default:
