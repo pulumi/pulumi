@@ -1650,7 +1650,7 @@ func (mod *modContext) genTypes() ([]*ioFile, error) {
 	// If there are no namespaces, then we generate empty
 	// input and output files.
 	if namespaces[""] == nil {
-		return nil, fmt.Errorf("Encountered a nil top-level namespace. The top-level namespace cannot be nil, even if it is empty.")
+		return nil, fmt.Errorf("encountered a nil top-level namespace, and namespaces can't be nil even if it is empty")
 	}
 	// Iterate through the namespaces, generating one per node in the tree.
 	if inputFiles, err = namespaces[""].intoIOFiles(inputCtx, "./types"); err != nil {
@@ -1707,9 +1707,8 @@ func (ctx *ioContext) filename(dirRoot string) string {
 func (ctx *ioContext) filetype() string {
 	if ctx.input {
 		return "input"
-	} else {
-		return "output"
 	}
+	return "output"
 }
 
 // intoIOFiles converts this namespace into one or more files.
@@ -1802,13 +1801,17 @@ func (ns *namespace) genOwnedTypes(ctx *ioContext, dirRoot string) (*ioFile, err
 		var isInputType = ctx.input && ctx.mod.details(t).inputType
 		var isOutputType = !ctx.input && ctx.mod.details(t).outputType
 		// Only write input and output types.
-		if isInputType || isOutputType {
+		if isInputType {
 			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
 				return file, err
 			}
-			if i != len(ns.types)-1 {
-				fmt.Fprintf(file.writer(), "\n")
+		} else if isOutputType {
+			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
+				return file, err
 			}
+		}
+		if i != len(ns.types)-1 && (isInputType || isOutputType) {
+			fmt.Fprintf(file.writer(), "\n")
 		}
 	}
 	return file, nil
@@ -2180,7 +2183,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			return err
 		}
 		for _, file := range files {
-			fs.Add(file.name(), []byte(file.contents()))
+			fs.Add(file.name(), file.contents())
 		}
 	}
 
