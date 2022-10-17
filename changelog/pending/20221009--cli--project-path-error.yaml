@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Project path is included in error messages when a project can't be loaded.

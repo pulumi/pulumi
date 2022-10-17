@@ -351,3 +351,228 @@ func TestSimplerType(t *testing.T) {
 		return simplerType(types[i], types[j])
 	}))
 }
+
+func makeUnionType(types ...schema.Type) *schema.UnionType {
+	return &schema.UnionType{ElementTypes: types}
+}
+
+func makeArrayType(elementType schema.Type) *schema.ArrayType {
+	return &schema.ArrayType{ElementType: elementType}
+}
+
+func makeProperty(name string, t schema.Type) *schema.Property {
+	return &schema.Property{Name: name, Type: t}
+}
+
+func makeObjectType(properties ...*schema.Property) *schema.ObjectType {
+	return &schema.ObjectType{Properties: properties}
+}
+
+func makeOptionalType(t schema.Type) schema.Type {
+	return &schema.OptionalType{ElementType: t}
+}
+
+func makeObject(input map[string]resource.PropertyValue) resource.PropertyValue {
+	properties := make(map[resource.PropertyKey]resource.PropertyValue)
+	for key, value := range input {
+		properties[resource.PropertyKey(key)] = value
+	}
+
+	return resource.NewObjectProperty(properties)
+}
+
+func TestStructuralTypeChecks(t *testing.T) {
+	t.Run("String", func(t *testing.T) {
+		t.Parallel()
+		value := resource.NewStringProperty("foo")
+		assert.True(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.NumberType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, schema.StringType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.BoolType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.NumberType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.BoolType, schema.NumberType)))
+	})
+
+	t.Run("Bool", func(t *testing.T) {
+		t.Parallel()
+		value := resource.NewBoolProperty(true)
+		assert.True(t, valueStructurallyTypedAs(value, schema.BoolType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.BoolType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.BoolType, schema.NumberType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, schema.BoolType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.NumberType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.NumberType)))
+	})
+
+	t.Run("Number", func(t *testing.T) {
+		t.Parallel()
+		value := resource.NewNumberProperty(42)
+		assert.True(t, valueStructurallyTypedAs(value, schema.NumberType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.NumberType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.BoolType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.BoolType)))
+	})
+
+	t.Run("Array", func(t *testing.T) {
+		t.Parallel()
+		value := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewStringProperty("bar"),
+		})
+
+		assert.True(t, valueStructurallyTypedAs(value, makeArrayType(schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.StringType))))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.StringType), schema.NumberType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, makeArrayType(schema.StringType))))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(
+			makeArrayType(schema.StringType),
+			makeArrayType(schema.NumberType))))
+
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(
+			makeArrayType(schema.NumberType),
+			makeArrayType(schema.StringType))))
+
+		assert.False(t, valueStructurallyTypedAs(value, makeArrayType(schema.BoolType)))
+		assert.False(t, valueStructurallyTypedAs(value, makeArrayType(schema.NumberType)))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.BoolType), schema.NumberType)))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, makeArrayType(schema.BoolType))))
+	})
+
+	t.Run("ArrayMixedTypes", func(t *testing.T) {
+		t.Parallel()
+		value := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("foo"),
+			resource.NewNumberProperty(42),
+		})
+
+		// base case: value of type array[union[string, number]]
+		assert.True(t, valueStructurallyTypedAs(value, makeArrayType(makeUnionType(schema.StringType, schema.NumberType))))
+
+		assert.False(t, valueStructurallyTypedAs(value, makeArrayType(schema.NumberType)))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.StringType))))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.NumberType))))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(makeArrayType(schema.StringType), schema.NumberType)))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, makeArrayType(schema.StringType))))
+	})
+
+	t.Run("Object", func(t *testing.T) {
+		t.Parallel()
+
+		value := makeObject(map[string]resource.PropertyValue{
+			"foo": resource.NewStringProperty("foo"),
+			"bar": resource.NewNumberProperty(42),
+		})
+
+		assert.True(t, valueStructurallyTypedAs(value, makeObjectType(
+			makeProperty("foo", schema.StringType),
+			makeProperty("bar", schema.NumberType),
+		)))
+
+		assert.False(t, valueStructurallyTypedAs(value, makeObjectType(
+			makeProperty("foo", schema.StringType),
+			makeProperty("bar", schema.StringType),
+		)))
+
+		anotherValue := makeObject(map[string]resource.PropertyValue{
+			"a": resource.NewStringProperty("A"),
+		})
+
+		// property "a" is missing from the type
+		assert.False(t, valueStructurallyTypedAs(anotherValue, makeObjectType(
+			makeProperty("b", schema.StringType),
+		)))
+
+		objectA := makeObject(map[string]resource.PropertyValue{
+			"foo": resource.NewStringProperty("foo"),
+		})
+
+		objectATypeWithRequiredPropertyBar := makeObjectType(
+			makeProperty("foo", schema.StringType),
+			makeProperty("bar", schema.NumberType))
+
+		// property "bar" is missing from the value
+		// but the type requires it to be present
+		// so the value is _not_ structurally typed
+		assert.False(t, valueStructurallyTypedAs(objectA, objectATypeWithRequiredPropertyBar))
+
+		objectATypeWithOptionalPropertyBar := makeObjectType(
+			makeProperty("foo", schema.StringType),
+			makeProperty("bar", makeOptionalType(schema.NumberType)))
+
+		// property "bar" is missing from the value, but it is optional
+		// so the value is structurally typed just fine
+		assert.True(t, valueStructurallyTypedAs(objectA, objectATypeWithOptionalPropertyBar))
+
+		complexUnionOfObjects := makeUnionType(
+			makeObjectType(
+				makeProperty("foo", schema.StringType),
+				makeProperty("bar", schema.NumberType),
+			),
+			makeObjectType(
+				makeProperty("foo", makeUnionType(schema.NumberType, schema.StringType)),
+			))
+
+		// fits the second object of the union
+		complexFittingValue := makeObject(map[string]resource.PropertyValue{
+			"foo": resource.NewNumberProperty(100),
+		})
+
+		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
+	})
+}
+
+func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
+	t.Parallel()
+	value := resource.NewStringProperty("hello")
+	unionTypeA := makeUnionType(schema.StringType, schema.NumberType)
+	unionTypeB := makeUnionType(schema.BoolType, schema.StringType)
+	reducedA := reduceUnionType(unionTypeA, value)
+	reducedB := reduceUnionType(unionTypeB, value)
+	assert.Equal(t, schema.StringType, reducedA)
+	assert.Equal(t, schema.StringType, reducedB)
+}
+
+func TestReduceUnionTypeEliminatesUnionsRecursively(t *testing.T) {
+	t.Parallel()
+	value := resource.NewStringProperty("hello")
+	unionType := makeUnionType(
+		makeUnionType(schema.NumberType, schema.BoolType),
+		makeUnionType(
+			makeUnionType(
+				schema.StringType,
+				schema.BoolType)))
+
+	reduced := reduceUnionType(unionType, value)
+	assert.Equal(t, schema.StringType, reduced)
+}
+
+func TestReduceUnionTypeWorksWithArrayOfUnions(t *testing.T) {
+	t.Parallel()
+
+	// array[union[string, number]]
+	mixedTypeArray := resource.NewArrayProperty([]resource.PropertyValue{
+		resource.NewStringProperty("hello"),
+		resource.NewNumberProperty(42),
+	})
+
+	// union[array[union[string, number]]]
+	arrayType := makeUnionType(&schema.ArrayType{
+		ElementType: makeUnionType(schema.StringType, schema.NumberType),
+	})
+
+	reduced := reduceUnionType(arrayType, mixedTypeArray)
+	schemaArrayType, isArray := reduced.(*schema.ArrayType)
+	assert.True(t, isArray)
+	unionType, isUnion := schemaArrayType.ElementType.(*schema.UnionType)
+	assert.True(t, isUnion)
+	assert.Equal(t, schema.StringType, unionType.ElementTypes[0])
+	assert.Equal(t, schema.NumberType, unionType.ElementTypes[1])
+}

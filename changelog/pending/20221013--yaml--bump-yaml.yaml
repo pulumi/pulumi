@@ -1,5 +1,0 @@
-changes:
-  - type: chore
-    scope: yaml
-    description: >
-      "[Updates Pulumi YAML to v0.5.10](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.10) containing bug fixes and improvements primarily for `pulumi convert` from YAML."

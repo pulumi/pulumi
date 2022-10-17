@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Displays time elapsed when modifying a resource.

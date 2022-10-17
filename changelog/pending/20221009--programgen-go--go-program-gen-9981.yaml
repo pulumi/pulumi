@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Missing default case handling when generating local variables

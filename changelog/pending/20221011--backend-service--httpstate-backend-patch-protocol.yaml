@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Implements diff-based snapshot saving protocol that reduces bandwidth on large stacks. To opt into this feature, set the environment variable and value `PULUMI_OPTIMIZED_CHECKPOINT_PATCH=true`.

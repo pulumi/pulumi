@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Modifies built-in As-ArrayOutput methods to attempt to convert []interface{} to []T.
