@@ -1697,6 +1697,21 @@ type ioContext struct {
 	externalImports codegen.StringSet
 }
 
+// filename returns the unique name of the input/output file
+// given a directory root.
+func (ctx *ioContext) filename(dirRoot string) string {
+	var fname = fmt.Sprintf("%s.ts", ctx.filetype())
+	return path.Join(dirRoot, fname)
+}
+
+func (ctx *ioContext) filetype() string {
+	if ctx.input {
+		return "input"
+	} else {
+		return "output"
+	}
+}
+
 // intoIOFiles converts this namespace into one or more files.
 // It recursively builds one file for each node in the tree.
 // If input=true, then it builds input types. Otherwise, it
@@ -1710,73 +1725,28 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 		return nil, fmt.Errorf("Generating IO files for a nil namespace")
 	}
 
+	// We want to organize the items in the source file by alphabetical order.
+	// Before we go any further, sort the items so downstream calls don't have to.
+	ns.sortItems()
+
 	// Declare a new file to store the contents exposed at this directory level.
 	var dirRoot = path.Join(parent, ns.name)
-	// var filename, fileType string
-	var filename string
-	if ctx.input {
-		filename = path.Join(dirRoot, "input.ts")
-		// fileType = "input"
-	} else {
-		filename = path.Join(dirRoot, "output.ts")
-		// fileType = "output"
+	var file, err = ns.genOwnedTypes(ctx, dirRoot)
+	if err != nil {
+		return nil, err
 	}
-	var file = newIOFile(filename)
-	// We start every file with the header information.
-	ctx.mod.genHeader(
-		file.writer(),
-		ctx.mod.sdkImportsWithPath(true, true, dirRoot),
-		ctx.externalImports,
-		ctx.imports,
-	)
-	// We want to organize the items in the source file by alphabetical order.
-	sort.Slice(ns.types, func(i, j int) bool {
-		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
-	})
-	sort.Slice(ns.enums, func(i, j int) bool {
-		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
-	})
-	// Now, we write out the types declared at this directory
-	// level to the file.
 	var files = []*ioFile{file}
-	for i, t := range ns.types {
-		var isInputType = ctx.input && ctx.mod.details(t).inputType
-		var isOutputType = !ctx.input && ctx.mod.details(t).outputType
-		// Only write input and output types.
-		if isInputType || isOutputType {
-			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
-				return files, err
-			}
-			if i != len(ns.types)-1 {
-				fmt.Fprintf(file.writer(), "\n")
-			}
-		}
-	}
-	// We have successfully written all types at this level.
-	// Next, we recurse to generate the files at the next directory level.
-	sort.Slice(ns.children, func(i, j int) bool {
-		return ns.children[i].name < ns.children[j].name
-	})
-	for i, child := range ns.children {
-		// Defensive coding: child should never be null, but
-		// child.intoIOFiles will break if it is.
-		if child == nil {
-			continue
-		}
-		// At this level, we export any nested definitions from
-		// the next level.
-		// fmt.Fprintf(file.writer(), "export * as %s from \"./%s/%s\";\n", child.name, child.name, fileType)
-		nestedFiles, err := child.intoIOFiles(ctx, dirRoot)
-		if err != nil {
-			return nil, err
-		}
-		if i != len(ns.children)-1 {
-			fmt.Fprintf(file.writer(), "\n")
-		}
-		// Collect these files to return.
-		files = append(files, nestedFiles...)
-	}
 
+	// We have successfully written all types at this level to
+	// input.ts/output.ts.
+	// Next, we want to recurse to the next directory level.
+	// We also need to write the index.file at this level (only once),
+	// and when we do, we need to re-export the items subdirectories.
+	children, err := ns.genNestedTypes(ctx, dirRoot)
+	if err != nil {
+		return files, err
+	}
+	files = append(files, children...)
 	// Lastly, we write the index file for this directory once.
 	// We don't want to generate the file twice, when this function is called
 	// with input=true and again when input=false, so we only generate it
@@ -1784,15 +1754,109 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 	// As a special case, we skip the top-level directory /types/, since that
 	// is written elsewhere.
 	if parent != "./types" && ctx.input {
-		var indexPath = path.Join(dirRoot, "index.ts")
-		var file = newIOFile(indexPath)
-		ctx.mod.genHeader(file.writer(), nil, nil, nil)
-		fmt.Fprintf(file.writer(), "export * as inputs from \"./%s\";\n", "input")
-		fmt.Fprintf(file.writer(), "export * as outputs from \"./%s\";\n", "output")
-		files = append(files, file)
+		var indexFile = ns.genIndexFile(ctx, dirRoot)
+		files = append(files, indexFile)
+	}
+	return files, nil
+}
+
+// sortItems will sort each of the internal slices of this object.
+func (ns *namespace) sortItems() {
+	sort.Slice(ns.types, func(i, j int) bool {
+		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+	})
+	sort.Slice(ns.enums, func(i, j int) bool {
+		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
+	})
+	sort.Slice(ns.children, func(i, j int) bool {
+		return ns.children[i].name < ns.children[j].name
+	})
+}
+
+// genOwnedTypes generates the types for the file in the current context.
+// The file is unique to the ioContext (either input/output) and the current
+// directory (dirRoot). It skips over types that are neither input nor output types.
+func (ns *namespace) genOwnedTypes(ctx *ioContext, dirRoot string) (*ioFile, error) {
+	// file is either an input file or an output file.
+	var file = newIOFile(ctx.filename(dirRoot))
+	// We start every file with the header information.
+	ctx.mod.genHeader(
+		file.writer(),
+		ctx.mod.sdkImportsWithPath(true, true, dirRoot),
+		ctx.externalImports,
+		ctx.imports,
+	)
+	// Next, we recursively export the nested types at each subdirectory.
+	for _, child := range ns.children {
+		// Defensive coding: child should never be null, but
+		// child.intoIOFiles will break if it is.
+		if child == nil {
+			continue
+		}
+		fmt.Fprintf(file.writer(), "export * as %[1]s from \"./%[1]s/%[2]s\";\n", child.name, ctx.filetype())
 	}
 
+	// Now, we write out the types declared at this directory
+	// level to the file.
+	for i, t := range ns.types {
+		var isInputType = ctx.input && ctx.mod.details(t).inputType
+		var isOutputType = !ctx.input && ctx.mod.details(t).outputType
+		// Only write input and output types.
+		if isInputType || isOutputType {
+			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
+				return file, err
+			}
+			if i != len(ns.types)-1 {
+				fmt.Fprintf(file.writer(), "\n")
+			}
+		}
+	}
+	return file, nil
+}
+
+// genNestedTypes will recurse to child namespaces and generate those files.
+// It will also generate the index file for this namespace, re-exporting
+// identifiers in child namespaces as they are created.
+func (ns *namespace) genNestedTypes(ctx *ioContext, dirRoot string) ([]*ioFile, error) {
+	var files []*ioFile
+	for _, child := range ns.children {
+		// Defensive coding: child should never be null, but
+		// child.intoIOFiles will break if it is.
+		if child == nil {
+			continue
+		}
+		// At this level, we export any nested definitions from
+		// the next level.
+		nestedFiles, err := child.intoIOFiles(ctx, dirRoot)
+		if err != nil {
+			return nil, err
+		}
+		// Collect these files to return.
+		files = append(files, nestedFiles...)
+	}
 	return files, nil
+}
+
+// genIndexTypes generates an index.ts file for this directory. It must be called
+// only once. It exports the files defined at this level in input.ts and output.ts,
+// and it exposes the types in all submodules one level down.
+func (ns *namespace) genIndexFile(ctx *ioContext, dirRoot string) *ioFile {
+	var indexPath = path.Join(dirRoot, "index.ts")
+	var file = newIOFile(indexPath)
+	ctx.mod.genHeader(file.writer(), nil, nil, nil)
+	// Export the types defined at the current level.
+	fmt.Fprintf(file.writer(), "export * from \"./input\";\n")
+	fmt.Fprintf(file.writer(), "export * from \"./output\";\n")
+	// Now, recursively export the items in each submodule.
+	for _, child := range ns.children {
+		// Defensive coding: child should never be null, but
+		// child.intoIOFiles will break if it is.
+		if child == nil {
+			continue
+		}
+		fmt.Fprintf(file.writer(), "export * as %[1]s from \"./%[1]s\";\n", child.name)
+	}
+	return file
 }
 
 // An ioFile represents a file containing Input/Output type definitions.

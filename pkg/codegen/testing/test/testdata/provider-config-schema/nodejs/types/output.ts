@@ -7,6 +7,7 @@ import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 import * as utilities from "../utilities";
 
+export * as config from "./config/output";
 export interface Child {
     age?: number;
     name?: string;
