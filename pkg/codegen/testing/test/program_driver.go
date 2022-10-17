@@ -39,6 +39,13 @@ type ProgramTest struct {
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
+// Get batch number k (base-1 indexed) of tests out of n batches total.
+func ProgramTestBatch(k, n int) []ProgramTest {
+	start := ((k - 1) * len(PulumiPulumiProgramTests)) / n
+	end := ((k) * len(PulumiPulumiProgramTests)) / n
+	return PulumiPulumiProgramTests[start:end]
+}
+
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "assets-archives",

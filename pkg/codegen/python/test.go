@@ -42,3 +42,15 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
 }
+
+func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "python",
+			Extension:  "py",
+			OutputFile: "__main__.py",
+			Check:      Check,
+			GenProgram: GenerateProgram,
+			TestCases:  testCases,
+		})
+}

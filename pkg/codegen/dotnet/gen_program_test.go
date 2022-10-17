@@ -7,23 +7,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
-func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "Program.cs",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
-			},
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		},
-	)
-}
-
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 

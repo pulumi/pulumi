@@ -121,10 +121,9 @@ jobs:
             --kind unit-test \
             --platform ubuntu-latest \
             --version-set current \
-            --partition-module pkg 3 \
+            --partition-module pkg 7 \
             --partition-module sdk 1 \
-            --partition-module tests 2 \
-            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+            --partition-module tests 2
           )
 
           INTEGRATION_TEST_MATRIX=$(

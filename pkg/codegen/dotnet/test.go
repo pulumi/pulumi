@@ -126,3 +126,18 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 	}
 	return result
 }
+
+func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "dotnet",
+			Extension:  "cs",
+			OutputFile: "Program.cs",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
+			},
+			GenProgram: GenerateProgram,
+			TestCases:  testCases,
+		},
+	)
+}
