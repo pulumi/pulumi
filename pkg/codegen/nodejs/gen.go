@@ -1801,17 +1801,13 @@ func (ns *namespace) genOwnedTypes(ctx *ioContext, dirRoot string) (*ioFile, err
 		var isInputType = ctx.input && ctx.mod.details(t).inputType
 		var isOutputType = !ctx.input && ctx.mod.details(t).outputType
 		// Only write input and output types.
-		if isInputType {
+		if isInputType || isOutputType {
 			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
 				return file, err
 			}
-		} else if isOutputType {
-			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
-				return file, err
+			if i != len(ns.types)-1 && (isInputType || isOutputType) {
+				fmt.Fprintf(file.writer(), "\n")
 			}
-		}
-		if i != len(ns.types)-1 && (isInputType || isOutputType) {
-			fmt.Fprintf(file.writer(), "\n")
 		}
 	}
 	return file, nil
