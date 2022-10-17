@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go,python
+  description: Handle hypheneated names in go and python

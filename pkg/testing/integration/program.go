@@ -2167,10 +2167,14 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
-
-		dep := getRewritePath(pkg, gopath, depRoot)
-
-		editStr := fmt.Sprintf("%s=%s", pkg, dep)
+		var editStr string
+		if strings.ContainsRune(pkg, '=') {
+			// Use a literal replacement path.
+			editStr = pkg
+		} else {
+			dep := getRewritePath(pkg, gopath, depRoot)
+			editStr = fmt.Sprintf("%s=%s", pkg, dep)
+		}
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
 			return err
