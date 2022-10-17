@@ -28,7 +28,6 @@ import (
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -252,13 +251,25 @@ func runConvert(
 		}
 	}
 
-	var projectGenerator func(diag.Sink, string, string, schema.ReferenceLoader) error
+	pCtx, err := newPluginContext(cwd)
+	if err != nil {
+		return result.FromError(fmt.Errorf("create plugin host: %w", err))
+	}
+	defer contract.IgnoreClose(pCtx.Host)
+
+	// Translate well known languages to runtimes
 	switch language {
 	case "csharp", "c#":
-		projectGenerator = wrapper(dotnet.GenerateProject)
-	case "go":
-		projectGenerator = wrapper(gogen.GenerateProject)
+		language = "dotnet"
 	case "typescript":
+		language = "nodejs"
+	}
+
+	var projectGenerator func(diag.Sink, string, string, schema.ReferenceLoader) error
+	switch language {
+	case "dotnet":
+		projectGenerator = wrapper(dotnet.GenerateProject)
+	case "nodejs":
 		projectGenerator = wrapper(nodejs.GenerateProject)
 	case "python":
 		projectGenerator = wrapper(python.GenerateProject)
@@ -273,10 +284,55 @@ func runConvert(
 			projectGenerator = pclGenerateProject
 			break
 		}
-		fallthrough
-
-	default:
 		return result.Errorf("cannot generate programs for %q language", language)
+	default:
+		projectGenerator = func(
+			sink diag.Sink,
+			sourceDirectory, targetDirectory string,
+			loader schema.ReferenceLoader,
+		) error {
+			program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
+			printDiagnostics(sink, diagnostics)
+			if err != nil {
+				return fmt.Errorf("failed to bind program: %w", err)
+			} else if program == nil {
+				// We've already printed the diagnostics above
+				return fmt.Errorf("failed to bind program")
+			}
+
+			// Load the project from the target directory if there is one. We default to a project with just
+			// the name of the original directory.
+			proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+			path, _ := workspace.DetectProjectPathFrom(sourceDirectory)
+			if path != "" {
+				proj, err = workspace.LoadProject(path)
+				if err != nil {
+					return fmt.Errorf("load project: %w", err)
+				}
+			}
+
+			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
+			if err != nil {
+				return err
+			}
+
+			projectBytes, err := encoding.JSON.Marshal(proj)
+			if err != nil {
+				return err
+			}
+			projectJSON := string(projectBytes)
+
+			// It feels a bit redundant to parse and bind the program just to turn it back into text, but it
+			// means we get binding errors this side of the grpc boundary, and we're likely to do something
+			// fancier here at some point (like passing an annotated syntax tree via protobuf rather than just
+			// PCL text).
+			err = languagePlugin.GenerateProject(targetDirectory, projectJSON, program.Source())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
 	}
 
 	if outDir != "." {
@@ -286,11 +342,6 @@ func runConvert(
 		}
 	}
 
-	pCtx, err := newPluginContext(cwd)
-	if err != nil {
-		return result.FromError(fmt.Errorf("create plugin host: %w", err))
-	}
-	defer contract.IgnoreClose(pCtx.Host)
 	loader := schema.NewPluginLoader(pCtx.Host)
 	mapper, err := convert.NewPluginMapper(
 		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),

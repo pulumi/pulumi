@@ -37,6 +37,12 @@ type LanguageRuntimeClient interface {
 	GetProgramDependencies(ctx context.Context, in *GetProgramDependenciesRequest, opts ...grpc.CallOption) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error)
+	// GenerateProgram generates a given PCL program into a program for this language.
+	GenerateProgram(ctx context.Context, in *GenerateProgramRequest, opts ...grpc.CallOption) (*GenerateProgramResponse, error)
+	// GenerateProject generates a given PCL program into a project for this language.
+	GenerateProject(ctx context.Context, in *GenerateProjectRequest, opts ...grpc.CallOption) (*GenerateProjectResponse, error)
+	// GeneratePackage generates a given pulumi package into a package for this language.
+	GeneratePackage(ctx context.Context, in *GeneratePackageRequest, opts ...grpc.CallOption) (*GeneratePackageResponse, error)
 }
 
 type languageRuntimeClient struct {
@@ -156,6 +162,33 @@ func (x *languageRuntimeRunPluginClient) Recv() (*RunPluginResponse, error) {
 	return m, nil
 }
 
+func (c *languageRuntimeClient) GenerateProgram(ctx context.Context, in *GenerateProgramRequest, opts ...grpc.CallOption) (*GenerateProgramResponse, error) {
+	out := new(GenerateProgramResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GenerateProgram", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) GenerateProject(ctx context.Context, in *GenerateProjectRequest, opts ...grpc.CallOption) (*GenerateProjectResponse, error) {
+	out := new(GenerateProjectResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GenerateProject", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) GeneratePackage(ctx context.Context, in *GeneratePackageRequest, opts ...grpc.CallOption) (*GeneratePackageResponse, error) {
+	out := new(GeneratePackageResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/GeneratePackage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
@@ -174,6 +207,12 @@ type LanguageRuntimeServer interface {
 	GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error
+	// GenerateProgram generates a given PCL program into a program for this language.
+	GenerateProgram(context.Context, *GenerateProgramRequest) (*GenerateProgramResponse, error)
+	// GenerateProject generates a given PCL program into a project for this language.
+	GenerateProject(context.Context, *GenerateProjectRequest) (*GenerateProjectResponse, error)
+	// GeneratePackage generates a given pulumi package into a package for this language.
+	GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -201,6 +240,15 @@ func (UnimplementedLanguageRuntimeServer) GetProgramDependencies(context.Context
 }
 func (UnimplementedLanguageRuntimeServer) RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error {
 	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GenerateProgram(context.Context, *GenerateProgramRequest) (*GenerateProgramResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateProgram not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GenerateProject(context.Context, *GenerateProjectRequest) (*GenerateProjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateProject not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) GeneratePackage(context.Context, *GeneratePackageRequest) (*GeneratePackageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GeneratePackage not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
@@ -347,6 +395,60 @@ func (x *languageRuntimeRunPluginServer) Send(m *RunPluginResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _LanguageRuntime_GenerateProgram_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateProgramRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GenerateProgram(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/GenerateProgram",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GenerateProgram(ctx, req.(*GenerateProgramRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_GenerateProject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateProjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GenerateProject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/GenerateProject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GenerateProject(ctx, req.(*GenerateProjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_GeneratePackage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GeneratePackageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).GeneratePackage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/GeneratePackage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).GeneratePackage(ctx, req.(*GeneratePackageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -373,6 +475,18 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProgramDependencies",
 			Handler:    _LanguageRuntime_GetProgramDependencies_Handler,
+		},
+		{
+			MethodName: "GenerateProgram",
+			Handler:    _LanguageRuntime_GenerateProgram_Handler,
+		},
+		{
+			MethodName: "GenerateProject",
+			Handler:    _LanguageRuntime_GenerateProject_Handler,
+		},
+		{
+			MethodName: "GeneratePackage",
+			Handler:    _LanguageRuntime_GeneratePackage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

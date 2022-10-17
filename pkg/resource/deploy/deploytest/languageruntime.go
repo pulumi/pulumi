@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -84,4 +85,16 @@ func (p *languageRuntime) GetProgramDependencies(
 
 func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
 	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
+}
+
+func (p *languageRuntime) GenerateProject(string, string, map[string]string) error {
+	return fmt.Errorf("GenerateProject is not supported")
+}
+
+func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte) error {
+	return fmt.Errorf("GeneratePackage is not supported")
+}
+
+func (p *languageRuntime) GenerateProgram(map[string]string) (map[string][]byte, hcl.Diagnostics, error) {
+	return nil, nil, fmt.Errorf("GenerateProgram is not supported")
 }

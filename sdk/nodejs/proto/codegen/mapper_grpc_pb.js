@@ -18,7 +18,6 @@
 'use strict';
 var grpc = require('grpc');
 var pulumi_codegen_mapper_pb = require('../../pulumi/codegen/mapper_pb.js');
-var pulumi_plugin_pb = require('../../pulumi/plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 

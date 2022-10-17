@@ -41,6 +41,7 @@ require (
 
 require (
 	github.com/go-git/go-git/v5 v5.6.0
+	github.com/hashicorp/hcl/v2 v2.16.1
 	github.com/pkg/term v1.1.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/term v0.5.0
@@ -52,13 +53,17 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
+	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/mitchellh/go-wordwrap v0.0.0-20150314170334-ad45545899c7 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
+	github.com/zclconf/go-cty v1.12.1 // indirect
 )
 
 require (

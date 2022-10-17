@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
@@ -419,4 +421,115 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 	}()
 
 	return outr, errr, kill, nil
+}
+
+func (h *langhost) GenerateProject(
+	directory string, project string, source map[string]string,
+) error {
+	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
+	_, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
+		Directory: directory,
+		Project:   project,
+		Source:    source,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GenerateProject() failed: err=%v", h.runtime, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].GenerateProject() success", h.runtime)
+	return nil
+}
+
+func (h *langhost) GeneratePackage(
+	directory string, schema string, extraFiles map[string][]byte,
+) error {
+	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
+	_, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
+		Directory:  directory,
+		Schema:     schema,
+		ExtraFiles: extraFiles,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GeneratePackage() failed: err=%v", h.runtime, rpcError)
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].GeneratePackage() success", h.runtime)
+	return nil
+}
+
+func (h *langhost) GenerateProgram(program map[string]string) (map[string][]byte, hcl.Diagnostics, error) {
+	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
+	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
+		Source: program,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].GenerateProgram() failed: err=%v", h.runtime, rpcError)
+		return nil, nil, rpcError
+	}
+
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
+	logging.V(7).Infof("langhost[%v].GenerateProgram() success", h.runtime)
+	return resp.Source, diags, nil
+}
+
+func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
+	hclPosToPos := func(pos hcl.Pos) *codegenrpc.Pos {
+		return &codegenrpc.Pos{
+			Line:   int64(pos.Line),
+			Column: int64(pos.Column),
+			Byte:   int64(pos.Byte),
+		}
+	}
+
+	return &codegenrpc.Diagnostic{
+		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
+		Summary:  diag.Summary,
+		Detail:   diag.Detail,
+		Subject: &codegenrpc.Range{
+			Filename: diag.Subject.Filename,
+			Start:    hclPosToPos(diag.Subject.Start),
+			End:      hclPosToPos(diag.Subject.End),
+		},
+		Context: &codegenrpc.Range{
+			Filename: diag.Context.Filename,
+			Start:    hclPosToPos(diag.Context.Start),
+			End:      hclPosToPos(diag.Context.End),
+		},
+	}
+}
+
+func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {
+	rpcPosToPos := func(pos *codegenrpc.Pos) hcl.Pos {
+		return hcl.Pos{
+			Line:   int(pos.Line),
+			Column: int(pos.Column),
+			Byte:   int(pos.Byte),
+		}
+	}
+
+	return &hcl.Diagnostic{
+		Severity: hcl.DiagnosticSeverity(diag.Severity),
+		Summary:  diag.Summary,
+		Detail:   diag.Detail,
+		Subject: &hcl.Range{
+			Filename: diag.Subject.Filename,
+			Start:    rpcPosToPos(diag.Subject.Start),
+			End:      rpcPosToPos(diag.Subject.End),
+		},
+		Context: &hcl.Range{
+			Filename: diag.Context.Filename,
+			Start:    rpcPosToPos(diag.Context.Start),
+			End:      rpcPosToPos(diag.Context.End),
+		},
+	}
 }
