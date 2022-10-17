@@ -15,7 +15,6 @@
     "files": [
         "index.ts",
         "provider.ts",
-        "submodule1/fooencryptedBarClass.ts",
         "submodule1/index.ts",
         "submodule1/moduleResource.ts",
         "types/index.ts",

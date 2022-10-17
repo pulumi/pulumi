@@ -29,9 +29,6 @@
         }
       },
       "type": "object"
-    },
-    "foo-bar:submodule1:FOOEncryptedBarClass":{
-      "type": "object"
     }
   },
   "language": {

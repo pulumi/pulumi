@@ -24,7 +24,6 @@ _utilities.register(
   "mod": "submodule1",
   "fqn": "pulumi_foo_bar.submodule1",
   "classes": {
-   "foo-bar:submodule1:FOOEncryptedBarClass": "FOOEncryptedBarClass",
    "foo-bar:submodule1:ModuleResource": "ModuleResource"
   }
  }
