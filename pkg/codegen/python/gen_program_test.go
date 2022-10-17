@@ -1,7 +1,6 @@
 package python
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
-
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()
