@@ -1805,7 +1805,7 @@ func (ns *namespace) genOwnedTypes(ctx *ioContext, dirRoot string) (*ioFile, err
 			if err := ctx.mod.genType(file.writer(), t, ctx.input, 0); err != nil {
 				return file, err
 			}
-			if i != len(ns.types)-1 && (isInputType || isOutputType) {
+			if i != len(ns.types)-1 {
 				fmt.Fprintf(file.writer(), "\n")
 			}
 		}
