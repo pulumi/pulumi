@@ -96,6 +96,12 @@ jobs:
           find test-results -type f -empty -print -delete || true
           echo "::endgroup::"
 
+          echo "::group::Remove old test timing data"
+          # Timing data prior to this date is unreliable. Codegen tests modified in #11052 and
+          # merged Monday Oct 17 at 6PM Pacific.
+          find test-results -type f ! -newermt "2022-10-17T18:00-07:00" -print -delete || true
+          echo "::endgroup::"
+
           echo "::group::Test matrix variables"
           readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
           readarray -td' ' INTEGRATION_PLATFORMS < <(echo -n "$INPUT_INTEGRATION_TEST_PLATFORMS"); declare -p INTEGRATION_PLATFORMS;
@@ -121,10 +127,9 @@ jobs:
             --kind unit-test \
             --platform ubuntu-latest \
             --version-set current \
-            --partition-module pkg 3 \
+            --partition-module pkg 7 \
             --partition-module sdk 1 \
-            --partition-module tests 2 \
-            --partition-package github.com/pulumi/pulumi/pkg/v3/codegen/nodejs pkg/codegen/nodejs 4
+            --partition-module tests 2
           )
 
           INTEGRATION_TEST_MATRIX=$(

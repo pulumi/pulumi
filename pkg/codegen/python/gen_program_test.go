@@ -1,31 +1,15 @@
 package python
 
 import (
+	"testing"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
-
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
-
-func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      Check,
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		})
-}
 
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()

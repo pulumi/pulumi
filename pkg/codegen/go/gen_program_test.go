@@ -21,25 +21,6 @@ import (
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
-func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "../../../../../../../sdk")
-			},
-			GenProgram: func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-				// Prevent tests from interfering with each other
-				return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-			},
-			TestCases: test.PulumiPulumiProgramTests,
-		})
-}
-
 func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
 
