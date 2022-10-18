@@ -88,13 +88,20 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 	if v, has := obj[key]; has {
 		// The field exists; okay, try to map it to the right type.
 		vsrc := reflect.ValueOf(v)
+
+		// If the source is a ptr, dereference it as necessary to get the underlying
+		// value.
+		for vsrc.IsValid() && vsrc.Type().Kind() == reflect.Ptr && !vsrc.IsNil() {
+			vsrc = vsrc.Elem()
+		}
+
 		// Ensure the source is valid; this is false if the value reflects the zero value.
 		if vsrc.IsValid() {
 			vdstType := vdst.Type().Elem()
 
 			// So long as the target element is a pointer, we have a pointer to pointer; dig through until we bottom out
 			// on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a pointer")
+			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a null pointer")
 			for vdstType.Kind() == reflect.Ptr {
 				vdst = vdst.Elem()
 				vdstType = vdstType.Elem()
