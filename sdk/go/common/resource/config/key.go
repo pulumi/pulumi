@@ -49,7 +49,7 @@ func ParseKey(s string) (Key, error) {
 		return Key{namespace: s[:idx], name: s[idx+1:]}, nil
 	case 2:
 		if mm, err := tokens.ParseModuleMember(s); err == nil {
-			if mm.Module().Name() == tokens.ModuleName("config") {
+			if mm.Module().Name() == "config" {
 				return Key{
 					namespace: mm.Module().Package().String(),
 					name:      mm.Name().String(),
@@ -62,11 +62,11 @@ func ParseKey(s string) (Key, error) {
 		"(configuration keys should be of the form `<namespace>:<name>`)", s)
 }
 
-func (k Key) Namespace() string {
+func (k *Key) Namespace() string {
 	return k.namespace
 }
 
-func (k Key) Name() string {
+func (k *Key) Name() string {
 	return k.name
 }
 

@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -303,7 +302,7 @@ func (a *Asset) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(blob)
+	return io.ReadAll(blob)
 }
 
 // Read begins reading an asset.
@@ -352,11 +351,11 @@ func (a *Asset) readPath() (*Blob, error) {
 }
 
 func (a *Asset) readURI() (*Blob, error) {
-	url, isurl, err := a.GetURIURL()
+	url, isURL, err := a.GetURIURL()
 	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(isurl, "Expected a URI-based asset")
+	contract.Assertf(isURL, "Expected a URI-based asset")
 	switch s := url.Scheme; s {
 	case "http", "https":
 		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
@@ -416,7 +415,7 @@ func (blob *Blob) Size() int64                { return blob.sz }
 // NewByteBlob creates a new byte blob.
 func NewByteBlob(data []byte) *Blob {
 	return &Blob{
-		rd: ioutil.NopCloser(bytes.NewReader(data)),
+		rd: io.NopCloser(bytes.NewReader(data)),
 		sz: int64(len(data)),
 	}
 }
@@ -441,7 +440,7 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 	}
 	// Otherwise, read it all in, and create a blob out of that.
 	defer contract.IgnoreClose(r)
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -886,11 +885,11 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 
 func (a *Archive) readURI() (ArchiveReader, error) {
 	// To read a URI-based archive, fetch the contents remotely and use the extension to pick the format to use.
-	url, isurl, err := a.GetURIURL()
+	url, isURL, err := a.GetURIURL()
 	if err != nil {
 		return nil, err
 	}
-	contract.Assertf(isurl, "Expected a URI-based asset")
+	contract.Assertf(isURL, "Expected a URI-based asset")
 
 	format := detectArchiveFormat(url.Path)
 	if format == NotArchive {
@@ -1052,7 +1051,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	// the ZIP format includes a date representation that starts at 1980. Use `SetModTime` to
 	// remain compatible with Go 1.9.
 	// nolint: megacheck
-	fh.SetModTime(time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC))
+	fh.Modified = time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	fw, err := zw.CreateHeader(fh)
 	if err != nil {
@@ -1188,7 +1187,7 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (ArchiveReader, error) 
 			}
 			ra = f
 			sz = stat.Size()
-		} else if data, err := ioutil.ReadAll(ar); err != nil {
+		} else if data, err := io.ReadAll(ar); err != nil {
 			return nil, err
 		} else {
 			ra = bytes.NewReader(data)
@@ -1220,7 +1219,7 @@ func (r *tarArchiveReader) Next() (string, *Blob, error) {
 		case tar.TypeReg:
 			// Return the tar reader for this file's contents.
 			data := &Blob{
-				rd: ioutil.NopCloser(r.tr),
+				rd: io.NopCloser(r.tr),
 				sz: file.Size,
 			}
 			name := filepath.Clean(file.Name)

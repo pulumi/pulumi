@@ -8,6 +8,74 @@
 - [sdkgen/{go,python}] Revert 10738, fixing python class generation
   [#11033](https://github.com/pulumi/pulumi/pull/11033)
 
+## 3.43.0 (2022-10-14)
+
+
+### Features
+
+- [auto/nodejs] Adds support for parallel programs in NodeJS Automation API
+  [#10568](https://github.com/pulumi/pulumi/pull/10568)
+
+- [backend/service] Implements diff-based snapshot saving protocol that reduces bandwidth on large stacks. To opt into this feature, set the environment variable and value `PULUMI_OPTIMIZED_CHECKPOINT_PATCH=true`.
+  [#10788](https://github.com/pulumi/pulumi/pull/10788)
+
+- [engine] Adds structured alias support to the engine
+  [#10819](https://github.com/pulumi/pulumi/pull/10819)
+
+- [cli/display] Displays time elapsed when modifying a resource.
+  [#10953](https://github.com/pulumi/pulumi/pull/10953)
+
+- [sdk/go] Modifies built-in As-ArrayOutput methods to attempt to convert []interface{} to []T.
+  [#10991](https://github.com/pulumi/pulumi/pull/10991)
+
+- [sdkgen/go] Add `modulePath` to go, allowing accurate `go.mod` files for prerelease packages
+  [#10944](https://github.com/pulumi/pulumi/pull/10944)
+
+- [cli/new] Add --remove flag to`pulumi destroy`
+  [#10943](https://github.com/pulumi/pulumi/pull/10943)
+
+
+### Bug Fixes
+
+- [cli] Project path is included in error messages when a project can't be loaded.
+  [#10973](https://github.com/pulumi/pulumi/pull/10973)
+
+- [cli/display] Fix gocloud unconditonally writing to stderr.
+  [#11007](https://github.com/pulumi/pulumi/pull/11007)
+
+- [cli/{display,engine}] Use of unsupported ResourceOptions on components will no longer raise resource warnings, instead they are just logged to the diagnostic error stream.
+  [#11010](https://github.com/pulumi/pulumi/pull/11010)
+
+- [cli/import] Handle importing resource properties that are typed as a union
+  [#10995](https://github.com/pulumi/pulumi/pull/10995)
+
+- [cli/package] Require a path separator for path based binaries. This allows us to distinguish between ./myProvider (execute the binary at path) and myProvider (execute the installed plugin).
+  [#11015](https://github.com/pulumi/pulumi/pull/11015)
+
+- [programgen/dotnet] Annotate deeply nested objects with their schema types and apply property name overrides
+  [#10976](https://github.com/pulumi/pulumi/pull/10976)
+
+- [programgen/go] Fixes int constant range expressions for go
+  [#10979](https://github.com/pulumi/pulumi/pull/10979)
+
+- [programgen/go] Missing default case handling when generating local variables
+  [#10978](https://github.com/pulumi/pulumi/pull/10978)
+
+- [sdk/go] Avoid backfilling property deps for Go
+  [#11021](https://github.com/pulumi/pulumi/pull/11021)
+
+- [sdkgen] Re-enables caching the schemas of versioned provider plugins.
+  [#10971](https://github.com/pulumi/pulumi/pull/10971)
+
+- [programgen/python] Recursively annotate expressions under invoke calls with their associated schema types
+  [#10958](https://github.com/pulumi/pulumi/pull/10958)
+
+
+### Miscellaneous
+
+- [yaml] "[Updates Pulumi YAML to v0.5.10](https://github.com/pulumi/pulumi-yaml/releases/tag/v0.5.10) containing bug fixes and improvements primarily for `pulumi convert` from YAML."
+  [#11018](https://github.com/pulumi/pulumi/pull/11018)
+
 ## 3.42.0 (2022-10-07)
 
 

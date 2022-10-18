@@ -514,7 +514,7 @@ func TestUnsecret(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -554,7 +554,7 @@ func TestSecrets(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -600,7 +600,7 @@ func TestSecretApply(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})

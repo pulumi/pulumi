@@ -16,7 +16,7 @@ package plugin
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -67,16 +67,16 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 		disableProviderPreview, parentSpan, plugins)
 }
 
-// Variation of NewContext that also sets known project Root. Additionally accepts Plugins
+// NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
 
 	if d == nil {
-		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
 	if statusD == nil {
-		statusD = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
 
 	ctx := &Context{

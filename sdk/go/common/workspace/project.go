@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,7 +236,7 @@ func (proj *Project) Validate() error {
 	return nil
 }
 
-// TrustResourceDependencies returns whether or not this project's runtime can be trusted to accurately report
+// TrustResourceDependencies returns whether this project's runtime can be trusted to accurately report
 // dependencies. All languages supported by Pulumi today do this correctly. This option remains useful when bringing
 // up new Pulumi languages.
 func (proj *Project) TrustResourceDependencies() bool {
@@ -440,5 +439,5 @@ func save(path string, value interface{}, mkDirAll bool) error {
 	}
 
 	//nolint: gosec
-	return ioutil.WriteFile(path, b, 0644)
+	return os.WriteFile(path, b, 0644)
 }
