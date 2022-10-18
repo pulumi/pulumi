@@ -1844,8 +1844,8 @@ func (ns *namespace) genIndexFile(ctx *ioContext, dirRoot string) *ioFile {
 	var file = newIOFile(indexPath)
 	ctx.mod.genHeader(file.writer(), nil, nil, nil)
 	// Export the types defined at the current level.
-	fmt.Fprintf(file.writer(), "export * from \"./input\";\n")
-	fmt.Fprintf(file.writer(), "export * from \"./output\";\n")
+	// fmt.Fprintf(file.writer(), "export * from \"./input\";\n")
+	// fmt.Fprintf(file.writer(), "export * from \"./output\";\n")
 	// Now, recursively export the items in each submodule.
 	for _, child := range ns.children {
 		// Defensive coding: child should never be null, but
