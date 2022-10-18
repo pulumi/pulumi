@@ -181,4 +181,4 @@ get_schemas: \
 
 .PHONY: changelog
 changelog:
-	go run github.com/aaronfriel/go-change@v0.1.0 create
+	go run github.com/aaronfriel/go-change@v0.1.2 create
