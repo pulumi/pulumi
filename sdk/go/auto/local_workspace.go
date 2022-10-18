@@ -75,11 +75,16 @@ func (l *LocalWorkspace) SaveProjectSettings(ctx context.Context, settings *work
 // StackSettings returns the settings object for the stack matching the specified stack name if any.
 // LocalWorkspace reads this from a Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*workspace.ProjectStack, error) {
+	project, err := l.ProjectSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	name := getStackSettingsName(stackName)
 	for _, ext := range settingsExtensions {
 		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err == nil {
-			proj, err := workspace.LoadProjectStack(stackPath)
+			proj, err := workspace.LoadProjectStack(project, stackPath)
 			if err != nil {
 				return nil, errors.Wrap(err, "found stack settings, but failed to load")
 			}

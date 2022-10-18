@@ -27,8 +27,12 @@ import (
 
 func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+	proj, _, err := workspace.DetectProjectStackPath(stackName.Q())
+	if err != nil {
+		return nil, err
+	}
 
-	info, err := workspace.LoadProjectStack(configFile)
+	info, err := workspace.LoadProjectStack(proj, configFile)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ venv/
 
 **/.idea/
 *.iml
-
+.yarn
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 

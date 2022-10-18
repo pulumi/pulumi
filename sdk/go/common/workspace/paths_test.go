@@ -90,7 +90,9 @@ func TestProjectStackPath(t *testing.T) {
 		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
 			assert.Error(t, err)
-			assert.Equal(t, "can not set `config` and `stackConfigDir`, remove the `config` entry", err.Error())
+			errorMsg := "Should not use both config and stackConfigDir to define the stack directory. " +
+				"Use only stackConfigDir instead."
+			assert.Contains(t, err.Error(), errorMsg)
 		},
 	}}
 
@@ -110,7 +112,7 @@ func TestProjectStackPath(t *testing.T) {
 				0600)
 			assert.NoError(t, err)
 
-			path, err := DetectProjectStackPath("my_stack")
+			_, path, err := DetectProjectStackPath("my_stack")
 			tt.validate(t, tmpDir, path, err)
 		})
 	}

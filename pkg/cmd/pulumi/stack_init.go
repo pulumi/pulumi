@@ -72,6 +72,10 @@ func newStackInitCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
 			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
@@ -129,13 +133,13 @@ func newStackInitCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				copyProjectStack, err := loadProjectStack(copyStack)
+				copyProjectStack, err := loadProjectStack(proj, copyStack)
 				if err != nil {
 					return err
 				}
 
 				// get the project for the newly created stack
-				newProjectStack, err := loadProjectStack(newStack)
+				newProjectStack, err := loadProjectStack(proj, newStack)
 				if err != nil {
 					return err
 				}

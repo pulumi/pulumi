@@ -106,9 +106,14 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
-		cfg, err := getStackConfiguration(ctx, s, sm)
+		cfg, err := getStackConfiguration(ctx, s, proj, sm)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+		}
+
+		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config)
+		if configErr != nil {
+			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
 
 		targetURNs, replaceURNs := []resource.URN{}, []resource.URN{}
@@ -340,9 +345,14 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
-		cfg, err := getStackConfiguration(ctx, s, sm)
+		cfg, err := getStackConfiguration(ctx, s, proj, sm)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+		}
+
+		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config)
+		if configErr != nil {
+			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)

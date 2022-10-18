@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPreviewCmd() *cobra.Command {
@@ -148,7 +149,16 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, sm)
+			cfg, err := getStackConfiguration(ctx, s, proj, sm)
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config)
+			if configErr != nil {
+				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+			}
+
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}

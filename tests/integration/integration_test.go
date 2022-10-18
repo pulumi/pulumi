@@ -146,10 +146,7 @@ func TestStackInitValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "error: could not get cloud url: could not load current project: could not unmarshal '")
-		// Project path is printed between these two 's, but due to macos having multiple paths for temporary
-		// files we don't try to check the path in the test.
-		assert.Contains(t, stderr, "': invalid YAML file: yaml: line 1: did not find expected key")
+		assert.Contains(t, stderr, "invalid YAML file")
 	})
 }
 
@@ -165,10 +162,12 @@ func TestConfigSave(t *testing.T) {
 
 	// Initialize an empty stack.
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
-	err := (&workspace.Project{
+	project := workspace.Project{
 		Name:    "testing-config",
 		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
-	}).Save(path)
+	}
+
+	err := project.Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "testing-2")
@@ -211,9 +210,9 @@ func TestConfigSave(t *testing.T) {
 		assert.Equal(t, v, dv)
 	}
 
-	testStack1, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
+	testStack1, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-1.yaml"))
 	assert.NoError(t, err)
-	testStack2, err := workspace.LoadProjectStack(filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
+	testStack2, err := workspace.LoadProjectStack(&project, filepath.Join(e.CWD, "Pulumi.testing-2.yaml"))
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, len(testStack1.Config))
@@ -986,7 +985,6 @@ func TestDestroyStackRef(t *testing.T) {
 	e.RunCommand("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
-
 	e.CWD = os.TempDir()
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
 }

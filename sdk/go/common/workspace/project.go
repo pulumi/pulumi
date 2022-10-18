@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -96,6 +97,18 @@ type Plugins struct {
 	Analyzers []PluginOptions `json:"analyzers,omitempty" yaml:"analyzers,omitempty"`
 }
 
+type ProjectConfigItemsType struct {
+	Type  string                  `json:"type,omitempty" yaml:"type,omitempty"`
+	Items *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
+}
+
+type ProjectConfigType struct {
+	Type        string                  `json:"type,omitempty" yaml:"type,omitempty"`
+	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
+	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
+	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -121,7 +134,7 @@ type Project struct {
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
 	// Config has been renamed to StackConfigDir.
-	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+	Config map[string]ProjectConfigType `json:"config,omitempty" yaml:"config,omitempty"`
 
 	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
 	// Pulumi.yaml is in.
@@ -142,8 +155,85 @@ type Project struct {
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
-func ValidateProject(raw interface{}) error {
-	// Cast any map[interface{}] from the yaml decoder to map[string]
+func isPrimitiveValue(value interface{}) (string, bool) {
+	switch value.(type) {
+	case string:
+		return "string", true
+	case int:
+		return "integer", true
+	case bool:
+		return "boolean", true
+	default:
+		return "", false
+	}
+}
+
+// RewriteConfigPathIntoStackConfigDir checks if the project is using the old "config" property
+// to declare a path to the stack configuration directory. If that is the case, we rewrite it
+// such that the value in config: {value} is moved to stackConfigDir: {value}.
+// if the user defines both values as strings, we error out.
+func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[string]interface{}, error) {
+	config, hasConfig := project["config"]
+	_, hasStackConfigDir := project["stackConfigDir"]
+
+	if hasConfig {
+		configText, configIsText := config.(string)
+		if configIsText && hasStackConfigDir {
+			return nil, errors.New("Should not use both config and stackConfigDir to define the stack directory. " +
+				"Use only stackConfigDir instead.")
+		} else if configIsText && !hasStackConfigDir {
+			// then we have config: {value}. Move this to stackConfigDir: {value}
+			project["stackConfigDir"] = configText
+			// reset the config property
+			project["config"] = nil
+			return project, nil
+		}
+	}
+
+	return project, nil
+}
+
+// RewriteShorthandConfigValues rewrites short-hand version of configuration into a configuration type
+// for example the following config block definition:
+//
+//	config:
+//	   instanceSize: t3.mirco
+//
+// will be rewritten into a typed value:
+//
+//	config:
+//	  instanceSize:
+//	    type: string
+//	    default: t3.mirco
+func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
+	configMap, foundConfig := project["config"]
+
+	if !foundConfig {
+		// no config defined, return as is
+		return project
+	}
+
+	config, ok := configMap.(map[string]interface{})
+
+	if !ok {
+		return project
+	}
+
+	for key, value := range config {
+		typeName, isLiteral := isPrimitiveValue(value)
+		if isLiteral {
+			configTypeDefinition := make(map[string]interface{})
+			configTypeDefinition["type"] = typeName
+			configTypeDefinition["default"] = value
+			config[key] = configTypeDefinition
+		}
+	}
+
+	return project
+}
+
+// Cast any map[interface{}] from the yaml decoder to map[string]
+func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
 	var cast func(value interface{}) (interface{}, error)
 	cast = func(value interface{}) (interface{}, error) {
 		if objMap, ok := value.(map[interface{}]interface{}); ok {
@@ -175,29 +265,39 @@ func ValidateProject(raw interface{}) error {
 	}
 	result, err := cast(raw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var ok bool
 	var obj map[string]interface{}
 	if obj, ok = result.(map[string]interface{}); !ok {
-		return fmt.Errorf("expected project to be an object, was '%T'", result)
+		return nil, fmt.Errorf("expected project to be an object, was '%T'", result)
+	}
+
+	return obj, nil
+}
+
+func ValidateProject(raw interface{}) error {
+
+	project, err := SimplifyMarshalledProject(raw)
+	if err != nil {
+		return err
 	}
 
 	// Couple of manual errors to match Validate
-	name, ok := obj["name"]
+	name, ok := project["name"]
 	if !ok {
 		return errors.New("project is missing a 'name' attribute")
 	}
 	if strName, ok := name.(string); !ok || strName == "" {
 		return errors.New("project is missing a non-empty string 'name' attribute")
 	}
-	if _, ok := obj["runtime"]; !ok {
+	if _, ok := project["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
 	// Let everything else be caught by jsonschema
-	if err = ProjectSchema.Validate(obj); err == nil {
+	if err = ProjectSchema.Validate(project); err == nil {
 		return nil
 	}
 	validationError, ok := err.(*jsonschema.ValidationError)
@@ -225,12 +325,83 @@ func ValidateProject(raw interface{}) error {
 	return errs
 }
 
+func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) string {
+	if itemsType != nil {
+		return fmt.Sprintf("array<%v>", InferFullTypeName(itemsType.Type, itemsType.Items))
+	}
+
+	return typeName
+}
+
+// ValidateConfig validates the config value against its config type definition.
+// We use this to validate the default config values alongside their type definition but
+// also to validate config values coming from individual stacks.
+func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
+
+	if typeName == "string" {
+		_, ok := value.(string)
+		return ok
+	}
+
+	if typeName == "integer" {
+		_, ok := value.(int)
+		if !ok {
+			valueAsText, isText := value.(string)
+			if isText {
+				_, integerParseError := strconv.Atoi(valueAsText)
+				return integerParseError == nil
+			}
+		}
+		return ok
+	}
+
+	if typeName == "boolean" {
+		// check to see if the value is a literal string "true" | "false"
+		literalValue, ok := value.(string)
+		if ok && (literalValue == "true" || literalValue == "false") {
+			return true
+		}
+
+		_, ok = value.(bool)
+		return ok
+	}
+
+	items, isArray := value.([]interface{})
+
+	if !isArray || itemsType == nil {
+		return false
+	}
+
+	// validate each item
+	for _, item := range items {
+		itemType := itemsType.Type
+		underlyingItems := itemsType.Items
+		if !ValidateConfigValue(itemType, underlyingItems, item) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
 	}
 	if proj.Runtime.Name() == "" {
 		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	for configKey, configType := range proj.Config {
+		if configType.Default != nil {
+			// when the default value is specified, validate it against the type
+			if !ValidateConfigValue(configType.Type, configType.Items, configType.Default) {
+				inferredTypeName := InferFullTypeName(configType.Type, configType.Items)
+				return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
+					configKey,
+					inferredTypeName)
+			}
+		}
 	}
 
 	return nil

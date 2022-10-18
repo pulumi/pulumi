@@ -674,7 +674,12 @@ func stackInit(
 
 // saveConfig saves the config for the stack.
 func saveConfig(stack backend.Stack, c config.Map) error {
-	ps, err := loadProjectStack(stack)
+	project, _, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	ps, err := loadProjectStack(project, stack)
 	if err != nil {
 		return err
 	}
