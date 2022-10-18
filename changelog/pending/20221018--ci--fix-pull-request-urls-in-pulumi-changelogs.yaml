@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: ci
+  description: Fix pull request URLs in Pulumi changelogs
