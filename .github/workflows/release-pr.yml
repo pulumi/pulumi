@@ -20,10 +20,6 @@ on:
         required: false
         description: "Commit to branch from, if not the tag"
         type: string
-      next-version:
-        required: true
-        description: "Version to bump files to"
-        type: string
       release-notes:
         required: true
         description: "Release notes to publish"
@@ -48,17 +44,14 @@ jobs:
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}
-          NEXT_VERSION: ${{ inputs.next-version }}
           RELEASE_NOTES: ${{ inputs.release-notes }}
           QUEUE_MERGE: ${{ inputs.queue-merge }}
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
-          git switch --create "automation/release-v${PULUMI_VERSION}-v${NEXT_VERSION}"
+          git switch --create "automation/release-v${PULUMI_VERSION}"
 
           echo -en "# Changelog\n\n${RELEASE_NOTES}\n\n$(tail -n+3 CHANGELOG.md)" > ./CHANGELOG.md
-
-          ./.github/scripts/update-versions "${NEXT_VERSION}"
 
           git config user.name github-actions
           git config user.email github-actions@github.com
@@ -66,7 +59,7 @@ jobs:
           rm ./changelog/pending/*.yaml || true
           git add -A
 
-          git commit -m "Prepare for next release (v${NEXT_VERSION})"
+          git commit -m "chore: changelog for v${PULUMI_VERSION}"
 
           # Update go module dependencies
           (
@@ -75,7 +68,7 @@ jobs:
           )
           make tidy
           git add -A
-          git commit -m "Update dependencies"
+          git commit -m "chore: post-release go.mod updates"
 
           # Publish pkg module on another tag.
           git tag "pkg/v${PULUMI_VERSION}"
@@ -84,9 +77,9 @@ jobs:
 
           PR_BODY=""
           if [ "${QUEUE_MERGE}" = "true" ]; then
-            PR_BODY="bors r+"
+            PR_BODY="bors merge"
           fi
 
           gh pr create \
-            --title "prepare for next release (v${NEXT_VERSION})" \
+            --title "Changelog and go.mod updates for v${PULUMI_VERSION}" \
             --body "${PR_BODY}"

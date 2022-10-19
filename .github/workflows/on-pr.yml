@@ -90,7 +90,6 @@ jobs:
   #   with:
   #     ref: ${{ github.ref }}
   #     version: ${{ needs.info.outputs.version }}
-  #     next-version: ${{ needs.info.outputs.next-version }}
   #     release-notes: ${{ needs.info.outputs.release-notes }}
   #     version-set: ${{ needs.matrix.outputs.version-set }}
   #     queue-merge: false
