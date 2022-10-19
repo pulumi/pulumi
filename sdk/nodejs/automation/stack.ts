@@ -672,7 +672,7 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
  * @param stack The name of the Stack.
  */
 export function fullyQualifiedStackName(org: string, project: string, stack: string): string {
-    return `${org}/${project}/${stack}`;
+    return `${org}-${project}-${stack}`;
 }
 
 export interface OutputValue {

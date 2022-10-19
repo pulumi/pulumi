@@ -166,6 +166,7 @@ describe("LocalWorkspace", () => {
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
 
         const allConfig = await stack.getAllConfig();
+        console.log(allConfig);
         const outerVal = allConfig["nested_config:outer"];
         assert.strictEqual(outerVal.secret, true);
         assert.strictEqual(outerVal.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}");
