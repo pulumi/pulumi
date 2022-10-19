@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: protobuf
+  description: Bumps python grpcio version
