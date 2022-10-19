@@ -20,8 +20,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
         run: |
@@ -36,8 +36,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - run: command -v pulumi
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
@@ -62,8 +62,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - run: command -v pulumi
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
@@ -87,8 +87,8 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
         run: |
@@ -110,8 +110,8 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
         run: |
@@ -129,8 +129,8 @@ jobs:
         id: vars
         shell: bash
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
         run: |
@@ -174,8 +174,8 @@ jobs:
       - name: Pulumi Version Details
         id: vars
         run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
+          echo "installed-version=$(pulumi version)" >> "${GITHUB_OUTPUT:?}"
+          echo "expected-version=v$(curl -sS https://www.pulumi.com/latest-version)" >> "${GITHUB_OUTPUT:?}"
       - name: Error if incorrect version found
         if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
         run: |
