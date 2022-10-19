@@ -78,6 +78,8 @@
         "automation/localWorkspace.ts",
         "automation/minimumVersion.ts",
         "automation/projectSettings.ts",
+        "automation/remoteStack.ts",
+        "automation/remoteWorkspace.ts",
         "automation/stackSettings.ts",
         "automation/server.ts",
         "automation/stack.ts",
@@ -105,6 +107,7 @@
 
         "tests/automation/cmd.spec.ts",
         "tests/automation/localWorkspace.spec.ts",
+        "tests/automation/remoteWorkspace.spec.ts",
 
         "tests_with_mocks/mocks.spec.ts"
     ]

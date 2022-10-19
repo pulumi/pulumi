@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import { StackAlreadyExistsError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
+import { LocalWorkspace } from "./localWorkspace";
 
 const langrpc = require("../proto/language_grpc_pb.js");
 
@@ -152,6 +153,8 @@ Event: ${line}\n${e.toString()}`);
         let kind = execKind.local;
         let program = this.workspace.program;
 
+        args.push(...this.remoteArgs());
+
         if (opts) {
             if (opts.program) {
                 program = opts.program;
@@ -255,7 +258,9 @@ Event: ${line}\n${e.toString()}`);
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
 
         return {
             stdout: upResult.stdout,
@@ -274,6 +279,8 @@ Event: ${line}\n${e.toString()}`);
         const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
+
+        args.push(...this.remoteArgs());
 
         if (opts) {
             if (opts.program) {
@@ -396,6 +403,8 @@ Event: ${line}\n${e.toString()}`);
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
         const args = ["refresh", "--yes", "--skip-preview"];
 
+        args.push(...this.remoteArgs());
+
         if (opts) {
             if (opts.message) {
                 args.push("--message", opts.message);
@@ -437,7 +446,9 @@ Event: ${line}\n${e.toString()}`);
         const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
@@ -451,6 +462,8 @@ Event: ${line}\n${e.toString()}`);
      */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
         const args = ["destroy", "--yes", "--skip-preview"];
+
+        args.push(...this.remoteArgs());
 
         if (opts) {
             if (opts.message) {
@@ -493,7 +506,9 @@ Event: ${line}\n${e.toString()}`);
         const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
@@ -622,6 +637,9 @@ Event: ${line}\n${e.toString()}`);
         let envs: { [key: string]: string } = {
             "PULUMI_DEBUG_COMMANDS": "true",
         };
+        if (this.isRemote) {
+            envs["PULUMI_EXPERIMENTAL"] = "true";
+        }
         const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
@@ -632,6 +650,16 @@ Event: ${line}\n${e.toString()}`);
         const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;
+    }
+
+    private get isRemote(): boolean {
+        const ws = this.workspace;
+        return ws instanceof LocalWorkspace ? ws.isRemote : false;
+    }
+
+    private remoteArgs(): string[] {
+        const ws = this.workspace;
+        return ws instanceof LocalWorkspace ? ws.remoteArgs() : [];
     }
 }
 
