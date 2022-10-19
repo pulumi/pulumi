@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -107,6 +108,7 @@ type ProjectConfigType struct {
 	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
 	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
+	Secret      bool                    `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
 // Project is a Pulumi project manifest.
@@ -345,14 +347,23 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 
 	if typeName == "integer" {
 		_, ok := value.(int)
-		if !ok {
-			valueAsText, isText := value.(string)
-			if isText {
-				_, integerParseError := strconv.Atoi(valueAsText)
-				return integerParseError == nil
-			}
+		if ok {
+			return true
 		}
-		return ok
+		// Config values come from YAML which by default will return floats not int. If it's a whole number
+		// we'll allow it here though
+		f, ok := value.(float64)
+		if ok && f == math.Trunc(f) {
+			return true
+		}
+		// Allow strings here if they parse as integers
+		valueAsText, isText := value.(string)
+		if isText {
+			_, integerParseError := strconv.Atoi(valueAsText)
+			return integerParseError == nil
+		}
+
+		return false
 	}
 
 	if typeName == "boolean" {
