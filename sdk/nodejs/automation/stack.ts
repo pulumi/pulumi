@@ -453,6 +453,9 @@ Event: ${line}\n${e.toString()}`);
         const args = ["destroy", "--yes", "--skip-preview"];
 
         if (opts) {
+            if (opts.remove) {
+                args.push("--remove");
+            }
             if (opts.message) {
                 args.push("--message", opts.message);
             }
@@ -669,7 +672,7 @@ function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
  * @param stack The name of the Stack.
  */
 export function fullyQualifiedStackName(org: string, project: string, stack: string): string {
-    return `${org}/${project}/${stack}`;
+    return `${org}-${project}-${stack}`;
 }
 
 export interface OutputValue {
@@ -869,6 +872,7 @@ export interface DestroyOptions extends GlobalOpts {
     color?: "always" | "never" | "raw" | "auto";
     // Include secrets in the DestroySummary
     showSecrets?: boolean;
+    remove?: boolean;
 }
 
 const execKind = {
