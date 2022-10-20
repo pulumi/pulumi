@@ -30,11 +30,11 @@ func (o *OutputState) isPromise() bool {
 }
 
 type _promiseLike interface {
-	_promiseLike() bool
+	promiseElement() reflect.Type
 }
 
-func (Promise[T]) _promiseLike() bool {
-	return true
+func (Promise[T]) promiseElement() reflect.Type {
+	return typeOf[T]()
 }
 
 var promiseType = typeOf[_promiseLike]()

@@ -1084,12 +1084,30 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 				continue
 			}
 
-			output := ctx.newOutput(field.Type, resourceV)
-			fieldV.Set(reflect.ValueOf(output))
+			switch {
+			case field.Type == mapOutputType:
+			case field.Anonymous && field.Type.Implements(promiseType) && res.Field(i).CanInterface():
+				fieldVV := res.Field(i)
+				inner := res.Field(i).Interface().(_promiseLike).promiseElement()
+				if inner.Kind() == reflect.Ptr {
+					inner = inner.Elem()
+				}
+				if inner.Kind() == reflect.Struct {
+					for _, field := range reflect.VisibleFields(inner) {
+						output := ctx.newOutput(field.Type, resourceV)
+						fieldVV.Set(reflect.ValueOf(output))
+					}
+				}
+				// Hit the default error case
+				fallthrough
+			default:
+				output := ctx.newOutput(field.Type, resourceV)
+				fieldV.Set(reflect.ValueOf(output))
 
-			if tag == "" && field.Type != mapOutputType {
 				output.getState().reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
 			}
+			output := ctx.newOutput(field.Type, resourceV)
+			fieldV.Set(reflect.ValueOf(output))
 
 			state.outputs[tag] = output
 		}
