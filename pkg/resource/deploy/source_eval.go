@@ -1119,6 +1119,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var outputDeps map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
+		if providers.IsDenyDefaultsProvider(providerRef) {
+			msg := diag.GetDefaultProviderDenied(resource.URN(t.String())).Message
+			return nil, fmt.Errorf(msg, t.Package().String(), t.String())
+		}
 		if !ok {
 			return nil, fmt.Errorf("unknown provider '%v'", providerRef)
 		}
