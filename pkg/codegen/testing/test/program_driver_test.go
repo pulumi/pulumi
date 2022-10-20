@@ -2,6 +2,9 @@ package test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +23,36 @@ func TestBatches(t *testing.T) {
 			}
 
 			assert.ElementsMatch(t, PulumiPulumiProgramTests, combined)
+
+			// Check that all synced tests from pulumi/yaml are in test list
+			syncDir := filepath.Join("testdata", transpiledExamplesDir)
+			untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiProgramTests)
+			assert.Nil(t, err)
+			assert.Emptyf(t, untestedTranspiledExamples,
+				"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 		})
 	}
+}
+
+func getUntestedTranspiledExampleDirs(baseDir string, tests []ProgramTest) ([]string, error) {
+	untested := make([]string, 0)
+	testedDirs := make(map[string]bool)
+	files, err := os.ReadDir(baseDir)
+	if err != nil {
+		return untested, err
+	}
+
+	for _, t := range tests {
+		fmt.Println(t.Directory)
+		if strings.HasPrefix(t.Directory, transpiledExamplesDir) {
+			dir := filepath.Base(t.Directory) + "-pp"
+			testedDirs[dir] = true
+		}
+	}
+	for _, f := range files {
+		if _, ok := testedDirs[f.Name()]; !ok && f.IsDir() {
+			untested = append(untested, f.Name())
+		}
+	}
+	return untested, nil
 }

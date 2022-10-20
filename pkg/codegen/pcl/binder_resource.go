@@ -131,11 +131,8 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	}
 
 	isProvider := false
-	if pkg == "pulumi" {
-		if module == "providers" {
-			pkg = name
-		}
-		isProvider = true
+	if pkg == "pulumi" && module == "providers" {
+		pkg, isProvider = name, true
 	}
 	var pkgSchema *packageSchema
 

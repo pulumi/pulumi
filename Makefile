@@ -177,7 +177,15 @@ get_schemas: \
 			 schema-azure!4.18.0        \
 			 schema-kubernetes!3.7.2    \
 			 schema-random!4.2.0        \
-			 schema-eks!0.37.1
+			 schema-eks!0.37.1			\
+			 schema-aws!5.4.0			\
+			 schema-azure-native!1.56.0	\
+			 schema-eks!0.40.0			\
+			 schema-aws-native!0.13.0	\
+			 schema-docker!3.1.0		\
+			 schema-awsx!1.0.0-beta.5	\
+			 schema-kubernetes!3.0.0	\
+			 schema-aws!4.37.1			
 
 .PHONY: changelog
 changelog:

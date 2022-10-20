@@ -8,8 +8,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	awsec2 "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"
 	dns "github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1"
 	gcpiamv1 "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1"
@@ -19,14 +19,14 @@ import (
 type Component struct {
 	pulumi.CustomResourceState
 
-	ResourceLocalAlias                awsec2.InstanceOutput               `pulumi:"resourceLocalAlias"`
-	ResourceLocalInsteadOfRemoteAlias gcpiamv1.KeyOutput                  `pulumi:"resourceLocalInsteadOfRemoteAlias"`
-	ResourceNoAlias                   s3.BucketOutput                     `pulumi:"resourceNoAlias"`
-	ResourceRemoteAlias               dns.PolicyOutput                    `pulumi:"resourceRemoteAlias"`
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplateOutput `pulumi:"typeLocalAlias"`
-	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfigResponseOutput  `pulumi:"typeLocalInsteadOfRemoteAlias"`
-	TypeNoAlias                       s3.BucketWebsiteOutput              `pulumi:"typeNoAlias"`
-	TypeRemoteAlias                   dns.DnsKeySpecResponseOutput        `pulumi:"typeRemoteAlias"`
+	ResourceLocalAlias                ec2.InstanceOutput                 `pulumi:"resourceLocalAlias"`
+	ResourceLocalInsteadOfRemoteAlias gcpiamv1.KeyOutput                 `pulumi:"resourceLocalInsteadOfRemoteAlias"`
+	ResourceNoAlias                   s3.BucketOutput                    `pulumi:"resourceNoAlias"`
+	ResourceRemoteAlias               dns.PolicyOutput                   `pulumi:"resourceRemoteAlias"`
+	TypeLocalAlias                    ec2.InstanceLaunchTemplateOutput   `pulumi:"typeLocalAlias"`
+	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfigResponseOutput `pulumi:"typeLocalInsteadOfRemoteAlias"`
+	TypeNoAlias                       s3.BucketWebsiteOutput             `pulumi:"typeNoAlias"`
+	TypeRemoteAlias                   dns.DnsKeySpecResponseOutput       `pulumi:"typeRemoteAlias"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -92,11 +92,11 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	ResourceLocalAlias                *awsec2.Instance                                                    `pulumi:"resourceLocalAlias"`
+	ResourceLocalAlias                *ec2.Instance                                                       `pulumi:"resourceLocalAlias"`
 	ResourceLocalInsteadOfRemoteAlias *gcpiamv1.Key                                                       `pulumi:"resourceLocalInsteadOfRemoteAlias"`
 	ResourceNoAlias                   *s3.Bucket                                                          `pulumi:"resourceNoAlias"`
 	ResourceRemoteAlias               *dns.Policy                                                         `pulumi:"resourceRemoteAlias"`
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplate                                       `pulumi:"typeLocalAlias"`
+	TypeLocalAlias                    ec2.InstanceLaunchTemplate                                          `pulumi:"typeLocalAlias"`
 	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfig                                                `pulumi:"typeLocalInsteadOfRemoteAlias"`
 	TypeNoAlias                       s3.BucketWebsite                                                    `pulumi:"typeNoAlias"`
 	TypeRemoteAlias                   dns.DnsKeySpec                                                      `pulumi:"typeRemoteAlias"`
@@ -105,11 +105,11 @@ type componentArgs struct {
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	ResourceLocalAlias                awsec2.InstanceInput
+	ResourceLocalAlias                ec2.InstanceInput
 	ResourceLocalInsteadOfRemoteAlias gcpiamv1.KeyInput
 	ResourceNoAlias                   s3.BucketInput
 	ResourceRemoteAlias               dns.PolicyInput
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplateInput
+	TypeLocalAlias                    ec2.InstanceLaunchTemplateInput
 	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfigInput
 	TypeNoAlias                       s3.BucketWebsiteInput
 	TypeRemoteAlias                   dns.DnsKeySpecInput
@@ -203,8 +203,8 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
-func (o ComponentOutput) ResourceLocalAlias() awsec2.InstanceOutput {
-	return o.ApplyT(func(v *Component) awsec2.InstanceOutput { return v.ResourceLocalAlias }).(awsec2.InstanceOutput)
+func (o ComponentOutput) ResourceLocalAlias() ec2.InstanceOutput {
+	return o.ApplyT(func(v *Component) ec2.InstanceOutput { return v.ResourceLocalAlias }).(ec2.InstanceOutput)
 }
 
 func (o ComponentOutput) ResourceLocalInsteadOfRemoteAlias() gcpiamv1.KeyOutput {
@@ -219,8 +219,8 @@ func (o ComponentOutput) ResourceRemoteAlias() dns.PolicyOutput {
 	return o.ApplyT(func(v *Component) dns.PolicyOutput { return v.ResourceRemoteAlias }).(dns.PolicyOutput)
 }
 
-func (o ComponentOutput) TypeLocalAlias() awsec2.InstanceLaunchTemplateOutput {
-	return o.ApplyT(func(v *Component) awsec2.InstanceLaunchTemplateOutput { return v.TypeLocalAlias }).(awsec2.InstanceLaunchTemplateOutput)
+func (o ComponentOutput) TypeLocalAlias() ec2.InstanceLaunchTemplateOutput {
+	return o.ApplyT(func(v *Component) ec2.InstanceLaunchTemplateOutput { return v.TypeLocalAlias }).(ec2.InstanceLaunchTemplateOutput)
 }
 
 func (o ComponentOutput) TypeLocalInsteadOfRemoteAlias() gcpiamv1.AuditConfigResponseOutput {
