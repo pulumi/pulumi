@@ -391,6 +391,10 @@ func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool
 	return d.providers.GetProvider(ref)
 }
 
+func (d *Deployment) GetProviderInfo() []workspace.PluginInfo {
+	return d.providers.GetProviderInfo()
+}
+
 // generateURN generates a resource's URN from its parent, type, and name under the scope of the deployment's stack and
 // project.
 func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {

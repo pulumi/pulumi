@@ -16,14 +16,19 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -223,6 +228,20 @@ type runActions interface {
 	MaybeCorrupt() bool
 }
 
+func hashBin(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))[:8]
+}
+
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
 	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
@@ -296,8 +315,59 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	duration := time.Since(start)
 	changes := actions.Changes()
 
+	// debug metadata
+	proj := deployment.Ctx.Update.GetProject()
+	stack := deployment.Ctx.Update.GetTarget()
+	stackName := stack.Name.String()
+	stackOrg := stack.Organization.String()
+
+	pluginInfos := deployment.Deployment.GetProviderInfo()
+	pluginDetails := []apitype.PluginDetail{}
+	for _, info := range pluginInfos {
+		pluginDetails = append(pluginDetails, apitype.PluginDetail{
+			Name:    info.Name,
+			Kind:    string(info.Kind),
+			Version: info.Version.String(),
+			Path:    info.Path,
+			Hash:    hashBin(info.Path),
+		})
+	}
+
+	ex, err := os.Executable()
+	exHash := hashBin(ex)
+	if err != nil {
+		ex = "<unknown>"
+		exHash = ""
+	}
+
+	programMain := proj.Main
+	if programMain == "" {
+		programMain = "<language host default>"
+	}
+
+	summaryMetadata := apitype.SummaryMetadata{
+		Backend: apitype.BackendDetail{
+			URL:  "TODO",
+			Org:  stackOrg,
+			User: "TODO",
+		},
+		Engine: apitype.EngineDetail{
+			Args:    os.Args,
+			Path:    ex,
+			Version: version.Version,
+			Hash:    exHash,
+		},
+		Project: apitype.ProjectDetail{
+			Name:           proj.Name.String(),
+			Stack:          stackName,
+			Language:       proj.Runtime.Name(),
+			Main:           programMain,
+			RuntimeOptions: fmt.Sprintf("%+v", proj.Runtime.Options()),
+		},
+		Plugins: pluginDetails,
+	}
 	// Emit a summary event.
-	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
+	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks, summaryMetadata)
 
 	return newPlan, changes, res
 }

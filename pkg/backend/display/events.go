@@ -293,6 +293,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
+			SummaryMetadata: p.SummaryMetadata,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:

@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // ApplierOptions is a bag of configuration settings for an Applier.
@@ -92,14 +93,18 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	eventsChannel := make(chan engine.Event)
 
 	var events []engine.Event
+	var summaryMetadata apitype.SummaryMetadata
 	go func() {
 		// pull the events from the channel and store them locally
 		for e := range eventsChannel {
-			if e.Type == engine.ResourcePreEvent ||
+			if !(e.Type == engine.ResourcePreEvent ||
 				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.SummaryEvent {
-
-				events = append(events, e)
+				e.Type == engine.SummaryEvent) {
+				continue
+			}
+			events = append(events, e)
+			if e.Type == engine.SummaryEvent {
+				summaryMetadata = e.Payload().(engine.SummaryEventPayload).SummaryMetadata
 			}
 		}
 	}()
@@ -119,6 +124,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, res
 	}
 
+	fmt.Println(renderSummaryMetadata(summaryMetadata))
+
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
@@ -137,6 +144,51 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
 	return plan, changes, res
+}
+
+func renderSummaryMetadata(metadata apitype.SummaryMetadata) (out string) {
+	out += fmt.Sprintf("Developer Details==================================================\n")
+
+	backendDetail := metadata.Backend
+	out += fmt.Sprintf("Backend===========================================================\n")
+	out += fmt.Sprintf("  url:  %v\n", backendDetail.URL)
+	out += fmt.Sprintf("  user: %v\n", backendDetail.User)
+	out += fmt.Sprintf("  org:  %v\n", backendDetail.Org)
+
+	projectDetail := metadata.Project
+	out += fmt.Sprintf("Project===========================================================\n")
+	out += fmt.Sprintf("  name:     %v\n", projectDetail.Name)
+	out += fmt.Sprintf("  stack:    %v\n", projectDetail.Stack)
+	out += fmt.Sprintf("  language: %v\n", projectDetail.Language)
+	out += fmt.Sprintf("  main:     %v\n", projectDetail.Main)
+	out += fmt.Sprintf("  options:  %v\n", projectDetail.RuntimeOptions)
+
+	engineDetail := metadata.Engine
+	out += fmt.Sprintf("Engine============================================================\n")
+	out += fmt.Sprintf("  path:    %v\n", engineDetail.Path)
+	out += fmt.Sprintf("  args:    %v\n", engineDetail.Args)
+	out += fmt.Sprintf("  env:     %v\n", engineDetail.Env)
+	out += fmt.Sprintf("  hash:    %v\n", engineDetail.Hash)
+	out += fmt.Sprintf("  version: %v\n", engineDetail.Version)
+
+	out += fmt.Sprintf("Plugins============================================================\n")
+	uniquePlugins := map[string]apitype.PluginDetail{}
+	for _, plugin := range metadata.Plugins {
+		uniquePlugins[plugin.Hash] = plugin
+	}
+	for _, plugin := range uniquePlugins {
+		switch workspace.PluginKind(plugin.Kind) {
+		case workspace.AnalyzerPlugin:
+			out += fmt.Sprintf("  Analyzer %s %s %s %s\n", plugin.Hash, plugin.Name, plugin.Version, plugin.Path)
+		case workspace.LanguagePlugin:
+			out += fmt.Sprintf("  Language %s %s %s %s\n", plugin.Hash, plugin.Name, plugin.Version, plugin.Path)
+		case workspace.ResourcePlugin:
+			out += fmt.Sprintf("  Resource %s %s %s %s\n", plugin.Hash, plugin.Name, plugin.Version, plugin.Path)
+		default:
+			out += fmt.Sprintf("  %s %s %s %s %s\n", plugin.Kind, plugin.Hash, plugin.Name, plugin.Version, plugin.Path)
+		}
+	}
+	return out
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.

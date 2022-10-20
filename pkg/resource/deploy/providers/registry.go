@@ -165,6 +165,19 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 
 	return r, nil
 }
+func (r *Registry) GetProviderInfo() []workspace.PluginInfo {
+	providerInfos := []workspace.PluginInfo{}
+	for providerRef, provider := range r.providers {
+		info, err := provider.GetPluginInfo()
+		if err != nil {
+			info = workspace.PluginInfo{
+				Name: providerRef.String(),
+			}
+		}
+		providerInfos = append(providerInfos, info)
+	}
+	return providerInfos
+}
 
 // GetProvider returns the provider plugin that is currently registered under the given reference, if any.
 func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {

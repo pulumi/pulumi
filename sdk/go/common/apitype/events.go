@@ -66,6 +66,48 @@ type PreludeEvent struct {
 	Config map[string]string `json:"config"`
 }
 
+type PluginDetail struct {
+	Name    string
+	Kind    string // the kind of the plugin (language, resource, etc).
+	Version string
+	Path    string
+	Hash    string
+}
+
+type EngineDetail struct {
+	Args    []string
+	Env     []string
+	Path    string
+	Version string
+	Hash    string
+}
+
+type BackendDetail struct {
+	URL  string
+	Org  string
+	User string
+}
+
+type ProjectDetail struct {
+	Name           string
+	Stack          string
+	Main           string
+	Language       string
+	RuntimeOptions string
+}
+
+type UpdateDetail struct {
+	Type     string
+	IsDryRun bool
+}
+
+type SummaryMetadata struct {
+	Backend BackendDetail
+	Engine  EngineDetail
+	Project ProjectDetail
+	Plugins []PluginDetail
+}
+
 // SummaryEvent is emitted at the end of an update, with a summary of the changes made.
 type SummaryEvent struct {
 	// MaybeCorrupt is set if one or more of the resources is in an invalid state.
@@ -80,6 +122,8 @@ type SummaryEvent struct {
 	// compatibility. For older clients this will map to the version, while for newer ones
 	// it will be the version tag prepended with "v".
 	PolicyPacks map[string]string `json:"PolicyPacks"`
+	// Contains runtime details around the update.
+	SummaryMetadata SummaryMetadata `json:"summaryMetadata"`
 }
 
 // DiffKind describes the kind of a particular property diff.

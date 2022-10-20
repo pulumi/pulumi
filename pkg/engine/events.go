@@ -77,6 +77,9 @@ const (
 	CancelEvent             EventType = "cancel"
 	StdoutColorEvent        EventType = "stdoutcolor"
 	DiagEvent               EventType = "diag"
+	UpdatePreEvent          EventType = "update-pre"
+	LangHostPreEvent        EventType = "langhost-pre"
+	PluginPreEvent          EventType = "plugin-pre"
 	PreludeEvent            EventType = "prelude"
 	SummaryEvent            EventType = "summary"
 	ResourcePreEvent        EventType = "resource-pre"
@@ -132,6 +135,7 @@ type SummaryEventPayload struct {
 	Duration        time.Duration           // the duration of the entire update operation (zero values for previews)
 	ResourceChanges display.ResourceChanges // count of changed resources, useful for reporting
 	PolicyPacks     map[string]string       // {policy-pack: version} for each policy pack applied
+	SummaryMetadata apitype.SummaryMetadata
 }
 
 type ResourceOperationFailedPayload struct {
@@ -353,6 +357,18 @@ func (e *eventEmitter) sendEvent(event Event) {
 	trySendEvent(e.ch, event)
 }
 
+func (e *eventEmitter) languageHostEvent(
+	step deploy.Step, status resource.Status, steps int, debug bool) {
+
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	e.sendEvent(NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
+		Metadata: makeStepEventMetadata(step.Op(), step, debug),
+		Status:   status,
+		Steps:    steps,
+	}))
+}
+
 func (e *eventEmitter) resourceOperationFailedEvent(
 	step deploy.Step, status resource.Status, steps int, debug bool) {
 
@@ -405,7 +421,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 }
 
 func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
-	resourceChanges display.ResourceChanges, policyPacks map[string]string) {
+	resourceChanges display.ResourceChanges, policyPacks map[string]string, summaryMetadata apitype.SummaryMetadata) {
 
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -415,6 +431,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 		Duration:        duration,
 		ResourceChanges: resourceChanges,
 		PolicyPacks:     policyPacks,
+		SummaryMetadata: summaryMetadata,
 	}))
 }
 
