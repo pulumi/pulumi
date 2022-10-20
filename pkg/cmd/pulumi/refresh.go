@@ -163,7 +163,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			// First we handle explicit create->imports we were given
-			if importPendingCreates != nil {
+			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
 					stderr = os.Stderr
