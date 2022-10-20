@@ -522,7 +522,7 @@ async function prepareResource(label: string, res: Resource, parent: Resource | 
 
         let providerRef: string | undefined;
         let importID: ID | undefined;
-        if (custom) {
+        if (custom || remote) {
             const customOpts = <CustomResourceOptions>opts;
             importID = customOpts.import;
             providerRef = await ProviderResource.register(opts.provider);
