@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -225,7 +225,12 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 			firstMessage = "Enter your new passphrase to protect config/secrets"
 
 			if !isInteractive() {
-				return "", nil, fmt.Errorf("passphrase rotation requires an interactive terminal")
+				text, err := io.ReadAll(os.Stdin)
+				if err != nil {
+					return "", nil, err
+				}
+				phrase = strings.TrimSpace(string(text))
+				break
 			}
 		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
@@ -286,7 +291,7 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
-			phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+			phraseDetails, err := os.ReadFile(phraseFilePath)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to read PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
