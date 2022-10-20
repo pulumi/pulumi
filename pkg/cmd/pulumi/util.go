@@ -552,7 +552,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(msg, root, execKind, execAgent string, updatePlan bool) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
@@ -565,6 +565,8 @@ func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMe
 	addCIMetadataToEnvironment(m.Environment)
 
 	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
+
+	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
 
 	return m, nil
 }
@@ -733,6 +735,11 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	if execAgent != "" {
 		env[backend.ExecutionAgent] = execAgent
 	}
+}
+
+// addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.
+func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) {
+	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
 }
 
 type cancellationScope struct {
