@@ -1,0 +1,3 @@
+name: construct_nested_component_go
+description: A program that constructs remote component resources.
+runtime: go
