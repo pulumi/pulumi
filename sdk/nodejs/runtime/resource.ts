@@ -317,6 +317,7 @@ export function registerResource(res: Resource, parent: Resource | undefined, t:
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setRetainondelete(opts.retainOnDelete || false);
+        req.setDeletedwith(opts.deletedWith);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {

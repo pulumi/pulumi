@@ -99,6 +99,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		nil,
 		"",
 		false,
+		"",
 	)
 
 	dep, err := SerializeResource(res, config.NopEncrypter, false /* showSecrets */)

@@ -91,6 +91,7 @@ namespace Pulumi
                 },
                 Remote = remote,
                 RetainOnDelete = options.RetainOnDelete ?? false,
+                DeletedWith = options.DeletedWith ?? false,
             };
 
             if (customOpts != null)

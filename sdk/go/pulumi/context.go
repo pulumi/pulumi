@@ -856,6 +856,7 @@ func (ctx *Context) registerResource(
 				Remote:                  remote,
 				ReplaceOnChanges:        inputs.replaceOnChanges,
 				RetainOnDelete:          inputs.retainOnDelete,
+				DeletedWith:             inputs.deletedWith,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1249,6 +1250,7 @@ type resourceInputs struct {
 	pluginDownloadURL       string
 	replaceOnChanges        []string
 	retainOnDelete          bool
+	deletedWith             string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -1336,6 +1338,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
+		deletedWith:             string(opts.DeletedWith),
 	}, nil
 }
 

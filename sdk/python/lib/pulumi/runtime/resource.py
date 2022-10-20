@@ -584,6 +584,7 @@ def register_resource(
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
                 retainOnDelete=opts.retain_on_delete or False,
+                deletedWith=opts.deleted_with,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

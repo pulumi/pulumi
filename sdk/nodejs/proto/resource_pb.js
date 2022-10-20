@@ -1297,7 +1297,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
     aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
-    pulumi_alias_pb.Alias.toObject, includeInstance)
+    pulumi_alias_pb.Alias.toObject, includeInstance),
+    deletedwith: jspb.Message.getFieldWithDefault(msg, 27, "")
   };
 
   if (includeInstance) {
@@ -1444,6 +1445,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_alias_pb.Alias;
       reader.readMessage(value,pulumi_alias_pb.Alias.deserializeBinaryFromReader);
       msg.addAliases(value);
+      break;
+    case 27:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setDeletedwith(value);
       break;
     default:
       reader.skipField();
@@ -1651,6 +1656,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       26,
       f,
       pulumi_alias_pb.Alias.serializeBinaryToWriter
+    );
+  }
+  f = message.getDeletedwith();
+  if (f.length > 0) {
+    writer.writeString(
+      27,
+      f
     );
   }
 };
@@ -2628,6 +2640,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addAliases = function(opt_valu
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearAliasesList = function() {
   return this.setAliasesList([]);
+};
+
+
+/**
+ * optional string deletedWith = 27;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getDeletedwith = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 27, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(value) {
+  return jspb.Message.setProto3StringField(this, 27, value);
 };
 
 

@@ -487,6 +487,12 @@ class ResourceOptions:
     If set to True, the providers Delete method will not be called for this resource.
     """
 
+    deleted_with: Optional["Resource"]
+    """
+    If set, the providers Delete method will not be called for this resource
+    if specified resource is being deleted as well.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(
         self,
@@ -512,6 +518,7 @@ class ResourceOptions:
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
+        deleted_with: Optional["Resource"] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -552,6 +559,8 @@ class ResourceOptions:
                from the provided url. This url overrides the plugin download url inferred from the current package and should
                rarely be used.
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
+        :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
+               if specified resource is being deleted as well.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -577,6 +586,7 @@ class ResourceOptions:
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
+        self.deleted_with = deleted_with
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -703,6 +713,11 @@ class ResourceOptions:
             dest.retain_on_delete
             if source.retain_on_delete is None
             else source.retain_on_delete
+        )
+        dest.deleted_with = (
+            dest.deleted_with
+            if source.deleted_with is None
+            else source.deleted_with
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then

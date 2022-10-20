@@ -3702,6 +3702,214 @@ func TestRetainOnDelete(t *testing.T) {
 	assert.Len(t, snap.Resources, 0)
 }
 
+func TestDeletedWith(t *testing.T) {
+	t.Parallel()
+
+	idCounter := 0
+
+	topURN := resource.URN("")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we don't delete on replace
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
+					idCounter = idCounter + 1
+					return resourceID, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+					if urn != topURN {
+						// Only topURN (aURN) should be actually deleted
+						assert.Fail(t, "Delete was called")
+					}
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	createResource := true
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		if createResource {
+			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+			topURN = aURN
+
+			bURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:      ins,
+				DeletedWith: aURN,
+			})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Inputs:      ins,
+				DeletedWith: bURN,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
+	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
+
+	// Run a new update which will cause a replace, we should only see a provider delete for aURN but should get a new id for everything
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-4", snap.Resources[2].ID.String())
+	assert.Equal(t, "created-id-5", snap.Resources[3].ID.String())
+
+	// Run a new update which will cause a delete, we still shouldn't see a provider delete for anything but aURN
+	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
+}
+
+func TestDeletedWithCircularDependency(t *testing.T) {
+	// This test should be removed if DeletedWith circular dependency is taken care of.
+	// At the mean time, if there is a circular dependency - none shall be deleted.
+	t.Parallel()
+
+	idCounter := 0
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
+					idCounter = idCounter + 1
+					return resourceID, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+
+					assert.Fail(t, "Delete was called")
+
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	createResource := true
+	cURN := resource.URN("")
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		if createResource {
+			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs:      ins,
+				DeletedWith: cURN,
+			})
+			assert.NoError(t, err)
+
+			bURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs:      ins,
+				DeletedWith: aURN,
+			})
+			assert.NoError(t, err)
+
+			cURN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Inputs:      ins,
+				DeletedWith: bURN,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
+	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
+
+	// Run again to update DeleteWith for resA
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
+	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
+
+	// Run a new update which will cause a delete, we still shouldn't see a provider delete
+	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
+}
+
 func TestInvalidGetIDReportsUserError(t *testing.T) {
 	t.Parallel()
 
