@@ -408,7 +408,6 @@ func TestProgramCodegen(
 
 			opts := []pcl.BindOption{
 				pcl.PluginHost(utils.NewHost(testdataPath)),
-				// pcl.Loader(rootPluginLoader.ReferenceLoader),
 			}
 			opts = append(opts, tt.BindOptions...)
 
