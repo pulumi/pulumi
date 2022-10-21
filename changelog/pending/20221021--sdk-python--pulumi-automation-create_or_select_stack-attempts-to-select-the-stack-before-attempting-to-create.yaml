@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: pulumi.automation.create_or_select_stack() attempts to select the stack before attempting to create

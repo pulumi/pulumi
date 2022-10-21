@@ -186,9 +186,9 @@ class Stack:
             workspace.select_stack(name)
         elif mode is StackInitMode.CREATE_OR_SELECT:
             try:
-                workspace.create_stack(name)
-            except StackAlreadyExistsError:
                 workspace.select_stack(name)
+            except StackNotFoundError:
+                workspace.create_stack(name)
 
     def __repr__(self):
         return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r}, mode={self._mode!r})"
