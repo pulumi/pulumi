@@ -43,7 +43,6 @@ func getUntestedTranspiledExampleDirs(baseDir string, tests []ProgramTest) ([]st
 	}
 
 	for _, t := range tests {
-		fmt.Println(t.Directory)
 		if strings.HasPrefix(t.Directory, transpiledExamplesDir) {
 			dir := filepath.Base(t.Directory) + "-pp"
 			testedDirs[dir] = true
