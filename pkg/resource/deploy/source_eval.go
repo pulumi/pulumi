@@ -401,7 +401,13 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 
 // If req should be allowed, or if we should prevent the request.
 func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (bool, error) {
-	logging.V(9).Infof("checking if %s should be denied", req)
+	logging.V(9).Infof("checking if %#v should be denied", req)
+
+	if req.Package().Name().String() == "pulumi" {
+		logging.V(9).Infof("we always allow %#v through", req)
+		return false, nil
+	}
+
 	pConfig, err := d.config.GetPackageConfig("pulumi")
 	if err != nil {
 		return true, err
