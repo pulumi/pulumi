@@ -3,11 +3,13 @@
 
 import argparse
 import asyncio
+from typing import Optional
 import logging
 import os
 import sys
 import traceback
 import runpy
+from concurrent.futures import ThreadPoolExecutor
 
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
@@ -50,6 +52,13 @@ def _get_user_stacktrace(user_program_abspath: str) -> str:
 
     # we did not detect a __main__ program, return normal traceback
     return traceback.format_exc()
+
+def _set_default_executor(loop, parallelism: Optional[int]):
+    '''configure this event loop to respect the settings provided.'''
+    if parallelism is None:
+        return
+    exec = ThreadPoolExecutor(max_workers=parallelism)
+    loop.set_default_executor(exec)
 
 if __name__ == "__main__":
     # Parse the arguments, program name, and optional arguments.
@@ -125,6 +134,9 @@ if __name__ == "__main__":
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+    
+    # Configure the event loop to respect the parallelism value provided as input.
+    _set_default_executor(loop, settings.parallel)
 
     # We are (unfortunately) suppressing the log output of asyncio to avoid showing to users some of the bad things we
     # do in our programming model.
