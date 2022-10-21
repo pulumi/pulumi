@@ -25,7 +25,7 @@ import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap
-from .errors import StackAlreadyExistsError
+from .errors import StackAlreadyExistsError, StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer
@@ -186,9 +186,9 @@ class Stack:
             workspace.select_stack(name)
         elif mode is StackInitMode.CREATE_OR_SELECT:
             try:
-                workspace.create_stack(name)
-            except StackAlreadyExistsError:
                 workspace.select_stack(name)
+            except StackNotFoundError:
+                workspace.create_stack(name)
 
     def __repr__(self):
         return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r}, mode={self._mode!r})"
