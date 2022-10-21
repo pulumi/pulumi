@@ -492,8 +492,8 @@ export class LocalWorkspace implements Workspace {
      * @param version the version of the plugin e.g. "v1.0.0".
      * @param kind the kind of plugin, defaults to "resource"
      */
-    async installPlugin(name: string, version: string): Promise<void> {
-        await this.runPulumiCmd(["plugin", "install", "resource", name, version]);
+    async installPlugin(name: string, version: string, kind = "resource"): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", kind, name, version]);
     }
     /**
      * Installs a plugin in the Workspace, from a third party server.
