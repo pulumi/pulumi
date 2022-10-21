@@ -27,12 +27,18 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 	// supplied.
 	return deploytest.NewPluginHost(nil, nil, nil,
 		mockProvider("aws", "4.26.0"),
+		mockProvider("aws", "4.36.0"),
+		mockProvider("aws", "4.37.1"),
 		mockProvider("aws", "5.16.2"),
 		mockProvider("azure", "4.18.0"),
+		mockProvider("azure-native", "1.28.0"),
 		mockProvider("azure-native", "1.29.0"),
 		mockProvider("random", "4.2.0"),
+		mockProvider("random", "4.3.1"),
+		mockProvider("kubernetes", "3.7.0"),
 		mockProvider("kubernetes", "3.7.2"),
 		mockProvider("eks", "0.37.1"),
+		mockProvider("google-native", "0.18.2"),
 
 		mockProvider("other", "0.1.0"),
 		mockProvider("synthetic", "1.0.0"),
