@@ -305,7 +305,6 @@ jobs:
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |

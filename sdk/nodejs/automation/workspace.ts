@@ -186,7 +186,7 @@ export interface Workspace {
      * @param version the version of the plugin e.g. "v1.0.0".
      * @param server the server to install the plugin into
      */
-         installPlugin(name: string, version: string, kind?: string): Promise<void>;
+    installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**
      * Removes a plugin from the Workspace matching the specified name and version.
      *
