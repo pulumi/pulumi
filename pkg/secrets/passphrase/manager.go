@@ -16,13 +16,13 @@
 package passphrase
 
 import (
+	"bufio"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -225,11 +225,9 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 			firstMessage = "Enter your new passphrase to protect config/secrets"
 
 			if !isInteractive() {
-				text, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return "", nil, err
-				}
-				phrase = strings.TrimSpace(string(text))
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Scan()
+				phrase = strings.TrimSpace(scanner.Text())
 				break
 			}
 		}
