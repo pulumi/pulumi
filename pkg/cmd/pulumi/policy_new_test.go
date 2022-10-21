@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build !smoke
+
 package main
 
 import (
@@ -18,32 +21,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-//nolint:paralleltest // changes directory for process
-func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
-	skipIfShortOrNoPulumiAccessToken(t)
-
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
-	chdir(t, tempdir)
-
-	var args = newPolicyArgs{
-		interactive:       false,
-		yes:               true,
-		templateNameOrURL: "aws-typescript",
-	}
-
-	err := runNewPolicyPack(context.TODO(), args)
-	assert.NoError(t, err)
-
-	assert.FileExists(t, filepath.Join(tempdir, "PulumiPolicy.yaml"))
-	assert.FileExists(t, filepath.Join(tempdir, "index.ts"))
-}
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
@@ -105,12 +86,4 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
-}
-
-func assertNotFoundError(t *testing.T, err error) {
-	msg := err.Error()
-	if strings.Contains(msg, "not found") || strings.Contains(msg, "no such file or directory") {
-		return
-	}
-	assert.Failf(t, "Error message does not contain \"not found\" or \"no such file or directory\": %s", msg)
 }
