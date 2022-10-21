@@ -183,7 +183,9 @@ get_schemas: \
 			 schema-eks!0.40.0			\
 			 schema-aws-native!0.13.0	\
 			 schema-docker!3.1.0		\
-			 schema-awsx!1.0.0-beta.5			
+			 schema-awsx!1.0.0-beta.5	\
+			 schema-kubernetes!3.0.0	\
+			 schema-aws!4.37.1			
 
 .PHONY: changelog
 changelog:
