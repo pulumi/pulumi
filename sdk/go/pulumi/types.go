@@ -300,7 +300,7 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 }
 
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
-var outputTypeToOutputState sync.Map // map[reflect.Type]int
+var outputTypeToOutputState sync.Map // map[reflect.Type][]int
 
 func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	contract.Assert(typ.Implements(outputType))
@@ -310,15 +310,14 @@ func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	// record it.
 	outputFieldV, ok := outputTypeToOutputState.Load(typ)
 	if !ok {
-		outputField := -1
-		for i := 0; i < typ.NumField(); i++ {
-			f := typ.Field(i)
+		var outputField []int
+		for _, f := range reflect.VisibleFields(typ) {
 			if f.Anonymous && f.Type == outputStateType {
-				outputField = i
+				outputField = f.Index
 				break
 			}
 		}
-		contract.Assert(outputField != -1)
+		contract.Assertf(outputField != nil, "Output value must have embedded field OutputState")
 		outputTypeToOutputState.Store(typ, outputField)
 		outputFieldV = outputField
 	}
@@ -326,7 +325,7 @@ func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	// Create the new output.
 	output := reflect.New(typ).Elem()
 	state := newOutputState(wg, output.Interface().(Output).ElementType(), deps...)
-	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
+	output.FieldByIndex(outputFieldV.([]int)).Set(reflect.ValueOf(state))
 	return output.Interface().(Output)
 }
 
