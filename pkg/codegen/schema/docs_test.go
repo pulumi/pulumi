@@ -126,7 +126,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
 		f := f
-		if filepath.Ext(f.Name()) != ".json" {
+		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
 			continue
 		}
 
