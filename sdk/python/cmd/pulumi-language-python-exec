@@ -57,6 +57,7 @@ def _set_default_executor(loop, parallelism: Optional[int]):
     '''configure this event loop to respect the settings provided.'''
     if parallelism is None:
         return
+    parallelism = max(parallelism, 1)
     exec = ThreadPoolExecutor(max_workers=parallelism)
     loop.set_default_executor(exec)
 
