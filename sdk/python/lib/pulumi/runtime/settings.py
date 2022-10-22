@@ -208,6 +208,7 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     """
     return SETTINGS.engine
 
+
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
