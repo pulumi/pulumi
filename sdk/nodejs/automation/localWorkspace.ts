@@ -514,8 +514,8 @@ export class LocalWorkspace implements Workspace {
      *  e.g. "1.0.0", ">1.0.0".
      * @param kind he kind of plugin, defaults to "resource".
      */
-    async removePlugin(name?: string, versionRange?: string): Promise<void> {
-        const args = ["plugin", "rm", "resource"];
+    async removePlugin(name?: string, versionRange?: string, kind = "resource"): Promise<void> {
+        const args = ["plugin", "rm", kind];
         if (name) {
             args.push(name);
         }

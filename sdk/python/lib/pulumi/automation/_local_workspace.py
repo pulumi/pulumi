@@ -311,8 +311,9 @@ class LocalWorkspace(Workspace):
         self,
         name: Optional[str] = None,
         version_range: Optional[str] = None,
+        kind: str = "resource",
     ) -> None:
-        args = ["plugin", "rm", "resource"]
+        args = ["plugin", "rm", kind]
         if name:
             args.append(name)
         if version_range:

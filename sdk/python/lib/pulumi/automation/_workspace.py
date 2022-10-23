@@ -340,6 +340,7 @@ class Workspace(ABC):
         self,
         name: Optional[str] = None,
         version_range: Optional[str] = None,
+        kind: str = "resource",
     ) -> None:
         """
         Removes a plugin from the Workspace matching the specified name and version.
