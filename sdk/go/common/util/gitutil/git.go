@@ -324,19 +324,56 @@ func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 				return err
 			}
 
-			if err = w.Pull(&git.PullOptions{
+			if cloneErr = w.Pull(&git.PullOptions{
 				ReferenceName: referenceName,
 				SingleBranch:  true,
 				Force:         true,
-			}); err != nil && err != git.NoErrAlreadyUpToDate {
-				return err
+			}); cloneErr == git.NoErrAlreadyUpToDate {
+				return nil
 			}
-		} else {
-			return cloneErr
 		}
 	}
 
-	return nil
+	if cloneErr == git.ErrUnstagedChanges {
+		// See https://github.com/pulumi/pulumi/issues/11121. We seem to be getting intermittent unstaged
+		// changes errors, which is very hard to reproduce. This block of code catches this error and tries to
+		// do a diff to see what the unstaged change is and tells the user to report this error to the above
+		// ticket.
+
+		repo, err := git.PlainOpen(path)
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the repo couldn't be opened to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		worktree, err := repo.Worktree()
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the worktree couldn't be opened to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		status, err := worktree.Status()
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the worktree status couldn't be fetched to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		messages := make([]string, 0)
+		for path, stat := range status {
+			if stat.Worktree != git.Unmodified {
+				messages = append(messages, fmt.Sprintf("%s was %c", path, rune(stat.Worktree)))
+			}
+		}
+
+		return fmt.Errorf("GitCloneOrPull reported unstaged changes: %s\n"+
+			"Please report this to https://github.com/pulumi/pulumi/issues/11121.",
+			strings.Join(messages, "\n"))
+	}
+
+	return cloneErr
 }
 
 // gitCloneOrPullSystemGit uses the `git` command to pull or clone repositories.
