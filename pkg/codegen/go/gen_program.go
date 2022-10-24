@@ -724,11 +724,54 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 }
 
+func stringsContains(values []string, value string) bool {
+	for _, item := range values {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	expr, temps := g.lowerExpression(v.Value, v.Type())
+	exprArgType := ""
+
+	rewriteExpr := func() {
+		exprArgType = g.argumentTypeName(expr, expr.Type(), true)
+	}
+	switch arg := expr.(type) {
+	case *model.ScopeTraversalExpression:
+		// check if the traversal root is a resource
+		// in which case we don't need to wrap the traversal with pulumi.{Something}
+		if _, isResource := arg.Parts[0].(*pcl.Resource); !isResource {
+			rewriteExpr()
+		}
+	case *model.FunctionCallExpression:
+		nonInputtyFunctions := []string{"stack", "project", "mimeType", "join"}
+		if stringsContains(nonInputtyFunctions, arg.Name) {
+			rewriteExpr()
+		}
+	default:
+		// everything else: wrap with their respective input type
+		rewriteExpr()
+	}
+
 	g.genTemps(w, temps)
-	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
+	if exprArgType == "" {
+		g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
+	} else {
+		// for basic types: string, int, float, bool we want to keep wrapper function as is
+		// otherwise for complex types, we need to prefix them with .To
+		// for example pulumi.StringArray should be pulumi.ToStringArray
+		if !stringsContains([]string{"pulumi.String", "pulumi.Int", "pulumi.Float64", "pulumi.Bool"}, exprArgType) {
+			exprArgType = strings.ReplaceAll(exprArgType, "pulumi.", "pulumi.To")
+		}
+
+		g.Fgenf(w, "ctx.Export(%q, %s(%.3v))\n", v.LogicalName(), exprArgType, expr)
+	}
 }
+
 func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 	singleReturn := ""
 	g.genTempsMultiReturn(w, temps, singleReturn)

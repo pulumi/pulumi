@@ -105,8 +105,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-webserver",
 		Description: "AWS Webserver",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
 		Directory:   "simple-range",
@@ -176,6 +174,14 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "invalid-go-sprintf",
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   "docker-func-invoke",
+		Description: "Docker function invoke",
+	},
+	{
+		Directory:   "simple-data-types",
+		Description: "Simple data types",
 	},
 	{
 		Directory:   "typed-enum",

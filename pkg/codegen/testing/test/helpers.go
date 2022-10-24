@@ -370,4 +370,5 @@ const (
 	KubernetesSchema  SchemaVersion = "3.7.2"
 	RandomSchema      SchemaVersion = "4.2.0"
 	EksSchema         SchemaVersion = "0.37.1"
+	DockerSchema      SchemaVersion = "3.4.1"
 )
