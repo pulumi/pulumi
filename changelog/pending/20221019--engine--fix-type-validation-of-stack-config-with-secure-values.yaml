@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix type validation of stack config with secure values.

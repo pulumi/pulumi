@@ -1,4 +1,0 @@
-changes:
-  - type: fix
-    scope: cli/engine
-    description: Component Resources inherit thier parents providers map
