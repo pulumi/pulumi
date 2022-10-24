@@ -92,6 +92,8 @@ type Workspace interface {
 	ListStacks(context.Context) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
+	// InstallPluginFromServer acquires the plugin matching the specified name and version.
+	InstallPluginFromServer(context.Context, string, string, string) error
 	// RemovePlugin deletes the plugin matching the specified name and version.
 	RemovePlugin(context.Context, string, string) error
 	// ListPlugins lists all installed plugins.

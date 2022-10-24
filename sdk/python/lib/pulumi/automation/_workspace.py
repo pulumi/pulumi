@@ -326,6 +326,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def install_plugin_from_server(self, name: str, version: str, server: str) -> None:
+        """
+        Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+
+        :param name: The name of the plugin to install.
+        :param version: The version to install.
+        :param server: The server to install from.
+        """
+
+    @abstractmethod
     def remove_plugin(
         self,
         name: Optional[str] = None,
