@@ -78,6 +78,13 @@
                 "string",
                 "null"
             ],
+            "properties":{
+                "secret":{
+                    "description":"If true this configuration value should be encrypted.",
+                    "type":"boolean",
+                    "default":false
+                }
+            },
             "additionalProperties":{
                 "oneOf":[
                     {
@@ -317,9 +324,7 @@
                 "secret":{
                     "type":"boolean"
                 },
-                "default":{
-                    
-                }
+                "default":{ }
             }
         }
     }

@@ -140,7 +140,7 @@ func (c Value) ToObject() (interface{}, error) {
 }
 
 func (c Value) MarshalJSON() ([]byte, error) {
-	v, err := c.MarshalValue()
+	v, err := c.marshalValue()
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (c *Value) UnmarshalJSON(b []byte) error {
 }
 
 func (c Value) MarshalYAML() (interface{}, error) {
-	return c.MarshalValue()
+	return c.marshalValue()
 }
 
 func (c *Value) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -202,7 +202,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 	return nil
 }
 
-func (c Value) MarshalValue() (interface{}, error) {
+func (c Value) marshalValue() (interface{}, error) {
 	if c.object {
 		return c.unmarshalObjectJSON()
 	}

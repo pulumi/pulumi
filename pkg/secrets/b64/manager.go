@@ -16,9 +16,6 @@
 package b64
 
 import (
-	"context"
-	"encoding/base64"
-
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -34,23 +31,5 @@ type manager struct{}
 
 func (m *manager) Type() string                         { return Type }
 func (m *manager) State() interface{}                   { return map[string]string{} }
-func (m *manager) Encrypter() (config.Encrypter, error) { return &base64Crypter{}, nil }
-func (m *manager) Decrypter() (config.Decrypter, error) { return &base64Crypter{}, nil }
-
-type base64Crypter struct{}
-
-func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, error) {
-	return base64.StdEncoding.EncodeToString([]byte(s)), nil
-}
-
-func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {
-	b, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func (c *base64Crypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
-	return config.DefaultBulkDecrypt(ctx, c, ciphertexts)
-}
+func (m *manager) Encrypter() (config.Encrypter, error) { return config.Base64Crypter, nil }
+func (m *manager) Decrypter() (config.Decrypter, error) { return config.Base64Crypter, nil }
