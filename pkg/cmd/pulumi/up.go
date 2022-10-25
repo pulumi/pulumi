@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -121,40 +120,19 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 		}
 
-		targetURNs, replaceURNs := []resource.URN{}, []resource.URN{}
+		targetURNs, replaceURNs := []string{}, []string{}
 
-		if len(targets)+len(replaces)+len(targetReplaces) > 0 {
-			// The s.Snapshot call below adds needless latency as s.Update further below will call
-			// (*cloudBackend).getSnapshot again, presumably re-retrieving the same result over the network.
-			// Although s.Snapshot has a cache, it does not get hit by s.Update as of this writing. For now:
-			// only call s.Snapshot here if targets, replaces, or targetReplaces require it.
-			snap, err := s.Snapshot(ctx)
-			if err != nil {
-				return result.FromError(err)
-			}
-			for _, t := range targets {
-				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
-			}
-
-			for _, r := range replaces {
-				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
-			}
-
-			for _, tr := range targetReplaces {
-				targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
-				replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
-			}
+		for _, t := range targets {
+			targetURNs = append(targetURNs, t)
 		}
 
-		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
-			// Wildcards were used, but they all evaluated to empty. We don't
-			// want a targeted update to turn into a general update, so we
-			// should abort.
-			if !jsonDisplay {
-				fmt.Printf("There were no resources matching the wildcards provided.\n")
-				fmt.Printf("Wildcards can only be used to target resources that already exist.\n")
-			}
-			return nil
+		for _, r := range replaces {
+			replaceURNs = append(replaceURNs, r)
+		}
+
+		for _, tr := range targetReplaces {
+			targetURNs = append(targetURNs, tr)
+			replaceURNs = append(replaceURNs, tr)
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -166,13 +144,13 @@ func newUpCmd() *cobra.Command {
 			Parallel:                  parallel,
 			Debug:                     debug,
 			Refresh:                   refreshOption,
-			RefreshTargets:            targetURNs,
-			ReplaceTargets:            replaceURNs,
+			RefreshTargets:            deploy.NewUrnTargets(targetURNs),
+			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 			UseLegacyDiff:             useLegacyDiff(),
 			DisableProviderPreview:    disableProviderPreview(),
 			DisableResourceReferences: disableResourceReferences(),
 			DisableOutputValues:       disableOutputValues(),
-			UpdateTargets:             targetURNs,
+			UpdateTargets:             deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
@@ -527,7 +505,7 @@ func newUpCmd() *cobra.Command {
 			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
-		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
+		"Specify a single resource URN to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
 			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},

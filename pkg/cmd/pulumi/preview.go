@@ -24,8 +24,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -168,19 +168,19 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
-			targetURNs := []resource.URN{}
+			targetURNs := []string{}
 			for _, t := range targets {
-				targetURNs = append(targetURNs, resource.URN(t))
+				targetURNs = append(targetURNs, t)
 			}
 
-			replaceURNs := []resource.URN{}
+			replaceURNs := []string{}
 			for _, r := range replaces {
-				replaceURNs = append(replaceURNs, resource.URN(r))
+				replaceURNs = append(replaceURNs, r)
 			}
 
 			for _, tr := range targetReplaces {
-				targetURNs = append(targetURNs, resource.URN(tr))
-				replaceURNs = append(replaceURNs, resource.URN(tr))
+				targetURNs = append(targetURNs, tr)
+				replaceURNs = append(replaceURNs, tr)
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
@@ -194,12 +194,12 @@ func newPreviewCmd() *cobra.Command {
 					Parallel:                  parallel,
 					Debug:                     debug,
 					Refresh:                   refreshOption,
-					ReplaceTargets:            replaceURNs,
+					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
 					UseLegacyDiff:             useLegacyDiff(),
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
 					DisableOutputValues:       disableOutputValues(),
-					UpdateTargets:             targetURNs,
+					UpdateTargets:             deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.

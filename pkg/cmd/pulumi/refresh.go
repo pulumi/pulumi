@@ -212,9 +212,9 @@ func newRefreshCmd() *cobra.Command {
 				}
 			}
 
-			targetUrns := []resource.URN{}
+			targetUrns := []string{}
 			for _, t := range *targets {
-				targetUrns = append(targetUrns, resource.URN(t))
+				targetUrns = append(targetUrns, t)
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -224,7 +224,7 @@ func newRefreshCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
-				RefreshTargets:            targetUrns,
+				RefreshTargets:            deploy.NewUrnTargets(targetUrns),
 			}
 
 			changes, res := s.Refresh(ctx, backend.UpdateOperation{
