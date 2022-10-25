@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Prevent concurrent read/writes to the component providers map.
