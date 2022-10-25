@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.44.1 (2022-10-25)
+
+
+### Bug Fixes
+
+- [engine] Fix an invalid cast in analyzer plugins.
+  [#11141](https://github.com/pulumi/pulumi/pull/11141)
+
 ## 3.44.0 (2022-10-24)
 
 
