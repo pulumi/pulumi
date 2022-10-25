@@ -1324,6 +1324,11 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return ""
 			}
 		}
+
+		if display.opts.SuppressTimings {
+			return opText
+		}
+
 		start, ok := display.opStopwatch.start[step.URN]
 		if !ok {
 			return opText
@@ -1493,6 +1498,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		default:
 			contract.Failf("Unrecognized resource step op: %v", op)
 			return ""
+		}
+
+		if display.opts.SuppressTimings {
+			return opText
 		}
 
 		// Calculate operation time elapsed.

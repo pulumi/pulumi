@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -45,6 +46,9 @@ func newPreviewCmd() *cobra.Command {
 	var planFilePath string
 	var showSecrets bool
 
+	// Flags for remote operations.
+	remoteArgs := RemoteArgs{}
+
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
 	var policyPackPaths []string
@@ -64,8 +68,13 @@ func newPreviewCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 
+	use, cmdArgs := "preview", cmdutil.NoArgs
+	if remoteSupported() {
+		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
+	}
+
 	var cmd = &cobra.Command{
-		Use:        "preview",
+		Use:        use,
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
 		Short:      "Show a preview of updates to a stack's resources",
@@ -80,7 +89,7 @@ func newPreviewCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.NoArgs,
+		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 			var displayType = display.DisplayProgress
@@ -109,6 +118,23 @@ func newPreviewCmd() *cobra.Command {
 			} else {
 				displayOpts.SuppressPermalink = false
 			}
+
+			if remoteArgs.remote {
+				if len(args) == 0 {
+					return result.FromError(errors.New("must specify remote URL"))
+				}
+
+				err := validateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
+					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames,
+					showReads, suppressOutputs, "default", &targets, replaces, targetReplaces,
+					targetDependents, planFilePath, stackConfigFile)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				return runDeployment(ctx, displayOpts, apitype.Preview, stack, args[0], remoteArgs)
+			}
+
 			filestateBackend, err := isFilestateBackend(displayOpts)
 			if err != nil {
 				return result.FromError(err)
@@ -338,6 +364,9 @@ func newPreviewCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+
+	// Remote flags
+	remoteArgs.applyFlags(cmd)
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

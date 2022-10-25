@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,6 +44,9 @@ func newRefreshCmd() *cobra.Command {
 	var execKind string
 	var execAgent string
 	var stack string
+
+	// Flags for remote operations.
+	remoteArgs := RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -63,8 +67,13 @@ func newRefreshCmd() *cobra.Command {
 	var clearPendingCreates bool
 	var importPendingCreates *[]string
 
+	use, cmdArgs := "refresh", cmdutil.NoArgs
+	if remoteSupported() {
+		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
+	}
+
 	var cmd = &cobra.Command{
-		Use:   "refresh",
+		Use:   use,
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
 			"\n" +
@@ -75,9 +84,15 @@ func newRefreshCmd() *cobra.Command {
 			"\n" +
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
-		Args: cmdutil.NoArgs,
+		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
+
+			// Remote implies we're skipping previews.
+			if remoteArgs.remote {
+				skipPreview = true
+			}
+
 			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
@@ -114,6 +129,22 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
+			}
+
+			if remoteArgs.remote {
+				if len(args) == 0 {
+					return result.FromError(errors.New("must specify remote URL"))
+				}
+
+				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
+					nil, "", showConfig, showReplacementSteps, showSames, false,
+					suppressOutputs, "default", targets, nil, nil,
+					false, "", stackConfigFile)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				return runDeployment(ctx, opts.Display, apitype.Refresh, stack, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -311,6 +342,9 @@ func newRefreshCmd() *cobra.Command {
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
+	// Remote flags
+	remoteArgs.applyFlags(cmd)
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

@@ -33,6 +33,7 @@ func newStackInitCmd() *cobra.Command {
 	var secretsProvider string
 	var stackName string
 	var stackToCopy string
+	var noSelect bool
 
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
@@ -72,10 +73,6 @@ func newStackInitCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			proj, _, err := readProject()
-			if err != nil {
-				return err
-			}
 			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
@@ -122,12 +119,17 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(ctx, b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			newStack, err := createStack(ctx, b, stackRef, createOpts, !noSelect, secretsProvider)
 			if err != nil {
 				return err
 			}
 
 			if stackToCopy != "" {
+				proj, _, err := readProject()
+				if err != nil {
+					return err
+				}
+
 				// load the old stack and its project
 				copyStack, err := requireStack(ctx, stackToCopy, false, opts, false /*setCurrent*/)
 				if err != nil {
@@ -157,5 +159,7 @@ func newStackInitCmd() *cobra.Command {
 		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
 		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+	cmd.PersistentFlags().BoolVar(
+		&noSelect, "no-select", false, "Do not select the stack")
 	return cmd
 }

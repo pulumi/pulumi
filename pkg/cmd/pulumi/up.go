@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -53,6 +54,9 @@ func newUpCmd() *cobra.Command {
 	var configArray []string
 	var path bool
 	var client string
+
+	// Flags for remote operations.
+	remoteArgs := RemoteArgs{}
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -403,6 +407,12 @@ func newUpCmd() *cobra.Command {
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
+
+			// Remote implies we're skipping previews.
+			if remoteArgs.remote {
+				skipPreview = true
+			}
+
 			yes = yes || skipPreview || skipConfirmations()
 
 			interactive := cmdutil.Interactive()
@@ -446,6 +456,22 @@ func newUpCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			} else {
 				opts.Display.SuppressPermalink = false
+			}
+
+			if remoteArgs.remote {
+				if len(args) == 0 {
+					return result.FromError(errors.New("must specify remote URL"))
+				}
+
+				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
+					policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames, showReads,
+					suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
+					targetDependents, planFilePath, stackConfigFile)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				return runDeployment(ctx, opts.Display, apitype.Update, stack, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -574,6 +600,9 @@ func newUpCmd() *cobra.Command {
 	if !hasExperimentalCommands() {
 		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
 	}
+
+	// Remote flags
+	remoteArgs.applyFlags(cmd)
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

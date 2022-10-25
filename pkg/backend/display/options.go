@@ -52,4 +52,5 @@ type Options struct {
 	Debug                bool                // true to enable debug output.
 	Stdout               io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
 	Stderr               io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
+	SuppressTimings      bool                // true to suppress displaying timings of resource actions
 }

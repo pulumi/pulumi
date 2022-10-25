@@ -97,7 +97,8 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			secretsProvider := args[0]
 			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotatePassphraseProvider); err != nil {
+			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotatePassphraseProvider,
+				false /*creatingStack*/); err != nil {
 				return err
 			}
 
