@@ -40,28 +40,11 @@ type deploymentExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this deployment
 }
 
-// A set is returned of all the target URNs to facilitate later callers.  The set can be 'nil'
-// indicating no targets, or will be non-nil and non-empty if there are targets.  Only URNs in the
-// original array are in the set.  i.e. it's only checked for containment.  The value of the map is
-// unused.
-func createTargetMap(targets []resource.URN) map[resource.URN]bool {
-	if len(targets) == 0 {
-		return nil
-	}
-
-	targetMap := make(map[resource.URN]bool)
-	for _, target := range targets {
-		targetMap[target] = true
-	}
-
-	return targetMap
-}
-
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
-func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op display.StepOp) result.Result {
-	if len(targets) == 0 {
+func (ex *deploymentExecutor) checkTargets(targets UrnTargets, op display.StepOp) result.Result {
+	if !targets.IsConstrained() {
 		return nil
 	}
 
@@ -72,12 +55,8 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op display.St
 	}
 
 	hasUnknownTarget := false
-	for _, target := range targets {
-		hasOld := false
-		if _, has := olds[target]; has {
-			hasOld = true
-		}
-
+	for _, target := range targets.Literals() {
+		hasOld := olds != nil && olds[target] != nil
 		hasNew := news != nil && news[target]
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
@@ -184,9 +163,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Non-nil means 'update only in this set'.  We don't error if the user specifies a target
 	// during `update` that we don't know about because it might be the urn for a resource they
 	// want to create.
-	updateTargetsOpt := createTargetMap(opts.UpdateTargets)
-	replaceTargetsOpt := createTargetMap(opts.ReplaceTargets)
-	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
+	updateTargetsOpt := opts.UpdateTargets
+	replaceTargetsOpt := opts.ReplaceTargets
+	destroyTargetsOpt := opts.DestroyTargets
 	if res := ex.checkTargets(opts.ReplaceTargets, OpReplace); res != nil {
 		return nil, res
 	}
@@ -194,7 +173,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		return nil, res
 	}
 
-	if (updateTargetsOpt != nil || replaceTargetsOpt != nil) && destroyTargetsOpt != nil {
+	if (updateTargetsOpt.IsConstrained() || replaceTargetsOpt.IsConstrained()) && destroyTargetsOpt.IsConstrained() {
 		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets or .ReplaceTargets")
 	}
 
@@ -302,7 +281,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Now that we've performed all steps in the deployment, ensure that the list of targets to update was
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
-	// to a resource that was created in one of hte steps.
+	// to a resource that was created in one of the steps.
 	if res == nil {
 		res = ex.checkTargets(opts.UpdateTargets, OpUpdate)
 	}
@@ -372,7 +351,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, updateTargetsOpt, destroyTargetsOpt map[resource.URN]bool) result.Result {
+	ctx context.Context, updateTargetsOpt, destroyTargetsOpt UrnTargets) result.Result {
 
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -389,10 +368,10 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	var targetsOpt map[resource.URN]bool
-	if updateTargetsOpt != nil {
+	var targetsOpt UrnTargets
+	if updateTargetsOpt.IsConstrained() {
 		targetsOpt = updateTargetsOpt
-	} else if destroyTargetsOpt != nil {
+	} else if destroyTargetsOpt.IsConstrained() {
 		targetsOpt = destroyTargetsOpt
 	}
 
@@ -420,7 +399,7 @@ func (ex *deploymentExecutor) performDeletes(
 
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
-	if targetsOpt != nil {
+	if targetsOpt.IsConstrained() {
 		resourceToStep := make(map[*resource.State]Step)
 		for _, step := range deleteSteps {
 			resourceToStep[ex.deployment.olds[step.URN()]] = step
@@ -562,9 +541,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
-	targetMapOpt := createTargetMap(opts.RefreshTargets)
 	for _, res := range prev.Resources {
-		if targetMapOpt == nil || targetMapOpt[res.URN] {
+		if opts.RefreshTargets.Contains(res.URN) {
 			step := NewRefreshStep(ex.deployment, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step

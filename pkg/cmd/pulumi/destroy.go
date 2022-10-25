@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -176,27 +177,17 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
 			}
 
-			targetUrns := []resource.URN{}
-			for _, t := range *targets {
-				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
-			}
-			if len(targetUrns) == 0 && len(*targets) > 0 {
-				if !jsonDisplay {
-					fmt.Printf("There were no resources matching the wildcards provided.\n")
-				}
-				return nil
-			}
-
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			if targets != nil && len(*targets) > 0 && excludeProtected {
+			if len(*targets) > 0 && excludeProtected {
 				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
 			}
 
 			var protectedCount int
+			var targetUrns []string = *targets
 			if excludeProtected {
 				contract.Assert(len(targetUrns) == 0)
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
@@ -218,7 +209,7 @@ func newDestroyCmd() *cobra.Command {
 				Parallel:                  parallel,
 				Debug:                     debug,
 				Refresh:                   refreshOption,
-				DestroyTargets:            targetUrns,
+				DestroyTargets:            deploy.NewUrnTargets(targetUrns),
 				TargetDependents:          targetDependents,
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
@@ -375,7 +366,7 @@ func seperateProtected(resources []*resource.State) (
 }
 
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]resource.URN, int, error) {
+func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]string, int, error) {
 	// Get snapshot
 	snapshot, err := s.Snapshot(ctx)
 	if err != nil {
@@ -384,9 +375,9 @@ func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]resource.UR
 		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
 	}
 	unprotected, protected := seperateProtected(snapshot.Resources)
-	targetUrns := []resource.URN{}
-	for _, r := range unprotected {
-		targetUrns = append(targetUrns, r.URN)
+	targetUrns := make([]string, len(unprotected))
+	for i, r := range unprotected {
+		targetUrns[i] = string(r.URN)
 	}
 	return targetUrns, len(protected), nil
 }

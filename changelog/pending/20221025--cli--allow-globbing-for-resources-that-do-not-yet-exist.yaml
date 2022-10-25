@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Allow globbing for resources that do not yet exist
