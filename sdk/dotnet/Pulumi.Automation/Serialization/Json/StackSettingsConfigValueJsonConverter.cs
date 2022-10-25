@@ -19,22 +19,28 @@ namespace Pulumi.Automation.Serialization.Json
                 return new StackSettingsConfigValue(value, false);
             }
 
-            // confirm object
-            if (element.ValueKind != JsonValueKind.Object)
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting object if not plain string.");
-
-            // check if secure string
-            var securePropertyName = options.PropertyNamingPolicy?.ConvertName("Secure") ?? "Secure";
-            if (element.TryGetProperty(securePropertyName, out var secureProperty))
+            // check if the element is an object,
+            // if it has a single property called "secure" then it is a secret value
+            // otherwise, serialize the whole object as JSON into the stack settings value
+            if (element.ValueKind == JsonValueKind.Object)
             {
-                if (secureProperty.ValueKind != JsonValueKind.String)
-                    throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}] as a secure string. Expecting a string secret.");
-
-                var secret = secureProperty.GetString();
-                return new StackSettingsConfigValue(secret, true);
+                foreach(var property in element.EnumerateObject())
+                {
+                    if (string.Equals("Secure", property.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var secureValue = property.Value;
+                        if (secureValue.ValueKind != JsonValueKind.String)
+                        {
+                            throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}] as a secure string. Expecting a string secret.");
+                        }
+                        
+                        return new StackSettingsConfigValue(secureValue.GetString(), true);
+                    }
+                }
             }
 
-            throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
+            var serializedElement = JsonSerializer.Serialize(element);
+            return new StackSettingsConfigValue(serializedElement, false);
         }
 
         public override void Write(Utf8JsonWriter writer, StackSettingsConfigValue value, JsonSerializerOptions options)
