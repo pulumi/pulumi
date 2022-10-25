@@ -794,9 +794,9 @@ func listConfig(ctx context.Context,
 	stackName := stack.Ref().Name().String()
 	// when listing configuration values
 	// also show values coming from the project
-	configError := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, project, ps.Config)
-	if configError != nil {
-		return configError
+	err = workspace.ApplyProjectConfig(stackName, project, ps.Config)
+	if err != nil {
+		return err
 	}
 
 	cfg := ps.Config
@@ -804,11 +804,11 @@ func listConfig(ctx context.Context,
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		dec, decerr := getStackDecrypter(stack)
-		if decerr != nil {
-			return decerr
+		stackDecrypter, err := getStackDecrypter(stack)
+		if err != nil {
+			return err
 		}
-		decrypter = dec
+		decrypter = stackDecrypter
 	}
 
 	var keys config.KeyArray
@@ -887,12 +887,13 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 	if err != nil {
 		return err
 	}
-	stackName := stack.Ref().Name().String()
-	configError := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, project, ps.Config)
-	if configError != nil {
-		return configError
-	}
 
+	stackName := stack.Ref().Name().String()
+	// when asking for a configuration value, include values from the project config
+	err = workspace.ApplyProjectConfig(stackName, project, ps.Config)
+	if err != nil {
+		return err
+	}
 	cfg := ps.Config
 
 	v, ok, err := cfg.Get(key, path)

@@ -1,7 +1,9 @@
 package workspace
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -264,48 +266,58 @@ config:
       type: array
       items:
         type: string
+  secretString:
+    type: string
+    secret: true
   `
 
 	project, err := loadProjectFromText(t, projectContent)
 	assert.NoError(t, err, "Should be able to load the project")
-	assert.Equal(t, 8, len(project.Config), "There are 8 config type definition")
+	assert.Equal(t, 9, len(project.Config), "There are 9 config type definition")
 	// full integer config schema
 	integerSchemFull, ok := project.Config["integerSchemaFull"]
 	assert.True(t, ok, "should be able to read integerSchemaFull")
 	assert.Equal(t, "integer", integerSchemFull.Type)
 	assert.Equal(t, "a very important value", integerSchemFull.Description)
 	assert.Equal(t, 1, integerSchemFull.Default)
+	assert.False(t, integerSchemFull.Secret)
 	assert.Nil(t, integerSchemFull.Items, "Primtive config type doesn't have an items type")
 
 	integerSchemaSimple, ok := project.Config["integerSchemaSimple"]
 	assert.True(t, ok, "should be able to read integerSchemaSimple")
 	assert.Equal(t, "integer", integerSchemaSimple.Type, "integer type is inferred correctly")
+	assert.False(t, integerSchemaSimple.Secret)
 	assert.Equal(t, 20, integerSchemaSimple.Default, "Default integer value is parsed correctly")
 
 	textSchemaFull, ok := project.Config["textSchemaFull"]
 	assert.True(t, ok, "should be able to read textSchemaFull")
 	assert.Equal(t, "string", textSchemaFull.Type)
+	assert.False(t, textSchemaFull.Secret)
 	assert.Equal(t, "t3.micro", textSchemaFull.Default)
 	assert.Equal(t, "", textSchemaFull.Description)
 
 	textSchemaSimple, ok := project.Config["textSchemaSimple"]
 	assert.True(t, ok, "should be able to read textSchemaSimple")
 	assert.Equal(t, "string", textSchemaSimple.Type)
+	assert.False(t, textSchemaSimple.Secret)
 	assert.Equal(t, "t4.large", textSchemaSimple.Default)
 
 	booleanSchemaFull, ok := project.Config["booleanSchemaFull"]
 	assert.True(t, ok, "should be able to read booleanSchemaFull")
 	assert.Equal(t, "boolean", booleanSchemaFull.Type)
+	assert.False(t, booleanSchemaFull.Secret)
 	assert.Equal(t, true, booleanSchemaFull.Default)
 
 	booleanSchemaSimple, ok := project.Config["booleanSchemaSimple"]
 	assert.True(t, ok, "should be able to read booleanSchemaSimple")
 	assert.Equal(t, "boolean", booleanSchemaSimple.Type)
+	assert.False(t, booleanSchemaSimple.Secret)
 	assert.Equal(t, false, booleanSchemaSimple.Default)
 
 	simpleArrayOfStrings, ok := project.Config["simpleArrayOfStrings"]
 	assert.True(t, ok, "should be able to read simpleArrayOfStrings")
 	assert.Equal(t, "array", simpleArrayOfStrings.Type)
+	assert.False(t, simpleArrayOfStrings.Secret)
 	assert.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
 	arrayValues := simpleArrayOfStrings.Default.([]interface{})
@@ -314,10 +326,19 @@ config:
 	arrayOfArrays, ok := project.Config["arrayOfArrays"]
 	assert.True(t, ok, "should be able to read arrayOfArrays")
 	assert.Equal(t, "array", arrayOfArrays.Type)
+	assert.False(t, arrayOfArrays.Secret)
 	assert.NotNil(t, arrayOfArrays.Items)
 	assert.Equal(t, "array", arrayOfArrays.Items.Type)
 	assert.NotNil(t, arrayOfArrays.Items.Items)
 	assert.Equal(t, "string", arrayOfArrays.Items.Items.Type)
+
+	secretString, ok := project.Config["secretString"]
+	assert.True(t, ok, "should be able to read secretString")
+	assert.Equal(t, "string", secretString.Type)
+	assert.Equal(t, "", secretString.Description)
+	assert.Equal(t, nil, secretString.Default)
+	assert.True(t, secretString.Secret)
+	assert.Nil(t, secretString.Items)
 }
 
 func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
@@ -348,7 +369,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
@@ -376,7 +397,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
@@ -403,7 +424,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NoError(t, configError, "Config override should be valid")
 
 	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
@@ -421,7 +442,7 @@ runtime: dotnet
 config:
   values:
     type: array
-    items: 
+    items:
       type: string
     default: [value]`
 
@@ -434,7 +455,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t, configError.Error(), "Stack 'dev' with configuration key 'values' must be of type 'array<string>'")
 }
@@ -507,12 +528,13 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NoError(t, configError, "there should no config type error")
 
 	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError = ValidateStackConfigAndApplyProjectConfig("dev", project, invalidStackConfig.Config)
+	configError = ValidateStackConfigAndApplyProjectConfig(
+		"dev", project, invalidStackConfig.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t,
 		configError.Error(),
@@ -527,7 +549,7 @@ runtime: dotnet
 config:
   values:
     type: array
-    items: 
+    items:
       type: string`
 
 	projectStackYaml := ``
@@ -536,7 +558,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration value 'values'")
 }
@@ -551,7 +573,7 @@ config:
     type: string
   values:
     type: array
-    items: 
+    items:
       type: string`
 
 	projectStackYaml := ``
@@ -560,7 +582,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'another' and 'values'")
 }
@@ -575,7 +597,7 @@ config:
     type: integer
   values:
     type: array
-    items: 
+    items:
       type: string
   world:
     type: string`
@@ -586,7 +608,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
 }
@@ -609,7 +631,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	expectedErrorMsg := "Stack 'dev' uses configuration value 'world' which is not defined by the project configuration"
 	assert.Contains(t, configError.Error(), expectedErrorMsg)
@@ -634,7 +656,7 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	expectedErrorMsg := "Stack 'dev' uses configuration values 'another' and 'world'" +
 		" which are not defined by the project configuration"
@@ -657,8 +679,50 @@ config:
 	assert.NoError(t, projectError, "Shold be able to load the project")
 	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
 	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config)
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.Nil(t, configError, "there should not be a config type error")
+}
+
+func TestStackConfigSecretIsCorrectlyValidated(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  importantNumber:
+    type: integer
+    secret: true
+`
+
+	crypter := config.Base64Crypter
+	encryptedValue, err := crypter.EncryptValue(context.Background(), "20")
+	assert.NoError(t, err)
+
+	projectStackYamlValid := fmt.Sprintf(`
+config:
+  test:importantNumber:
+    secure: %s
+`, encryptedValue)
+
+	projectStackYamlInvalid := `
+config:
+  test:importantNumber: 20
+`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYamlValid)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, crypter)
+	assert.NoError(t, configError, "there should no config type error")
+
+	invalidStackConfig, stackError := loadProjectStackFromText(t, project, projectStackYamlInvalid)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError = ValidateStackConfigAndApplyProjectConfig("dev", project, invalidStackConfig.Config, crypter)
+	assert.NotNil(t, configError, "there should be a config type error")
+	assert.Contains(t,
+		configError.Error(),
+		"Stack 'dev' with configuration key 'importantNumber' must be encrypted as it's secret")
 }
 
 func TestProjectLoadYAML(t *testing.T) {

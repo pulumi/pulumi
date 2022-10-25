@@ -90,6 +90,10 @@ const (
 	ExecutionKind = "exec.kind"
 	// ExecutionAgent indicates the user agent of the updater for automated scenarios (GHA, Kubernetes Operator).
 	ExecutionAgent = "exec.agent"
+
+	// UpdatePlan ("true", "false") indicates if an explicit update plan was used for the update (either
+	// saving one, or constraining to one).
+	UpdatePlan = "updatePlan"
 )
 
 // UpdateInfo describes a previous update.

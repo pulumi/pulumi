@@ -209,9 +209,6 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
-ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
-
-
 def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
@@ -224,6 +221,9 @@ def set_root_resource(root: "Resource"):
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
     ROOT.set(root)
+
+
+ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
 
 
 async def monitor_supports_feature(feature: str) -> bool:

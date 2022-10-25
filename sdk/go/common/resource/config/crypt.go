@@ -275,3 +275,24 @@ func DefaultBulkDecrypt(ctx context.Context,
 	}
 	return secretMap, nil
 }
+
+type base64Crypter struct{}
+
+// Base64Crypter is a Crypter that "encrypts" by encoding the string to base64.
+var Base64Crypter Crypter = &base64Crypter{}
+
+func (c *base64Crypter) EncryptValue(ctx context.Context, s string) (string, error) {
+	return base64.StdEncoding.EncodeToString([]byte(s)), nil
+}
+
+func (c *base64Crypter) DecryptValue(ctx context.Context, s string) (string, error) {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func (c *base64Crypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(ctx, c, ciphertexts)
+}

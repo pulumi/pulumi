@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/go
-  description: Update notes, update the deprecated functions, make some lint.

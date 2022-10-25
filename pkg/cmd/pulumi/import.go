@@ -483,7 +483,7 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -498,7 +498,12 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config)
+			decrypter, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			}
+
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config, decrypter)
 			if configErr != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}

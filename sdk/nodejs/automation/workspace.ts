@@ -178,6 +178,14 @@ export interface Workspace {
      * @param version the version of the plugin e.g. "v1.0.0".
      * @param kind the kind of plugin e.g. "resource"
      */
+    installPluginFromServer(name: string, version: string, server: string): Promise<void>;
+    /**
+     * Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     * @param server the server to install the plugin into
+     */
     installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**
      * Removes a plugin from the Workspace matching the specified name and version.

@@ -610,6 +610,8 @@ type Package struct {
 	PluginDownloadURL string
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -938,21 +940,30 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	spec = &PackageSpec{
-		Name:              pkg.Name,
-		Version:           version,
-		Description:       pkg.Description,
-		Keywords:          pkg.Keywords,
-		Homepage:          pkg.Homepage,
-		License:           pkg.License,
-		Attribution:       pkg.Attribution,
-		Repository:        pkg.Repository,
-		LogoURL:           pkg.LogoURL,
-		PluginDownloadURL: pkg.PluginDownloadURL,
-		Meta:              metadata,
-		Types:             map[string]ComplexTypeSpec{},
-		Resources:         map[string]ResourceSpec{},
-		Functions:         map[string]FunctionSpec{},
+		Name:                pkg.Name,
+		Version:             version,
+		DisplayName:         pkg.DisplayName,
+		Publisher:           pkg.Publisher,
+		Description:         pkg.Description,
+		Keywords:            pkg.Keywords,
+		Homepage:            pkg.Homepage,
+		License:             pkg.License,
+		Attribution:         pkg.Attribution,
+		Repository:          pkg.Repository,
+		LogoURL:             pkg.LogoURL,
+		PluginDownloadURL:   pkg.PluginDownloadURL,
+		Meta:                metadata,
+		Types:               map[string]ComplexTypeSpec{},
+		Resources:           map[string]ResourceSpec{},
+		Functions:           map[string]FunctionSpec{},
+		AllowedPackageNames: pkg.AllowedPackageNames,
 	}
+
+	lang, err := marshalLanguage(pkg.Language)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package language: %w", err)
+	}
+	spec.Language = lang
 
 	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
 	if err != nil {

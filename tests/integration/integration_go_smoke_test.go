@@ -94,15 +94,28 @@ func TestConstructGo(t *testing.T) {
 					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
-			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, localProviders, test.env...))
+			integration.ProgramTest(t, optsForConstructGo(t, testDir, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructGo(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
+// Test remote component construction in Go.
+func TestNestedConstructGo(t *testing.T) {
+	testDir := "construct_component"
+	runComponentSetup(t, testDir)
+
+	localProviders :=
+		[]integration.LocalDependency{
+			{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+			{Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go")},
+			{Package: "secondtestcomponent", Path: filepath.Join(testDir, "testcomponent2-go")}}
+	integration.ProgramTest(t, optsForConstructGo(t, "construct_nested_component", 18, localProviders))
+}
+
+func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
-		Dir: filepath.Join("construct_component", "go"),
+		Dir: filepath.Join(dir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},

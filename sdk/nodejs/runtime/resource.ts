@@ -522,14 +522,14 @@ async function prepareResource(label: string, res: Resource, parent: Resource | 
 
         let providerRef: string | undefined;
         let importID: ID | undefined;
-        if (custom) {
+        if (custom || remote) {
             const customOpts = <CustomResourceOptions>opts;
             importID = customOpts.import;
             providerRef = await ProviderResource.register(opts.provider);
         }
 
         const providerRefs: Map<string, string> = new Map<string, string>();
-        if (remote) {
+        if (remote || !custom) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
             // the <ProviderResource[]> casts are safe because expandProviders

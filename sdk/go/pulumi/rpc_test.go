@@ -873,12 +873,12 @@ func TestDependsOnComponent(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
-	registerResource := func(name string, res Resource, options ...ResourceOption) (Resource, []string) {
+	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
 		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
 
-		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)
+		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom)
 		require.NoError(t, err)
 
 		return res, inputs.deps
@@ -886,12 +886,12 @@ func TestDependsOnComponent(t *testing.T) {
 
 	newResource := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res testResource
-		return registerResource(name, &res, options...)
+		return registerResource(name, &res, true, options...)
 	}
 
 	newComponent := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res simpleComponentResource
-		return registerResource(name, &res, options...)
+		return registerResource(name, &res, false, options...)
 	}
 
 	resA, _ := newResource("resA", nil)

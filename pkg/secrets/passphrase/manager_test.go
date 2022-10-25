@@ -1,7 +1,6 @@
 package passphrase
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -102,7 +101,7 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	resetEnv := resetPassphraseTestEnvVars()
 	defer resetEnv()
 
-	tmpFile, err := ioutil.TempFile("", "pulumi-secret-test")
+	tmpFile, err := os.CreateTemp("", "pulumi-secret-test")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")
