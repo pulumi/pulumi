@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Only trigger an import when necessary during refresh.
