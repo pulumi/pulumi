@@ -66,5 +66,10 @@ namespace Pulumi.Automation
         /// Print detailed debugging output during resource operations
         /// </summary>
         public bool? Debug { get; set; }
+
+        /// <summary>
+        /// Format standard output as JSON not text.
+        /// </summary>
+        public bool? Json { get; set; }
     }
 }
