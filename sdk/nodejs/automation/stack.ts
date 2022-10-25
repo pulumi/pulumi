@@ -618,6 +618,30 @@ Event: ${line}\n${e.toString()}`);
         return this.workspace.importStack(this.name, state);
     }
 
+    /**
+     * unprotect a single resource in a stack designated by the URN.
+     * @param urn  the URN of the resource to be unprotected
+     */
+    async unprotect(urn?: string): Promise<void> {
+        await this.runPulumiCmd([
+            "state",
+            "unprotect",
+            "--yes",
+        ]);
+    }
+
+    /**
+     * unprotect all resources in a stack.
+     */
+    async unprotectAll(): Promise<void> {
+        await this.runPulumiCmd([
+            "state",
+            "unprotect",
+            "--all",
+            "--yes",
+        ]);
+    }
+
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
             "PULUMI_DEBUG_COMMANDS": "true",

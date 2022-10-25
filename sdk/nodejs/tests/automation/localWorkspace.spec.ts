@@ -26,6 +26,7 @@ import {
     Stack,
     parseAndValidatePulumiVersion,
 } from "../../automation";
+import { ComponentResource, ComponentResourceOptions } from "../..";
 import { Config, output } from "../../index";
 import { asyncTest } from "../util";
 
@@ -140,16 +141,16 @@ describe("LocalWorkspace", () => {
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
-        await stack.setConfig("key", {value: "-value"});
-        await stack.setConfig("secret-key", {value: "-value", secret: true});
+        await stack.setConfig("key", { value: "-value" });
+        await stack.setConfig("secret-key", { value: "-value", secret: true });
         const values = await stack.getAllConfig();
         assert.strictEqual(values["config_flag_like:key"].value, "-value");
         assert.strictEqual(values["config_flag_like:key"].secret, false);
         assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
         assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
         await stack.setAllConfig({
-            "key": {value: "-value2"},
-            "secret-key": {value: "-value2", secret: true},
+            "key": { value: "-value2" },
+            "secret-key": { value: "-value2", secret: true },
         });
         const values2 = await stack.getAllConfig();
         assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
@@ -788,6 +789,81 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(Object.keys(config).length, 20);
             await stack.workspace.removeStack(stacks[i]);
         }
+    }));
+    it(`correctly unprotect a single resource in a stack`, asyncTest(async () => {
+        // resource - urn:pulumi:test::protect::test:index:test::test1
+        const program = async () => {
+            class TestComponent extends ComponentResource {
+                constructor(name: string, opts: ComponentResourceOptions) {
+                    super("test:index:test", name, {}, opts);
+
+                }
+            }
+
+            new TestComponent("test1", { protect: true });
+            return {};
+        };
+
+        const urn = "urn:pulumi:test::protect::test:index:test::test1";
+        const projectName = "unprotect_single_resources";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `unprotect_single_${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await stack.up({ userAgent });
+
+        // pulumi destroy fails
+        await assert.rejects(stack.up(), (err: Error) => {
+            return err.stack!.indexOf(`unable to delete resource \"${urn}\" as it is currently marked for protection`) >= 0;
+        });
+
+        // unprotect
+        await stack.unprotect(urn);
+
+        // pulumi destroy
+        const destroyResult = await stack.destroy();
+        assert.strictEqual(destroyResult.summary.kind, "destroy");
+        assert.strictEqual(destroyResult.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
+    it(`correctly unprotect a all resources in a stack`, asyncTest(async () => {
+        // resources - urn:pulumi:test::protect::test:index:test::test1, urn:pulumi:test::protect::test:index:test::test2, urn:pulumi:test::protect::test:index:test::test3
+        const program = async () => {
+            class TestComponent extends ComponentResource {
+                constructor(name: string, opts: ComponentResourceOptions) {
+                    super("test:index:test", name, {}, opts);
+
+                }
+            }
+
+            new TestComponent("test1", { protect: true });
+            new TestComponent("test2", { protect: true });
+            new TestComponent("test3", { protect: true });
+            return {};
+        };
+
+        const projectName = "unprotect_all_resources";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `unprotect_all_${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await stack.up({ userAgent });
+
+        // pulumi destroy fails
+        await assert.rejects(stack.up(), (err: Error) => {
+            return err.stack!.indexOf(`unable to delete resource`) >= 0;
+        });
+
+        // unprotect
+        await stack.unprotectAll();
+
+        // pulumi destroy
+        const destroyResult = await stack.destroy();
+        assert.strictEqual(destroyResult.summary.kind, "destroy");
+        assert.strictEqual(destroyResult.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
     }));
 });
 
