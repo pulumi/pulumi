@@ -36,7 +36,7 @@ on:
         type: string
       smoke-test-platforms:
         required: false
-        default: windows-latest macos-latest
+        default: windows-latest macos-11
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
@@ -115,8 +115,8 @@ jobs:
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-11" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-11" }
             ]'
           fi
 
@@ -236,10 +236,10 @@ jobs:
   unit-test:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name: It changes this:
-    #   CI / Unit Test (cd sdk/dotnet && make dotnet_test, cd sdk/dotnet && make dotnet_test, macos-latest, mi... / sdk/dotnet dotnet_test on macos-latest/current
+    #   CI / Unit Test (cd sdk/dotnet && make dotnet_test, cd sdk/dotnet && make dotnet_test, macos-11, mi... / sdk/dotnet dotnet_test on macos-11/current
     #   (See: https://github.com/pulumi/pulumi/runs/8241055084?check_suite_focus=true#logs)
     # To this:
-    #   CI / Unit Test / sdk/dotnet dotnet_test on macos-latest/current
+    #   CI / Unit Test / sdk/dotnet dotnet_test on macos-11/current
     name: Unit Test${{ matrix.platform && '' }}
     needs: [matrix]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
