@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.44.2 (2022-10-26)
+
+
+### Features
+
+- [cli] Allow globbing for resources that do not yet exist
+  [#11150](https://github.com/pulumi/pulumi/pull/11150)
+
+- [auto/dotnet] Add Json option to UpdateOptions.
+  [#11148](https://github.com/pulumi/pulumi/pull/11148)
+
+
+### Bug Fixes
+
+- [build] Fix release build to continue to use MacOS 11.
+  [#11155](https://github.com/pulumi/pulumi/pull/11155)
+
+- [engine] Prevent concurrent read/writes to the component providers map.
+  [#11151](https://github.com/pulumi/pulumi/pull/11151)
+
 ## 3.44.1 (2022-10-25)
 
 
