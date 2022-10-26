@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: build
-  description: Fix release build to continue to use MacOS 11.
