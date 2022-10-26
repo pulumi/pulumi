@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/dotnet,go,nodejs,python
+  description: detect concurrent update error from local backend.

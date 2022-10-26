@@ -128,11 +128,8 @@ namespace Pulumi
     /// <see cref="Output{T}"/>s are a key part of how Pulumi tracks dependencies between <see
     /// cref="Resource"/>s. Because the values of outputs are not available until resources are
     /// created, these are represented using the special <see cref="Output{T}"/>s type, which
-    /// internally represents two things:
-    /// <list type="number">
-    /// <item><description>An eventually available value of the output</description></item>
-    /// <item><description>The dependency on the source(s) of the output value</description></item>
-    /// </list>
+    /// internally represents two things: an eventually available value of the output and 
+    /// the dependency on the source(s) of the output value.
     /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
     /// Additionally, they carry along dependency information.
     /// <para/>
