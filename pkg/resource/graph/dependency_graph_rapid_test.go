@@ -127,10 +127,8 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 		return inverse(transitively(universe)(restrictedDependenciesOf))
 	}
 
-	// TODO this extends base `expectedDependingOn` with
-	// immediate children. Should it be a transitive closure?
 	dependingOn := expectedDependingOn(universe, false)
-	return func(a, b *resource.State) bool {
+	return transitively(universe)(func(a, b *resource.State) bool {
 		if dependingOn(a, b) || isParent(b, a) {
 			return true
 		}
@@ -140,7 +138,7 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 			}
 		}
 		return false
-	}
+	})
 }
 
 // Verify `DependingOn` against `expectedDependingOn`. Note that

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/state
+  description: Add the --target-dependents flag to `pulumi state delete`

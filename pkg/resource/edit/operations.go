@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,21 +29,56 @@ import (
 // given snapshot and pertain to the specific passed-in resource.
 type OperationFunc func(*deploy.Snapshot, *resource.State) error
 
-// DeleteResource deletes a given resource from the snapshot, if it is possible to do so. A resource can only be deleted
-// from a stack if there do not exist any resources that depend on it or descend from it. If such a resource does exist,
-// DeleteResource will return an error instance of `ResourceHasDependenciesError`.
-func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) error {
+// DeleteResource deletes a given resource from the snapshot, if it is possible to do so.
+//
+// If targetDependents is true, dependents will also be deleted. Otherwise an error
+// instance of `ResourceHasDependenciesError` will be returned.
+//
+// If non-nil, onProtected will be called on all protected resources planed for deletion.
+//
+// If a resource is marked protected after onProtected is called, an error instance of
+// `ResourceHasDependenciesError` will be returned.
+func DeleteResource(
+	snapshot *deploy.Snapshot, condemnedRes *resource.State,
+	onProtected func(*resource.State) error, targetDependents bool,
+) error {
 	contract.Require(snapshot != nil, "snapshot")
 	contract.Require(condemnedRes != nil, "state")
 
-	if condemnedRes.Protect {
-		return ResourceProtectedError{condemnedRes}
+	handleProtected := func(res *resource.State) error {
+		if !res.Protect {
+			return nil
+		}
+		var err error
+		if onProtected != nil {
+			err = onProtected(res)
+		}
+		if err == nil && res.Protect {
+			err = ResourceProtectedError{res}
+		}
+		return err
+	}
+
+	if err := handleProtected(condemnedRes); err != nil {
+		return err
 	}
 
 	dg := graph.NewDependencyGraph(snapshot.Resources)
-	dependencies := dg.DependingOn(condemnedRes, nil, false)
-	if len(dependencies) != 0 {
-		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
+	deleteSet := map[resource.URN]bool{
+		condemnedRes.URN: true,
+	}
+
+	if dependencies := dg.DependingOn(condemnedRes, nil, true); len(dependencies) != 0 {
+		if !targetDependents {
+			return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
+		}
+		for _, dep := range dependencies {
+			err := handleProtected(dep)
+			if err != nil {
+				return err
+			}
+			deleteSet[dep.URN] = true
+		}
 	}
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
@@ -51,21 +86,20 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	var newSnapshot []*resource.State
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
-		// While iterating, keep track of the set of resources that are parented to our condemned resource. We'll only
-		// actually perform the deletion if this set is empty, otherwise it is not legal to delete the resource.
-		if res.Parent == condemnedRes.URN {
+		// While iterating, keep track of the set of resources that are parented to our
+		// condemned resource. This acts as a check on DependingOn, preventing a bug from
+		// introducing state corruption.
+		if res.Parent == condemnedRes.URN && !deleteSet[res.URN] {
 			children = append(children, res)
 		}
 
-		if res != condemnedRes {
+		if !deleteSet[res.URN] {
 			newSnapshot = append(newSnapshot, res)
 		}
 	}
 
 	// If there exists a resource that is the child of condemnedRes, we can't delete it.
-	if len(children) != 0 {
-		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: children}
-	}
+	contract.Assertf(len(children) == 0, "unexpected children in resource dependency list")
 
 	// Otherwise, we're good to go. Writing the new resource list into the snapshot persists the mutations that we have
 	// made above.
