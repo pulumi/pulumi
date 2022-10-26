@@ -1,6 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
@@ -22,27 +24,44 @@ namespace Pulumi.Automation.Serialization.Yaml
                 return new StackSettingsConfigValue(stringValue.Value, false);
             }
 
-            // confirm it is an object
-            if (!parser.TryConsume<MappingStart>(out _))
-                throw new YamlException($"Unable to deserialize [{type.FullName}]. Expecting object if not plain string.");
+            var deserializer = new Deserializer();
 
-            // get first property name
-            if (!parser.TryConsume<Scalar>(out var firstPropertyName))
-                throw new YamlException($"Unable to deserialize [{type.FullName}]. Expecting first property name inside object.");
-
-            // check if secure string
-            if (string.Equals("Secure", firstPropertyName.Value, StringComparison.OrdinalIgnoreCase))
+            // check whether it is an object with a single property called "secure"
+            // this means we have a secret value serialized into the value
+            if (parser.TryConsume<MappingStart>(out var _))
             {
-                // secure string
-                if (!parser.TryConsume<Scalar>(out var securePropertyValue))
-                    throw new YamlException($"Unable to deserialize [{type.FullName}] as a secure string. Expecting a string secret.");
+                var dictionaryFromYaml = new Dictionary<string, object?>();
 
-                // needs to be 1 mapping end and then return
+                // in which case, check whether it is a secure value
+                while (parser.TryConsume<Scalar>(out var firstPropertyName))
+                {
+                    if (string.Equals("Secure", firstPropertyName.Value, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // secure string
+                        if (!parser.TryConsume<Scalar>(out var securePropertyValue))
+                            throw new YamlException($"Unable to deserialize [{type.FullName}] as a secure string. Expecting a string secret.");
+
+                         // needs to be 1 mapping end and then return
+                        parser.Require<MappingEnd>();
+                        parser.MoveNext();
+                        return new StackSettingsConfigValue(securePropertyValue.Value, true);
+                    }
+
+                    // not a secure string, so we need to add first value to the dictionary
+                    dictionaryFromYaml.Add(firstPropertyName.Value, deserializer.Deserialize<object?>(parser));
+                }
+
                 parser.Require<MappingEnd>();
                 parser.MoveNext();
-                return new StackSettingsConfigValue(securePropertyValue.Value, true);
+                // serialize the dictionary back into the value as JSON
+                var serializedDictionary = JsonSerializer.Serialize(dictionaryFromYaml);
+                return new StackSettingsConfigValue(serializedDictionary, false);
             }
-            throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
+
+            // for anything else, i.e. arrays, parse the contents as is and serialize it a JSON string
+            var deserializedFromYaml = deserializer.Deserialize<object?>(parser);
+            var serializedToJson = JsonSerializer.Serialize(deserializedFromYaml);
+            return new StackSettingsConfigValue(serializedToJson, false);
         }
 
         public void WriteYaml(IEmitter emitter, object? value, Type type)

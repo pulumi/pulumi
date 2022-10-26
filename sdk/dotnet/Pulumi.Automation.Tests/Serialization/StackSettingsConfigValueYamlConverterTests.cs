@@ -49,20 +49,22 @@ config:
         }
 
         [Fact]
-        public void CannotDeserializeObject()
+        public void CanDeserializeObject()
         {
             const string yaml = @"
 config:
   value:
-    test: test
-    nested:
-      one: 1
-      two: true
-      three: three
+    hello: world
 ";
 
-            Assert.Throws<YamlException>(
-                () => _serializer.DeserializeYaml<StackSettings>(yaml));
+            var settings = _serializer.DeserializeYaml<StackSettings>(yaml);
+            Assert.NotNull(settings.Config);
+            Assert.True(settings!.Config!.ContainsKey("value"));
+
+            var value = settings.Config["value"];
+            Assert.NotNull(value);
+            Assert.Equal("{\"hello\":\"world\"}", value.Value);
+            Assert.False(value.IsSecure);
         }
 
         [Fact]
