@@ -23,15 +23,19 @@ func TestBatches(t *testing.T) {
 			}
 
 			assert.ElementsMatch(t, PulumiPulumiProgramTests, combined)
-
-			// Check that all synced tests from pulumi/yaml are in test list
-			syncDir := filepath.Join("testdata", transpiledExamplesDir)
-			untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiProgramTests)
-			assert.Nil(t, err)
-			assert.Emptyf(t, untestedTranspiledExamples,
-				"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 		})
 	}
+}
+
+// Checks that all synced tests from pulumi/yaml are in test list
+func TestTranspiledExampleTestsCovered(t *testing.T) {
+	t.Parallel()
+	// Check that all synced tests from pulumi/yaml are in test list
+	syncDir := filepath.Join("testdata", transpiledExamplesDir)
+	untestedTranspiledExamples, err := getUntestedTranspiledExampleDirs(syncDir, PulumiPulumiYAMLProgramTests)
+	assert.Nil(t, err)
+	assert.Emptyf(t, untestedTranspiledExamples,
+		"Untested examples in %s: %v", syncDir, untestedTranspiledExamples)
 }
 
 func getUntestedTranspiledExampleDirs(baseDir string, tests []ProgramTest) ([]string, error) {

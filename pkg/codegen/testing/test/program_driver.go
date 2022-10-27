@@ -214,6 +214,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#10834]
 	},
+}
+
+var PulumiPulumiYAMLProgramTests = []ProgramTest{
 	// PCL files from pulumi/yaml transpiled examples
 	{
 		Directory:   transpiled("aws-eks"),
@@ -228,7 +231,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   transpiled("awsx-fargate"),
 		Description: "AWSx Fargate",
-		Skip:        codegen.NewStringSet("dotnet", "nodejs"),
+		Skip:        codegen.NewStringSet("dotnet", "nodejs", "go"),
 	},
 	{
 		Directory:   transpiled("azure-app-service"),
