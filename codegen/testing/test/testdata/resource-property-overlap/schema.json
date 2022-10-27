@@ -1,0 +1,33 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "resources": {
+    "example::Rec": {
+      "properties": {
+        "rec": {
+          "$ref": "#/resources/example::Rec"
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
+    },
+    "go": {
+      "generateResourceContainerTypes": true,
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "python": {}
+  }
+}

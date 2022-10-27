@@ -1,0 +1,21 @@
+{
+    "name": "@pulumi/example",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc",
+        "install": "node scripts/install-pulumi-plugin.js resource example ${VERSION}"
+    },
+    "dependencies": {
+        "@pulumi/google-native": "^0.11.0"
+    },
+    "devDependencies": {
+        "typescript": "^4.3.5"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "example"
+    }
+}

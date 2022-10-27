@@ -1,0 +1,40 @@
+{
+  "version": "0.0.1",
+  "name": "mongodbatlas",
+  "types": {
+    "mongodbatlas::getCustomDbRolesResult": {
+      "type": "object"
+    }
+  },
+  "functions": {
+    "mongodbatlas::getCustomDbRoles": {
+      "inputs": {},
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "$ref": "#/types/mongodbatlas::getCustomDbRolesResult"
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "go": {
+      "generateExtraInputTypes": true
+    }
+  }
+}

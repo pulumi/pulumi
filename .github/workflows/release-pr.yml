@@ -68,14 +68,29 @@ jobs:
 
           git commit -m "Prepare for next release (v${NEXT_VERSION})"
 
-          # Update go module dependencies
+          # Update codegen module dependencies
           (
-            cd pkg
+            cd codegen
             go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
           )
           make tidy
           git add -A
-          git commit -m "Update dependencies"
+          git commit -m "Update codegen dependencies"
+
+          # Publish codegen module on another tag.
+          git tag "codegen/v${PULUMI_VERSION}"
+          git push origin "codegen/v${PULUMI_VERSION}"
+          git push -u origin HEAD
+
+          # Update pkg module dependencies
+          (
+            cd pkg
+            go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
+          )
+
+          make tidy
+          git add -A
+          git commit -m "Update pkg dependencies"
 
           # Publish pkg module on another tag.
           git tag "pkg/v${PULUMI_VERSION}"
