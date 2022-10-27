@@ -57,7 +57,7 @@ jobs:
       smoke-test-platforms: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'macos-latest windows-latest'
+          && 'macos-11 windows-latest'
           || ''
         }}
       enable-coverage: true

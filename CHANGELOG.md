@@ -1,5 +1,95 @@
 # Changelog
 
+## 3.44.2 (2022-10-26)
+
+
+### Features
+
+- [cli] Allow globbing for resources that do not yet exist
+  [#11150](https://github.com/pulumi/pulumi/pull/11150)
+
+- [auto/dotnet] Add Json option to UpdateOptions.
+  [#11148](https://github.com/pulumi/pulumi/pull/11148)
+
+
+### Bug Fixes
+
+- [build] Fix release build to continue to use MacOS 11.
+  [#11155](https://github.com/pulumi/pulumi/pull/11155)
+
+- [engine] Prevent concurrent read/writes to the component providers map.
+  [#11151](https://github.com/pulumi/pulumi/pull/11151)
+
+## 3.44.1 (2022-10-25)
+
+
+### Bug Fixes
+
+- [engine] Fix an invalid cast in analyzer plugins.
+  [#11141](https://github.com/pulumi/pulumi/pull/11141)
+
+## 3.44.0 (2022-10-24)
+
+
+### Features
+
+- [auto/go] Add InstallPluginFromServer method
+  [#10955](https://github.com/pulumi/pulumi/pull/10955)
+
+- [auto/nodejs] Add InstallPluginFromServer
+  [#10955](https://github.com/pulumi/pulumi/pull/10955)
+
+- [auto/python] Add install_plugin_from_server
+  [#10955](https://github.com/pulumi/pulumi/pull/10955)
+
+- [cli] Implement initial MVP for hierarchical and structured project configuration.
+  [#10832](https://github.com/pulumi/pulumi/pull/10832)
+
+- [cli] Allow rotating the passphrase non-interactively
+  [#11094](https://github.com/pulumi/pulumi/pull/11094)
+
+- [programgen] Add error reporting infrastructure
+  [#11032](https://github.com/pulumi/pulumi/pull/11032)
+
+
+### Bug Fixes
+
+- [ci] Fix pull request URLs in Pulumi changelogs
+  [#11060](https://github.com/pulumi/pulumi/pull/11060)
+
+- [engine] Fix type validation of stack config with secure values.
+  [#11084](https://github.com/pulumi/pulumi/pull/11084)
+
+- [cli/engine] Component Resources inherit thier parents providers map
+  [#10933](https://github.com/pulumi/pulumi/pull/10933)
+
+- [cli/import] Only trigger an import when necessary during refresh.
+  [#11100](https://github.com/pulumi/pulumi/pull/11100)
+
+- [sdk/go] Allow decoding *asset and *archive values
+  [#11053](https://github.com/pulumi/pulumi/pull/11053)
+
+- [sdkgen/{go,python}] Handle hypheneated names in go and python
+  [#11049](https://github.com/pulumi/pulumi/pull/11049)
+
+- [sdk/nodejs] Fixes loss of undefined type case in `all()`
+  [#11048](https://github.com/pulumi/pulumi/pull/11048)
+
+- [sdk/python] pulumi.automation.create_or_select_stack() attempts to select the stack before attempting to create
+  [#11115](https://github.com/pulumi/pulumi/pull/11115)
+
+- [sdk/python] Python runtime now respects the --parallel flag.
+  [#11122](https://github.com/pulumi/pulumi/pull/11122)
+
+
+### Miscellaneous
+
+- [protobuf] Bumps python grpcio version
+  [#11067](https://github.com/pulumi/pulumi/pull/11067)
+
+- [sdk/go] Update notes, update the deprecated functions, make some lint.
+  [#11002](https://github.com/pulumi/pulumi/pull/11002)
+
 ## 3.43.1 (2022-10-15)
 
 

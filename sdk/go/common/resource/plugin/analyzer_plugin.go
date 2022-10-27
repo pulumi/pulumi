@@ -615,7 +615,8 @@ func convertConfigSchema(schema *pulumirpc.PolicyConfigSchema) *AnalyzerPolicyCo
 
 	props := make(map[string]JSONSchema)
 	for k, v := range unmarshalMap(schema.GetProperties()) {
-		props[k] = v.(JSONSchema)
+		s := v.(map[string]interface{})
+		props[k] = JSONSchema(s)
 	}
 
 	return &AnalyzerPolicyConfigSchema{

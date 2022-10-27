@@ -11,7 +11,7 @@ defaults:
 jobs:
   macos-homebrew-install:
     name: Install Pulumi with Homebrew on macOS
-    runs-on: macos-latest
+    runs-on: macos-11
     steps:
       - name: homedate homebrew formulae
         run: brew update
@@ -29,7 +29,7 @@ jobs:
           exit 1
   macOS-direct-install:
     name: Install Pulumi via script on macOS
-    runs-on: macos-latest
+    runs-on: macos-11
     steps:
       - run: curl -fsSL https://get.pulumi.com | sh
       - run: echo "/Users/runner/.pulumi/bin" >> "${GITHUB_PATH}"
@@ -46,7 +46,7 @@ jobs:
           exit 1
   macos-verify-download-link:
     name: Verify Direct Download link on macOS
-    runs-on: macos-latest
+    runs-on: macos-11
     steps:
       - name: Direct Download
         run: curl -L -o pulumi.tar.gz "https://get.pulumi.com/releases/sdk/pulumi-v$(curl -sS https://www.pulumi.com/latest-version)-darwin-x64.tar.gz"
@@ -167,7 +167,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        os: ["ubuntu-latest", "windows-latest", "macos-11"]
     steps:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1

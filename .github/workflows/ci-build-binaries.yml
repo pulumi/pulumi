@@ -16,7 +16,7 @@ on:
         type: string
       arch:
         required: true
-        description: "Target Architectur (i.e.: GOARCH)"
+        description: "Target Architecture (i.e.: GOARCH)"
         type: string
       build-platform:
         required: false

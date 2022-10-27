@@ -118,7 +118,7 @@ func destroySpecificTargets(
 		destroyTargets = append(destroyTargets, pickURN(t, urns, complexTestDependencyGraphNames, target))
 	}
 
-	p.Options.DestroyTargets = destroyTargets
+	p.Options.DestroyTargets = deploy.NewUrnTargetsFromUrns(destroyTargets)
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -138,7 +138,7 @@ func destroySpecificTargets(
 				deleted[entry.Step.URN()] = true
 			}
 
-			for _, target := range p.Options.DestroyTargets {
+			for _, target := range p.Options.DestroyTargets.Literals() {
 				assert.Contains(t, deleted, target)
 			}
 
@@ -165,21 +165,24 @@ func TestUpdateTarget(t *testing.T) {
 			t.Run(fmt.Sprintf("update %v", subset), func(t *testing.T) {
 				t.Parallel()
 
-				updateSpecificTargets(t, subset, false /*targetDependents*/)
+				updateSpecificTargets(t, subset, nil, false /*targetDependents*/, -1)
 			})
 		}
 	}
 
-	updateSpecificTargets(t, []string{"A"}, false /*targetDependents*/)
+	updateSpecificTargets(t, []string{"A"}, nil, false /*targetDependents*/, -1)
 
 	// Also update a target that doesn't exist to make sure we don't crash or otherwise go off the rails.
 	updateInvalidTarget(t)
 
 	// We want to check that targetDependents is respected
-	updateSpecificTargets(t, []string{"C"}, true /*targetDependents*/)
+	updateSpecificTargets(t, []string{"C"}, nil, true /*targetDependents*/, -1)
+
+	updateSpecificTargets(t, nil, []string{"**C**"}, false, 1)
+	updateSpecificTargets(t, nil, []string{"**providers:pkgA**"}, false, 3)
 }
 
-func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool) {
+func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDependents bool, expectedUpdates int) {
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -219,13 +222,13 @@ func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool
 	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p.Options.TargetDependents = targetDependents
 
-	updateTargets := []resource.URN{}
+	updateTargets := globTargets
 	for _, target := range targets {
 		updateTargets = append(updateTargets,
-			pickURN(t, urns, complexTestDependencyGraphNames, target))
+			string(pickURN(t, urns, complexTestDependencyGraphNames, target)))
 	}
 
-	p.Options.UpdateTargets = updateTargets
+	p.Options.UpdateTargets = deploy.NewUrnTargets(updateTargets)
 	t.Logf("Updating targets: %v", updateTargets)
 
 	p.Steps = []TestStep{{
@@ -249,13 +252,13 @@ func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool
 				}
 			}
 
-			for _, target := range p.Options.UpdateTargets {
+			for _, target := range p.Options.UpdateTargets.Literals() {
 				assert.Contains(t, updated, target)
 			}
 
 			if !targetDependents {
 				// We should only perform updates on the entries we have targeted.
-				for _, target := range p.Options.UpdateTargets {
+				for _, target := range p.Options.UpdateTargets.Literals() {
 					assert.Contains(t, targets, target.Name().String())
 				}
 			} else {
@@ -275,10 +278,12 @@ func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool
 				assert.True(t, found, "Updates: %v", updateList)
 			}
 
-			for _, target := range p.Options.UpdateTargets {
+			for _, target := range p.Options.UpdateTargets.Literals() {
 				assert.NotContains(t, sames, target)
 			}
-
+			if expectedUpdates > -1 {
+				assert.Equal(t, expectedUpdates, len(updated), "Updates = %#v", updated)
+			}
 			return res
 		},
 	}}
@@ -325,7 +330,7 @@ func updateInvalidTarget(t *testing.T) {
 
 	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-	p.Options.UpdateTargets = []resource.URN{"foo"}
+	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{"foo"})
 	t.Logf("Updating invalid targets: %v", p.Options.UpdateTargets)
 
 	p.Steps = []TestStep{{
@@ -374,7 +379,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 	resB := p.NewURN("pkgA:m:typA", "resB", "")
 	p.Options.Host = host2
-	p.Options.UpdateTargets = []resource.URN{resA, resB}
+	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA, resB})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -436,7 +441,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = []resource.URN{resA}
+	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -500,7 +505,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = []resource.URN{resA}
+	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -554,7 +559,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = []resource.URN{resA}
+	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -614,11 +619,11 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		return pickURN(t, urns, complexTestDependencyGraphNames, name)
 	}
 
-	p.Options.ReplaceTargets = []resource.URN{
+	p.Options.ReplaceTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{
 		getURN("F"),
 		getURN("B"),
 		getURN("G"),
-	}
+	})
 
 	p.Steps = []TestStep{{
 		Op:            Update,
@@ -639,11 +644,11 @@ func TestReplaceSpecificTargets(t *testing.T) {
 				}
 			}
 
-			for _, target := range p.Options.ReplaceTargets {
+			for _, target := range p.Options.ReplaceTargets.Literals() {
 				assert.Contains(t, replaced, target)
 			}
 
-			for _, target := range p.Options.ReplaceTargets {
+			for _, target := range p.Options.ReplaceTargets.Literals() {
 				assert.NotContains(t, sames, target)
 			}
 
@@ -849,7 +854,7 @@ func destroySpecificTargetsWithChildren(
 		destroyTargets = append(destroyTargets, pickURN(t, urns, componentBasedTestDependencyGraphNames, target))
 	}
 
-	p.Options.DestroyTargets = destroyTargets
+	p.Options.DestroyTargets = deploy.NewUrnTargetsFromUrns(destroyTargets)
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -869,7 +874,7 @@ func destroySpecificTargetsWithChildren(
 				deleted[entry.Step.URN()] = true
 			}
 
-			for _, target := range p.Options.DestroyTargets {
+			for _, target := range p.Options.DestroyTargets.Literals() {
 				assert.Contains(t, deleted, target)
 			}
 

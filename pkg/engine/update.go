@@ -113,16 +113,16 @@ type UpdateOptions struct {
 	Refresh bool
 
 	// Specific resources to refresh during a refresh operation.
-	RefreshTargets []resource.URN
+	RefreshTargets deploy.UrnTargets
 
 	// Specific resources to replace during an update operation.
-	ReplaceTargets []resource.URN
+	ReplaceTargets deploy.UrnTargets
 
 	// Specific resources to destroy during a destroy operation.
-	DestroyTargets []resource.URN
+	DestroyTargets deploy.UrnTargets
 
 	// Specific resources to update during an update operation.
-	UpdateTargets []resource.URN
+	UpdateTargets deploy.UrnTargets
 
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.

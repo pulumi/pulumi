@@ -800,6 +800,11 @@ namespace Pulumi.Automation
             {
                 args.Add("--debug");
             }
+
+            if (options.Json is true)
+            {
+                args.Add("--json");
+            }
         }
     }
 }

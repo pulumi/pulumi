@@ -56,25 +56,47 @@ namespace Pulumi.Automation.Tests.Serialization
         }
 
         [Fact]
-        public void CannotDeserializeObject()
+        public void DeserializeObjectWorks()
         {
             const string json = @"
 {
     ""config"": {
         ""value"": {
-            ""test"": ""test"",
-            ""nested"": {
-                ""one"": 1,
-                ""two"": true,
-                ""three"": ""three""
-            }
+            ""hello"": ""world""
         }
     } 
 }
 ";
 
-            Assert.Throws<NotSupportedException>(
-                () => _serializer.DeserializeJson<StackSettings>(json));
+            var settings = _serializer.DeserializeJson<StackSettings>(json);
+            Assert.NotNull(settings.Config);
+            Assert.True(settings!.Config!.ContainsKey("value"));
+
+            var value = settings.Config["value"];
+            Assert.NotNull(value);
+            Assert.Equal("{\"hello\":\"world\"}", value.Value);
+            Assert.False(value.IsSecure);
+        }
+
+        [Fact]
+        public void DeserializeArrayWorks()
+        {
+            const string json = @"
+{
+    ""config"": {
+        ""value"": [1,2,3,4,5]
+    } 
+}
+";
+
+            var settings = _serializer.DeserializeJson<StackSettings>(json);
+            Assert.NotNull(settings.Config);
+            Assert.True(settings!.Config!.ContainsKey("value"));
+
+            var value = settings.Config["value"];
+            Assert.NotNull(value);
+            Assert.Equal("[1,2,3,4,5]", value.Value);
+            Assert.False(value.IsSecure);
         }
 
         [Fact]

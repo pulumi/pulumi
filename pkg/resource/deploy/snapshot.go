@@ -16,9 +16,6 @@ package deploy
 
 import (
 	"fmt"
-	"regexp"
-	"sort"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -182,48 +179,6 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	}
 
 	return nil
-}
-
-// Performs glob style expansion on urns that contain '*'. Each urn can be
-// expanded into 0-n actual urns, depending on what underlying resources exist
-// in the snapshot. URNs are returned in sorted order. All returned urns are unique.
-func (snap *Snapshot) GlobUrn(urn resource.URN) []resource.URN {
-	if !strings.Contains(string(urn), "*") {
-		return []resource.URN{urn}
-	}
-	segmentGlob := strings.Split(string(urn), "**")
-	for i, v := range segmentGlob {
-		part := strings.Split(v, "*")
-		for i, v := range part {
-			part[i] = regexp.QuoteMeta(v)
-		}
-		segmentGlob[i] = strings.Join(part, "[^:]*")
-	}
-
-	// Because we have quoted all input, this is safe to compile.
-	glob := regexp.MustCompile("^" + strings.Join(segmentGlob, ".*") + "$")
-
-	results := make(map[string]struct{})
-	for _, r := range snap.Resources {
-		name := string(r.URN)
-		if glob.Match([]byte(name)) {
-			results[name] = struct{}{}
-		}
-	}
-
-	// cleanup
-	result := make([]string, len(results))
-	i := 0
-	for k := range results {
-		result[i] = k
-		i++
-	}
-	urns := make([]resource.URN, len(result))
-	sort.Strings(result)
-	for i, u := range result {
-		urns[i] = resource.URN(u)
-	}
-	return urns
 }
 
 // Applies a non-mutating modification for every resource.State in the
