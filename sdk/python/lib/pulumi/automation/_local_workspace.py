@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import tempfile
 import json
 from datetime import datetime
-from typing import Optional, List, Mapping, Callable
+from typing import Optional, List, Mapping, Callable, Union, TYPE_CHECKING
 from semver import VersionInfo
 import yaml
 
@@ -37,9 +39,18 @@ from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 from ._minimum_version import _MINIMUM_VERSION
 from .errors import InvalidVersionError
 
+if TYPE_CHECKING:
+    from pulumi.automation._remote_workspace import RemoteGitAuth
+
 _setting_extensions = [".yaml", ".yml", ".json"]
 
 _SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
+
+
+class Secret(str):
+    """
+    Represents a secret value.
+    """
 
 
 class LocalWorkspaceOptions:
@@ -83,6 +94,15 @@ class LocalWorkspace(Workspace):
     This is identical to the behavior of Pulumi CLI driven workspaces.
     """
 
+    _remote: bool = False
+    _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
+    _remote_pre_run_commands: Optional[List[str]]
+    _remote_git_url: str
+    _remote_git_project_path: Optional[str]
+    _remote_git_branch: Optional[str]
+    _remote_git_commit_hash: Optional[str]
+    _remote_git_auth: Optional[RemoteGitAuth]
+
     def __init__(
         self,
         work_dir: Optional[str] = None,
@@ -102,9 +122,7 @@ class LocalWorkspace(Workspace):
         )
 
         pulumi_version = self._get_pulumi_version()
-        opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
-        if env_vars:
-            opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
+        opt_out = self._version_check_opt_out()
         version = _parse_and_validate_pulumi_version(
             _MINIMUM_VERSION, pulumi_version, opt_out
         )
@@ -269,10 +287,19 @@ class LocalWorkspace(Workspace):
         args = ["stack", "init", stack_name]
         if self.secrets_provider:
             args.extend(["--secrets-provider", self.secrets_provider])
+        if self._remote:
+            args.append("--no-select")
         self._run_pulumi_cmd_sync(args)
 
     def select_stack(self, stack_name: str) -> None:
-        self._run_pulumi_cmd_sync(["stack", "select", stack_name])
+        # If this is a remote workspace, we don't want to actually select the stack (which would modify global state);
+        # but we will ensure the stack exists by calling `pulumi stack`.
+        args: List[str] = ["stack"]
+        if not self._remote:
+            args.append("select")
+        args.append("--stack")
+        args.append(stack_name)
+        self._run_pulumi_cmd_sync(args)
 
     def remove_stack(self, stack_name: str) -> None:
         self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
@@ -373,6 +400,12 @@ class LocalWorkspace(Workspace):
             outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
         return outputs
 
+    def _version_check_opt_out(self) -> bool:
+        return (
+            os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
+            or self.env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
+        )
+
     def _get_pulumi_version(self) -> str:
         result = self._run_pulumi_cmd_sync(["version"])
         version_string = result.stdout.strip()
@@ -380,12 +413,74 @@ class LocalWorkspace(Workspace):
             version_string = version_string[1:]
         return version_string
 
+    def _remote_supported(self) -> bool:
+        # See if `--remote` is present in `pulumi preview --help`'s output.
+        result = self._run_pulumi_cmd_sync(["preview", "--help"])
+        help_string = result.stdout.strip()
+        return "--remote" in help_string
+
     def _run_pulumi_cmd_sync(
         self, args: List[str], on_output: Optional[OnOutput] = None
     ) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
         envs = {**envs, **self.env_vars}
         return _run_pulumi_cmd(args, self.work_dir, envs, on_output)
+
+    def _remote_args(self) -> List[str]:
+        args: List[str] = []
+        if not self._remote:
+            return args
+
+        args.append("--remote")
+        if self._remote_git_url:
+            args.append(self._remote_git_url)
+        if self._remote_git_project_path:
+            args.append("--remote-git-repo-dir")
+            args.append(self._remote_git_project_path)
+        if self._remote_git_branch:
+            args.append("--remote-git-branch")
+            args.append(self._remote_git_branch)
+        if self._remote_git_commit_hash:
+            args.append("--remote-git-commit")
+            args.append(self._remote_git_commit_hash)
+        auth = self._remote_git_auth
+        if auth is not None:
+            if auth.personal_access_token:
+                args.append("--remote-git-auth-access-token")
+                args.append(auth.personal_access_token)
+            if auth.ssh_private_key:
+                args.append("--remote-git-auth-ssh-private-key")
+                args.append(auth.ssh_private_key)
+            if auth.ssh_private_key_path:
+                args.append("--remote-git-auth-ssh-private-key-path")
+                args.append(auth.ssh_private_key_path)
+            if auth.password:
+                args.append("--remote-git-auth-password")
+                args.append(auth.password)
+            if auth.username:
+                args.append("--remote-git-auth-username")
+                args.append(auth.username)
+
+        if self._remote_env_vars is not None:
+            for k in self._remote_env_vars:
+                v = self._remote_env_vars[k]
+                if isinstance(v, Secret):
+                    args.append("--remote-env-secret")
+                    args.append(f"{k}={v}")
+                elif isinstance(v, str):
+                    args.append("--remote-env")
+                    args.append(f"{k}={v}")
+                else:
+                    raise AssertionError(f"unexpected env value {v} for key '{k}'")
+
+        if self._remote_pre_run_commands is not None:
+            for command in self._remote_pre_run_commands:
+                args.append("--remote-pre-run-command")
+                args.append(command)
+
+        return args
 
 
 def _is_inline_program(**kwargs) -> bool:
