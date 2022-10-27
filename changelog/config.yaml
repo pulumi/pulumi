@@ -5,7 +5,7 @@ types:
 scopes:
   auto: [dotnet, go, java, nodejs, python, yaml]
   backend: [service, filestate]
-  cli: [about, config, display, engine, import, new, plugin, package]
+  cli: [about, config, display, engine, import, new, plugin, package, state]
   pkg: [testing]
   sdk: [dotnet, go, java, nodejs, python, yaml]
   components: [dotnet, go, java, nodejs, python, yaml]

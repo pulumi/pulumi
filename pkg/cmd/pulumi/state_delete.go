@@ -31,6 +31,7 @@ func newStateDeleteCommand() *cobra.Command {
 	var force bool // Force deletion of protected resources
 	var stack string
 	var yes bool
+	var targetDepenedents bool
 
 	cmd := &cobra.Command{
 		Use:   "delete <resource URN>",
@@ -57,32 +58,31 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 			showPrompt := !yes
 
 			res := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
-				if !force {
-					return edit.DeleteResource(snap, res)
+				var handleProtected func(*resource.State) error
+				if force {
+					handleProtected = func(res *resource.State) error {
+						cmdutil.Diag().Warningf(diag.Message(res.URN,
+							"deleting protected resource %s due to presence of --force"), res.URN)
+						return edit.UnprotectResource(nil, res)
+					}
 				}
-
-				if res.Protect {
-					cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, "deleting protected resource due to presence of --force"))
-					res.Protect = false
-				}
-
-				return edit.DeleteResource(snap, res)
+				return edit.DeleteResource(snap, res, handleProtected, targetDepenedents)
 			})
 			if res != nil {
 				switch e := res.Error().(type) {
 				case edit.ResourceHasDependenciesError:
-					message := "This resource can't be safely deleted because the following resources depend on it:\n"
+					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
 					for _, dependentResource := range e.Dependencies {
 						depUrn := dependentResource.URN
 						message += fmt.Sprintf(" * %-15q (%s)\n", depUrn.Name(), depUrn)
 					}
 
-					message += "\nDelete those resources first before deleting this one."
+					message += "\nDelete those resources first or pass --target-dependents."
 					return result.Error(message)
 				case edit.ResourceProtectedError:
-					return result.Error(
-						"This resource can't be safely deleted because it is protected. " +
-							"Re-run this command with --force to force deletion")
+					return result.Errorf(
+						"%s can't be safely deleted because it is protected. "+
+							"Re-run this command with --force to force deletion", string(e.Condemned.URN))
 				default:
 					return res
 				}
@@ -97,5 +97,6 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
+	cmd.Flags().BoolVar(&targetDepenedents, "target-dependents", false, "Delete the URN and all its dependents")
 	return cmd
 }
