@@ -324,6 +324,16 @@ func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 				return err
 			}
 
+			// There are cases where go-git gets confused about files that were included in .gitignore
+			// and then later removed from .gitignore and added to the repository, leaving unstaged
+			// changes in the working directory after a pull. To address this, we'll first do a hard
+			// reset of the worktree before pulling to ensure it's in a good state.
+			if err := w.Reset(&git.ResetOptions{
+				Mode: git.HardReset,
+			}); err != nil {
+				return err
+			}
+
 			if cloneErr = w.Pull(&git.PullOptions{
 				ReferenceName: referenceName,
 				SingleBranch:  true,
