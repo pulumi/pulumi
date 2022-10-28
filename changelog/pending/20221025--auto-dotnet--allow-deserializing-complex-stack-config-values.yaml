@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/dotnet
-  description: allow deserializing complex stack config values.
