@@ -82,13 +82,40 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 	return true
 }
 
-func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
+// BindValidateFunc combines two ValidateFunc together. If x returns a result that result is returned, else
+// the result of y is returned.
+func BindValidateFunc(x ValidateFunc, y ValidateFunc) ValidateFunc {
+	return func(project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
+		resX := x(project, target, entries, events, res)
+		if resX != nil {
+			return resX
+		}
+		resY := y(project, target, entries, events, res)
+		return resY
+	}
+}
+
+// ExpectResult is a ValidateFunc that returns an error result if validate is called with a nil result.
+func ExpectResult(
+	project workspace.Project, target deploy.Target,
+	entries JournalEntries, events []Event,
+	res result.Result) result.Result {
+	if res == nil {
+		return result.Error("Expected an error result, got none")
+	}
+	return nil
+}
+
+// ExpectDiagMessage is a ValidateFunc that returns an error result if either any diag message doesn't matches
+// the given pattern, or if no diag messages are seen.
+func ExpectDiagMessage(messagePattern string) ValidateFunc {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
 		res result.Result) result.Result {
-
-		assert.NotNil(t, res)
 
 		for i := range events {
 			if events[i].Type == "diag" {
@@ -3724,8 +3751,8 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 
 	project := p.GetProject()
 
-	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
-		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>"))
+	validate := BindValidateFunc(ExpectResult, ExpectDiagMessage(regexp.QuoteMeta(
+		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>")))
 
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)

@@ -151,6 +151,9 @@ type UpdateOptions struct {
 
 	// true if plans should be generated.
 	GeneratePlan bool
+
+	// true if any plan should be enforced as opposed to just being a warning
+	EnforcePlan bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
