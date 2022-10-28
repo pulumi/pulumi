@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.44.3 (2022-10-28)
+
+
+### Features
+
+- [cli/state] Add the --target-dependents flag to `pulumi state delete`
+  [#11164](https://github.com/pulumi/pulumi/pull/11164)
+
+
+### Bug Fixes
+
+- [cli] Hard reset the templates checkout to work around a go-git issue with ignored files.
+  [#11175](https://github.com/pulumi/pulumi/pull/11175)
+
+- [auto/dotnet] allow deserializing complex stack config values.
+  [#11143](https://github.com/pulumi/pulumi/pull/11143)
+
+- [auto/{dotnet,go,nodejs,python}] detect concurrent update error from local backend.
+  [#11146](https://github.com/pulumi/pulumi/pull/11146)
+
 ## 3.44.2 (2022-10-26)
 
 

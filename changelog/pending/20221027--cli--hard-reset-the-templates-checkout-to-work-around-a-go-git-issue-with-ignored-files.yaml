@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Hard reset the templates checkout to work around a go-git issue with ignored files.
