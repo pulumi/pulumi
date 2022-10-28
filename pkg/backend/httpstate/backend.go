@@ -1702,6 +1702,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
 	var continuationToken *string
+	var lastEvent engine.Event
 	for {
 		resp, err := b.client.GetUpdateEngineEvents(ctx, update, continuationToken)
 		if err != nil {
@@ -1712,12 +1713,18 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 			if err != nil {
 				return err
 			}
+			lastEvent = event
 			events <- event
 		}
 
 		continuationToken = resp.ContinuationToken
 		// A nil continuation token means there are no more events to read and the update has finished.
 		if continuationToken == nil {
+			// If the event stream does not terminate with a cancel event, synthesize one here.
+			if lastEvent.Type != engine.CancelEvent {
+				events <- engine.NewEvent(engine.CancelEvent, nil)
+			}
+
 			close(events)
 			<-done
 			return nil
