@@ -438,7 +438,7 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 	for {
 		option := ""
 		options := []string{
-			"import (the CREATE succeed; provide a resource ID and complete the CREATE operation)",
+			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 			"clear (the CREATE failed; remove the pending CREATE)",
 			"skip (do nothing)",
 		}
