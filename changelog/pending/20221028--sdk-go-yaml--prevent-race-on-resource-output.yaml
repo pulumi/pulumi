@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go,yaml
+  description: Prevent race on resource output

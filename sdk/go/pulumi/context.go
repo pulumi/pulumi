@@ -1178,8 +1178,6 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		return
 	}
 
-	state.rawOutputs.getState().resolve(outprops, true, false, nil)
-
 	outprops["urn"] = resource.NewStringProperty(urn)
 	if id != "" || !dryrun {
 		outprops["id"] = resource.NewStringProperty(id)
@@ -1203,6 +1201,10 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 			outprops[""] = resource.NewObjectProperty(remaining)
 		}
 	}
+
+	// We need to wait until after we finish mutating outprops to resolve. Resolving
+	// unlocks multithreaded access to the resolved value, making mutation a data race.
+	state.rawOutputs.getState().resolve(outprops, true, false, nil)
 
 	for k, output := range state.outputs {
 		// If this is an unknown or missing value during a dry run, do nothing.
