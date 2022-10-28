@@ -149,8 +149,11 @@ type UpdateOptions struct {
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
 
-	// true if plans should be generated.
+	// GeneratePlan when true cause plans to be generated, we skip this if we know their not needed (e.g. during up)
 	GeneratePlan bool
+
+	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
+	Experimental bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.

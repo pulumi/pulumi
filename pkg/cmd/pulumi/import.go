@@ -512,6 +512,7 @@ func newImportCmd() *cobra.Command {
 				Parallel:      parallel,
 				Debug:         debug,
 				UseLegacyDiff: useLegacyDiff(),
+				Experimental:  hasExperimentalCommands(),
 			}
 
 			_, res := s.Import(ctx, backend.UpdateOperation{

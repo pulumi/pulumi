@@ -246,6 +246,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
+				Experimental:              hasExperimentalCommands(),
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{
