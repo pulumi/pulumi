@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,6 +23,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+const (
+	transpiledExamplesDir = "transpiled_examples"
+)
+
+func transpiled(dir string) string {
+	return filepath.Join(transpiledExamplesDir, dir)
+}
 
 var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
 
@@ -209,6 +216,97 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	},
 }
 
+var PulumiPulumiYAMLProgramTests = []ProgramTest{
+	// PCL files from pulumi/yaml transpiled examples
+	{
+		Directory:   transpiled("aws-eks"),
+		Description: "AWS EKS",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   transpiled("aws-static-website"),
+		Description: "AWS static website",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   transpiled("awsx-fargate"),
+		Description: "AWSx Fargate",
+		Skip:        codegen.NewStringSet("dotnet", "nodejs", "go"),
+	},
+	{
+		Directory:   transpiled("azure-app-service"),
+		Description: "Azure App Service",
+		Skip:        codegen.NewStringSet("go", "dotnet"),
+	},
+	{
+		Directory:   transpiled("azure-container-apps"),
+		Description: "Azure Container Apps",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet", "python"),
+	},
+	{
+		Directory:   transpiled("azure-static-website"),
+		Description: "Azure static website",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet", "python"),
+	},
+	{
+		Directory:   transpiled("cue-eks"),
+		Description: "Cue EKS",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   transpiled("cue-random"),
+		Description: "Cue random",
+	},
+	{
+		Directory:   transpiled("cue-static-web-app"),
+		Description: "Cue static web app",
+	},
+	{
+		Directory:   transpiled("getting-started"),
+		Description: "Getting started",
+	},
+	{
+		Directory:   transpiled("kubernetes"),
+		Description: "Kubernetes",
+		Skip:        codegen.NewStringSet("go"),
+	},
+	{
+		Directory:   transpiled("pulumi-variable"),
+		Description: "Pulumi variable",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   transpiled("random"),
+		Description: "Random",
+		Skip:        codegen.NewStringSet("nodejs"),
+	},
+	{
+		Directory:   transpiled("readme"),
+		Description: "README",
+		Skip:        codegen.NewStringSet("go", "dotnet"),
+	},
+	{
+		Directory:   transpiled("stackreference-consumer"),
+		Description: "Stack reference consumer",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   transpiled("stackreference-producer"),
+		Description: "Stack reference producer",
+		Skip:        codegen.NewStringSet("go", "dotnet"),
+	},
+	{
+		Directory:   transpiled("webserver-json"),
+		Description: "Webserver JSON",
+		Skip:        codegen.NewStringSet("go", "dotnet", "python"),
+	},
+	{
+		Directory:   transpiled("webserver"),
+		Description: "Webserver",
+		Skip:        codegen.NewStringSet("go", "dotnet", "python"),
+	},
+}
+
 // Checks that a generated program is correct
 //
 // The arguments are to be read:
@@ -264,6 +362,7 @@ func TestProgramCodegen(
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	skipCompile := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_COMPILE_TEST"))
+
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
 		t.Run(tt.Directory, func(t *testing.T) {
@@ -278,19 +377,25 @@ func TestProgramCodegen(
 
 			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
 			pclFile := filepath.Join(testDir, tt.Directory+".pp")
+			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
+				pclFile = filepath.Join(testDir, filepath.Base(tt.Directory)+".pp")
+			}
 			testDir = filepath.Join(testDir, testcase.Language)
 			err = os.MkdirAll(testDir, 0700)
 			if err != nil && !os.IsExist(err) {
 				t.Fatalf("Failed to create %q: %s", testDir, err)
 			}
 
-			contents, err := ioutil.ReadFile(pclFile)
+			contents, err := os.ReadFile(pclFile)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
 			expectedFile := filepath.Join(testDir, tt.Directory+"."+testcase.Extension)
-			expected, err := ioutil.ReadFile(expectedFile)
+			if strings.HasPrefix(tt.Directory, transpiledExamplesDir) {
+				expectedFile = filepath.Join(testDir, filepath.Base(tt.Directory)+"."+testcase.Extension)
+			}
+			expected, err := os.ReadFile(expectedFile)
 			if err != nil && !pulumiAccept {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
 			}
@@ -348,7 +453,7 @@ func TestProgramCodegen(
 			}
 
 			if pulumiAccept {
-				err := ioutil.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
+				err := os.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
 				require.NoError(t, err)
 			} else {
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))

@@ -16,6 +16,9 @@ func newPulumiPackage() *Package {
 					Properties: map[string]PropertySpec{
 						"outputs": {TypeSpec: TypeSpec{Type: "object"}},
 					},
+					Required: []string{
+						"outputs",
+					},
 				},
 				InputProperties: map[string]PropertySpec{
 					"name": {TypeSpec: TypeSpec{Type: "string"}},
