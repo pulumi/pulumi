@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,6 +266,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
 	}
 
+	// Apply the remote args, if needed.
+	sharedArgs = append(sharedArgs, s.remoteArgs()...)
+
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
@@ -384,6 +387,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
 	}
 
+	// Apply the remote args, if needed.
+	sharedArgs = append(sharedArgs, s.remoteArgs()...)
+
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
@@ -420,6 +426,11 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	historyOpts := []opthistory.Option{}
 	if upOpts.ShowSecrets != nil {
 		historyOpts = append(historyOpts, opthistory.ShowSecrets(*upOpts.ShowSecrets))
+	}
+	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
+	// load the project file.
+	if s.isRemote() {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
 	}
 	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
@@ -487,6 +498,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, "--event-log", t.Filename)
 	}
 
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
+
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
 		refreshOpts.ProgressStreams,      /* additionalOutputs */
@@ -500,6 +514,11 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	historyOpts := []opthistory.Option{}
 	if showSecrets := refreshOpts.ShowSecrets; showSecrets != nil {
 		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
+	// load the project file.
+	if s.isRemote() {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
 	}
 	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
@@ -567,6 +586,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, "--event-log", t.Filename)
 	}
 
+	// Apply the remote args, if needed.
+	args = append(args, s.remoteArgs()...)
+
 	stdout, stderr, code, err := s.runPulumiCmdSync(
 		ctx,
 		destroyOpts.ProgressStreams,      /* additionalOutputs */
@@ -580,6 +602,11 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	historyOpts := []opthistory.Option{}
 	if showSecrets := destroyOpts.ShowSecrets; showSecrets != nil {
 		historyOpts = append(historyOpts, opthistory.ShowSecrets(*showSecrets))
+	}
+	// If it's a remote workspace, explicitly set ShowSecrets to false to prevent attempting to
+	// load the project file.
+	if s.isRemote() {
+		historyOpts = append(historyOpts, opthistory.ShowSecrets(false))
 	}
 	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
@@ -609,10 +636,6 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 // (up/preview/refresh/destroy).
 func (s *Stack) History(ctx context.Context,
 	pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get stack history")
-	}
 	var options opthistory.Options
 	for _, opt := range opts {
 		opt.ApplyOption(&options)
@@ -876,6 +899,16 @@ func (s *Stack) runPulumiCmdSync(
 	var env []string
 	debugEnv := fmt.Sprintf("%s=%s", "PULUMI_DEBUG_COMMANDS", "true")
 	env = append(env, debugEnv)
+
+	var remote bool
+	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
+		remote = lws.remote
+	}
+	if remote {
+		experimentalEnv := fmt.Sprintf("%s=%s", "PULUMI_EXPERIMENTAL", "true")
+		env = append(env, experimentalEnv)
+	}
+
 	if s.Workspace().PulumiHome() != "" {
 		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
@@ -909,6 +942,79 @@ func (s *Stack) runPulumiCmdSync(
 		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
 	}
 	return stdout, stderr, errCode, nil
+}
+
+func (s *Stack) isRemote() bool {
+	var remote bool
+	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
+		remote = lws.remote
+	}
+	return remote
+}
+
+func (s *Stack) remoteArgs() []string {
+	var remote bool
+	var repo *GitRepo
+	var preRunCommands []string
+	var envvars map[string]EnvVarValue
+	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
+		remote = lws.remote
+		repo = lws.repo
+		preRunCommands = lws.preRunCommands
+		envvars = lws.remoteEnvVars
+	}
+	if !remote {
+		return nil
+	}
+
+	var args []string
+	args = append(args, "--remote")
+	if repo != nil {
+		if repo.URL != "" {
+			args = append(args, repo.URL)
+		}
+		if repo.Branch != "" {
+			args = append(args, fmt.Sprintf("--remote-git-branch=%s", repo.Branch))
+		}
+		if repo.CommitHash != "" {
+			args = append(args, fmt.Sprintf("--remote-git-commit=%s", repo.CommitHash))
+		}
+		if repo.ProjectPath != "" {
+			args = append(args, fmt.Sprintf("--remote-git-repo-dir=%s", repo.ProjectPath))
+		}
+		if repo.Auth != nil {
+			if repo.Auth.PersonalAccessToken != "" {
+				args = append(args, fmt.Sprintf("--remote-git-auth-access-token=%s", repo.Auth.PersonalAccessToken))
+			}
+			if repo.Auth.SSHPrivateKey != "" {
+				args = append(args, fmt.Sprintf("--remote-git-auth-ssh-private-key=%s", repo.Auth.SSHPrivateKey))
+			}
+			if repo.Auth.SSHPrivateKeyPath != "" {
+				args = append(args,
+					fmt.Sprintf("--remote-git-auth-ssh-private-key-path=%s", repo.Auth.SSHPrivateKeyPath))
+			}
+			if repo.Auth.Password != "" {
+				args = append(args, fmt.Sprintf("--remote-git-auth-password=%s", repo.Auth.Password))
+			}
+			if repo.Auth.Username != "" {
+				args = append(args, fmt.Sprintf("--remote-git-auth-username=%s", repo.Auth.Username))
+			}
+		}
+	}
+
+	for k, v := range envvars {
+		flag := "--remote-env"
+		if v.Secret {
+			flag += "-secret"
+		}
+		args = append(args, fmt.Sprintf("%s=%s=%s", flag, k, v.Value))
+	}
+
+	for _, command := range preRunCommands {
+		args = append(args, fmt.Sprintf("--remote-pre-run-command=%s", command))
+	}
+
+	return args
 }
 
 const (

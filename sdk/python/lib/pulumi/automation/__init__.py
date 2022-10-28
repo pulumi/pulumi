@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -88,6 +88,16 @@ conflicts::
 
 """
 
+from pulumi.automation._remote_workspace import (
+    RemoteWorkspaceOptions,
+    RemoteGitAuth,
+    create_remote_stack_git_source,
+    create_or_select_remote_stack_git_source,
+    select_remote_stack_git_source,
+)
+
+from pulumi.automation._remote_stack import RemoteStack
+
 from ._cmd import CommandResult, OnOutput
 
 from ._config import ConfigMap, ConfigValue
@@ -126,6 +136,7 @@ from .events import (
 from ._local_workspace import (
     LocalWorkspace,
     LocalWorkspaceOptions,
+    Secret,
     create_stack,
     select_stack,
     create_or_select_stack,
@@ -197,6 +208,7 @@ __all__ = [
     # _local_workspace
     "LocalWorkspace",
     "LocalWorkspaceOptions",
+    "Secret",
     "create_stack",
     "select_stack",
     "create_or_select_stack",
@@ -225,6 +237,14 @@ __all__ = [
     "RefreshResult",
     "DestroyResult",
     "fully_qualified_stack_name",
+    # _remote_workspace
+    "RemoteWorkspaceOptions",
+    "RemoteGitAuth",
+    "create_remote_stack_git_source",
+    "create_or_select_remote_stack_git_source",
+    "select_remote_stack_git_source",
+    # _remote_stack
+    "RemoteStack",
     # sub-modules
     "errors",
     "events",
