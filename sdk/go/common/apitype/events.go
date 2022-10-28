@@ -212,3 +212,16 @@ type EngineEvent struct {
 type EngineEventBatch struct {
 	Events []EngineEvent `json:"events"`
 }
+
+// GetUpdateEventsResponse contains the engine events for an update.
+type GetUpdateEventsResponse struct {
+	// Events are returned sorted by their internal sequence number (not exposed to the API).
+	// So the last Event in the slice is the most recent event which was stored in the database.
+	// (Should sort identical to timestamp, but may not if we support parallel writes.)
+	Events []EngineEvent `json:"events"`
+
+	// ContinuationToken is an opaque value the client can send to fetch more recent
+	// events if the update is still in progress. Will be nil once all events have
+	// been returned and the update is complete.
+	ContinuationToken *string `json:"continuationToken"`
+}

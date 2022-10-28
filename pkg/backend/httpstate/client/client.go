@@ -989,6 +989,23 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
 }
 
+// GetUpdateEngineEvents returns the engine events for an update.
+func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdentifier,
+	continuationToken *string) (apitype.GetUpdateEventsResponse, error) {
+
+	path := getUpdatePath(update, "events")
+	if continuationToken != nil {
+		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
+	}
+
+	var resp apitype.GetUpdateEventsResponse
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.GetUpdateEventsResponse{}, err
+	}
+
+	return resp, nil
+}
+
 // RecordEngineEvents posts a batch of engine events to the Pulumi service.
 func (pc *Client) RecordEngineEvents(
 	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token string) error {
@@ -1012,4 +1029,44 @@ func (pc *Client) UpdateStackTags(
 	}
 
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+}
+
+func getDeploymentPath(stack StackIdentifier, components ...string) string {
+	prefix := fmt.Sprintf("/api/preview/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
+	return path.Join(append([]string{prefix}, components...)...)
+}
+
+func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
+	req apitype.CreateDeploymentRequest) (*apitype.CreateDeploymentResponse, error) {
+
+	var resp apitype.CreateDeploymentResponse
+	err := pc.restCall(ctx, http.MethodPost, getDeploymentPath(stack), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("creating deployment failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
+	token string) (*apitype.DeploymentLogs, error) {
+
+	path := getDeploymentPath(stack, id, fmt.Sprintf("logs?continuationToken=%s", token))
+	var resp apitype.DeploymentLogs
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment %s logs failed: %w", id, err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifier,
+	id string) ([]apitype.GetDeploymentUpdatesUpdateInfo, error) {
+
+	path := getDeploymentPath(stack, id, "updates")
+	var resp []apitype.GetDeploymentUpdatesUpdateInfo
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment %s updates failed: %w", id, err)
+	}
+	return resp, nil
 }

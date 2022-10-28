@@ -62,6 +62,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return nil, err
 		}
 
+		// nolint: goconst
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider)
 		}

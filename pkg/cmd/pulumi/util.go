@@ -161,11 +161,7 @@ func commandContext() context.Context {
 
 func createSecretsManager(
 	ctx context.Context, stack backend.Stack, secretsProvider string,
-	rotatePassphraseSecretsProvider bool) error {
-	configFile, err := getProjectStackPath(stack)
-	if err != nil {
-		return err
-	}
+	rotatePassphraseSecretsProvider, creatingStack bool) error {
 
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
@@ -173,6 +169,21 @@ func createSecretsManager(
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
+
+	// If we're creating the stack, it's the default secrets provider, and it's the cloud backend
+	// return early to avoid probing for the project and stack config files, which otherwise
+	// would fail when creating a stack from a directory that does not have a project file.
+	if isDefaultSecretsProvider && creatingStack {
+		if _, isCloud := stack.Backend().(httpstate.Backend); isCloud {
+			return nil
+		}
+	}
+
+	configFile, err := getProjectStackPath(stack)
+	if err != nil {
+		return err
+	}
+
 	if isDefaultSecretsProvider {
 		_, err = stack.DefaultSecretManager(configFile)
 		return err
@@ -212,7 +223,7 @@ func createStack(ctx context.Context,
 	}
 
 	if err := createSecretsManager(ctx, stack, secretsProvider,
-		false /* rotateSecretsManager */); err != nil {
+		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
 		return nil, err
 	}
 
