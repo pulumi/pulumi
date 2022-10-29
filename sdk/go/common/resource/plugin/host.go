@@ -564,10 +564,8 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 			//     later than we do (right now, we do it up front, but at that point we don't know the version).
-			deps, err := lang.GetRequiredPlugins(info)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
-			}
+			deps, _ := lang.GetRequiredPlugins(info)
+			// We currently swallow the error to allow runtime config to evaluate within Pulumi YAML programs.
 			plugins = append(plugins, deps...)
 		}
 	} else {
