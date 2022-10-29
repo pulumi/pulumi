@@ -519,8 +519,33 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 }
 
 // IsSecret returns a bool representing the secretness of the Output
+//
+// IsSecret may return an inaccurate results if the Output is unknowable (during a
+// preview) or contains an error.
 func IsSecret(o Output) bool {
-	return o.getState().secret
+	_, _, secret, _, _ := o.getState().await(context.Background())
+	// We intentionally ignore both the `known` and `error` values returned by `await`:
+	//
+	// If a value is not known, it is possible that we will return the wrong result. This
+	// is unavoidable. Consider the example:
+	//
+	// ```go
+	// bucket, _ := s3.Bucket("bucket", &s3.BucketArgs{})
+	// unknowable := bucket.Bucket.ApplyT(func(b string) OutputString {
+	//   if strings.ContainsRune(b, '9') {
+	//     return ToSecret(String(b))
+	//   else {
+	//     return String(b)
+	//   }
+	// })
+	// ```
+	//
+	// Until we resolve values from the cloud, we can't know the correct value of
+	// `IsSecret(unknowable)`. We have the same problem for outputs with non-nil errors.
+	//
+	// This is tolerable because users will never be able to retrieve values (secret or
+	// otherwise) that are unknown or erred.
+	return secret
 }
 
 // Unsecret will unwrap a secret output as a new output with a resolved value and no secretness

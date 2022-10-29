@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -618,7 +619,25 @@ func TestSecretApply(t *testing.T) {
 			break
 		}
 	}
+}
 
+// Test that secretness is properly bubbled up with all/apply that delays its execution.
+func TestSecretApplyDelayed(t *testing.T) {
+	t.Parallel()
+
+	// We run multiple tests here to increase the likelihood of a hypothetical race
+	// condition triggering. As with all concurrency tests, its not a 100% guarantee.
+	for i := 0; i < 10 && !t.Failed(); i++ {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			s1 := String("foo").ToStringOutput().ApplyT(func(s string) StringOutput {
+				time.Sleep(time.Millisecond * 5)
+				return ToSecret(String("bar")).(StringOutput)
+			})
+			// assert that s1 is secret.
+			assert.True(t, IsSecret(s1))
+		})
+	}
 }
 
 func TestNil(t *testing.T) {
