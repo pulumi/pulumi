@@ -103,7 +103,7 @@ jobs:
         run:
           Add-AppxPackage -Path 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
           $wingetAlreadyInstalled = Get-AppPackage -name 'Microsoft.DesktopAppInstaller'
-          if (!$wingetAlreadyInstalled) Add-AppxPackage -Path https://aka.ms/getwinget
+          if (!$wingetAlreadyInstalled) { Add-AppxPackage -Path https://aka.ms/getwinget }
       - name: Install Pulumi Using Winget
         run: winget install pulumi
       - name: Pulumi Version Details
