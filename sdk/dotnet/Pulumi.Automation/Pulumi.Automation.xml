@@ -361,6 +361,11 @@
         <member name="P:Pulumi.Automation.LocalWorkspace.EnvironmentVariables">
             <inheritdoc/>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.Remote">
+            <summary>
+            Whether this workspace is a remote workspace.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.CreateAsync(Pulumi.Automation.LocalWorkspaceOptions,System.Threading.CancellationToken)">
             <summary>
             Creates a workspace using the specified options. Used for maximal control and
@@ -675,6 +680,26 @@
             <see cref="M:Pulumi.Automation.LocalWorkspace.SaveStackSettingsAsync(System.String,Pulumi.Automation.StackSettings,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Remote">
+            <summary>
+            Whether the workspace is a remote workspace.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.RemoteGitProgramArgs">
+            <summary>
+            Args for remote workspace with Git source.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.RemoteEnvironmentVariables">
+            <summary>
+            Environment values scoped to the remote workspace. These will be passed to remote operations.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.RemotePreRunCommands">
+            <summary>
+            An optional list of arbitrary commands to run before a remote Pulumi operation is invoked.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.PluginInstallOptions.ExactVersion">
             <summary>
             If <c>true</c>, force installation of an exact version match (usually >= is accepted).
@@ -855,6 +880,273 @@
             Show config secrets when they appear.
             </summary>
         </member>
+        <member name="T:Pulumi.Automation.RemoteDestroyOptions">
+            <summary>
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.RemoteWorkspaceStack.DestroyAsync(Pulumi.Automation.RemoteDestroyOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteGitAuthArgs">
+             <summary>
+             Authentication options for the repository that can be specified for a private Git repo.
+             There are three different authentication paths:
+            
+             <list type="bullet">
+             <item><description>Personal accesstoken</description></item>
+             <item><description>SSH private key (and its optional password)</description></item>
+             <item><description>Basic auth username and password</description></item>
+             </list>
+            
+             Only one authentication path is valid.
+             </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKeyPath">
+            <summary>
+            The absolute path to a private key for access to the git repo.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKey">
+            <summary>
+            The (contents) private key for access to the git repo.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitAuthArgs.Password">
+            <summary>
+            The password that pairs with a username or as part of an SSH Private Key.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitAuthArgs.PersonalAccessToken">
+            <summary>
+            PersonalAccessToken is a Git personal access token in replacement of your password.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitAuthArgs.Username">
+            <summary>
+            Username is the username to use when authenticating to a git repository.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteGitProgramArgs">
+            <summary>
+            Description of a stack backed by a remote Pulumi program in a Git repository.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.StackName">
+            <summary>
+            The name of the associated Stack.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.Url">
+            <summary>
+            The URL of the repository.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.ProjectPath">
+            <summary>
+            Optional path relative to the repo root specifying location of the Pulumi program.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.Branch">
+            <summary>
+            Optional branch to checkout.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.CommitHash">
+            <summary>
+            Optional commit to checkout.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteGitProgramArgs.Auth">
+            <summary>
+            Authentication options for the repository.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemotePreviewOptions">
+            <summary>
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.RemoteWorkspaceStack.PreviewAsync(Pulumi.Automation.RemotePreviewOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteRefreshOptions">
+            <summary>
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.RemoteWorkspaceStack.RefreshAsync(Pulumi.Automation.RemoteRefreshOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteUpdateOptions">
+            <summary>
+            Common options controlling the behavior of update actions taken
+            against an instance of <see cref="T:Pulumi.Automation.RemoteWorkspaceStack"/>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteUpdateOptions.OnStandardOutput">
+            <summary>
+            Optional callback which is invoked whenever StandardOutput is written into
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteUpdateOptions.OnStandardError">
+            <summary>
+            Optional callback which is invoked whenever StandardError is written into
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteUpdateOptions.OnEvent">
+            <summary>
+            Optional callback which is invoked with the engine events
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteUpOptions">
+            <summary>
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.RemoteWorkspaceStack.UpAsync(Pulumi.Automation.RemoteUpOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.CreateStackAsync(Pulumi.Automation.RemoteGitProgramArgs)">
+            <summary>
+            PREVIEW: Creates a Stack backed by a RemoteWorkspace with source code from the specified Git repository.
+            Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.CreateStackAsync(Pulumi.Automation.RemoteGitProgramArgs,System.Threading.CancellationToken)">
+            <summary>
+            PREVIEW: Creates a Stack backed by a RemoteWorkspace with source code from the specified Git repository.
+            Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.SelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs)">
+            <summary>
+            PREVIEW: Selects an existing Stack backed by a RemoteWorkspace with source code from the specified Git
+            repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.SelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs,System.Threading.CancellationToken)">
+            <summary>
+            PREVIEW: Selects an existing Stack backed by a RemoteWorkspace with source code from the specified Git
+            repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs)">
+            <summary>
+            PREVIEW: Creates or selects an existing Stack backed by a RemoteWorkspace with source code from the specified
+            Git repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs,System.Threading.CancellationToken)">
+            <summary>
+            PREVIEW: Creates or selects an existing Stack backed by a RemoteWorkspace with source code from the specified
+            Git repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
+            </summary>
+            <param name="args">
+            A set of arguments to initialize a RemoteStack with a remote Pulumi program from a Git repository.
+            </param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="T:Pulumi.Automation.RemoteWorkspaceOptions">
+            <summary>
+            Extensibility options to configure a RemoteWorkspace.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteWorkspaceOptions.EnvironmentVariables">
+            <summary>
+            Environment values scoped to the remote workspace. These will be passed to remote operations.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteWorkspaceOptions.PreRunCommands">
+            <summary>
+            An optional list of arbitrary commands to run before a remote Pulumi operation is invoked.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.RemoteWorkspaceStack.Name">
+            <summary>
+            The name identifying the Stack.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.UpAsync(Pulumi.Automation.RemoteUpOptions,System.Threading.CancellationToken)">
+            <summary>
+            Creates or updates the resources in a stack by executing the program in the Workspace.
+            This operation runs remotely.
+            <para/>
+            https://www.pulumi.com/docs/reference/cli/pulumi_up/
+            </summary>
+            <param name="options">Options to customize the behavior of the update.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.PreviewAsync(Pulumi.Automation.RemotePreviewOptions,System.Threading.CancellationToken)">
+            <summary>
+            Performs a dry-run update to a stack, returning pending changes.
+            This operation runs remotely.
+            <para/>
+            https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+            </summary>
+            <param name="options">Options to customize the behavior of the update.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.RefreshAsync(Pulumi.Automation.RemoteRefreshOptions,System.Threading.CancellationToken)">
+            <summary>
+            Compares the current stack’s resource state with the state known to exist in the actual
+            cloud provider. Any such changes are adopted into the current stack.
+            This operation runs remotely.
+            </summary>
+            <param name="options">Options to customize the behavior of the refresh.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.DestroyAsync(Pulumi.Automation.RemoteDestroyOptions,System.Threading.CancellationToken)">
+            <summary>
+            Destroy deletes all resources in a stack, leaving all history and configuration intact.
+            This operation runs remotely.
+            </summary>
+            <param name="options">Options to customize the behavior of the destroy.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.GetOutputsAsync(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.RemoteWorkspaceStack.UpAsync(Pulumi.Automation.RemoteUpOptions,System.Threading.CancellationToken)"/>.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)">
+            <summary>
+            Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
+            </summary>
+            <param name="options">Options to customize the behavior of the fetch history action.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.ExportStackAsync(System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.RemoteWorkspaceStack.CancelAsync(System.Threading.CancellationToken)">
+            <summary>
+            Cancel stops a stack's currently running update. It throws
+            an exception if no update is currently running. Note that
+            this operation is _very dangerous_, and may leave the
+            stack in an inconsistent state if a resource operation was
+            pending when the update was canceled. This command is not
+            supported for local backends.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.StackDeployment">
             <summary>
             Represents the state of a stack deployment as used by
@@ -947,6 +1239,11 @@
         <member name="P:Pulumi.Automation.UpdateOptions.Debug">
             <summary>
             Print detailed debugging output during resource operations
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Json">
+            <summary>
+            Format standard output as JSON not text.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.UpOptions">
