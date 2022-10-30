@@ -97,6 +97,9 @@
                         "type":"boolean"
                     },
                     {
+                        "type": "array"
+                    },
+                    {
                         "$ref":"#/$defs/configTypeDeclaration"
                     }
                 ]
@@ -296,21 +299,6 @@
             "title":"ConfigTypeDeclaration",
             "type":"object",
             "additionalProperties":false,
-            "required":[
-                "type"
-            ],
-            "if":{
-                "properties":{
-                    "type":{
-                        "const":"array"
-                    }
-                }
-            },
-            "then":{
-                "required":[
-                    "items"
-                ]
-            },
             "properties":{
                 "type":{
                     "$ref":"#/$defs/simpleConfigType"
@@ -324,7 +312,8 @@
                 "secret":{
                     "type":"boolean"
                 },
-                "default":{ }
+                "default":{ },
+                "value": { }
             }
         }
     }

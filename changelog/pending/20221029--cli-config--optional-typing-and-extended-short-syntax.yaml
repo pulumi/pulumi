@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config
+  description: Typing made optional, extended short-hand values to arrays and correctly pass stack name to config validator

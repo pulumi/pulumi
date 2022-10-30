@@ -70,8 +70,9 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	t.Parallel()
 	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
 	invalidConfig := make(map[string]ProjectConfigType)
+	integerType := "integer"
 	invalidConfig["instanceSize"] = ProjectConfigType{
-		Type:    "integer",
+		Type:    &integerType,
 		Items:   nil,
 		Default: "hello",
 	}
@@ -87,9 +88,10 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 	// default value here has type array<string>
 	// config type specified is array<array<string>>
 	// should fail!
+	arrayType := "array"
 	invalidConfigWithArray := make(map[string]ProjectConfigType)
 	invalidConfigWithArray["values"] = ProjectConfigType{
-		Type: "array",
+		Type: &arrayType,
 		Items: &ProjectConfigItemsType{
 			Type: "array",
 			Items: &ProjectConfigItemsType{
@@ -109,9 +111,10 @@ func TestProjectValidationFailsForIncorrectDefaultValueType(t *testing.T) {
 func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	t.Parallel()
 	project := Project{Name: "test", Runtime: NewProjectRuntimeInfo("dotnet", nil)}
+	integerType := "integer"
 	validConfig := make(map[string]ProjectConfigType)
 	validConfig["instanceSize"] = ProjectConfigType{
-		Type:    "integer",
+		Type:    &integerType,
 		Items:   nil,
 		Default: 1,
 	}
@@ -130,9 +133,10 @@ func TestProjectValidationSucceedsForCorrectDefaultValueType(t *testing.T) {
 	// default value here has type array<array<string>>
 	// config type specified is also array<array<string>>
 	// should succeed
+	arrayType := "array"
 	validConfigWithArray := make(map[string]ProjectConfigType)
 	validConfigWithArray["values"] = ProjectConfigType{
-		Type: "array",
+		Type: &arrayType,
 		Items: &ProjectConfigItemsType{
 			Type: "array",
 			Items: &ProjectConfigItemsType{
@@ -277,7 +281,7 @@ config:
 	// full integer config schema
 	integerSchemFull, ok := project.Config["integerSchemaFull"]
 	assert.True(t, ok, "should be able to read integerSchemaFull")
-	assert.Equal(t, "integer", integerSchemFull.Type)
+	assert.Equal(t, "integer", integerSchemFull.TypeName())
 	assert.Equal(t, "a very important value", integerSchemFull.Description)
 	assert.Equal(t, 1, integerSchemFull.Default)
 	assert.False(t, integerSchemFull.Secret)
@@ -285,38 +289,41 @@ config:
 
 	integerSchemaSimple, ok := project.Config["integerSchemaSimple"]
 	assert.True(t, ok, "should be able to read integerSchemaSimple")
-	assert.Equal(t, "integer", integerSchemaSimple.Type, "integer type is inferred correctly")
+	assert.Equal(t, "", integerSchemaSimple.TypeName(), "not explicitly typed")
+	assert.False(t, integerSchemaSimple.IsExplicitlyTyped())
 	assert.False(t, integerSchemaSimple.Secret)
 	assert.Equal(t, 20, integerSchemaSimple.Default, "Default integer value is parsed correctly")
 
 	textSchemaFull, ok := project.Config["textSchemaFull"]
 	assert.True(t, ok, "should be able to read textSchemaFull")
-	assert.Equal(t, "string", textSchemaFull.Type)
+	assert.Equal(t, "string", textSchemaFull.TypeName())
 	assert.False(t, textSchemaFull.Secret)
 	assert.Equal(t, "t3.micro", textSchemaFull.Default)
 	assert.Equal(t, "", textSchemaFull.Description)
 
 	textSchemaSimple, ok := project.Config["textSchemaSimple"]
 	assert.True(t, ok, "should be able to read textSchemaSimple")
-	assert.Equal(t, "string", textSchemaSimple.Type)
+	assert.Equal(t, "", textSchemaSimple.TypeName(), "not explicitly typed")
+	assert.False(t, textSchemaSimple.IsExplicitlyTyped())
 	assert.False(t, textSchemaSimple.Secret)
 	assert.Equal(t, "t4.large", textSchemaSimple.Default)
 
 	booleanSchemaFull, ok := project.Config["booleanSchemaFull"]
 	assert.True(t, ok, "should be able to read booleanSchemaFull")
-	assert.Equal(t, "boolean", booleanSchemaFull.Type)
+	assert.Equal(t, "boolean", booleanSchemaFull.TypeName())
 	assert.False(t, booleanSchemaFull.Secret)
 	assert.Equal(t, true, booleanSchemaFull.Default)
 
 	booleanSchemaSimple, ok := project.Config["booleanSchemaSimple"]
 	assert.True(t, ok, "should be able to read booleanSchemaSimple")
-	assert.Equal(t, "boolean", booleanSchemaSimple.Type)
+	assert.Equal(t, "", booleanSchemaSimple.TypeName(), "not explicitly typed")
+	assert.False(t, booleanSchemaSimple.IsExplicitlyTyped())
 	assert.False(t, booleanSchemaSimple.Secret)
 	assert.Equal(t, false, booleanSchemaSimple.Default)
 
 	simpleArrayOfStrings, ok := project.Config["simpleArrayOfStrings"]
 	assert.True(t, ok, "should be able to read simpleArrayOfStrings")
-	assert.Equal(t, "array", simpleArrayOfStrings.Type)
+	assert.Equal(t, "array", simpleArrayOfStrings.TypeName())
 	assert.False(t, simpleArrayOfStrings.Secret)
 	assert.NotNil(t, simpleArrayOfStrings.Items)
 	assert.Equal(t, "string", simpleArrayOfStrings.Items.Type)
@@ -325,7 +332,7 @@ config:
 
 	arrayOfArrays, ok := project.Config["arrayOfArrays"]
 	assert.True(t, ok, "should be able to read arrayOfArrays")
-	assert.Equal(t, "array", arrayOfArrays.Type)
+	assert.Equal(t, "array", arrayOfArrays.TypeName())
 	assert.False(t, arrayOfArrays.Secret)
 	assert.NotNil(t, arrayOfArrays.Items)
 	assert.Equal(t, "array", arrayOfArrays.Items.Type)
@@ -334,7 +341,7 @@ config:
 
 	secretString, ok := project.Config["secretString"]
 	assert.True(t, ok, "should be able to read secretString")
-	assert.Equal(t, "string", secretString.Type)
+	assert.Equal(t, "string", secretString.TypeName())
 	assert.Equal(t, "", secretString.Description)
 	assert.Equal(t, nil, secretString.Default)
 	assert.True(t, secretString.Secret)
@@ -348,6 +355,19 @@ func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
 	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
 	value, valueError := configValue.Value(config.NopDecrypter)
 	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	return value
+}
+
+func getConfigValueUnmarshalled(t *testing.T, stackConfig config.Map, key string) interface{} {
+	parsedKey, err := config.ParseKey(key)
+	assert.NoErrorf(t, err, "There should be no error parsing the config key '%v'", key)
+	configValue, foundValue := stackConfig[parsedKey]
+	assert.Truef(t, foundValue, "Couldn't find a value for config key %v", key)
+	valueJSON, valueError := configValue.Value(config.NopDecrypter)
+	assert.NoErrorf(t, valueError, "Error while getting the value for key %v", key)
+	var value interface{}
+	err = json.Unmarshal([]byte(valueJSON), &value)
+	assert.NoErrorf(t, err, "Error while unmarshalling value for key %v", key)
 	return value
 }
 
@@ -387,6 +407,7 @@ name: test
 runtime: dotnet
 config:
   aws:region: us-west-1
+  pulumi:disable-default-providers: ["*"]
   instanceSize: t3.micro`
 
 	projectStackYaml := `
@@ -399,12 +420,13 @@ config:
 	assert.NoError(t, stackError, "Should be able to read the stack")
 	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NoError(t, configError, "Config override should be valid")
-
-	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
 	// value of instanceSize is overwritten from the stack
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
+	assert.Equal(t, "[\"*\"]", getConfigValue(t, stack.Config, "pulumi:disable-default-providers"))
+	assert.Equal(t, []interface{}{"*"}, getConfigValueUnmarshalled(t, stack.Config, "pulumi:disable-default-providers"))
 }
 
 func TestLoadingStackConfigWithoutNamespacingTheProject(t *testing.T) {
@@ -432,6 +454,178 @@ config:
 	assert.Equal(t, "t4.large", getConfigValue(t, stack.Config, "test:instanceSize"))
 	// aws:region is namespaced and is inherited from the project
 	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "aws:region"))
+}
+
+func TestUntypedProjectConfigValuesAreNotValidated(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize: t3.micro
+  aws:region: us-west-1`
+
+	projectStackYaml := `
+config:
+  instanceSize: 9999
+  aws:region: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
+	assert.NoError(t, configError, "Config override should be valid")
+	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "9999", getConfigValue(t, stack.Config, "test:instanceSize"))
+	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:region"))
+}
+
+func TestUntypedProjectConfigValuesWithOnlyDefaultOrOnlyValue(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize:
+    default: t3.micro
+  region: 
+    value: us-west-1`
+
+	projectStackYaml := `
+config:
+  aws:answer: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
+	assert.NoError(t, configError, "Config override should be valid")
+	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "t3.micro", getConfigValue(t, stack.Config, "test:instanceSize"))
+	assert.Equal(t, "us-west-1", getConfigValue(t, stack.Config, "test:region"))
+	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:answer"))
+}
+
+func TestUntypedStackConfigValuesDoNeedProjectDeclaration(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  createVpc: true`
+
+	projectStackYaml := `
+config:
+  instanceSize: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
+	assert.NoError(t, configError, "Config override should be valid")
+	assert.Equal(t, 2, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "42", getConfigValue(t, stack.Config, "test:instanceSize"))
+	assert.Equal(t, "true", getConfigValue(t, stack.Config, "test:createVpc"))
+}
+
+func TestNamespacedProjectConfigShouldNotBeExplicitlyTyped(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  aws:region:
+    type: string
+    value:
+      region: us-west-1`
+
+	_, projectError := loadProjectFromText(t, projectYaml)
+	assert.Contains(t, projectError.Error(),
+		"Configuration key 'aws:region' is not namespaced by the project and should not define a type")
+}
+
+func TestProjectConfigCannotHaveBothValueAndDefault(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize:
+    type: string
+    default: t3.micro
+    value: t4.large`
+
+	_, projectError := loadProjectFromText(t, projectYaml)
+	assert.Contains(t, projectError.Error(),
+		"project config 'instanceSize' cannot have both a 'default' and 'value' attribute")
+}
+
+func TestProjectConfigCannotBeTypedArrayWithoutItems(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize:
+    type: array
+    default: [t3.micro, t4.large]`
+
+	_, projectError := loadProjectFromText(t, projectYaml)
+	assert.Contains(t, projectError.Error(),
+		"The configuration key 'instanceSize' declares an array "+
+			"but does not specify the underlying type via the 'items' attribute")
+}
+
+func TestNamespacedProjectConfigShouldNotBeProvideDefault(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  aws:region:
+    default: us-west-1`
+
+	_, projectError := loadProjectFromText(t, projectYaml)
+	assert.Contains(t, projectError.Error(),
+		"Configuration key 'aws:region' is not namespaced by the project and should not define a default value")
+	assert.Contains(t, projectError.Error(),
+		"Did you mean to use the 'value' attribute instead of 'default'?")
+}
+
+func TestUntypedProjectConfigObjectValuesPassedDownToStack(t *testing.T) {
+	t.Parallel()
+	projectYaml := `
+name: test
+runtime: dotnet
+config:
+  instanceSize:
+    value:
+      hello: world
+  aws:config:
+    value:
+      region: us-west-1`
+
+	projectStackYaml := `
+config:
+  aws:whatever: 42`
+
+	project, projectError := loadProjectFromText(t, projectYaml)
+	assert.NoError(t, projectError, "Shold be able to load the project")
+	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
+	assert.NoError(t, stackError, "Should be able to read the stack")
+	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
+	assert.NoError(t, configError, "Config override should be valid")
+	assert.Equal(t, 3, len(stack.Config), "Stack config now has three values")
+	// value of instanceSize is overwritten from the stack
+	assert.Equal(t, "{\"hello\":\"world\"}", getConfigValue(t, stack.Config, "test:instanceSize"))
+	assert.Equal(t, "{\"region\":\"us-west-1\"}", getConfigValue(t, stack.Config, "aws:config"))
+	assert.Equal(t, "42", getConfigValue(t, stack.Config, "aws:whatever"))
 }
 
 func TestStackConfigErrorsWhenStackValueIsNotCorrectlyTyped(t *testing.T) {
@@ -611,56 +805,6 @@ config:
 	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
 	assert.NotNil(t, configError, "there should be a config type error")
 	assert.Contains(t, configError.Error(), "Stack 'dev' is missing configuration values 'hello', 'values' and 'world'")
-}
-
-func TestStackConfigErrorsWhenUsingConfigValuesNotDefinedByProject(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  hello:
-    type: integer`
-
-	projectStackYaml := `
-config:
-  hello: 21
-  world: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	expectedErrorMsg := "Stack 'dev' uses configuration value 'world' which is not defined by the project configuration"
-	assert.Contains(t, configError.Error(), expectedErrorMsg)
-}
-
-func TestStackConfigErrorsWhenUsingMultipleConfigValuesNotDefinedByProject(t *testing.T) {
-	t.Parallel()
-	projectYaml := `
-name: test
-runtime: dotnet
-config:
-  hello:
-    type: integer`
-
-	projectStackYaml := `
-config:
-  hello: 21
-  world: 42
-  another: 42`
-
-	project, projectError := loadProjectFromText(t, projectYaml)
-	assert.NoError(t, projectError, "Shold be able to load the project")
-	stack, stackError := loadProjectStackFromText(t, project, projectStackYaml)
-	assert.NoError(t, stackError, "Should be able to read the stack")
-	configError := ValidateStackConfigAndApplyProjectConfig("dev", project, stack.Config, config.NewPanicCrypter())
-	assert.NotNil(t, configError, "there should be a config type error")
-	expectedErrorMsg := "Stack 'dev' uses configuration values 'another' and 'world'" +
-		" which are not defined by the project configuration"
-	assert.Contains(t, configError.Error(), expectedErrorMsg)
 }
 
 func TestStackConfigDoesNotErrorWhenProjectHasNotDefinedConfig(t *testing.T) {

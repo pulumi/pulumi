@@ -84,7 +84,8 @@ func newLogsCmd() *cobra.Command {
 				return fmt.Errorf("getting stack decrypter: %w", err)
 			}
 
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stack, proj, cfg.Config, decrypter)
+			stackName := s.Ref().Name().String()
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
 			if configErr != nil {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
