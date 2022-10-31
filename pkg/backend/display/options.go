@@ -17,6 +17,7 @@ package display
 import (
 	"io"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -54,4 +55,8 @@ type Options struct {
 	Stdout               io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
 	Stderr               io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 	SuppressTimings      bool                // true to suppress displaying timings of resource actions
+
+	// testing-only options
+	term                terminal.Terminal
+	deterministicOutput bool
 }
