@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -136,10 +135,6 @@ type ProgressDisplay struct {
 
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
-
-	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
-	// prevent lots of recomputation
-	colorizedToUncolorized map[string]string
 
 	// Structure that tracks the time taken to perform an action on a resource.
 	opStopwatch opStopwatch
@@ -254,20 +249,19 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	}
 
 	display := &ProgressDisplay{
-		action:                 action,
-		isPreview:              isPreview,
-		isTerminal:             isInteractive,
-		opts:                   opts,
-		renderer:               renderer,
-		stack:                  stack,
-		proj:                   proj,
-		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
-		suffixColumn:           int(statusColumn),
-		suffixesArray:          []string{"", ".", "..", "..."},
-		urnToID:                make(map[resource.URN]string),
-		colorizedToUncolorized: make(map[string]string),
-		displayOrderCounter:    1,
-		opStopwatch:            newOpStopwatch(),
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            isInteractive,
+		opts:                  opts,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		urnToID:               make(map[resource.URN]string),
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
 	}
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -283,27 +277,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 }
 
 func (display *ProgressDisplay) println(line string) {
-	display.renderer.println(display, display.opts.Color.Colorize(line))
-}
-
-func (display *ProgressDisplay) uncolorizeString(v string) string {
-	uncolorized, has := display.colorizedToUncolorized[v]
-	if !has {
-		uncolorized = colors.Never.Colorize(v)
-		display.colorizedToUncolorized[v] = uncolorized
-	}
-
-	return uncolorized
-}
-
-func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
-	uncolorizedColumns := make([]string, len(columns))
-
-	for i, v := range columns {
-		uncolorizedColumns[i] = display.uncolorizeString(v)
-	}
-
-	return uncolorizedColumns
+	display.renderer.println(display, line)
 }
 
 type treeNode struct {
@@ -410,10 +384,9 @@ func (display *ProgressDisplay) convertNodesToRows(
 		}
 
 		colorizedColumns := make([]string, len(node.colorizedColumns))
-		uncolorisedColumns := display.uncolorizeColumns(node.colorizedColumns)
 
 		for i, colorizedColumn := range node.colorizedColumns {
-			columnWidth := utf8.RuneCountInString(uncolorisedColumns[i])
+			columnWidth := colors.MeasureColorizedString(colorizedColumn)
 
 			if i == display.suffixColumn {
 				columnWidth += maxSuffixLength

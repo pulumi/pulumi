@@ -127,8 +127,7 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 
 	r.treeTableRows = r.treeTableRows[:0]
 	for _, row := range treeTableRows {
-		uncolorizedRow := display.uncolorizeColumns(row)
-		rendered := renderRow(row, uncolorizedRow, maxColumnLengths)
+		rendered := renderRow(row, maxColumnLengths)
 		r.treeTableRows = append(r.treeTableRows, rendered)
 	}
 
