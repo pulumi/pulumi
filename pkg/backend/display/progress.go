@@ -245,7 +245,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	if isInteractive {
 		renderer = newTreeRenderer(term, opts)
 	} else {
-		renderer = newNonInteractiveMessageRenderer(stdout, op, opts)
+		renderer = newMessageRenderer(stdout, op, opts)
 	}
 
 	display := &ProgressDisplay{
