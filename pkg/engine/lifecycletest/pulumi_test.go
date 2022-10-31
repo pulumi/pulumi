@@ -4116,3 +4116,108 @@ func TestPendingDeleteOrder(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 3)
 }
+
+func TestDuplicatesDueToAliases(t *testing.T) {
+	t.Parallel()
+
+	// This is a test for https://github.com/pulumi/pulumi/issues/11173
+	// to check that we don't allow resource aliases to refer to other resources.
+	// That is if you have A, then try and add B saying it's alias is A we should error that's a duplicate.
+	// We need to be careful that we handle this regardless of the order we send the RegisterResource requests for A and B.
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	mode := 0
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		switch mode {
+		case 0:
+			// Default case, just make resA
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+		case 1:
+			// First test case, try and create a new B that aliases to A. First make the A like normal...
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.NoError(t, err)
+
+			// ... then make B with an alias, it should error
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resB",
+				true,
+				deploytest.ResourceOptions{
+					Aliases: []resource.Alias{{Name: "resA"}},
+				})
+			assert.Error(t, err)
+
+		case 2:
+			// Second test case, try and create a new B that aliases to A. First make the B with an alias...
+			_, _, _, err := monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resB",
+				true,
+				deploytest.ResourceOptions{
+					Aliases: []resource.Alias{{Name: "resA"}},
+				})
+			assert.NoError(t, err)
+
+			// ... then try to make the A like normal. It should error that it's already been aliased away
+			_, _, _, err = monitor.RegisterResource(
+				"pkgA:m:typA",
+				"resA",
+				true,
+				deploytest.ResourceOptions{})
+			assert.Error(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the starting A resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+
+	// Set mode to try and create A then a B that aliases to it, this should fail
+	mode = 1
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
+
+	// Set mode to try and create B first then a A, this should fail
+	mode = 2
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	// Because we made the B first that's what should end up in the state file
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[1].URN)
+}
