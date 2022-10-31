@@ -193,9 +193,7 @@ func (r *messageRenderer) tick(display *ProgressDisplay) {
 func (r *messageRenderer) renderRow(display *ProgressDisplay,
 	id string, colorizedColumns []string, maxColumnLengths []int) {
 
-	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
-
-	row := renderRow(colorizedColumns, uncolorizedColumns, maxColumnLengths)
+	row := renderRow(colorizedColumns, maxColumnLengths)
 	if r.isInteractive {
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to get
