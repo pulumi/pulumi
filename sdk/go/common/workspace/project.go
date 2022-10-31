@@ -34,6 +34,13 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
+const (
+	arrayTypeName   = "array"
+	integerTypeName = "integer"
+	stringTypeName  = "string"
+	booleanTypeName = "boolean"
+)
+
 //go:embed project.json
 var projectSchema string
 
@@ -104,11 +111,27 @@ type ProjectConfigItemsType struct {
 }
 
 type ProjectConfigType struct {
-	Type        string                  `json:"type,omitempty" yaml:"type,omitempty"`
+	Type        *string                 `json:"type,omitempty" yaml:"type,omitempty"`
 	Description string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Items       *ProjectConfigItemsType `json:"items,omitempty" yaml:"items,omitempty"`
 	Default     interface{}             `json:"default,omitempty" yaml:"default,omitempty"`
+	Value       interface{}             `json:"value,omitempty" yaml:"value,omitempty"`
 	Secret      bool                    `json:"secret,omitempty" yaml:"secret,omitempty"`
+}
+
+// IsExplicitlyTyped returns whether the project config type is explicitly typed.
+// When that is the case, we validate stack config values against this type, given that
+// the stack config value is namespaced by the project.
+func (configType *ProjectConfigType) IsExplicitlyTyped() bool {
+	return configType.Type != nil
+}
+
+func (configType *ProjectConfigType) TypeName() string {
+	if configType.Type != nil {
+		return *configType.Type
+	}
+
+	return ""
 }
 
 // Project is a Pulumi project manifest.
@@ -157,17 +180,18 @@ type Project struct {
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
 }
 
-func isPrimitiveValue(value interface{}) (string, bool) {
+func isPrimitiveValue(value interface{}) bool {
 	switch value.(type) {
-	case string:
-		return "string", true
-	case int:
-		return "integer", true
-	case bool:
-		return "boolean", true
+	case string, int, bool:
+		return true
 	default:
-		return "", false
+		return false
 	}
+}
+
+func isArray(value interface{}) bool {
+	_, ok := value.([]interface{})
+	return ok
 }
 
 // RewriteConfigPathIntoStackConfigDir checks if the project is using the old "config" property
@@ -199,17 +223,22 @@ func RewriteConfigPathIntoStackConfigDir(project map[string]interface{}) (map[st
 // for example the following config block definition:
 //
 //	config:
-//	   instanceSize: t3.mirco
+//		  instanceSize: t3.mirco
+//		  aws:region: us-west-2
 //
 // will be rewritten into a typed value:
 //
 //	config:
-//	  instanceSize:
-//	    type: string
-//	    default: t3.mirco
+//	   instanceSize:
+//	      default: t3.micro
+//	   aws:region:
+//	      value: us-west-2
+//
+// Note that short-hand values without namespaces (project config) are turned into a type
+// where as short-hand values with namespaces (such as aws:region) are turned into a value.
 func RewriteShorthandConfigValues(project map[string]interface{}) map[string]interface{} {
 	configMap, foundConfig := project["config"]
-
+	projectName := project["name"].(string)
 	if !foundConfig {
 		// no config defined, return as is
 		return project
@@ -222,12 +251,19 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 	}
 
 	for key, value := range config {
-		typeName, isLiteral := isPrimitiveValue(value)
-		if isLiteral {
+
+		if isPrimitiveValue(value) || isArray(value) {
 			configTypeDefinition := make(map[string]interface{})
-			configTypeDefinition["type"] = typeName
-			configTypeDefinition["default"] = value
+			if configKeyIsNamespacedByProject(projectName, key) {
+				// then this is a project namespaced config _type_ with a default value
+				configTypeDefinition["default"] = value
+			} else {
+				// then this is a non-project namespaced config _value_
+				configTypeDefinition["value"] = value
+			}
+
 			config[key] = configTypeDefinition
+			continue
 		}
 	}
 
@@ -235,7 +271,7 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 }
 
 // Cast any map[interface{}] from the yaml decoder to map[string]
-func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
+func SimplifyMarshalledValue(raw interface{}) (interface{}, error) {
 	var cast func(value interface{}) (interface{}, error)
 	cast = func(value interface{}) (interface{}, error) {
 		if objMap, ok := value.(map[interface{}]interface{}); ok {
@@ -265,7 +301,12 @@ func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) 
 		}
 		return value, nil
 	}
-	result, err := cast(raw)
+
+	return cast(raw)
+}
+
+func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) {
+	result, err := SimplifyMarshalledValue(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -340,12 +381,12 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 // also to validate config values coming from individual stacks.
 func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
 
-	if typeName == "string" {
+	if typeName == stringTypeName {
 		_, ok := value.(string)
 		return ok
 	}
 
-	if typeName == "integer" {
+	if typeName == integerTypeName {
 		_, ok := value.(int)
 		if ok {
 			return true
@@ -366,7 +407,7 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 		return false
 	}
 
-	if typeName == "boolean" {
+	if typeName == booleanTypeName {
 		// check to see if the value is a literal string "true" | "false"
 		literalValue, ok := value.(string)
 		if ok && (literalValue == "true" || literalValue == "false") {
@@ -395,6 +436,10 @@ func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, val
 	return true
 }
 
+func configKeyIsNamespacedByProject(projectName string, configKey string) bool {
+	return !strings.Contains(configKey, ":") || strings.HasPrefix(configKey, projectName+":")
+}
+
 func (proj *Project) Validate() error {
 	if proj.Name == "" {
 		return errors.New("project is missing a 'name' attribute")
@@ -403,14 +448,49 @@ func (proj *Project) Validate() error {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
 
+	projectName := proj.Name.String()
 	for configKey, configType := range proj.Config {
-		if configType.Default != nil {
-			// when the default value is specified, validate it against the type
-			if !ValidateConfigValue(configType.Type, configType.Items, configType.Default) {
-				inferredTypeName := InferFullTypeName(configType.Type, configType.Items)
-				return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
-					configKey,
-					inferredTypeName)
+		if configType.Default != nil && configType.Value != nil {
+			return errors.Errorf("project config '%v' cannot have both a 'default' and 'value' attribute", configKey)
+		}
+
+		configTypeName := configType.TypeName()
+
+		if configKeyIsNamespacedByProject(projectName, configKey) {
+			// namespaced by project
+			if configType.IsExplicitlyTyped() && configType.TypeName() == arrayTypeName && configType.Items == nil {
+				return errors.Errorf("The configuration key '%v' declares an array "+
+					"but does not specify the underlying type via the 'items' attribute", configKey)
+			}
+
+			// when we have a config _type_ with a schema
+			if configType.IsExplicitlyTyped() && configType.Default != nil {
+				if !ValidateConfigValue(configTypeName, configType.Items, configType.Default) {
+					inferredTypeName := InferFullTypeName(configTypeName, configType.Items)
+					return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
+						configKey,
+						inferredTypeName)
+				}
+			}
+
+		} else {
+			// when not namespaced by project, there shouldn't be a type, only a value
+			if configType.IsExplicitlyTyped() {
+				return errors.Errorf("Configuration key '%v' is not namespaced by the project and should not define a type",
+					configKey)
+			}
+
+			// default values are part of a type schema
+			// when not namespaced by project, there is no type schema, only a value
+			if configType.Default != nil {
+				return errors.Errorf("Configuration key '%v' is not namespaced by the project and "+
+					"should not define a default value. "+
+					"Did you mean to use the 'value' attribute instead of 'default'?", configKey)
+			}
+
+			// when not namespaced by project, there should be a value
+			if configType.Value == nil {
+				return errors.Errorf("Configuration key '%v' is namespaced and must provide an attribute 'value'", configKey)
 			}
 		}
 	}
