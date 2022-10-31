@@ -23,64 +23,12 @@ import (
 	"os"
 	"unicode/utf8"
 
-	gotty "github.com/ijc/Gotty"
-	"golang.org/x/crypto/ssh/terminal"
-
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-/* Satisfied by gotty.TermInfo as well as noTermInfo from below */
-type termInfo interface {
-	Parse(attr string, params ...interface{}) (string, error)
-}
-
-type noTermInfo struct{} // canary used when no terminfo.
-
-func (ti *noTermInfo) Parse(attr string, params ...interface{}) (string, error) {
-	return "", fmt.Errorf("noTermInfo")
-}
-
-func clearLine(out io.Writer, ti termInfo) {
-	// el2 (clear whole line) is not exposed by terminfo.
-
-	// First clear line from beginning to cursor
-	if attr, err := ti.Parse("el1"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[1K")
-	}
-	// Then clear line from cursor to end
-	if attr, err := ti.Parse("el"); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[K")
-	}
-}
-
-func cursorUp(out io.Writer, ti termInfo, l int) {
-	if l == 0 { // Should never be the case, but be tolerant
-		return
-	}
-	if attr, err := ti.Parse("cuu", l); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[%dA", l)
-	}
-}
-
-func cursorDown(out io.Writer, ti termInfo, l int) {
-	if l == 0 { // Should never be the case, but be tolerant
-		return
-	}
-	if attr, err := ti.Parse("cud", l); err == nil {
-		fmt.Fprintf(out, "%s", attr)
-	} else {
-		fmt.Fprintf(out, "\x1b[%dB", l)
-	}
-}
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
 // simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
@@ -104,10 +52,10 @@ func makeActionProgress(id string, action string) Progress {
 }
 
 // Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
-func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
+func (jm *Progress) Display(out io.Writer, termInfo terminal.Info) {
 	var endl string
 	if termInfo != nil && /*jm.Stream == "" &&*/ jm.Action != "" {
-		clearLine(out, termInfo)
+		termInfo.ClearLine(out)
 		endl = "\r"
 		fmt.Fprint(out, endl)
 	}
@@ -127,11 +75,10 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 }
 
 type messageRenderer struct {
-	opts Options
+	opts          Options
+	isInteractive bool
 
-	isTerminal bool
-
-	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
+	terminal       terminal.Terminal
 	terminalWidth  int
 	terminalHeight int
 
@@ -147,24 +94,36 @@ type messageRenderer struct {
 	printedProgressCache map[string]Progress
 }
 
-func newMessageRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
-	progressOutput, closed := make(chan Progress), make(chan bool)
-	go func() {
-		ShowProgressOutput(progressOutput, stdout, false)
-		close(closed)
-	}()
+func newInteractiveMessageRenderer(term terminal.Terminal, opts Options) progressRenderer {
+	r := newMessageRenderer(term, opts, true)
+	r.terminal = term
+	return r
+}
 
+func newNonInteractiveMessageRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 		nil, opts.Color, 1 /*timesPerSecond*/)
 	ticker.Stop()
 
+	r := newMessageRenderer(stdout, opts, false)
+	r.nonInteractiveSpinner = spinner
+	return r
+}
+
+func newMessageRenderer(out io.Writer, opts Options, isInteractive bool) *messageRenderer {
+	progressOutput, closed := make(chan Progress), make(chan bool)
+	go func() {
+		ShowProgressOutput(progressOutput, out, isInteractive)
+		close(closed)
+	}()
+
 	return &messageRenderer{
-		opts:                  opts,
-		progressOutput:        progressOutput,
-		closed:                closed,
-		printedProgressCache:  make(map[string]Progress),
-		nonInteractiveSpinner: spinner,
+		opts:                 opts,
+		isInteractive:        isInteractive,
+		progressOutput:       progressOutput,
+		closed:               closed,
+		printedProgressCache: make(map[string]Progress),
 	}
 }
 
@@ -197,7 +156,7 @@ func (r *messageRenderer) colorizeAndWriteProgress(progress Progress) {
 		r.printedProgressCache[progress.ID] = progress
 	}
 
-	if !r.isTerminal {
+	if !r.isInteractive {
 		// We're about to display something.  Reset our spinner so that it will go on the next line.
 		r.nonInteractiveSpinner.Reset()
 	}
@@ -218,7 +177,7 @@ func (r *messageRenderer) println(display *ProgressDisplay, line string) {
 }
 
 func (r *messageRenderer) tick(display *ProgressDisplay) {
-	if r.isTerminal {
+	if r.isInteractive {
 		r.render(display, false)
 	} else {
 		// Update the spinner to let the user know that that work is still happening.
@@ -232,7 +191,7 @@ func (r *messageRenderer) renderRow(display *ProgressDisplay,
 	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
 
 	row := renderRow(colorizedColumns, uncolorizedColumns, maxColumnLengths)
-	if r.isTerminal {
+	if r.isInteractive {
 		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 		// msgWithColors having the color code information embedded with it.  So we need to get
 		// the right substring of it, assuming that embedded colors are just markup and do not
@@ -245,7 +204,7 @@ func (r *messageRenderer) renderRow(display *ProgressDisplay,
 	}
 
 	if row != "" {
-		if r.isTerminal {
+		if r.isInteractive {
 			r.colorizeAndWriteProgress(makeActionProgress(id, row))
 		} else {
 			r.writeSimpleMessage(row)
@@ -254,7 +213,7 @@ func (r *messageRenderer) renderRow(display *ProgressDisplay,
 }
 
 func (r *messageRenderer) rowUpdated(display *ProgressDisplay, row Row) {
-	if r.isTerminal {
+	if r.isInteractive {
 		// if we're in a terminal, then refresh everything so that all our columns line up
 		r.render(display, false)
 	} else {
@@ -266,7 +225,7 @@ func (r *messageRenderer) rowUpdated(display *ProgressDisplay, row Row) {
 }
 
 func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine.StdoutEventPayload) {
-	if r.isTerminal {
+	if r.isInteractive {
 		// if we're in a terminal, then refresh everything.  The system events will come after
 		// all the normal rows
 		r.render(display, false)
@@ -277,13 +236,13 @@ func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine
 }
 
 func (r *messageRenderer) done(display *ProgressDisplay) {
-	if r.isTerminal {
+	if r.isInteractive {
 		r.render(display, false)
 	}
 }
 
 func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
-	if !r.isTerminal || display.headerRow == nil {
+	if !r.isInteractive || display.headerRow == nil {
 		return
 	}
 
@@ -350,7 +309,7 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 
 // Ensure our stored dimension info is up to date.
 func (r *messageRenderer) updateTerminalDimensions() {
-	currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
+	currentTerminalWidth, currentTerminalHeight, err := r.terminal.Size()
 	contract.IgnoreError(err)
 
 	if currentTerminalWidth != r.terminalWidth ||
@@ -363,26 +322,21 @@ func (r *messageRenderer) updateTerminalDimensions() {
 	}
 }
 
-// ShowProgressOutput displays a progress stream from `in` to `out`, `isTerminal` describes if
+// ShowProgressOutput displays a progress stream from `in` to `out`, `isInteractive` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
+func ShowProgressOutput(in <-chan Progress, out io.Writer, isInteractive bool) {
 	var (
 		ids = make(map[string]int)
 	)
 
-	var info termInfo
-
-	if isTerminal {
+	var info terminal.Info
+	if isInteractive {
 		term := os.Getenv("TERM")
 		if term == "" {
 			term = "vt102"
 		}
-
-		var err error
-		if info, err = gotty.OpenTermInfo(term); err != nil {
-			info = &noTermInfo{}
-		}
+		info = terminal.OpenInfo(term)
 	}
 
 	for jm := range in {
@@ -409,7 +363,7 @@ func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
 			}
 			diff = len(ids) - line
 			if info != nil {
-				cursorUp(out, info, diff)
+				info.CursorUp(out, diff)
 			}
 		} else {
 			// When outputting something that isn't progress
@@ -421,7 +375,7 @@ func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
 		}
 		jm.Display(out, info)
 		if jm.Action != "" && info != nil {
-			cursorDown(out, info, diff)
+			info.CursorDown(out, diff)
 		}
 	}
 }
