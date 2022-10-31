@@ -17,7 +17,7 @@
 //
 // Declaring a variable is as simple as declaring a module level constant.
 //
-//   var Var = env.Bool("VAR", "A boolean variable")
+//	var Var = env.Bool("VAR", "A boolean variable")
 //
 // Typed values can be retrieved by calling `Var.Value()`.
 package env

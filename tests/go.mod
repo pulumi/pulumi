@@ -12,7 +12,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/hexops/autogold v1.3.0
-	github.com/pulumi/pulumi/pkg/v3 v3.34.1
+	github.com/pulumi/pulumi/pkg/v3 v3.49.0
 	github.com/pulumi/pulumi/sdk/v3 v3.49.0
 	github.com/stretchr/testify v1.8.0
 	google.golang.org/grpc v1.51.0
