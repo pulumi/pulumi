@@ -21,9 +21,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"unicode/utf8"
 
 	gotty "github.com/ijc/Gotty"
+	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -77,6 +82,27 @@ func cursorDown(out io.Writer, ti termInfo, l int) {
 	}
 }
 
+// Progress describes a message we want to show in the display.  There are two types of messages,
+// simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
+// are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
+// Actions must have an ID.
+type Progress struct {
+	ID      string
+	Message string
+	Action  string
+}
+
+func makeMessageProgress(message string) Progress {
+	return Progress{Message: message}
+}
+
+func makeActionProgress(id string, action string) Progress {
+	contract.Assertf(id != "", "id must be non empty for action %s", action)
+	contract.Assertf(action != "", "action must be non empty")
+
+	return Progress{ID: id, Action: action}
+}
+
 // Display displays the Progress to `out`. `termInfo` is non-nil if `out` is a terminal.
 func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 	var endl string
@@ -97,6 +123,213 @@ func (jm *Progress) Display(out io.Writer, termInfo termInfo) {
 		}
 
 		fmt.Fprintf(out, "%s%s\n", msg, endl)
+	}
+}
+
+type messageRenderer struct {
+	opts Options
+
+	isTerminal bool
+
+	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
+	terminalWidth  int
+	terminalHeight int
+
+	// A spinner to use to show that we're still doing work even when no output has been
+	// printed to the console in a while.
+	nonInteractiveSpinner cmdutil.Spinner
+
+	progressOutput chan<- Progress
+
+	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
+	// changed between the last time we printed and now.
+	printedProgressCache map[string]Progress
+}
+
+func (r *messageRenderer) Close() error {
+	close(r.progressOutput)
+	return nil
+}
+
+// Converts the colorization tags in a progress message and then actually writes the progress
+// message to the output stream.  This should be the only place in this file where we actually
+// process colorization tags.
+func (r *messageRenderer) colorizeAndWriteProgress(progress Progress) {
+	if progress.Message != "" {
+		progress.Message = r.opts.Color.Colorize(progress.Message)
+	}
+
+	if progress.Action != "" {
+		progress.Action = r.opts.Color.Colorize(progress.Action)
+	}
+
+	if progress.ID != "" {
+		// don't repeat the same output if there is no difference between the last time we
+		// printed it and now.
+		lastProgress, has := r.printedProgressCache[progress.ID]
+		if has && lastProgress.Message == progress.Message && lastProgress.Action == progress.Action {
+			return
+		}
+
+		r.printedProgressCache[progress.ID] = progress
+	}
+
+	if !r.isTerminal {
+		// We're about to display something.  Reset our spinner so that it will go on the next line.
+		r.nonInteractiveSpinner.Reset()
+	}
+
+	r.progressOutput <- progress
+}
+
+func (r *messageRenderer) writeSimpleMessage(msg string) {
+	r.colorizeAndWriteProgress(makeMessageProgress(msg))
+}
+
+func (r *messageRenderer) writeBlankLine() {
+	r.writeSimpleMessage(" ")
+}
+
+func (r *messageRenderer) println(display *ProgressDisplay, line string) {
+	r.writeSimpleMessage(line)
+}
+
+func (r *messageRenderer) tick(display *ProgressDisplay) {
+	if r.isTerminal {
+		r.render(display)
+	} else {
+		// Update the spinner to let the user know that that work is still happening.
+		r.nonInteractiveSpinner.Tick()
+	}
+}
+
+func (r *messageRenderer) renderRow(display *ProgressDisplay,
+	id string, colorizedColumns []string, maxColumnLengths []int) {
+
+	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
+
+	row := renderRow(colorizedColumns, uncolorizedColumns, maxColumnLengths)
+	if r.isTerminal {
+		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
+		// msgWithColors having the color code information embedded with it.  So we need to get
+		// the right substring of it, assuming that embedded colors are just markup and do not
+		// actually contribute to the length
+		maxRowLength := r.terminalWidth - 1
+		if maxRowLength < 0 {
+			maxRowLength = 0
+		}
+		row = colors.TrimColorizedString(row, maxRowLength)
+	}
+
+	if row != "" {
+		if r.isTerminal {
+			r.colorizeAndWriteProgress(makeActionProgress(id, row))
+		} else {
+			r.writeSimpleMessage(row)
+		}
+	}
+}
+
+func (r *messageRenderer) rowUpdated(display *ProgressDisplay, row Row) {
+	if r.isTerminal {
+		// if we're in a terminal, then refresh everything so that all our columns line up
+		r.render(display)
+	} else {
+		// otherwise, just print out this single row.
+		colorizedColumns := row.ColorizedColumns()
+		colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
+		r.renderRow(display, "", colorizedColumns, nil)
+	}
+}
+
+func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine.StdoutEventPayload) {
+	if r.isTerminal {
+		// if we're in a terminal, then refresh everything.  The system events will come after
+		// all the normal rows
+		r.render(display)
+	} else {
+		// otherwise, in a non-terminal, just print out the actual event.
+		r.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
+	}
+}
+
+func (r *messageRenderer) done(display *ProgressDisplay) {
+}
+
+func (r *messageRenderer) render(display *ProgressDisplay) {
+	if !r.isTerminal || display.headerRow == nil {
+		return
+	}
+
+	// make sure our stored dimension info is up to date
+	r.updateTerminalDimensions()
+
+	rootNodes := display.generateTreeNodes()
+	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
+	sortNodes(rootNodes)
+	display.addIndentations(rootNodes, true /*isRoot*/, "")
+
+	maxSuffixLength := 0
+	for _, v := range display.suffixesArray {
+		runeCount := utf8.RuneCountInString(v)
+		if runeCount > maxSuffixLength {
+			maxSuffixLength = runeCount
+		}
+	}
+
+	var rows [][]string
+	var maxColumnLengths []int
+	display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
+
+	removeInfoColumnIfUnneeded(rows)
+
+	for i, row := range rows {
+		r.renderRow(display, fmt.Sprintf("%v", i), row, maxColumnLengths)
+	}
+
+	systemID := len(rows)
+
+	printedHeader := false
+	for _, payload := range display.systemEventPayloads {
+		msg := payload.Color.Colorize(payload.Message)
+		lines := splitIntoDisplayableLines(msg)
+
+		if len(lines) == 0 {
+			continue
+		}
+
+		if !printedHeader {
+			printedHeader = true
+			r.colorizeAndWriteProgress(makeActionProgress(
+				fmt.Sprintf("%v", systemID), " "))
+			systemID++
+
+			r.colorizeAndWriteProgress(makeActionProgress(
+				fmt.Sprintf("%v", systemID),
+				colors.Yellow+"System Messages"+colors.Reset))
+			systemID++
+		}
+
+		for _, line := range lines {
+			r.colorizeAndWriteProgress(makeActionProgress(
+				fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
+			systemID++
+		}
+	}
+}
+
+// Ensure our stored dimension info is up to date.
+func (r *messageRenderer) updateTerminalDimensions() {
+	currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
+	contract.IgnoreError(err)
+
+	if currentTerminalWidth != r.terminalWidth ||
+		currentTerminalHeight != r.terminalHeight {
+		r.terminalWidth = currentTerminalWidth
+		r.terminalHeight = currentTerminalHeight
+
+		// also clear our display cache as we want to reprint all lines.
+		r.printedProgressCache = make(map[string]Progress)
 	}
 }
 
