@@ -18,9 +18,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	javaversion "github.com/pulumi/pulumi-java/pkg/version"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -33,6 +35,7 @@ import (
 func newGenSdkCommand() *cobra.Command {
 	var language string
 	var out string
+	var javaBuildTool string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk <schema_source>",
 		Args:  cobra.ExactArgs(1),
@@ -47,6 +50,31 @@ func newGenSdkCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if language == "java" || language == "all" {
+				javaPackageInfo, ok := pkg.Language["java"].(javagen.PackageInfo)
+				if !ok {
+					javaPackageInfo = javagen.PackageInfo{}
+				}
+				javaPackageInfo.BuildFiles = javaBuildTool
+
+				javaSdkVersion := javaversion.Version
+				if javaSdkVersion == "" {
+					// `pulumi-java/pkg/version.Version` is provided at build time.
+					// Go retrieves `pulumi-java` from source and version is "".
+					//
+					// tracked in https://github.com/pulumi/pulumi-java/issues/880
+					javaSdkVersion = "0.6.0"
+				}
+				parsedVersion, err := semver.ParseTolerant(javaSdkVersion)
+				if err != nil {
+					return err
+				}
+				pkg.Language["java"] = javaPackageInfo.
+					WithDefaultDependencies().
+					WithJavaSdkDependencyDefault(parsedVersion)
+			}
+
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
 					err := genSDK(lang, out, pkg)
@@ -63,6 +91,8 @@ func newGenSdkCommand() *cobra.Command {
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
+	cmd.Flags().StringVarP(&javaBuildTool, "java-build-tool", "", "gradle",
+		"The build tool to use")
 	return cmd
 }
 
