@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -325,6 +325,9 @@ namespace Pulumi.Automation
             var env = new Dictionary<string, string?>();
             if (!string.IsNullOrWhiteSpace(this.PulumiHome))
                 env["PULUMI_HOME"] = this.PulumiHome;
+
+            if (this is LocalWorkspace localWorkspace && localWorkspace.Remote)
+                env["PULUMI_EXPERIMENTAL"] = "true";
 
             if (this.EnvironmentVariables != null)
             {

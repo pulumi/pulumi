@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -217,6 +217,8 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
                 if (options.Program != null)
@@ -289,7 +291,10 @@ namespace Pulumi.Automation
                 }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
-                var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+                // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+                // load the project file.
+                var showSecrets = Remote ? false : options?.ShowSecrets;
+                var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -320,6 +325,8 @@ namespace Pulumi.Automation
             var program = this.Workspace.Program;
             var logger = this.Workspace.Logger;
             var args = new List<string>() { "preview" };
+
+            args.AddRange(GetRemoteArgs());
 
             if (options != null)
             {
@@ -443,6 +450,8 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
                 if (options.ExpectNoChanges is true)
@@ -456,7 +465,10 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+            // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+            // load the project file.
+            var showSecrets = Remote ? false : options?.ShowSecrets;
+            var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -479,6 +491,8 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
                 if (options.TargetDependents is true)
@@ -492,7 +506,10 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+            // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+            // load the project file.
+            var showSecrets = Remote ? false : options?.ShowSecrets;
+            var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -806,5 +823,11 @@ namespace Pulumi.Automation
                 args.Add("--json");
             }
         }
+
+        private bool Remote
+            => Workspace is LocalWorkspace localWorkspace && localWorkspace.Remote;
+
+        private IReadOnlyList<string> GetRemoteArgs()
+            => Workspace is LocalWorkspace localWorkspace ? localWorkspace.GetRemoteArgs() : Array.Empty<string>();
     }
 }

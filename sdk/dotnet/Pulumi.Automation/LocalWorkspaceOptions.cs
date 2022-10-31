@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
@@ -64,5 +64,25 @@ namespace Pulumi.Automation
         /// <see cref="LocalWorkspace.SaveStackSettingsAsync(string, Automation.StackSettings, System.Threading.CancellationToken)"/>.
         /// </summary>
         public IDictionary<string, StackSettings>? StackSettings { get; set; }
+
+        /// <summary>
+        /// Whether the workspace is a remote workspace.
+        /// </summary>
+        internal bool Remote { get; set; }
+
+        /// <summary>
+        /// Args for remote workspace with Git source.
+        /// </summary>
+        internal RemoteGitProgramArgs? RemoteGitProgramArgs { get; set; }
+
+        /// <summary>
+        /// Environment values scoped to the remote workspace. These will be passed to remote operations.
+        /// </summary>
+        internal IDictionary<string, EnvironmentVariableValue>? RemoteEnvironmentVariables { get; set; }
+
+        /// <summary>
+        /// An optional list of arbitrary commands to run before a remote Pulumi operation is invoked.
+        /// </summary>
+        internal IList<string>? RemotePreRunCommands { get; set; }
     }
 }
