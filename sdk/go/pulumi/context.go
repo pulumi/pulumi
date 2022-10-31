@@ -51,8 +51,9 @@ type Context struct {
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
 
-	keepResources    bool // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues bool // true if outputs should be marshaled as strongly-type output values.
+	keepResources       bool // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues    bool // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith bool // true if deletedWith supported by pulumi
 
 	rpcs     int        // the number of outstanding RPC requests.
 	rpcsDone *sync.Cond // an event signaling completion of RPCs.
@@ -126,16 +127,22 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsDeletedWith, err := supportsFeature("deletedWith")
+	if err != nil {
+		return nil, err
+	}
+
 	context := &Context{
-		ctx:              ctx,
-		info:             info,
-		exports:          make(map[string]Input),
-		monitorConn:      monitorConn,
-		monitor:          monitor,
-		engineConn:       engineConn,
-		engine:           engine,
-		keepResources:    keepResources,
-		keepOutputValues: keepOutputValues,
+		ctx:                 ctx,
+		info:                info,
+		exports:             make(map[string]Input),
+		monitorConn:         monitorConn,
+		monitor:             monitor,
+		engineConn:          engineConn,
+		engine:              engine,
+		keepResources:       keepResources,
+		keepOutputValues:    keepOutputValues,
+		supportsDeletedWith: supportsDeletedWith,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -594,6 +601,10 @@ func (ctx *Context) ReadResource(
 	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, aliasParent)
 	if err != nil {
 		return err
+	}
+
+	if options.DeletedWith != "" && !ctx.supportsDeletedWith {
+		return errors.New("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.")
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.

@@ -33,6 +33,7 @@ import {
     URN,
 } from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { monitorSupportsDeletedWith } from "./settings";
 import { invoke } from "./invoke";
 
 import {
@@ -318,6 +319,10 @@ export function registerResource(res: Resource, parent: Resource | undefined, t:
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setRetainondelete(opts.retainOnDelete || false);
         req.setDeletedwith(opts.deletedWith);
+
+        if (opts.deletedWith && !(await monitorSupportsDeletedWith())) {
+            throw new Error("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.");
+        }
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {

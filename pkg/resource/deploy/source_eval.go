@@ -639,6 +639,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = !rm.disableOutputValues
 	case "aliasSpecs":
 		hasSupport = true
+	case "deletedWith":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)

@@ -21,6 +21,10 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}, remote={remote}");
 
+            if (options.DeletedWith != null && !(await MonitorSupportsDeletedWith().ConfigureAwait(false))) {
+                throw new Exception("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.")
+            }
+
             var request = CreateRegisterResourceRequest(type, name, custom, remote, options);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}, remote={remote}");
