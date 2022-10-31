@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.45.0 (2022-10-31)
+
+
+### Features
+
+- [auto/dotnet] Support for remote operations
+  [#11194](https://github.com/pulumi/pulumi/pull/11194)
+
+- [cli/config] Typing made optional, extended short-hand values to arrays and correctly pass stack name to config validator
+  [#11192](https://github.com/pulumi/pulumi/pull/11192)
+
+- [auto/go] Support for remote operations
+  [#11168](https://github.com/pulumi/pulumi/pull/11168)
+
+- [auto/nodejs] Support for remote operations
+  [#11170](https://github.com/pulumi/pulumi/pull/11170)
+
+- [auto/python] Support for remote operations
+  [#11174](https://github.com/pulumi/pulumi/pull/11174)
+
+
+### Bug Fixes
+
+- [sdk/{go,yaml}] Block IsSecret until secretness is known
+  [#11189](https://github.com/pulumi/pulumi/pull/11189)
+
+- [sdk/{go,yaml}] Prevent race on resource output
+  [#11186](https://github.com/pulumi/pulumi/pull/11186)
+
 ## 3.44.3 (2022-10-28)
 
 
