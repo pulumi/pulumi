@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Support for remote operations
