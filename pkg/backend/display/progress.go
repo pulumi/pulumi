@@ -232,10 +232,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	if stdout == nil {
 		stdout = os.Stdout
 	}
-	stderr := opts.Stderr
-	if stderr == nil {
-		stderr = os.Stderr
-	}
 
 	isTerminal := true
 	renderer, err := newTreeRenderer(stdin, stdout, opts)

@@ -330,7 +330,8 @@ func (r *treeRenderer) handleEvents() {
 		case key := <-r.keys:
 			switch key {
 			case "ctrl+c":
-				syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+				err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+				contract.IgnoreError(err)
 			case "up":
 				if r.treeTableOffset > 0 {
 					r.treeTableOffset--

@@ -130,7 +130,6 @@ type messageRenderer struct {
 	opts Options
 
 	isTerminal bool
-	stdout     io.Writer
 
 	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
 	terminalWidth  int
