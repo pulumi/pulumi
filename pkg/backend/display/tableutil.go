@@ -59,3 +59,18 @@ func renderRow(columns []string, maxColumnWidths []int) string {
 	}
 	return row.String()
 }
+
+func rowWidth(columnWidths []int) int {
+	row := 0
+	for i, w := range columnWidths {
+		// Account for padding between columns.
+		if i == 0 {
+			w += 1
+		} else {
+			w += 2
+		}
+
+		row += w
+	}
+	return row
+}

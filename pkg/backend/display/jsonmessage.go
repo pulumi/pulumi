@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -250,24 +249,12 @@ func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 	rootNodes := display.generateTreeNodes()
 	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 	sortNodes(rootNodes)
-	display.addIndentations(rootNodes, true /*isRoot*/, "")
 
-	maxSuffixLength := 0
-	for _, v := range display.suffixesArray {
-		runeCount := utf8.RuneCountInString(v)
-		if runeCount > maxSuffixLength {
-			maxSuffixLength = runeCount
-		}
-	}
-
-	var rows [][]string
-	var maxColumnLengths []int
-	display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
-
-	removeInfoColumnIfUnneeded(rows)
+	rows := generateRows(rootNodes, false /*reflow*/)
+	columnWidths := measureColumns(rows)
 
 	for i, row := range rows {
-		r.renderRow(display, fmt.Sprintf("%v", i), row, maxColumnLengths)
+		r.renderRow(display, fmt.Sprintf("%v", i), row, columnWidths)
 	}
 
 	systemID := len(rows)

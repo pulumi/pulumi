@@ -257,8 +257,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 		stack:                 stack,
 		proj:                  proj,
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
-		suffixesArray:         []string{"", ".", "..", "..."},
+		suffixesArray:         []string{"   ", ".  ", ".. ", "..."},
 		urnToID:               make(map[resource.URN]string),
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -278,6 +277,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(display, line)
+}
+
+type treeColumn struct {
+	contents string
+	width    int
 }
 
 type treeNode struct {
@@ -349,13 +353,12 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	return result
 }
 
-func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
-
+func convertNodesToRows(nodes []*treeNode, rows *[][]string, isRoot bool, indentation string, reflow bool) {
 	childIndentation := indentation + "│  "
 	lastChildIndentation := indentation + "   "
 
-	for i, node := range treeNodes {
-		isLast := i == len(treeNodes)-1
+	for i, node := range nodes {
+		isLast := i == len(nodes)-1
 
 		prefix := indentation
 
@@ -370,40 +373,72 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 			}
 		}
 
-		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
-		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
+		// The standard row layout is
+		//
+		//     op | indent + type | name | status | info
+		//
+		// If the terminal is narrow, we reflow the layout to
+		//
+		//     op | indent + type | status
+		//        | name
+		//        | info
+		//
+
+		cols := node.colorizedColumns
+
+		op, name, info := cols[opColumn], cols[nameColumn], cols[infoColumn]
+		typ := prefix + cols[typeColumn]
+		status := cols[statusColumn] + node.colorizedSuffix
+
+		if !reflow {
+			*rows = append(*rows, []string{op, typ, name, status, info})
+		} else {
+			detailsPrefix := indentation
+			if !isRoot {
+				detailsPrefix = nestedIndentation
+			}
+
+			*rows = append(*rows, []string{op, typ, status})
+			*rows = append(*rows, []string{"", detailsPrefix + name, ""})
+			if info != "" {
+				*rows = append(*rows, []string{"", detailsPrefix + info})
+			}
+		}
+
+		convertNodesToRows(node.childNodes, rows, false /*isRoot*/, nestedIndentation, reflow)
 	}
 }
 
-func (display *ProgressDisplay) convertNodesToRows(
-	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int) {
-
-	for _, node := range nodes {
-		if len(*maxColumnLengths) == 0 {
-			*maxColumnLengths = make([]int, len(node.colorizedColumns))
+func generateRows(nodes []*treeNode, reflow bool) (rows [][]string) {
+	if len(nodes) > 0 {
+		header := append([]string(nil), nodes[0].colorizedColumns...)
+		if !reflow {
+			rows = append(rows, header)
+		} else {
+			rows = append(rows, []string{header[opColumn], header[typeColumn], header[statusColumn]})
 		}
 
-		colorizedColumns := make([]string, len(node.colorizedColumns))
-
-		for i, colorizedColumn := range node.colorizedColumns {
-			columnWidth := colors.MeasureColorizedString(colorizedColumn)
-
-			if i == display.suffixColumn {
-				columnWidth += maxSuffixLength
-				colorizedColumns[i] = colorizedColumn + node.colorizedSuffix
-			} else {
-				colorizedColumns[i] = colorizedColumn
-			}
-
-			if columnWidth > (*maxColumnLengths)[i] {
-				(*maxColumnLengths)[i] = columnWidth
-			}
+		convertNodesToRows(nodes[1:], &rows, true /*isRoot*/, "", reflow)
+		if !reflow {
+			removeInfoColumnIfUnneeded(rows)
 		}
-
-		*rows = append(*rows, colorizedColumns)
-
-		display.convertNodesToRows(node.childNodes, maxSuffixLength, rows, maxColumnLengths)
 	}
+	return
+}
+
+func measureColumns(rows [][]string) (maxColumnWidths []int) {
+	for _, row := range rows {
+		if len(maxColumnWidths) == 0 {
+			maxColumnWidths = make([]int, len(row))
+		}
+		for i, col := range row[:len(row)-1] {
+			width := colors.MeasureColorizedString(col)
+			if width > maxColumnWidths[i] {
+				maxColumnWidths[i] = width
+			}
+		}
+	}
+	return
 }
 
 type sortable []*treeNode
@@ -450,8 +485,7 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 
 func removeInfoColumnIfUnneeded(rows [][]string) {
 	// If there have been no info messages, then don't print out the info column header.
-	for i := 1; i < len(rows); i++ {
-		row := rows[i]
+	for _, row := range rows[1:] {
 		if row[len(row)-1] != "" {
 			return
 		}
