@@ -16,8 +16,7 @@ import { Resource } from "./resource";
 
 // The previous plan failed, but we're going to initiate *another* plan that
 // introduces new changes, while still keeping around the failed state
-// from the previous plan. The engine should delete all pending deletes before
-// attempting to start the next plan.
+// from the previous plan. The engine should handle all pending deletes.
 //
 // To do this, we're going to trigger another replacement of A:
 const a = new Resource("a", { fail: 3 });
@@ -27,9 +26,10 @@ const b = new Resource("b", { fail: 1 }, { dependsOn: a });
 // The snapshot now contains:
 //  A: Created
 //  A: Pending Delete
+//  A: Pending Delete
 //  B: Created
 
-// The A from the previous snapshot should have been deleted.
+// The A from the previous snapshot won't have been deleted yet because we try to leave deletes till last.
 
 // This plan is interesting because it shows that it is legal to delete the same URN multiple
 // times in the same plan. This previously triggered an assert in the engine that asserted

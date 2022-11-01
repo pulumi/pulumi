@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Support for remote operations
