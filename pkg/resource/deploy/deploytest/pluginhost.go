@@ -156,17 +156,19 @@ func (w *grpcWrapper) Close() error {
 
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
 	wrapper := &grpcWrapper{stop: make(chan bool)}
-	port, _, err := rpcutil.Serve(0, wrapper.stop, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: wrapper.stop,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
 	}
 	conn, err := grpc.Dial(
-		fmt.Sprintf("127.0.0.1:%v", port),
+		fmt.Sprintf("127.0.0.1:%v", handle.Port),
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
 		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
@@ -242,16 +244,18 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		statusSink: statusSink,
 		stop:       make(chan bool),
 	}
-	port, _, err := rpcutil.Serve(0, engine.stop, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: engine.stop,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		panic(fmt.Errorf("could not start engine service: %v", err))
 	}
-	engine.address = fmt.Sprintf("127.0.0.1:%v", port)
+	engine.address = fmt.Sprintf("127.0.0.1:%v", handle.Port)
 
 	return &pluginHost{
 		pluginLoaders:   pluginLoaders,

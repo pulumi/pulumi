@@ -119,22 +119,24 @@ func main() {
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancelChannel,
+		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// And finally wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
 }
@@ -460,12 +462,14 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}()
 
 	// Launch the rpc server giving it the real monitor to forward messages to.
-	port, serverDone, err := rpcutil.Serve(0, serverCancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: serverCancel,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target})
 			return nil
 		},
-	}, tracingSpan)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +488,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	// Forward any rpc server or pipe errors to our output channel.
 	go func() {
-		err := <-serverDone
+		err := <-handle.Done
 		if err != nil {
 			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
 		}
@@ -513,7 +517,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath, fmt.Sprintf("127.0.0.1:%d", port), pipes.directory())
+	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath,
+		fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -29,6 +30,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -36,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -94,7 +97,13 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	prefix := fmt.Sprintf("%v (resource)", pkg)
 
 	if optAttach != "" {
-		conn, err := dialPlugin(optAttach, pkg.String(), prefix)
+		port, err := strconv.Atoi(optAttach)
+		if err != nil {
+			return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_PROVIDERS: %w",
+				optAttach, err)
+		}
+
+		conn, err := dialPlugin(port, pkg.String(), prefix, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +132,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+			[]string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -154,11 +163,36 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	return p, nil
 }
 
+func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "resource",
+		}
+		if pkg != "" {
+			metadata["name"] = pkg.String()
+		}
+		if path != "" {
+			metadata["path"] = path
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	env := os.Environ()
+
 	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
-		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+		[]string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
 	if err != nil {
 		return nil, err
 	}

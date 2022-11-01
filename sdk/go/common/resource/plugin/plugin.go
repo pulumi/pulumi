@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,7 +28,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -40,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
@@ -115,15 +114,11 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
-func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
+func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) (*grpc.ClientConn, error) {
+	port := fmt.Sprintf("%d", portNum)
+
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(
-		"127.0.0.1:"+port,
-		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
-		rpcutil.GrpcChannelOptions(),
-	)
+	conn, err := grpc.Dial("127.0.0.1:"+port, dialOptions...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
@@ -173,7 +168,8 @@ func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, options ...otgrpc.Option) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string,
+	dialOptions []grpc.DialOption) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -245,7 +241,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
-	var port string
+	var portString string
 	b := make([]byte, 1)
 	for {
 		n, readerr := plug.Stdout.Read(b)
@@ -259,19 +255,21 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 			}
 
 			// Fall back to a generic, opaque error.
-			if port == "" {
+			if portString == "" {
 				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
 			}
-			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", bin, port)
+			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')",
+				bin, portString)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
 		}
-		port += string(b[:n])
+		portString += string(b[:n])
 	}
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
-	if _, err = strconv.Atoi(port); err != nil {
+	var port int
+	if port, err = strconv.Atoi(portString); err != nil {
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
@@ -283,7 +281,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
-	conn, err := dialPlugin(port, bin, prefix)
+	conn, err := dialPlugin(port, bin, prefix, dialOptions)
 	if err != nil {
 		return nil, err
 	}

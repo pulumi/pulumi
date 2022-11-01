@@ -1033,7 +1033,7 @@ type languageRuntimeServer struct {
 
 	state  int
 	cancel chan bool
-	done   chan error
+	done   <-chan error
 }
 
 // isNestedInvocation returns true if pulumi.RunWithContext is on the stack.
@@ -1066,16 +1066,18 @@ func startLanguageRuntimeServer(fn pulumi.RunFunc) (*languageRuntimeServer, erro
 	}
 	s.c = sync.NewCond(&s.m)
 
-	port, done, err := rpcutil.Serve(0, s.cancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: s.cancel,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, s)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		return nil, err
 	}
-	s.address, s.done = fmt.Sprintf("127.0.0.1:%d", port), done
+	s.address, s.done = fmt.Sprintf("127.0.0.1:%d", handle.Port), handle.Done
 	return s, nil
 }
 

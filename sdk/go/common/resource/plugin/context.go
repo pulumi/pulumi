@@ -17,8 +17,10 @@ package plugin
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/opentracing/opentracing-go"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -35,6 +37,12 @@ type Context struct {
 	Host       Host      // the host that can be used to fetch providers.
 	Pwd        string    // the working directory to spawn all plugins in.
 	Root       string    // the root directory of the project.
+
+	// If non-nil, configures custom gRPC client options. Receives pluginInfo which is a JSON-serializable bit of
+	// metadata describing the plugin.
+	DialOptions func(pluginInfo interface{}) []grpc.DialOption
+
+	DebugTraceMutex *sync.Mutex // used internally to syncronize debug tracing
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
@@ -80,11 +88,12 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	}
 
 	ctx := &Context{
-		Diag:        d,
-		StatusDiag:  statusD,
-		Host:        host,
-		Pwd:         pwd,
-		tracingSpan: parentSpan,
+		Diag:            d,
+		StatusDiag:      statusD,
+		Host:            host,
+		Pwd:             pwd,
+		tracingSpan:     parentSpan,
+		DebugTraceMutex: &sync.Mutex{},
 	}
 	if host == nil {
 		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins)

@@ -23,6 +23,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Configures interceptors to propagate OpenTracing metadata through headers. If parentSpan is non-nil, it becomes the
+// default parent for orphan spans.
+func OpenTracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
+		grpc.ChainStreamInterceptor(OpenTracingStreamServerInterceptor(parentSpan, options...)),
+	}
+}
+
 // OpenTracingServerInterceptor provides a default gRPC server
 // interceptor for emitting tracing to the global OpenTracing tracer.
 func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc.Option) grpc.UnaryServerInterceptor {
@@ -69,6 +78,14 @@ func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamCli
 			return method != ""
 		})), logPayloads()...)
 	return otgrpc.OpenTracingStreamClientInterceptor(opentracing.GlobalTracer(), options...)
+}
+
+// Configures gRPC clients with OpenTracing interceptors.
+func OpenTracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
+	return []grpc.DialOption{
+		grpc.WithChainUnaryInterceptor(OpenTracingClientInterceptor(opts...)),
+		grpc.WithChainStreamInterceptor(OpenTracingStreamClientInterceptor(opts...)),
+	}
 }
 
 // Wraps an opentracing.Tracer to reparent orphan traces with a given
