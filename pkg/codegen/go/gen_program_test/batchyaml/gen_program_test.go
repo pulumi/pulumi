@@ -1,4 +1,4 @@
-package batch7
+package batchyaml
 
 import (
 	"os"
