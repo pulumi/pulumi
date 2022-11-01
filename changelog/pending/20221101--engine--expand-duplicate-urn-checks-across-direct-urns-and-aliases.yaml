@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Expand duplicate URN checks across direct URNs and aliases.

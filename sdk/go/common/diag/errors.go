@@ -84,3 +84,9 @@ Either include resource in --target list or pass --target-dependents to proceed.
 func GetDefaultProviderDenied(urn resource.URN) *Diag {
 	return newError(urn, 2015, `Default provider for '%v' disabled. '%v' must use an explicit provider.`)
 }
+
+func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
+	return newError(urn, 2016,
+		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
+	)
+}
