@@ -370,6 +370,7 @@ export function waitForRPCs(disconnectFromServers = false): Promise<void> {
 
 /**
  * getMaximumListeners returns the configured number of process listeners available
+ * @internal
  */
 export function getMaximumListeners(): number {
     const { settings } = getStore();

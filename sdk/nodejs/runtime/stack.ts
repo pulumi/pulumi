@@ -43,6 +43,7 @@ export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | und
 /**
  * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
  * resource with the Pulumi engine.
+ * @internal
  */
 export class Stack extends ComponentResource<Inputs> {
     /**

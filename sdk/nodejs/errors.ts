@@ -71,6 +71,7 @@ export class ResourceError extends Error {
     }
 }
 
+/** @internal */
 export function isGrpcError(err: Error): boolean {
     const code = (<any>err).code;
     return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
