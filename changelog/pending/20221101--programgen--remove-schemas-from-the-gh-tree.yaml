@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen
+  description: Remove schemas from the GH tree

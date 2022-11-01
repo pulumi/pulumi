@@ -9,3 +9,6 @@ go.mod
 */python/requirements.txt
 */dotnet/Tests
 */nodejs/tests
+
+*-*.json
+!synthetic-*.json
