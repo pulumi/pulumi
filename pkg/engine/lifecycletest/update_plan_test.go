@@ -17,6 +17,7 @@ package lifecycletest
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -1506,4 +1507,99 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
 	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
+}
+
+func TestPlannedUpdateWithDependentDelete(t *testing.T) {
+	t.Parallel()
+
+	var diffResult *plugin.DiffResult
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CheckF: func(urn resource.URN,
+					olds, news resource.PropertyMap, _ []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return news, nil, nil
+				},
+				DiffF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					if strings.Contains(string(urn), "resA") || strings.Contains(string(urn), "resB") {
+						assert.NotNil(t, diffResult, "Diff was called but diffResult wasn't set")
+						return *diffResult, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, _, outs, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+			Inputs:       outs,
+			Dependencies: []resource.URN{resA},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, GeneratePlan: true},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial ResA and resB
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": "baz",
+	})
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Update the input and mark it as a replace, check that both A and B are marked as replacements
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "frob",
+		"zed": "baz",
+	})
+	diffResult = &plugin.DiffResult{
+		Changes:     plugin.DiffSome,
+		ReplaceKeys: []resource.PropertyKey{"foo"},
+		StableKeys:  []resource.PropertyKey{"zed"},
+		DetailedDiff: map[string]plugin.PropertyDiff{
+			"foo": {
+				Kind:      plugin.DiffUpdateReplace,
+				InputDiff: true,
+			},
+		},
+		DeleteBeforeReplace: true,
+	}
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Nil(t, res)
+
+	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typA::resA"].Ops))
+	assert.Equal(t, 3, len(plan.ResourcePlans["urn:pulumi:test::test::pkgA:m:typB::resB"].Ops))
+
+	// Now try and run with the plan
+	p.Options.Plan = plan.Clone()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
 }

@@ -3956,3 +3956,163 @@ func TestDefaultParents(t *testing.T) {
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[1].Parent)
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
 }
+
+func TestPendingDeleteOrder(t *testing.T) {
+	// Test for https://github.com/pulumi/pulumi/issues/2948 Ensure that if we have resources A and B, and we
+	// go to replace A but then fail to replace B that we correctly handle everything in the same order when
+	// we retry the update.
+	//
+	// That is normally for this operation we would do the following:
+	// 1. Create new A
+	// 2. Create new B
+	// 3. Delete old B
+	// 4. Delete old A
+	// So if step 2 fails to create the new B we want to see:
+	// 1. Create new A
+	// 2. Create new B (fail)
+	// 1. Create new B
+	// 2. Delete old B
+	// 3. Delete old A
+	// Currently (and what #2948 tracks) is that the engine does the following:
+	// 1. Create new A
+	// 2. Create new B (fail)
+	// 3. Delete old A
+	// 1. Create new B
+	// 2. Delete old B
+	// That delete A fails because the delete B needs to happen first.
+
+	t.Parallel()
+
+	cloudState := map[resource.ID]resource.PropertyMap{}
+
+	failCreationOfTypB := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if strings.Contains(string(urn), "typB") && failCreationOfTypB {
+						return "", nil, resource.StatusOK, fmt.Errorf("Could not create typB")
+					}
+
+					id := resource.ID(fmt.Sprintf("%d", len(cloudState)))
+					if !preview {
+						cloudState[id] = news
+					}
+					return id, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					// Fail if anything in cloud state still points to us
+					for _, res := range cloudState {
+						for _, v := range res {
+							if v.IsString() && v.StringValue() == string(id) {
+								return resource.StatusOK, fmt.Errorf("Can not delete %s", id)
+							}
+						}
+					}
+
+					delete(cloudState, id)
+					return resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					if strings.Contains(string(urn), "typA") {
+						if !olds["foo"].DeepEquals(news["foo"]) {
+							return plugin.DiffResult{
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"foo"},
+								DetailedDiff: map[string]plugin.PropertyDiff{
+									"foo": {
+										Kind:      plugin.DiffUpdateReplace,
+										InputDiff: true,
+									},
+								},
+								DeleteBeforeReplace: false,
+							}, nil
+						}
+					}
+					if strings.Contains(string(urn), "typB") {
+						if !olds["parent"].DeepEquals(news["parent"]) {
+							return plugin.DiffResult{
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"parent"},
+								DetailedDiff: map[string]plugin.PropertyDiff{
+									"parent": {
+										Kind:      plugin.DiffUpdateReplace,
+										InputDiff: true,
+									},
+								},
+								DeleteBeforeReplace: false,
+							}, nil
+						}
+					}
+
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					assert.Fail(t, "Didn't expect update to be called")
+					return nil, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"parent": idA,
+			}),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resources
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+
+	// Trigger a replacement of A but fail to create B
+	failCreationOfTypB = true
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
+	assert.False(t, snap.Resources[1].Delete)
+	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typA"))
+	assert.True(t, snap.Resources[2].Delete)
+
+	// Now allow B to create and try again
+	failCreationOfTypB = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+}

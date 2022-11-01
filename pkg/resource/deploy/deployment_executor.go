@@ -186,11 +186,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Set up a step generator for this deployment.
 	ex.stepGen = newStepGenerator(ex.deployment, opts, updateTargetsOpt, replaceTargetsOpt)
 
-	// Retire any pending deletes that are currently present in this deployment.
-	if res := ex.retirePendingDeletes(callerCtx, opts, preview); res != nil {
-		return nil, res
-	}
-
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
 	ctx, cancel := context.WithCancel(callerCtx)
@@ -435,51 +430,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result
 	}
 
 	ex.stepExec.ExecuteSerial(steps)
-	return nil
-}
-
-// retirePendingDeletes deletes all resources that are pending deletion. Run before the start of a deployment, this pass
-// ensures that the engine never sees any resources that are pending deletion from a previous deployment.
-//
-// retirePendingDeletes re-uses the deployment executor's step generator but uses its own step executor.
-func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, opts Options,
-	preview bool) result.Result {
-
-	contract.Require(ex.stepGen != nil, "ex.stepGen != nil")
-	steps := ex.stepGen.GeneratePendingDeletes()
-	if len(steps) == 0 {
-		logging.V(4).Infoln("deploymentExecutor.retirePendingDeletes(...): no pending deletions")
-		return nil
-	}
-
-	logging.V(4).Infof("deploymentExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
-	ctx, cancel := context.WithCancel(callerCtx)
-
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, opts, preview, false)
-	antichains := ex.stepGen.ScheduleDeletes(steps)
-	// Submit the deletes for execution and wait for them all to retire.
-	for _, antichain := range antichains {
-		for _, step := range antichain {
-			ex.deployment.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
-		}
-
-		tok := stepExec.ExecuteParallel(antichain)
-		tok.Wait(ctx)
-	}
-
-	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
-
-	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
-	// cancelled.
-	canceled := callerCtx.Err() != nil
-	if stepExec.Errored() {
-		ex.reportExecResult("failed", preview)
-		return result.Bail()
-	} else if canceled {
-		ex.reportExecResult("canceled", preview)
-		return result.Bail()
-	}
 	return nil
 }
 
