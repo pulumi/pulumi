@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"different-enum/plant"
-	"github.com/pkg/errors"
+	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

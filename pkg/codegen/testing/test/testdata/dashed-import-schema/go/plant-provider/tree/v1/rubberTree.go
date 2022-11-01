@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"dashed-import-schema/plant-provider"
-	"github.com/pkg/errors"
+	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

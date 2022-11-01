@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pkg/errors"
+	"errors"
 	awsec2 "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"

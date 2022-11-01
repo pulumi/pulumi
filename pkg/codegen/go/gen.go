@@ -2802,7 +2802,7 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 
 			if p.IsRequired() {
-				importsAndAliases["github.com/pkg/errors"] = ""
+				importsAndAliases["errors"] = ""
 			}
 		}
 		for _, method := range member.Methods {
