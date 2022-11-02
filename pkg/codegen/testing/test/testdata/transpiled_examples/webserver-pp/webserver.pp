@@ -1,4 +1,5 @@
 config instanceType string {
+	__logicalName = "InstanceType"
 	default = "t3.micro"
 }
 

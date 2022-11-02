@@ -1,4 +1,5 @@
 config sqlAdmin string {
+	__logicalName = "sqlAdmin"
 	default = "pulumi"
 }
 

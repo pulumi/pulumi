@@ -7,7 +7,7 @@ resource siteBucket "aws-native:s3:Bucket" {
 
 resource indexHtml "aws:s3/bucketObject:BucketObject" {
 	__logicalName = "index.html"
-	bucket = siteBucket.id
+	bucket = siteBucket
 	source = fileAsset("./www/index.html")
 	acl = "public-read"
 	contentType = "text/html"
@@ -15,7 +15,7 @@ resource indexHtml "aws:s3/bucketObject:BucketObject" {
 
 resource faviconPng "aws:s3/bucketObject:BucketObject" {
 	__logicalName = "favicon.png"
-	bucket = siteBucket.id
+	bucket = siteBucket
 	source = fileAsset("./www/favicon.png")
 	acl = "public-read"
 	contentType = "image/png"
