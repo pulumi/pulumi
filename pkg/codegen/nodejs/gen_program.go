@@ -579,7 +579,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "require"
 	}
 
-	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+	name := makeValidIdentifier(v.Name())
+	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[5]s\")",
+		g.Indent, name, getOrRequire, getType, v.LogicalName())
 	if v.DefaultValue != nil {
 		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
 	}

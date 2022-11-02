@@ -744,17 +744,21 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
+	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue != nil {
 		typ := v.DefaultValue.Type()
 		if _, ok := typ.(*model.PromiseType); ok {
-			g.Fgenf(w, "%[1]svar %[2]s = Output.Create(config.%[3]s%[4]s(\"%[2]s\"))", g.Indent, v.Name(), getOrRequire, getType)
+			g.Fgenf(w, "%svar %s = Output.Create(config.%s%s(\"%s\"))",
+				g.Indent, name, getOrRequire, getType, v.LogicalName())
 		} else {
-			g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+			g.Fgenf(w, "%svar %s = config.%s%s(\"%s\")",
+				g.Indent, name, getOrRequire, getType, v.LogicalName())
 		}
 		expr := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.Fgenf(w, " ?? %.v", expr)
 	} else {
-		g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+		g.Fgenf(w, "%svar %s = config.%s%s(\"%s\")",
+			g.Indent, name, getOrRequire, getType, v.LogicalName())
 	}
 	g.Fgenf(w, ";\n")
 }
