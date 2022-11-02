@@ -19,8 +19,8 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"lukechampine.com/frand"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -70,7 +70,7 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 		randlen = 8
 	}
 	if maxlen > 0 && len(prefix)+randlen > maxlen {
-		return "", errors.Errorf(
+		return "", fmt.Errorf(
 			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
 	}
 
@@ -100,7 +100,7 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randLen, maxLen 
 		randLen = 8
 	}
 	if maxLen > 0 && len(prefix)+randLen > maxLen {
-		return "", errors.Errorf(
+		return "", fmt.Errorf(
 			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randLen, maxLen)
 	}
 
@@ -110,7 +110,7 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randLen, maxLen 
 	}
 
 	if randLen > 32 {
-		return "", errors.Errorf("randLen is longer than 32, %d", randLen)
+		return "", fmt.Errorf("randLen is longer than 32, %d", randLen)
 	}
 
 	// TODO(seqnum) This is seeded by urn and sequence number, and urn has the stack and project names in it.
@@ -141,7 +141,7 @@ func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charse
 		randlen = 8
 	}
 	if maxlen > 0 && len(prefix)+randlen > maxlen {
-		return "", errors.Errorf(
+		return "", fmt.Errorf(
 			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
 	}
 

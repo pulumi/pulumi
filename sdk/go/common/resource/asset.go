@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,8 +33,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -254,7 +253,7 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetHashProperty]; has {
 		h, ok := v.(string)
 		if !ok {
-			return &Asset{}, false, errors.Errorf("unexpected asset hash of type %T", v)
+			return &Asset{}, false, fmt.Errorf("unexpected asset hash of type %T", v)
 		}
 		hash = h
 	}
@@ -262,7 +261,7 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetTextProperty]; has {
 		t, ok := v.(string)
 		if !ok {
-			return &Asset{}, false, errors.Errorf("unexpected asset text of type %T", v)
+			return &Asset{}, false, fmt.Errorf("unexpected asset text of type %T", v)
 		}
 		text = t
 	}
@@ -270,7 +269,7 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetPathProperty]; has {
 		p, ok := v.(string)
 		if !ok {
-			return &Asset{}, false, errors.Errorf("unexpected asset path of type %T", v)
+			return &Asset{}, false, fmt.Errorf("unexpected asset path of type %T", v)
 		}
 		path = p
 	}
@@ -278,7 +277,7 @@ func DeserializeAsset(obj map[string]interface{}) (*Asset, bool, error) {
 	if v, has := obj[AssetURIProperty]; has {
 		u, ok := v.(string)
 		if !ok {
-			return &Asset{}, false, errors.Errorf("unexpected asset URI of type %T", v)
+			return &Asset{}, false, fmt.Errorf("unexpected asset URI of type %T", v)
 		}
 		uri = u
 	}
@@ -329,18 +328,18 @@ func (a *Asset) readPath() (*Blob, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to open asset file '%v'", path)
+		return nil, fmt.Errorf("failed to open asset file '%v': %w", path, err)
 	}
 
 	// Do a quick check to make sure it's a file, so we can fail gracefully if someone passes a directory.
 	info, err := file.Stat()
 	if err != nil {
 		contract.IgnoreClose(file)
-		return nil, errors.Wrapf(err, "failed to stat asset file '%v'", path)
+		return nil, fmt.Errorf("failed to stat asset file '%v': %w", path, err)
 	}
 	if info.IsDir() {
 		contract.IgnoreClose(file)
-		return nil, errors.Errorf("asset path '%v' is a directory; try using an archive", path)
+		return nil, fmt.Errorf("asset path '%v' is a directory; try using an archive", path)
 	}
 
 	blob := &Blob{
@@ -368,7 +367,7 @@ func (a *Asset) readURI() (*Blob, error) {
 		contract.Assert(url.RawQuery == "")
 		contract.Assert(url.Fragment == "")
 		if url.Host != "" && url.Host != "localhost" {
-			return nil, errors.Errorf("file:// host '%v' not supported (only localhost)", url.Host)
+			return nil, fmt.Errorf("file:// host '%v' not supported (only localhost)", url.Host)
 		}
 		f, err := os.Open(url.Path)
 		if err != nil {
@@ -376,7 +375,7 @@ func (a *Asset) readURI() (*Blob, error) {
 		}
 		return NewFileBlob(f)
 	default:
-		return nil, errors.Errorf("Unrecognized or unsupported URI scheme: %v", s)
+		return nil, fmt.Errorf("Unrecognized or unsupported URI scheme: %v", s)
 	}
 }
 
@@ -477,7 +476,7 @@ func NewAssetArchive(assets map[string]interface{}) (*Archive, error) {
 		case *Asset, *Archive:
 			// ok
 		default:
-			return &Archive{}, errors.Errorf("type %v is not a valid archive element", t)
+			return &Archive{}, fmt.Errorf("type %v is not a valid archive element", t)
 		}
 	}
 	a := &Archive{Sig: ArchiveSig, Assets: assets}
@@ -598,7 +597,7 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	if v, has := obj[ArchiveHashProperty]; has {
 		h, ok := v.(string)
 		if !ok {
-			return &Archive{}, false, errors.Errorf("unexpected archive hash of type %T", v)
+			return &Archive{}, false, fmt.Errorf("unexpected archive hash of type %T", v)
 		}
 		hash = h
 	}
@@ -609,7 +608,7 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 		if v != nil {
 			m, ok := v.(map[string]interface{})
 			if !ok {
-				return &Archive{}, false, errors.Errorf("unexpected archive contents of type %T", v)
+				return &Archive{}, false, fmt.Errorf("unexpected archive contents of type %T", v)
 			}
 
 			for k, elem := range m {
@@ -629,12 +628,12 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 						if err != nil {
 							return &Archive{}, false, err
 						} else if !isarch {
-							return &Archive{}, false, errors.Errorf("archive member '%v' is not an asset or archive", k)
+							return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
 						}
 						assets[k] = arch
 					}
 				default:
-					return &Archive{}, false, errors.Errorf("archive member '%v' is not an asset or archive", k)
+					return &Archive{}, false, fmt.Errorf("archive member '%v' is not an asset or archive", k)
 				}
 			}
 		}
@@ -643,7 +642,7 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	if v, has := obj[ArchivePathProperty]; has {
 		p, ok := v.(string)
 		if !ok {
-			return &Archive{}, false, errors.Errorf("unexpected archive path of type %T", v)
+			return &Archive{}, false, fmt.Errorf("unexpected archive path of type %T", v)
 		}
 		path = p
 	}
@@ -651,7 +650,7 @@ func DeserializeArchive(obj map[string]interface{}) (*Archive, bool, error) {
 	if v, has := obj[ArchiveURIProperty]; has {
 		u, ok := v.(string)
 		if !ok {
-			return &Archive{}, false, errors.Errorf("unexpected archive URI of type %T", v)
+			return &Archive{}, false, fmt.Errorf("unexpected archive URI of type %T", v)
 		}
 		uri = u
 	}
@@ -730,14 +729,14 @@ func (r *assetsArchiveReader) Next() (string, *Blob, error) {
 			// An asset can be produced directly.
 			blob, err := t.Read()
 			if err != nil {
-				return "", nil, errors.Wrapf(err, "failed to expand archive asset '%v'", name)
+				return "", nil, fmt.Errorf("failed to expand archive asset '%v': %w", name, err)
 			}
 			return name, blob, nil
 		case *Archive:
 			// An archive must be flattened into its constituent blobs. Open the archive for reading and loop.
 			archive, err := t.Open()
 			if err != nil {
-				return "", nil, errors.Wrapf(err, "failed to expand sub-archive '%v'", name)
+				return "", nil, fmt.Errorf("failed to expand sub-archive '%v': %w", name, err)
 			}
 			r.archive = archive
 			r.archiveRoot = name
@@ -820,9 +819,9 @@ func (a *Archive) readPath() (ArchiveReader, error) {
 		// If not an archive, it could be a directory; if so, simply expand it out uncompressed as an archive.
 		info, err := os.Stat(path)
 		if err != nil {
-			return nil, errors.Wrapf(err, "couldn't read archive path '%v'", path)
+			return nil, fmt.Errorf("couldn't read archive path '%v': %w", path, err)
 		} else if !info.IsDir() {
-			return nil, errors.Errorf("'%v' is neither a recognized archive type nor a directory", path)
+			return nil, fmt.Errorf("'%v' is neither a recognized archive type nor a directory", path)
 		}
 
 		// Accumulate the list of asset paths. This list is ordered deterministically by filepath.Walk.
@@ -894,7 +893,7 @@ func (a *Archive) readURI() (ArchiveReader, error) {
 	format := detectArchiveFormat(url.Path)
 	if format == NotArchive {
 		// IDEA: support (a) hints and (b) custom providers that default to certain formats.
-		return nil, errors.Errorf("file at URL '%v' is not a recognized archive format", url)
+		return nil, fmt.Errorf("file at URL '%v' is not a recognized archive format", url)
 	}
 
 	ar, err := a.openURLStream(url)
@@ -919,7 +918,7 @@ func (a *Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 		contract.Assert(url.Fragment == "")
 		return os.Open(url.Path)
 	default:
-		return nil, errors.Errorf("Unrecognized or unsupported URI scheme: %v", s)
+		return nil, fmt.Errorf("Unrecognized or unsupported URI scheme: %v", s)
 	}
 }
 
@@ -986,7 +985,7 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool
 	}
 	n, err := io.Copy(tw, data)
 	if err == tar.ErrWriteTooLong {
-		return errors.Wrap(err, fmt.Sprintf("incorrect blob size for %v: expected %v, got %v", file, sz, n))
+		return fmt.Errorf("incorrect blob size for %v: expected %v, got %v: %w", file, sz, n, err)
 	}
 	// tar expect us to write all the bytes we said we would write. If copy doesn't write Size bytes to the
 	// tar file then we'll get a "missed writing X bytes" error on the next call to WriteHeader or Flush.
@@ -1273,7 +1272,7 @@ func (r *zipArchiveReader) Next() (string, *Blob, error) {
 		// Open the next file and return its blob.
 		body, err := file.Open()
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "failed to read ZIP inner file %v", file.Name)
+			return "", nil, fmt.Errorf("failed to read ZIP inner file %v: %w", file.Name, err)
 		}
 		blob := &Blob{
 			rd: body,
@@ -1295,7 +1294,7 @@ func (r *zipArchiveReader) Close() error {
 func readZIPArchive(ar io.ReaderAt, size int64) (ArchiveReader, error) {
 	zr, err := zip.NewReader(ar, size)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read ZIP")
+		return nil, fmt.Errorf("failed to read ZIP: %w", err)
 	}
 
 	r := &zipArchiveReader{
