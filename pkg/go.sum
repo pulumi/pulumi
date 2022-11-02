@@ -1468,8 +1468,8 @@ github.com/prometheus/prometheus v0.37.0/go.mod h1:egARUgz+K93zwqsVIAneFlLZefyGO
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/pulumi/pulumi-java/pkg v0.6.0 h1:haiSQJlhrQIBBcR0r0aQCIF8i69e4znzRnHpaNQUchE=
 github.com/pulumi/pulumi-java/pkg v0.6.0/go.mod h1:xSK2B792P8zjwYZTHYapMM1RJdue2BpRFQNYObWO0C8=
-github.com/pulumi/pulumi-yaml v0.5.10 h1:r9vP2mSgyCngA2CZzzD5c1fS8iytnTz2eGo9UzKBYYY=
-github.com/pulumi/pulumi-yaml v0.5.10/go.mod h1:vxV5TdH3Xk5HRHNftcDXSbsZFJcJY9ME6k4zD+xw9OY=
+github.com/pulumi/pulumi-yaml v1.0.0 h1:MnyFtaP1BvOlz4VN1mOY3D+5gOb7fbxkjwtdqRBvJ0k=
+github.com/pulumi/pulumi-yaml v1.0.0/go.mod h1:vxV5TdH3Xk5HRHNftcDXSbsZFJcJY9ME6k4zD+xw9OY=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=
 github.com/pulumi/ssh-agent v0.5.1/go.mod h1:e6cyz/FUcE3PcJZ0tiuygkRsnHnCZcSQoQU+APbnrVA=
 github.com/rakyll/embedmd v0.0.0-20171029212350-c8060a0752a2/go.mod h1:7jOTMgqac46PZcF54q6l2hkLEG8op93fZu61KmxWDV4=
