@@ -144,6 +144,8 @@ tidy::
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
+schema-awsx!1.0.0-beta.5: url = "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/${name}/schema.json"
+
 # We replace the '!' with a space, then take the first word
 # schema-pkg!x.y.z => schema-pkg
 # We then replace 'schema-' with nothing, giving only the package name.
@@ -152,11 +154,12 @@ validate_codecov_yaml::
 name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
 # Here we take the second word, just the version
 version=$(word 2,$(subst !, ,$@))
+url ?= "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json"
 schema-%: curl.ensure jq.ensure
 	@echo "Ensuring schema ${name}, ${version}"
 	@# Download the package from github, then stamp in the correct version.
 	@[ -f pkg/codegen/testing/test/testdata/${name}-${version}.json ] || \
-		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
+		curl ${url} \
 		| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}-${version}.json
 	@# Confirm that the correct version is present. If not, error out.
 	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}-${version}.json)" &&        \
@@ -164,6 +167,7 @@ schema-%: curl.ensure jq.ensure
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
 		fi
+
 # Related files:
 #
 # pkg/codegen/testing/utils/host.go depends on this list, update that file on changes.

@@ -37,7 +37,11 @@ on:
         default: false
         required: false
         type: boolean
-
+      is-codegen-test:
+        description: Whether to download schema
+        default: false
+        required: false
+        type: boolean
       version-set:
         required: false
         description: "Set of language versions to use for builds, lints, releases, etc."
@@ -307,6 +311,10 @@ jobs:
       - name: Set PULUMI_ACCEPT if version-set is not current
         if: ${{ fromJson(inputs.version-set).name != 'current' }}
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
+      - name: Download test SDKs
+        if: inputs.is-codegen-test
+        run: |
+          make get_schemas
       - name: run tests
         id: test
         run: ${{ inputs.test-command }}
