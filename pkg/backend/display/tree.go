@@ -22,7 +22,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -330,8 +329,7 @@ func (r *treeRenderer) handleEvents() {
 		case key := <-r.keys:
 			switch key {
 			case "ctrl+c":
-				err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-				contract.IgnoreError(err)
+				sigint()
 			case "up":
 				if r.treeTableOffset > 0 {
 					r.treeTableOffset--
