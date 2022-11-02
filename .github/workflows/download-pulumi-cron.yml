@@ -100,10 +100,8 @@ jobs:
     steps:
       - name: Install WinGet CLI
         shell: powershell
-        run:
-          Add-AppxPackage -Path 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
-          $wingetAlreadyInstalled = Get-AppPackage -name 'Microsoft.DesktopAppInstaller'
-          if (!$wingetAlreadyInstalled) { Add-AppxPackage -Path https://aka.ms/getwinget }
+        run: |
+          try { winget --help } catch { Add-AppxPackage -Path https://aka.ms/getwinget }
       - name: Install Pulumi Using Winget
         run: winget install pulumi
       - name: Pulumi Version Details
