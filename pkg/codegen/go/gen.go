@@ -3223,6 +3223,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				names = append(names, cgstrings.Camel(rawResourceName(r))+suffix+"State")
 				names = append(names, "Get"+rawResourceName(r)+suffix)
 			}
+			if goInfo.GenerateResourceContainerTypes && !r.IsProvider {
+				names = append(names, rawResourceName(r)+suffix+"Array")
+				names = append(names, rawResourceName(r)+suffix+"Map")
+			}
 			return names
 		}
 
