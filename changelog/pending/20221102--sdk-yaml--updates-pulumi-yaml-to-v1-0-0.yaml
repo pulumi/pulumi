@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/yaml
-  description: "[Updates Pulumi YAML to v1.0.0](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.0) containing runtime support for external config."
