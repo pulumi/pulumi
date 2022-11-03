@@ -76,6 +76,14 @@ $DOCKER_RUN /bin/bash -c 'set -x && JS_PULUMIRPC=/nodejs/proto && \
 # to the form
 #     from . import foo_pb2 as bar
 # This form is semantically equivalent and is accepted by both Python 2 and Python 3.
+#
+# mypy_protoc doesn't yet support aio which we use (https://github.com/nipunn1313/mypy-protobuf/issues/216) so
+# we 'sed' to do some replacements to support that, adding an import for grpc.aio and typing and changing
+# grpc.Server to Union[grpc.Server, grpc.aio.Server].
+#
+# mypy_protoc also marks all server methods as abstract, they aren't really abstract because they have default
+# implementations that simply return a grpc error that it's not implemented, we make use of those default
+# methods so don't want type checking telling us to fill them all in.
 
 $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     PROTO_FILES=$(find . -name "*.proto" -not -name "status.proto") && \
@@ -83,8 +91,12 @@ $DOCKER_RUN /bin/bash -c 'PY_PULUMIRPC=/python/lib/pulumi/runtime/proto/ && \
     TEMP_DIR="/tmp/python-build"      && \
     echo -e "\tPython temp dir: $TEMP_DIR" && \
     mkdir -p "$TEMP_DIR" && \
-    python3 -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" $PROTO_FILES && \
+    python3 -m grpc_tools.protoc -I./ --python_out="$TEMP_DIR" --mypy_out="$TEMP_DIR" --grpc_python_out="$TEMP_DIR" --mypy_grpc_out="$TEMP_DIR" $PROTO_FILES && \
     sed -i "s/^from pulumi import \([^ ]*\)_pb2 as \([^ ]*\)$/from . import \1_pb2 as \2/" "$TEMP_DIR"/pulumi/*.py && \
-    cp "$TEMP_DIR"/pulumi/*.py "$PY_PULUMIRPC"'
+    sed -i "s/^import grpc$/import grpc\nimport grpc.aio\nimport typing/" "$TEMP_DIR"/pulumi/*.pyi && \
+    sed -i "s/: grpc\.Server/: typing.Union[grpc.Server, grpc.aio.Server]/" "$TEMP_DIR"/pulumi/*.pyi && \
+    sed -i "s/@abc.abstractmethod//" "$TEMP_DIR"/pulumi/*.pyi && \
+    cp "$TEMP_DIR"/pulumi/*.py "$PY_PULUMIRPC" &&
+    cp "$TEMP_DIR"/pulumi/*.pyi "$PY_PULUMIRPC"'
 
 echo "* Done."

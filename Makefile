@@ -33,7 +33,7 @@ ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 	@touch .ensure.phony
 
 .PHONY: build-proto
-PROTO_FILES := $(sort $(wildcard proto/**/*.proto) proto/generate.sh $(wildcard proto/build-container/**/*))
+PROTO_FILES := $(sort $(shell find proto/ -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
 build-proto:
 	@printf "Protobuffer interfaces are ....... "
 	@if [ "$$(cat proto/.checksum.txt)" = "$$(cksum $(PROTO_FILES))" ]; then \
