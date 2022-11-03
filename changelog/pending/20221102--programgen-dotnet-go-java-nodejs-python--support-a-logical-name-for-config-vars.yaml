@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/dotnet,go,java,nodejs,python
-  description: Support a logical name for config vars
