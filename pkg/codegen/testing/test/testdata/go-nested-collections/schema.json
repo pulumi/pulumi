@@ -17,6 +17,21 @@
                     }
                 }
             }
+        },
+        "repro:overlap:SomeType": {},
+        "repro:overlap:SomeTypeMap": {},
+        "repro:overlap:Consumer": {
+            "inputProperties": {
+                "typM": {
+                    "$ref": "#/resources/repro:overlap:SomeTypeMap"
+                },
+                "typ": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/resources/repro:overlap:SomeType"
+                    }
+                }
+            }
         }
     },
     "types": {
@@ -30,7 +45,7 @@
     "language": {
         "go": {
             "generateResourceContainerTypes": true,
-            "importBasePath": "go-plain-ref-repro/repro",
+            "importBasePath": "go-nested-collections/repro",
             "liftSingleValueMethodReturns": true
         }
     }
