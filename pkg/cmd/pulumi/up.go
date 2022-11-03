@@ -157,9 +157,10 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             deploy.NewUrnTargets(targetURNs),
 			TargetDependents:          targetDependents,
-			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
-			// which will be constrained to during the update phase.
-			GeneratePlan: hasExperimentalCommands(),
+			// Trigger a plan to be generated during the preview phase which can be constrained to during the
+			// update phase.
+			GeneratePlan: true,
+			Experimental: hasExperimentalCommands(),
 		}
 
 		if planFilePath != "" {
@@ -362,6 +363,7 @@ func newUpCmd() *cobra.Command {
 			// If we're in experimental mode then we trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
 			GeneratePlan: hasExperimentalCommands(),
+			Experimental: hasExperimentalCommands(),
 		}
 
 		// TODO for the URL case:

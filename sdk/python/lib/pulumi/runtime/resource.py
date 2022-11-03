@@ -682,7 +682,9 @@ def register_resource_outputs(
 ):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
-        serialized_props = await rpc.serialize_properties(outputs, {})
+        # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
+        # much directly by users who could pass None in (although the type hints say they shouldn't).
+        serialized_props = await rpc.serialize_properties(outputs or {}, {})
         log.debug(
             f"register resource outputs prepared: urn={urn}, props={serialized_props}"
         )
