@@ -129,10 +129,14 @@ func (o *OutputState) elementType() reflect.Type {
 	return o.element
 }
 
+// Fetch the dependencies of an OutputState. It is not thread-safe to mutate values inside
+// returned slice.
 func (o *OutputState) dependencies() []Resource {
 	if o == nil {
 		return nil
 	}
+	o.cond.L.Lock()
+	defer o.cond.L.Unlock()
 	return o.deps
 }
 
