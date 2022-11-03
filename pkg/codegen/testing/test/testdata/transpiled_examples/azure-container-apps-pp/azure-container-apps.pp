@@ -1,8 +1,10 @@
 config sqlAdmin string {
+	__logicalName = "sqlAdmin"
 	default = "pulumi"
 }
 
 config retentionInDays int {
+	__logicalName = "retentionInDays"
 	default = 30
 }
 
