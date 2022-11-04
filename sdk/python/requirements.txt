@@ -8,7 +8,7 @@ semver~=2.8
 pyyaml~=6.0
 
 # Dev packages only needed during development.
-pylint==2.14.5
+pylint==2.15.5
 mypy>=0.78
 pytest
 pytest-timeout

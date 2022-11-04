@@ -446,6 +446,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 	}
 
+	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
+		// This resource is claiming to be X but we've already seen another resource claim that via aliases
+		invalid = true
+		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasedError(urn), urn, previousAliasURN)
+	}
+
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
@@ -461,7 +467,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			oldInputs = old.Inputs
 			oldOutputs = old.Outputs
 			if urnOrAlias != urn {
+				if _, alreadySeen := sg.urns[urnOrAlias]; alreadySeen {
+					// This resource is claiming to X but we've already seen that urn created
+					invalid = true
+					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, urn)
+				}
 				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+					// This resource is claiming to be X but we've already seen another resource claim that
 					invalid = true
 					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
 				}

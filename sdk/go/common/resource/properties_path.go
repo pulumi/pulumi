@@ -2,11 +2,10 @@ package resource
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -92,7 +91,7 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 				} else {
 					index, err := strconv.ParseInt(segment, 10, 0)
 					if err != nil {
-						return nil, errors.Wrap(err, "invalid array index")
+						return nil, fmt.Errorf("invalid array index: %w", err)
 					}
 					pathElement, path = int(index), path[rbracket:]
 				}

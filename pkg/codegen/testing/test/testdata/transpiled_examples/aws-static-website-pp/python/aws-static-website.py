@@ -6,12 +6,12 @@ site_bucket = aws_native.s3.Bucket("site-bucket", website_configuration=aws_nati
     index_document="index.html",
 ))
 index_html = aws.s3.BucketObject("index.html",
-    bucket=site_bucket.id,
+    bucket=site_bucket,
     source=pulumi.FileAsset("./www/index.html"),
     acl="public-read",
     content_type="text/html")
 favicon_png = aws.s3.BucketObject("favicon.png",
-    bucket=site_bucket.id,
+    bucket=site_bucket,
     source=pulumi.FileAsset("./www/favicon.png"),
     acl="public-read",
     content_type="image/png")

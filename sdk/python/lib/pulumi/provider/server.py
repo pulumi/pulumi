@@ -94,7 +94,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config), request.configSecretKeys
+            dict(request.config), list(request.configSecretKeys)
         )
         inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
@@ -181,6 +181,7 @@ class ProviderServicer(ResourceProviderServicer):
         self, result: ConstructResult
     ) -> proto.ConstructResponse:
         urn = await pulumi.Output.from_input(result.urn).future()
+        assert urn is not None
 
         # Note: property_deps is populated by rpc.serialize_properties.
         property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
@@ -225,7 +226,8 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config), request.configSecretKeys
+            dict(request.config),
+            list(request.configSecretKeys),
         )
 
         args = await self._call_args(request)
@@ -276,17 +278,16 @@ class ProviderServicer(ResourceProviderServicer):
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
 
-        # Since `return` is a keyword, we need to pass the args to `CallResponse` using a dictionary.
-        resp = {
-            "return": ret,
-            "returnDependencies": deps,
-        }
+        failures = None
         if result.failures:
-            resp["failures"] = [
+            failures = [
                 proto.CheckFailure(property=f.property, reason=f.reason)
                 for f in result.failures
             ]
-        return proto.CallResponse(**resp)
+        resp = proto.CallResponse(returnDependencies=deps, failures=failures)
+        # Since `return` is a keyword, we need to use getattr: https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+        getattr(resp, "return").CopyFrom(ret)
+        return resp
 
     async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
         # Note: ret_deps is populated by rpc.serialize_properties but unused

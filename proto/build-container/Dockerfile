@@ -40,11 +40,12 @@ RUN --mount=target=/var/lib/apt/lists,type=cache \
     AWSCLI_VERSION=1.17.9 \
     WHEEL_VERSION=0.34.2 \
     TWINE_VERSION=3.1.1 \
+    MYPY_VERSION=3.4.0 \
     /build-scripts/install-python.sh
 
 # Set various required environment variables
 ENV GOPATH=/go \
-    PATH=/go/bin:/root/.pulumi/bin:/usr/local/go/bin:/root/.yarn/bin/:$PATH
+    PATH=/root/.local/bin:/go/bin:/root/.pulumi/bin:/usr/local/go/bin:/root/.yarn/bin/:$PATH
 
 # Install Protocol Buffers compiler and various GRPC generators
 COPY /scripts/install-protobuf-tools.sh /build-scripts/

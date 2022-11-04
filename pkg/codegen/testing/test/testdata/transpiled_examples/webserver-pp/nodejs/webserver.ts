@@ -2,7 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 
 const config = new pulumi.Config();
-const instanceType = config.get("instanceType") || "t3.micro";
+const instanceType = config.get("InstanceType") || "t3.micro";
 const ec2Ami = aws.getAmi({
     filters: [{
         name: "name",

@@ -1,4 +1,5 @@
 config hostname string {
+	__logicalName = "hostname"
 	default = "example.com"
 }
 

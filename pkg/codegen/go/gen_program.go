@@ -903,8 +903,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
+	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
-		g.Fgenf(w, "%[1]s := cfg.%[2]s%[3]s(\"%[1]s\")\n", v.Name(), getOrRequire, getType)
+		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
 	} else {
 		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.genTemps(w, temps)
@@ -912,7 +913,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		case *model.FunctionCallExpression:
 			switch expr.Name {
 			case pcl.Invoke:
-				g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+				g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
 				g.isErrAssigned = true
 				g.Fgenf(w, "if err != nil {\n")
 				g.Fgenf(w, "return err\n")
@@ -922,24 +923,24 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 			switch v.Type() {
 			// Go will default to interpreting integers (i.e. 3) as ints, even if the config is Number
 			case model.NumberType:
-				g.Fgenf(w, "%s := float64(%.3v);\n", v.Name(), expr)
+				g.Fgenf(w, "%s := float64(%.3v);\n", name, expr)
 			default:
-				g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+				g.Fgenf(w, "%s := %.3v;\n", name, expr)
 			}
 		}
 		switch v.Type() {
 		case model.StringType:
-			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.Name())
+			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.LogicalName())
 		case model.NumberType:
-			g.Fgenf(w, "if param := cfg.GetFloat64(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetFloat64(\"%s\"); param != 0 {\n", v.LogicalName())
 		case model.IntType:
-			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.LogicalName())
 		case model.BoolType:
-			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param {\n", v.LogicalName())
 		default:
-			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param != nil {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param != nil {\n", v.LogicalName())
 		}
-		g.Fgenf(w, "%s = param\n", v.Name())
+		g.Fgenf(w, "%s = param\n", name)
 		g.Fgen(w, "}\n")
 	}
 }

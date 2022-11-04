@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Pending deletes are no longer executed before everything else. This correctly handles dependencies for resource graphs that were partially deleted.

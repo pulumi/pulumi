@@ -137,6 +137,7 @@ func newWatchCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
+				Experimental:              hasExperimentalCommands(),
 			}
 
 			res := s.Watch(ctx, backend.UpdateOperation{

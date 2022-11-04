@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.46.0 (2022-11-02)
+
+
+### Features
+
+- [programgen/{dotnet,go,java,nodejs,python}] Support a logical name for config vars
+  [#11231](https://github.com/pulumi/pulumi/pull/11231)
+
+- [sdk/dotnet] Make the `LocalSerializer` class public.
+  [#11106](https://github.com/pulumi/pulumi/pull/11106)
+
+- [sdk/yaml] [Updates Pulumi YAML to v1.0.0](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.0) containing runtime support for external config.
+  [#11222](https://github.com/pulumi/pulumi/pull/11222)
+
+
+### Bug Fixes
+
+- [engine] Fix a bug in update plans handling resources being replaced due to other resources being deleted before replacement.
+  [#11009](https://github.com/pulumi/pulumi/pull/11009)
+
+- [engine] Pending deletes are no longer executed before everything else. This correctly handles dependencies for resource graphs that were partially deleted.
+  [#11027](https://github.com/pulumi/pulumi/pull/11027)
+
+- [engine] Expand duplicate URN checks across direct URNs and aliases.
+  [#11212](https://github.com/pulumi/pulumi/pull/11212)
+
 ## 3.45.0 (2022-10-31)
 
 

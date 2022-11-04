@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Allow resource names that conflict with additional types.

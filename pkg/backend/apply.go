@@ -220,12 +220,14 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			return changes, res
 		}
 
-		// If we had an original plan use it, else use the newly generated plan (might be nil if we've turned
+		// If we had an original plan use it, else if experimental use the newly generated plan (might be nil if we've turned
 		// plan generation off)
 		if originalPlan != nil {
 			op.Opts.Engine.Plan = originalPlan
-		} else {
+		} else if op.Opts.Engine.Experimental {
 			op.Opts.Engine.Plan = plan
+		} else {
+			op.Opts.Engine.Plan = nil
 		}
 	}
 
@@ -235,6 +237,9 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		DryRun:   false,
 		ShowLink: true,
 	}
+	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
+	// after here.
+	op.Opts.Engine.GeneratePlan = false
 	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
 	return changes, res
 }

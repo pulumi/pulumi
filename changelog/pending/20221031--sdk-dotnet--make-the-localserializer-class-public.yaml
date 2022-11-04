@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/dotnet
-  description: Make the `LocalSerializer` class public.

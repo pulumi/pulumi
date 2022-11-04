@@ -66,7 +66,9 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			opts.Engine = engine.UpdateOptions{}
+			opts.Engine = engine.UpdateOptions{
+				Experimental: hasExperimentalCommands(),
+			}
 
 			res := b.Query(ctx, backend.QueryOperation{
 				Proj:   proj,

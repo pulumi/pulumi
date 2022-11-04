@@ -32,6 +32,11 @@ type ConfigVariable struct {
 	Definition *model.Block
 	// The default value for the config variable, if any.
 	DefaultValue model.Expression
+
+	// The name visible to API calls related to the config. Used as the argument when
+	// fetching config variables. Must not be modified during code generation to ensure
+	// that valid config calls don't become invalid.
+	logicalName string
 }
 
 // SyntaxNode returns the syntax node associated with the config variable.
@@ -49,6 +54,13 @@ func (cv *ConfigVariable) VisitExpressions(pre, post model.ExpressionVisitor) hc
 
 func (cv *ConfigVariable) Name() string {
 	return cv.Definition.Labels[0]
+}
+
+func (cv *ConfigVariable) LogicalName() string {
+	if cv.logicalName != "" {
+		return cv.logicalName
+	}
+	return cv.Name()
 }
 
 // Type returns the type of the config variable.
