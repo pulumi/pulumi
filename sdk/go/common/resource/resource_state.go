@@ -44,6 +44,7 @@ type State struct {
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
+	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
 }
 
 func (s *State) GetAliasURNs() []URN {
@@ -64,7 +65,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, retainOnDelete bool) *State {
+	importID ID, retainOnDelete bool, deletedWith URN) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -90,6 +91,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		Aliases:                 aliases,
 		ImportID:                importID,
 		RetainOnDelete:          retainOnDelete,
+		DeletedWith:             deletedWith,
 	}
 
 	if timeouts != nil {

@@ -123,5 +123,11 @@ namespace Pulumi
         /// If set to True, the providers Delete method will not be called for this resource.
         /// </summary>
         public bool? RetainOnDelete { get; set; }
+
+        /// <summary>
+        /// If set, the providers Delete method will not be called for this resource
+        /// if specified resource is being deleted as well.
+        /// </summary>
+        public Resource? DeletedWith { get; set; }
     }
 }

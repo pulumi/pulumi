@@ -285,6 +285,10 @@ async def monitor_supports_output_values() -> bool:
     return await monitor_supports_feature("outputValues")
 
 
+async def monitor_supports_deleted_with() -> bool:
+    return await monitor_supports_feature("deletedWith")
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,

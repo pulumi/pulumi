@@ -200,6 +200,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* customTimeouts */
 		"",    /* importID */
 		false, /* retainOnDelete */
+		"",    /* deletedWith */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -512,7 +513,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -980,7 +981,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 							dependentResource.URN, urn)
 
-						steps = append(steps, NewDeleteReplacementStep(sg.deployment, dependentResource, true))
+						steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
 						// Mark the condemned resource as deleted. We won't know until later in the deployment whether
 						// or not we're going to be replacing this resource.
 						sg.deletes[dependentResource.URN] = true
@@ -988,7 +989,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				}
 
 				return append(steps,
-					NewDeleteReplacementStep(sg.deployment, old, true),
+					NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true),
 					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
 					NewCreateReplacementStep(
 						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
@@ -1064,7 +1065,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, result.
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-				dels = append(dels, NewDeleteReplacementStep(sg.deployment, res, false))
+				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
 			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
 				!sg.reads[res.URN] && !aliased {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
@@ -1072,7 +1073,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, result.
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				if !res.PendingReplacement {
-					dels = append(dels, NewDeleteStep(sg.deployment, res))
+					dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 				} else {
 					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
 				}

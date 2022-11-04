@@ -21,7 +21,11 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}, remote={remote}");
 
-            var request = CreateRegisterResourceRequest(type, name, custom, remote, options);
+            if (options.DeletedWith != null && !(await MonitorSupportsDeletedWith().ConfigureAwait(false))) {
+                throw new Exception("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.");
+            }
+
+            var request = await CreateRegisterResourceRequest(type, name, custom, remote, options);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}, remote={remote}");
             var prepareResult = await PrepareResourceAsync(label, resource, custom, remote, args, options).ConfigureAwait(false);
@@ -64,11 +68,15 @@ namespace Pulumi
             }
         }
 
-        private static RegisterResourceRequest CreateRegisterResourceRequest(
+        private async static Task<RegisterResourceRequest> CreateRegisterResourceRequest(
             string type, string name, bool custom, bool remote, ResourceOptions options)
         {
             var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
+            var deletedWith = "";
+            if (options.DeletedWith != null) {
+                deletedWith = await options.DeletedWith.Urn.GetValueAsync("").ConfigureAwait(false);
+            }
 
             var request = new RegisterResourceRequest
             {
@@ -91,6 +99,7 @@ namespace Pulumi
                 },
                 Remote = remote,
                 RetainOnDelete = options.RetainOnDelete ?? false,
+                DeletedWith = deletedWith,
             };
 
             if (customOpts != null)

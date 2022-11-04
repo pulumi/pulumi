@@ -553,6 +553,11 @@ def register_resource(
                         "Expected custom_timeouts to be a CustomTimeouts object"
                     )
 
+            if opts.deleted_with and not await settings.monitor_supports_deleted_with():
+                raise Exception(
+                    "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
+                )
+
             accept_resources = not (
                 os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
                 in {"TRUE", "1"}
@@ -584,6 +589,7 @@ def register_resource(
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
                 retainOnDelete=opts.retain_on_delete or False,
+                deletedWith=opts.deleted_with,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

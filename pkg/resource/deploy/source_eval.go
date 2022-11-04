@@ -330,7 +330,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false),
+			nil, nil, nil, "", nil, nil, false, ""),
 		done: done,
 	}
 	return event, done, nil
@@ -638,6 +638,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "outputValues":
 		hasSupport = !rm.disableOutputValues
 	case "aliasSpecs":
+		hasSupport = true
+	case "deletedWith":
 		hasSupport = true
 	}
 
@@ -954,6 +956,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
 	retainOnDelete := req.GetRetainOnDelete()
+	deletedWith := resource.URN(req.GetDeletedWith())
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -1139,9 +1142,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
+		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1187,7 +1190,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith),
 			done: make(chan *RegisterResult),
 		}
 
@@ -1249,6 +1252,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// • additionalSecretOutputs
 	// • replaceOnChanges
 	// • retainOnDelete
+	// • deletedWith
 	// Revisit these semantics in Pulumi v4.0
 	// See this issue for more: https://github.com/pulumi/pulumi/issues/9704
 	if !custom {
@@ -1272,6 +1276,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		})
 		rm.checkComponentOption(result.State.URN, "retainOnDelete", func() bool {
 			return retainOnDelete
+		})
+		rm.checkComponentOption(result.State.URN, "deletedWith", func() bool {
+			return deletedWith != ""
 		})
 	}
 

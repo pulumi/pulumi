@@ -217,6 +217,11 @@ namespace Pulumi
             return MonitorSupportsFeature("outputValues");
         }
 
+        internal Task<bool> MonitorSupportsDeletedWith()
+        {
+            return MonitorSupportsFeature("deletedWith");
+        }
+
         // Because the secrets feature predates the Pulumi .NET SDK, we assume
         // that the monitor supports secrets.
     }

@@ -200,6 +200,8 @@ Pulumi.ResourceOptions.PluginDownloadURL.get -> string
 Pulumi.ResourceOptions.PluginDownloadURL.set -> void
 Pulumi.ResourceOptions.RetainOnDelete.get -> bool?
 Pulumi.ResourceOptions.RetainOnDelete.set -> void
+Pulumi.ResourceOptions.DeletedWith.get -> Pulumi.Resource
+Pulumi.ResourceOptions.DeletedWith.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs

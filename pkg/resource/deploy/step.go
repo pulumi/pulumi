@@ -268,29 +268,38 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	deployment *Deployment     // the current deployment.
-	old        *resource.State // the state of the existing resource.
-	replacing  bool            // true if part of a replacement.
+	deployment     *Deployment           // the current deployment.
+	old            *resource.State       // the state of the existing resource.
+	replacing      bool                  // true if part of a replacement.
+	otherDeletions map[resource.URN]bool // other resources that are planned to delete
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(deployment *Deployment, old *resource.State) Step {
+func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
+	contract.Assert(otherDeletions != nil)
 	return &DeleteStep{
-		deployment: deployment,
-		old:        old,
+		deployment:     deployment,
+		old:            old,
+		otherDeletions: otherDeletions,
 	}
 }
 
-func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendingReplace bool) Step {
+func NewDeleteReplacementStep(
+	deployment *Deployment,
+	otherDeletions map[resource.URN]bool,
+	old *resource.State,
+	pendingReplace bool,
+) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
+	contract.Assert(otherDeletions != nil)
 
 	// There are two cases in which we create a delete-replacment step:
 	//
@@ -307,9 +316,10 @@ func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendi
 	contract.Assert(pendingReplace != old.Delete)
 	old.PendingReplacement = pendingReplace
 	return &DeleteStep{
-		deployment: deployment,
-		old:        old,
-		replacing:  true,
+		deployment:     deployment,
+		otherDeletions: otherDeletions,
+		old:            old,
+		replacing:      true,
 	}
 }
 
@@ -335,6 +345,17 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
+func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
+	if with == "" {
+		return false
+	}
+	r, ok := otherDeletions[with]
+	if !ok {
+		return false
+	}
+	return r
+}
+
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
@@ -352,6 +373,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
 		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
+	} else if isDeletedWith(s.old.DeletedWith, s.otherDeletions) {
+		// No need to delete this resource since this resource will be deleted by the another deletion
 	} else if s.old.Custom {
 		// Not preview and not external and not Drop and is custom, do the actual delete
 
@@ -784,7 +807,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith)
 	} else {
 		s.new = nil
 	}
@@ -933,7 +956,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
+		s.new.DeletedWith)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {

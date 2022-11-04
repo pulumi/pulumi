@@ -51,8 +51,9 @@ type Context struct {
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
 
-	keepResources    bool // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues bool // true if outputs should be marshaled as strongly-type output values.
+	keepResources       bool // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues    bool // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith bool // true if deletedWith supported by pulumi
 
 	rpcs     int        // the number of outstanding RPC requests.
 	rpcsDone *sync.Cond // an event signaling completion of RPCs.
@@ -126,16 +127,22 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsDeletedWith, err := supportsFeature("deletedWith")
+	if err != nil {
+		return nil, err
+	}
+
 	context := &Context{
-		ctx:              ctx,
-		info:             info,
-		exports:          make(map[string]Input),
-		monitorConn:      monitorConn,
-		monitor:          monitor,
-		engineConn:       engineConn,
-		engine:           engine,
-		keepResources:    keepResources,
-		keepOutputValues: keepOutputValues,
+		ctx:                 ctx,
+		info:                info,
+		exports:             make(map[string]Input),
+		monitorConn:         monitorConn,
+		monitor:             monitor,
+		engineConn:          engineConn,
+		engine:              engine,
+		keepResources:       keepResources,
+		keepOutputValues:    keepOutputValues,
+		supportsDeletedWith: supportsDeletedWith,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -596,6 +603,10 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
+	if options.DeletedWith != "" && !ctx.supportsDeletedWith {
+		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -856,6 +867,7 @@ func (ctx *Context) registerResource(
 				Remote:                  remote,
 				ReplaceOnChanges:        inputs.replaceOnChanges,
 				RetainOnDelete:          inputs.retainOnDelete,
+				DeletedWith:             inputs.deletedWith,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1249,6 +1261,7 @@ type resourceInputs struct {
 	pluginDownloadURL       string
 	replaceOnChanges        []string
 	retainOnDelete          bool
+	deletedWith             string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -1336,6 +1349,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
+		deletedWith:             string(opts.DeletedWith),
 	}, nil
 }
 

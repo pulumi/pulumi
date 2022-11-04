@@ -117,6 +117,7 @@ message RegisterResourceRequest {
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
     bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
     repeated Alias aliases = 26;                                // a list of additional aliases that should be considered the same.
+    string deletedWith = 27;                                    // if set the engine will not call the resource providers delete method for this resource when specified resource is deleted.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

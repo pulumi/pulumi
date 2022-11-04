@@ -231,6 +231,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
+	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
+	if old.DeletedWith != new.DeletedWith {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
+		return true
+	}
+
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")

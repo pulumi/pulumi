@@ -23,7 +23,8 @@ namespace Pulumi
                 Urn = options.Urn,
                 Version = options.Version,
                 PluginDownloadURL = options.PluginDownloadURL,
-                RetainOnDelete = options.RetainOnDelete
+                RetainOnDelete = options.RetainOnDelete,
+                DeletedWith = options.DeletedWith
             };
 
         internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions? options)

@@ -101,6 +101,7 @@ type ResourceOptions struct {
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
+	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
@@ -222,6 +223,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,
+		DeletedWith:                string(opts.DeletedWith),
 	}
 
 	// submit request

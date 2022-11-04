@@ -311,6 +311,9 @@ type resourceOptions struct {
 	PluginDownloadURL string
 	// If set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete bool
+	// If set, the providers Delete method will not be called for this resource
+	// if specified resource is being deleted as well.
+	DeletedWith URN
 }
 
 type invokeOptions struct {
@@ -588,5 +591,13 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.RetainOnDelete = b
+	})
+}
+
+// If set, the providers Delete method will not be called for this resource
+// if specified resource is being deleted as well.
+func DeletedWith(dw URN) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DeletedWith = dw
 	})
 }
