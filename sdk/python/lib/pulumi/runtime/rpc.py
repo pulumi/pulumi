@@ -146,13 +146,13 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # Annotations not specifying the element type are assumed by mypy
     # to signify Any element type. Follow suit here.
-    if typ in {list, List, Sequence, abc.Sequence}:
+    if typ in [list, List, Sequence, abc.Sequence]:
         return cast(type, Any)
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = _types.get_origin(typ)
-    if typ is list or origin in {list, List, Sequence, abc.Sequence}:
+    if typ is list or origin in [list, List, Sequence, abc.Sequence]:
         args = _types.get_args(typ)
         if len(args) == 1:
             return args[0]
@@ -448,7 +448,7 @@ async def serialize_property(
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
                 origin = _types.get_origin(typ)
-                if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
+                if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                     args = _types.get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
@@ -868,7 +868,7 @@ def translate_output_properties(
 
             # If typ is a dict, get the type for its values, to pass along for each key.
             origin = _types.get_origin(typ)
-            if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
+            if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001

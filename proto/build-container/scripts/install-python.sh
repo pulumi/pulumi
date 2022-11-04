@@ -13,6 +13,7 @@ ensureSet "${PIPENV_VERSION}" "PIPENV_VERSION" || exit 1
 ensureSet "${AWSCLI_VERSION}" "AWSCLI_VERSION" || exit 1
 ensureSet "${WHEEL_VERSION}" "WHEEL_VERSION" || exit 1
 ensureSet "${TWINE_VERSION}" "TWINE_VERSION" || exit 1
+ensureSet "${MYPY_VERSION}" "MYPY_VERSION" || exit 1
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -27,3 +28,4 @@ python3 -m pip install --upgrade setuptools
 
 pip3 install --user "pipenv==${PIPENV_VERSION}"
 pip3 install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
+pip3 install --user "mypy-protobuf==${MYPY_VERSION}"
