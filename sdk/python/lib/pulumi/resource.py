@@ -715,9 +715,7 @@ class ResourceOptions:
             else source.retain_on_delete
         )
         dest.deleted_with = (
-            dest.deleted_with
-            if source.deleted_with is None
-            else source.deleted_with
+            dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
