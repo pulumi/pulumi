@@ -27,7 +27,6 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -99,7 +98,7 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	// Ensure the "node_modules" directory exists.
 	nodeModulesPath := filepath.Join(dir, "node_modules")
 	if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
-		return bin, errors.Errorf("%s install reported success, but node_modules directory is missing", bin)
+		return bin, fmt.Errorf("%s install reported success, but node_modules directory is missing", bin)
 	}
 
 	return bin, nil
@@ -125,8 +124,8 @@ func getCmd(ctx context.Context, command string, production bool) (*exec.Cmd, bo
 	const file = "npm"
 	npmPath, err := exec.LookPath(file)
 	if err != nil {
-		return nil, false, file, errors.Wrapf(err, "could not find npm on the $PATH; npm is installed with Node.js "+
-			"available at https://nodejs.org/")
+		return nil, false, file, fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+
+			"available at https://nodejs.org/: %w", err)
 	}
 	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
 	// `description`, `repository`, and `license` fields in the package.json file.
