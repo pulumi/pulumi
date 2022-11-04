@@ -1295,14 +1295,19 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 		if t != "" {
 			value = fmt.Sprintf("%s(%s)", t, value)
 		}
-		fmt.Fprintf(w, "\t%s.%s = %s\n", object, Title(p.Name), value)
+		fmt.Fprintf(w, "\t%s.%s = %s\n", object, pkg.fieldName(nil, p), value)
 	} else if indirectAssign {
 		tmpName := cgstrings.Camel(p.Name) + "_"
 		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
-		fmt.Fprintf(w, "%s.%s = &%s\n", object, Title(p.Name), tmpName)
+		fmt.Fprintf(w, "%s.%s = &%s\n", object, pkg.fieldName(nil, p), tmpName)
 	} else {
-		fmt.Fprintf(w, "%s.%s = %s\n", object, Title(p.Name), value)
+		fmt.Fprintf(w, "%s.%s = %s\n", object, pkg.fieldName(nil, p), value)
 	}
+}
+
+func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) string {
+	contract.Assert(field != nil)
+	return fieldName(pkg, r, field)
 }
 
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
@@ -1312,7 +1317,7 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 }
@@ -1342,16 +1347,16 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 				return err
 			}
 			pkg.needsUtils = true
-			fmt.Fprintf(w, "if isZero(tmp.%s) {\n", Title(p.Name))
+			fmt.Fprintf(w, "if isZero(tmp.%s) {\n", pkg.fieldName(nil, p))
 			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
 			fmt.Fprintf(w, "}\n")
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
 			var member string
 			if codegen.IsNOptionalInput(p.Type) {
 				// f := fmt.Sprintf("func(v %[1]s) %[1]s { return *v.%[2]s() }", name, funcName)
-				// member = fmt.Sprintf("tmp.%[1]s.ApplyT(%[2]s)", Title(p.Name), f)
+				// member = fmt.Sprintf("tmp.%[1]s.ApplyT(%[2]s)", pkg.fieldName(nil, p), f)
 			} else {
-				member = fmt.Sprintf("tmp.%[1]s.%[2]s()", Title(p.Name), funcName)
+				member = fmt.Sprintf("tmp.%[1]s.%[2]s()", pkg.fieldName(nil, p), funcName)
 				sigil := ""
 				if p.IsRequired() {
 					sigil = "*"
@@ -1441,7 +1446,7 @@ func (pkg *pkgContext) genInputArgsStruct(w io.Writer, typeName string, t *schem
 	fmt.Fprintf(w, "type %s struct {\n", typeName)
 	for _, p := range t.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(p.Type), p.Name)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.typeString(p.Type), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 }
@@ -1476,14 +1481,14 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 			outputType, applyType := pkg.outputType(p.Type), pkg.typeString(p.Type)
 
-			propName := Title(p.Name)
+			propName := pkg.fieldName(nil, p)
 			switch strings.ToLower(p.Name) {
 			case "elementtype", "issecret":
 				propName = "Get" + propName
 			}
 			fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 			fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
-				name, applyType, Title(p.Name), outputType)
+				name, applyType, pkg.fieldName(nil, p), outputType)
 			fmt.Fprintf(w, "}\n\n")
 		}
 	}
@@ -1515,7 +1520,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 			fmt.Fprintf(w, "\t\tif v == nil {\n")
 			fmt.Fprintf(w, "\t\t\treturn nil\n")
 			fmt.Fprintf(w, "\t\t}\n")
-			fmt.Fprintf(w, "\t\treturn %sv.%s\n", deref, Title(p.Name))
+			fmt.Fprintf(w, "\t\treturn %sv.%s\n", deref, pkg.fieldName(nil, p))
 			fmt.Fprintf(w, "\t}).(%s)\n", outputType)
 			fmt.Fprintf(w, "}\n\n")
 		}
@@ -1638,7 +1643,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type), p.Name)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), pkg.outputType(p.Type), p.Name)
 
 		if p.Secret {
 			secretProps = append(secretProps, p)
@@ -1673,8 +1678,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	// Check all required inputs are present
 	for _, p := range r.InputProperties {
 		if p.IsRequired() && isNilType(p.Type) && p.DefaultValue == nil {
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
+			fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
+			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", pkg.fieldName(r, p))
 			fmt.Fprintf(w, "\t}\n")
 		}
 
@@ -1700,7 +1705,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				return err
 			}
 			pkg.needsUtils = true
-			fmt.Fprintf(w, "\tif isZero(args.%s) {\n", Title(p.Name))
+			fmt.Fprintf(w, "\tif isZero(args.%s) {\n", pkg.fieldName(r, p))
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
@@ -1712,19 +1717,19 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			toOutputMethod := pkg.toOutputMethod(p.Type)
 			outputType := pkg.outputType(p.Type)
 			resolvedType := pkg.typeString(codegen.ResolvedType(p.Type))
-			originalValue := fmt.Sprintf("args.%s.%s()", Title(p.Name), toOutputMethod)
+			originalValue := fmt.Sprintf("args.%s.%s()", pkg.fieldName(r, p), toOutputMethod)
 			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
 				originalValue, resolvedType, optionalDeref, name, outputType)
 			if p.Plain {
-				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", Title(p.Name))
+				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", pkg.fieldName(r, p))
 			}
 
 			if !p.IsRequired() {
-				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), valueWithDefaults)
+				fmt.Fprintf(w, "if args.%s != nil {\n", pkg.fieldName(r, p))
+				fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
 				fmt.Fprint(w, "}\n")
 			} else {
-				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), valueWithDefaults)
+				fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
 			}
 
 		}
@@ -1753,8 +1758,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 	// Setup secrets
 	for _, p := range secretInputProps {
-		fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
-		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
+		fmt.Fprintf(w, "\tif args.%s != nil {\n", pkg.fieldName(r, p))
+		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", pkg.fieldName(r, p), pkg.outputType(p.Type))
 		fmt.Fprintf(w, "\t}\n")
 	}
 	if len(secretProps) > 0 {
@@ -1817,7 +1822,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(codegen.OptionalType(p))), p.Name)
+				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), pkg.typeString(codegen.ResolvedType(codegen.OptionalType(p))), p.Name)
 			}
 		}
 		fmt.Fprintf(w, "}\n\n")
@@ -1826,7 +1831,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		if r.StateInputs != nil {
 			for _, p := range r.StateInputs.Properties {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-				fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.inputType(p.Type))
+				fmt.Fprintf(w, "\t%s %s\n", pkg.fieldName(r, p), pkg.inputType(p.Type))
 			}
 		}
 		fmt.Fprintf(w, "}\n\n")
@@ -1840,7 +1845,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), pkg.typeString(codegen.ResolvedType(p.Type)), p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -1858,7 +1863,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(typ))
+		fmt.Fprintf(w, "\t%s %s\n", pkg.fieldName(r, p), pkg.typeString(typ))
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -1948,7 +1953,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", cgstrings.Camel(name), methodName)
 			for _, p := range args {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.typeString(codegen.ResolvedType(p.Type)),
+				fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(nil, p), pkg.typeString(codegen.ResolvedType(p.Type)),
 					p.Name)
 			}
 			fmt.Fprintf(w, "}\n\n")
@@ -1957,7 +1962,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "type %s%sArgs struct {\n", name, methodName)
 			for _, p := range args {
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-				fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(p.Type))
+				fmt.Fprintf(w, "\t%s %s\n", pkg.fieldName(nil, p), pkg.typeString(p.Type))
 			}
 			fmt.Fprintf(w, "}\n\n")
 
@@ -2026,14 +2031,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		outputType := pkg.outputType(p.Type)
 
-		propName := Title(p.Name)
+		propName := pkg.fieldName(r, p)
 		switch strings.ToLower(p.Name) {
 		case "elementtype", "issecret":
 			propName = "Get" + propName
 		}
 		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 		fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s { return v.%s }).(%s)\n",
-			name, outputType, Title(p.Name), outputType)
+			name, outputType, pkg.fieldName(r, p), outputType)
 		fmt.Fprintf(w, "}\n\n")
 	}
 

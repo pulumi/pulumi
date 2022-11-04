@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Guard against conflicting field names.

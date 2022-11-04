@@ -32,9 +32,20 @@
                     }
                 }
             }
+        },
+        "repro:elementType:ElementType": {
+            "properties": {
+                "elementType": { "$ref": "#/types/repro:elementType:ElementType" }
+            }
         }
     },
     "types": {
+        "repro:elementType:ElementType": {
+            "type": "object",
+            "properties": {
+                "elementType": { "type": "string" }
+            }
+        },
         "repro:index:Bar": {
             "type": "object",
             "properties": {
