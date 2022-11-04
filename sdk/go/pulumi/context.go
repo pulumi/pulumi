@@ -604,7 +604,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	if options.DeletedWith != "" && !ctx.supportsDeletedWith {
-		return errors.New("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.")
+		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.

@@ -3791,7 +3791,8 @@ func TestDeletedWith(t *testing.T) {
 	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
 	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
 
-	// Run a new update which will cause a replace, we should only see a provider delete for aURN but should get a new id for everything
+	// Run a new update which will cause a replace, we should only see a provider delete for aURN but should
+	// get a new id for everything
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})

@@ -514,7 +514,7 @@ export async function monitorSupportsOutputValues(): Promise<boolean> {
  * monitorSupportsDeletedWith returns a promise that when resolved tells you if the resource monitor we are
  * connected to is able to support the deletedWith resource option across its RPC interface.
  */
- export async function monitorSupportsDeletedWith(): Promise<boolean> {
+export async function monitorSupportsDeletedWith(): Promise<boolean> {
     return monitorSupportsFeature("deletedWith");
 }
 
