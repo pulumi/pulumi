@@ -171,6 +171,7 @@ schema-%: curl.ensure jq.ensure
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
 # separate commit from other changes, as online code review tools may balk at rendering these diffs.
 get_schemas: \
+			schema-aws!4.15.0           \
 			schema-aws!4.26.0           \
 			schema-aws!4.36.0           \
 			schema-aws!4.37.1           \

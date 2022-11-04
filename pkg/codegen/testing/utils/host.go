@@ -26,6 +26,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
 	return deploytest.NewPluginHost(nil, nil, nil,
+		mockProvider("aws", "4.15.0"),
 		mockProvider("aws", "4.26.0"),
 		mockProvider("aws", "4.36.0"),
 		mockProvider("aws", "4.37.1"),

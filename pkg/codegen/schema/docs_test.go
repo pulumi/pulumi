@@ -13,9 +13,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -164,6 +167,21 @@ func TestParseAndRenderDocs(t *testing.T) {
 	}
 }
 
+func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
+	filename = strings.TrimSuffix(filename, ".json")
+	idx := 0
+	for {
+		i := strings.IndexByte(filename[idx:], '-') + idx
+		require.Truef(t, i != -1, "Could not parse %q into (pkg, version)", filename)
+		name := filename[:i]
+		version := filename[i+1:]
+		if v, err := semver.Parse(version); err == nil {
+			return name, &v
+		}
+		idx = i + 1
+	}
+}
+
 func TestReferenceRenderer(t *testing.T) {
 	t.Parallel()
 
@@ -172,29 +190,31 @@ func TestReferenceRenderer(t *testing.T) {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
+	seenNames := map[string]struct{}{}
+
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
 		f := f
-		if filepath.Ext(f.Name()) != ".json" {
+		if filepath.Ext(f.Name()) != ".json" || f.Name() == "types.json" {
 			continue
+		}
+		name, version := pkgInfo(t, f.Name())
+
+		if _, ok := seenNames[name]; ok {
+			continue
+		} else {
+			seenNames[name] = struct{}{}
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
+			host := utils.NewHost(testdataPath)
+			defer host.Close()
+			loader := NewPluginLoader(host)
+			pkg, err := loader.LoadPackage(name, version)
 			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-
-			var spec PackageSpec
-			if err = json.Unmarshal(contents, &spec); err != nil {
-				t.Fatalf("could not unmarshal package spec: %v", err)
-			}
-			pkg, err := ImportSpec(spec, nil)
-			if err != nil {
-				t.Fatalf("could not import package: %v", err)
+				t.Fatalf("could not import package %s,%s: %v", name, version, err)
 			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
