@@ -76,10 +76,10 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
-<span class="k">&nbsp;&nbsp;Function:</span> mypkg:getClientConfig
-<span class="k">&nbsp;&nbsp;Arguments:</span>
-<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">fn::invoke:</span>
+<span class="k">&nbsp;&nbsp;function:</span> mypkg:getClientConfig
+<span class="k">&nbsp;&nbsp;arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
