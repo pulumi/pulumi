@@ -508,6 +508,8 @@ func TestObjectType(t *testing.T) {
 	testTraverse(t, typ, hcl.TraverseAttr{Name: "bar"}, IntType, false)
 	testTraverse(t, typ, hcl.TraverseAttr{Name: "baz"}, NumberType, false)
 	testTraverse(t, typ, hcl.TraverseAttr{Name: "qux"}, NewOptionalType(BoolType), false)
+	// test case-insensitive attribute
+	testTraverse(t, typ, hcl.TraverseAttr{Name: "Qux"}, NewOptionalType(BoolType), true)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.StringVal("foo")}, BoolType, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.StringVal("bar")}, IntType, false)
 	testTraverse(t, typ, hcl.TraverseIndex{Key: cty.StringVal("baz")}, NumberType, false)
