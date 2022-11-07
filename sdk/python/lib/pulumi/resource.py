@@ -1251,8 +1251,8 @@ def create_urn(
     name: "Input[str]",
     type_: "Input[str]",
     parent: Optional[Union["Resource", "Input[str]"]] = None,
-    project: str = None,
-    stack: str = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
 ) -> "Output[str]":
     """
     create_urn computes a URN from the combination of a resource name, resource type, optional
