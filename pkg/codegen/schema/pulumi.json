@@ -505,14 +505,6 @@
                     "description": "The description of the function, if any. Interpreted as Markdown.",
                     "type": "string"
                 },
-                "inputs": {
-                    "description": "The bag of input values for the function, if any.",
-                    "$ref": "#/$defs/objectTypeSpec"
-                },
-                "outputs": {
-                    "description": "The bag of output values for the function, if any.",
-                    "$ref": "#/$defs/objectTypeSpec"
-                },
                 "deprecationMessage": {
                     "description": "Indicates whether the function is deprecated",
                     "type": "string"
@@ -525,7 +517,48 @@
                     "description": "Indicates that the implementation of the function should not be generated from the schema, and is instead provided out-of-band by the package author",
                     "type": "boolean"
                 }
-            }
+            },
+            "oneOf": [{
+                "properties": {
+                    "inputs": {
+                        "description": "The input values for the function, if any.",
+                        "$ref": "#/$defs/objectTypeSpec"
+                    },
+                    "outputs": {
+                        "description": "The output value for the function, if any.",
+                        "$ref": "#/$defs/objectTypeSpec"
+                    }
+                }
+            },{
+                "properties": {
+                    "inputs": {
+                        "description": "The input values for the function, if any.",
+                        "type": "array",
+                        "items": { "$ref": "#/$defs/parameterSpec" }
+                    },
+                    "outputs": {
+                        "description": "The output value for the function, if any.",
+                        "$ref": "#/$defs/parameterSpec"
+                    }
+                }
+            }]
+        },
+        "parameterSpec": {
+            "title": "Function Parameter",
+            "description": "Describes a parameter of a function",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "The name of the parameter",
+                    "type": "string"
+                },
+                "type": { "$ref": "#/$defs/typeSpec" },
+                "secret": {
+                    "description": "Specifies whether the property is secret (default false).",
+                    "type": "boolean"
+                }
+            },
+            "required": ["type"]
         }
     }
 }

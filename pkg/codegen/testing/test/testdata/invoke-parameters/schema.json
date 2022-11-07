@@ -1,0 +1,53 @@
+{
+  "name": "mypkg",
+  "version": "0.0.1",
+  "language": {
+    "nodejs": {
+      "optimizeNodeModuleLoading": ["lazy-load-functions", "lazy-load-resources", "use-type-only-enums-references"],
+      "devDependencies": {
+        "@types/mocha": "latest",
+        "@types/node": "latest",
+        "mocha": "latest",
+        "ts-node": "latest"
+      },
+      "extraTypeScriptFiles": [
+        "tests/codegen.spec.ts"
+      ]
+    },
+    "go": {
+      "generateExtraInputTypes": true
+    },
+    "python": {},
+    "csharp": {
+      "projectReferences": [
+         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ],
+      "packageReferences": {
+        "FluentAssertions": "5.10.2",
+        "Microsoft.NET.Test.Sdk": "16.5.0",
+        "Moq": "4.13.1",
+        "NUnit": "3.12.0",
+        "NUnit3TestAdapter": "4.2.1"
+      }
+    }
+  },
+  "functions": {
+    "mypkg::functionWithParmeters": {
+      "description": "Check codegen of functions with many inputs.",
+      "inputs": [
+        {
+          "name": "firstArg",
+          "type": "string"
+      }, {
+        "name": "secondArg",
+        "type": "number"
+      }],
+      "outputs": {
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  }
+}

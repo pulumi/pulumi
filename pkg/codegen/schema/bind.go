@@ -1466,6 +1466,10 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	return provider.Resource, resources, diags, nil
 }
 
+func (t *types) importParameter(token string) {
+
+}
+
 func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error) {
 	if fn, ok := t.functionDefs[token]; ok {
 		return fn, nil, nil
@@ -1480,14 +1484,21 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	path := memberPath("functions", token)
 
-	var inputs *ObjectType
+	var inputs []*Parameter
 	if spec.Inputs != nil {
-		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
-		diags = diags.Extend(inDiags)
-		if err != nil {
-			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
+		if spec.Inputs.Object != nil {
+			ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs.Object)
+			diags = diags.Extend(inDiags)
+			if err != nil {
+				return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
+			}
+			p := Parameter{
+				Name:   "args",
+				Secret: false,
+				Type:   ins,
+			}
+			inputs = []*Parameter{&p}
 		}
-		inputs = ins
 	}
 
 	var outputs *ObjectType

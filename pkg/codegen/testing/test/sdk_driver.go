@@ -314,6 +314,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Test that types can have names with hyphens in them",
 		Skip:        allLanguages.Except("go/any").Except("python/any"),
 	},
+	{
+		Directory:   "invoke-parameters",
+		Description: "Tests invokes with parameters rather than property bags",
+	},
 }
 
 var genSDKOnly bool

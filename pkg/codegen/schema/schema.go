@@ -528,6 +528,13 @@ type Method struct {
 	Function *Function
 }
 
+type Parameter struct {
+	Name string
+	Type Type
+	// Secret is true if the property is secret (default false).
+	Secret bool
+}
+
 // Function describes a Pulumi function.
 type Function struct {
 	// Package is the package that defines the function.
@@ -536,10 +543,10 @@ type Function struct {
 	Token string
 	// Comment is the description of the function, if any.
 	Comment string
-	// Inputs is the bag of input values for the function, if any.
-	Inputs *ObjectType
-	// Outputs is the bag of output values for the function, if any.
-	Outputs *ObjectType
+	// Inputs is the input values for the function, if any.
+	Inputs []*Parameter
+	// Outputs is the output values for the function, if any.
+	Outputs *Parameter
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
@@ -568,8 +575,8 @@ func (fun *Function) NeedsOutputVersion() bool {
 		return false
 	}
 
-	// No properties is kind of like no inputs.
-	if len(fun.Inputs.Properties) == 0 {
+	// No parameters is kind of like no inputs.
+	if len(fun.Inputs) == 0 {
 		return false
 	}
 
@@ -757,13 +764,19 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 
 func importFunctionLanguages(function *Function, languages map[string]Language) error {
 	if function.Inputs != nil {
-		if err := importObjectTypeLanguages(function.Inputs, languages); err != nil {
-			return fmt.Errorf("importing inputs: %w", err)
+		for _, in := range function.Inputs {
+			if obj, is := in.Type.(*ObjectType); is {
+				if err := importObjectTypeLanguages(obj, languages); err != nil {
+					return fmt.Errorf("importing inputs: %w", err)
+				}
+			}
 		}
 	}
 	if function.Outputs != nil {
-		if err := importObjectTypeLanguages(function.Outputs, languages); err != nil {
-			return fmt.Errorf("importing outputs: %w", err)
+		if obj, is := function.Outputs.Type.(*ObjectType); is {
+			if err := importObjectTypeLanguages(obj, languages); err != nil {
+				return fmt.Errorf("importing outputs: %w", err)
+			}
 		}
 	}
 
@@ -1132,23 +1145,37 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 	}, nil
 }
 
+func (pkg *Package) marshalParameter(p *Parameter) (ParameterSpec, error) {
+	typ := pkg.marshalType(p.Type, true)
+	return ParameterSpec{
+		Name:   p.Name,
+		Type:   typ,
+		Secret: p.Secret,
+	}, nil
+}
+
 func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
-	var inputs *ObjectTypeSpec
+	var inputs *FunctionInputSpec
 	if f.Inputs != nil {
-		ins, err := pkg.marshalObject(f.Inputs, true)
-		if err != nil {
-			return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
+		parameters := make([]*ParameterSpec, len(f.Inputs))
+		for i := 0; i < len(f.Inputs); i++ {
+			param, err := pkg.marshalParameter(f.Inputs[i])
+			if err != nil {
+				return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
+			}
+			parameters[i] = &param
 		}
-		inputs = &ins.ObjectTypeSpec
+
+		inputs = &FunctionInputSpec{Parameters: parameters}
 	}
 
-	var outputs *ObjectTypeSpec
+	var outputs *FunctionOutputSpec
 	if f.Outputs != nil {
-		outs, err := pkg.marshalObject(f.Outputs, true)
+		parameter, err := pkg.marshalParameter(f.Outputs)
 		if err != nil {
-			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+			return FunctionSpec{}, fmt.Errorf("marshaling outputs: %w", err)
 		}
-		outputs = &outs.ObjectTypeSpec
+		outputs = &FunctionOutputSpec{Parameter: &parameter}
 	}
 
 	lang, err := marshalLanguage(f.Language)
@@ -1515,14 +1542,85 @@ type ResourceSpec struct {
 	Methods map[string]string `json:"methods,omitempty" yaml:"methods,omitempty"`
 }
 
+type ParameterSpec struct {
+	// The name of the parameter, if any.
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	// The type of the parameter
+	Type TypeSpec `json:"type" yaml:"type"`
+	// Secret specifies if the property is secret (default false).
+	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
+}
+
+// Either an ObjectTypeSpec or an array of ParameterSpec
+type FunctionInputSpec struct {
+	Parameters []*ParameterSpec
+	Object     *ObjectTypeSpec
+}
+
+func (spec *FunctionInputSpec) UnmarshalJSON(b []byte) error {
+	objectErr := json.Unmarshal(b, spec.Object)
+	if objectErr == nil {
+		return nil
+	}
+	parameterErr := json.Unmarshal(b, spec.Parameters)
+	if parameterErr == nil {
+		return nil
+	}
+	return fmt.Errorf("could not unmarshal FunctionInputSpec:\n%w\n%w", objectErr, parameterErr)
+}
+
+func (spec *FunctionInputSpec) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	objectErr := unmarshal(spec.Object)
+	if objectErr == nil {
+		return nil
+	}
+	parameterErr := unmarshal(spec.Parameters)
+	if parameterErr == nil {
+		return nil
+	}
+
+	return fmt.Errorf("could not unmarshal FunctionInputSpec:\n%w\n%w", objectErr, parameterErr)
+}
+
+// Either an ObjectTypeSpec or a ParameterSpec
+type FunctionOutputSpec struct {
+	Parameter *ParameterSpec
+	Object    *ObjectTypeSpec
+}
+
+func (spec *FunctionOutputSpec) UnmarshalJSON(b []byte) error {
+	objectErr := json.Unmarshal(b, spec.Object)
+	if objectErr == nil {
+		return nil
+	}
+	parameterErr := json.Unmarshal(b, spec.Parameter)
+	if parameterErr == nil {
+		return nil
+	}
+	return fmt.Errorf("could not unmarshal FunctionOutputSpec:\n%w\n%w", objectErr, parameterErr)
+}
+
+func (spec *FunctionOutputSpec) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	objectErr := unmarshal(spec.Object)
+	if objectErr == nil {
+		return nil
+	}
+	parameterErr := unmarshal(spec.Parameter)
+	if parameterErr == nil {
+		return nil
+	}
+
+	return fmt.Errorf("could not unmarshal FunctionOutputSpec:\n%w\n%w", objectErr, parameterErr)
+}
+
 // FunctionSpec is the serializable form of a function description.
 type FunctionSpec struct {
 	// Description is the description of the function, if any.
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
-	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs *FunctionInputSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
-	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs *FunctionOutputSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
