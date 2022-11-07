@@ -6,3 +6,6 @@ timeout-sec = 7200 # two hours, in seconds
 status = [
 	'bors-ok',
 ]
+pr_status = [
+	'CI / lint / linear-history'
+]
