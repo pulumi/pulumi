@@ -1,6 +1,9 @@
 {
   "emittedFiles": [
     "repro/doc.go",
+    "repro/elementtype/elementType.go",
+    "repro/elementtype/init.go",
+    "repro/elementtype/pulumiTypes.go",
     "repro/foo.go",
     "repro/init.go",
     "repro/overlap/consumer.go",
