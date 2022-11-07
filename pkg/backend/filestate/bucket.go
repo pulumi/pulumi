@@ -4,13 +4,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
+
+const CONCURRENCY_MULTIPLIER_NAME = "CONCURRENCY_MULTIPLIER"
 
 // Bucket is a wrapper around an underlying gocloud blob.Bucket.  It ensures that we pass all paths
 // to it normalized to forward-slash form like it requires.
@@ -31,6 +36,18 @@ type Bucket interface {
 type wrappedBucket struct {
 	bucket *blob.Bucket
 }
+
+func getConcurrency() int {
+	concurrencyEnv := os.Getenv(CONCURRENCY_MULTIPLIER_NAME)
+	val, err := strconv.Atoi(concurrencyEnv)
+	if err != nil {
+		panic(fmt.Sprintf("Error! %v", err))
+	}
+
+	return val * runtime.GOMAXPROCS(-1)
+}
+
+// Concurrency is the number of goroutines used to write to S3 chunks in parallel.
 
 func (b *wrappedBucket) Copy(ctx context.Context, dstKey, srcKey string, opts *blob.CopyOptions) (err error) {
 	return b.bucket.Copy(ctx, filepath.ToSlash(dstKey), filepath.ToSlash(srcKey), opts)
@@ -55,6 +72,12 @@ func (b *wrappedBucket) ReadAll(ctx context.Context, key string) (_ []byte, err 
 }
 
 func (b *wrappedBucket) WriteAll(ctx context.Context, key string, p []byte, opts *blob.WriterOptions) (err error) {
+	if opts == nil {
+		opts = &blob.WriterOptions{MaxConcurrency: getConcurrency()}
+	}
+	if opts.MaxConcurrency == 0 {
+		opts.MaxConcurrency = getConcurrency()
+	}
 	return b.bucket.WriteAll(ctx, filepath.ToSlash(key), p, opts)
 }
 
