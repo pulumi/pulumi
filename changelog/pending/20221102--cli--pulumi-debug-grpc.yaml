@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: "Enables debug tracing of Pulumi gRPC internals: `PULUMI_DEBUG_GRPC=$PWD/grpc.json pulumi up`"

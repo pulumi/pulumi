@@ -23,23 +23,24 @@ import (
 func TestIsFullyQualifiedStackName(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
+	tests := []struct {
+		name     string
 		input    string
 		expected bool
 	}{
-		"fully qualified": {input: "owner/project/stack", expected: true},
-		"empty":           {input: "", expected: false},
-		"name":            {input: "name", expected: false},
-		"name & owner":    {input: "owner/name", expected: false},
-		"sep":             {input: "/", expected: false},
-		"two seps":        {input: "//", expected: false},
-		"three seps":      {input: "///", expected: false},
-		"invalid":         {input: "owner/project/stack/wat", expected: false},
+		{name: "fully qualified", input: "owner/project/stack", expected: true},
+		{name: "empty", input: "", expected: false},
+		{name: "name", input: "name", expected: false},
+		{name: "name & owner", input: "owner/name", expected: false},
+		{name: "sep", input: "/", expected: false},
+		{name: "two seps", input: "//", expected: false},
+		{name: "three seps", input: "///", expected: false},
+		{name: "invalid", input: "owner/project/stack/wat", expected: false},
 	}
 
-	for name, tc := range tests {
+	for _, tc := range tests {
 		tc := tc
-		t.Run(name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			actual := isFullyQualifiedStackName(tc.input)

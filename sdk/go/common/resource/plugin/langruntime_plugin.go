@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -62,7 +64,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		return nil, err
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
+	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +76,27 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
+}
+
+func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "language",
+		}
+		if runtime != "" {
+			metadata["runtime"] = runtime
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
 }
 
 func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -488,7 +490,7 @@ type resmon struct {
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
 	cancel                    chan bool                          // a channel that can cancel the server.
-	done                      chan error                         // a channel that resolves when the server completes.
+	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
 }
@@ -528,12 +530,14 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
-	port, done, err := rpcutil.Serve(0, resmon.cancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: resmon.cancel,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-	}, tracingSpan, otgrpc.SpanDecorator(decorateResourceSpans))
+		Options: sourceEvalServeOptions(src.plugctx, tracingSpan),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -545,9 +549,9 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.dryRun,
 		Parallel:         opts.Parallel,
-		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", port),
+		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	}
-	resmon.done = done
+	resmon.done = handle.Done
 
 	go d.serve()
 
@@ -563,6 +567,30 @@ func (rm *resmon) Address() string {
 func (rm *resmon) Cancel() error {
 	close(rm.cancel)
 	return <-rm.done
+}
+
+func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span) []grpc.ServerOption {
+	serveOpts := rpcutil.OpenTracingServerInterceptorOptions(
+		tracingSpan,
+		otgrpc.SpanDecorator(decorateResourceSpans),
+	)
+	if logFile := os.Getenv("PULUMI_DEBUG_GRPC"); logFile != "" {
+		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
+			LogFile: logFile,
+			Mutex:   ctx.DebugTraceMutex,
+		})
+		if err != nil {
+			// ignoring
+			return nil
+		}
+		metadata := map[string]interface{}{
+			"mode": "server",
+		}
+		serveOpts = append(serveOpts, di.ServerOptions(interceptors.LogOptions{
+			Metadata: metadata,
+		})...)
+	}
+	return serveOpts
 }
 
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the

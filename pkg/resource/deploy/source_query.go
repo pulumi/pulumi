@@ -249,17 +249,19 @@ func newQueryResourceMonitor(
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
-	port, done, err := rpcutil.Serve(0, queryResmon.cancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: queryResmon.cancel,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceMonitorServer(srv, queryResmon)
 			return nil
 		},
-	}, tracingSpan)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	monitorAddress := fmt.Sprintf("127.0.0.1:%d", port)
+	monitorAddress := fmt.Sprintf("127.0.0.1:%d", handle.Port)
 
 	var config map[config.Key]string
 	if runinfo.Target != nil {
@@ -283,7 +285,7 @@ func newQueryResourceMonitor(
 		MonitorAddress: monitorAddress,
 	}
 	queryResmon.addr = monitorAddress
-	queryResmon.done = done
+	queryResmon.done = handle.Done
 
 	go d.serve()
 
@@ -303,7 +305,7 @@ type queryResmon struct {
 	defaultProviders *defaultProviders   // the default provider manager.
 	addr             string              // the address the host is listening on.
 	cancel           chan bool           // a channel that can cancel the server.
-	done             chan error          // a channel that resolves when the server completes.
+	done             <-chan error        // a channel that resolves when the server completes.
 	reg              *providers.Registry // registry for resource providers.
 	callInfo         plugin.CallInfo     // information for call calls.
 }
