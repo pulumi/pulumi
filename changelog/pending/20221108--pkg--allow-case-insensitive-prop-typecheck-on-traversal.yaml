@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: More programs can be converted to Pulumi when using `pulumi convert`, provider bridging, and conversion tools by allowing property accesses and field names to fall back to a case insensitive lookup.
