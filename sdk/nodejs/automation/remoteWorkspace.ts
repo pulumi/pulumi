@@ -149,17 +149,17 @@ export interface RemoteWorkspaceOptions {
 
 async function createLocalWorkspace(args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions): Promise<LocalWorkspace> {
     if (!isFullyQualifiedStackName(args.stackName)) {
-        throw new Error(`"${args.stackName}" stack name must be fully qualified`);
+        throw new Error(`stack name "${args.stackName}" must be fully qualified.`);
     }
 
     if (!args.url) {
         throw new Error("url is required.");
     }
-    if (args.commitHash && args.branch) {
-        throw new Error("commitHash and branch cannot both be specified.");
+    if (args.branch && args.commitHash) {
+        throw new Error("branch and commitHash cannot both be specified.");
     }
-    if (!args.commitHash && !args.branch) {
-        throw new Error("at least commitHash or branch are required.");
+    if (!args.branch && !args.commitHash) {
+        throw new Error("either branch or commitHash is required.");
     }
     if (args.auth) {
         if (args.auth.sshPrivateKey && args.auth.sshPrivateKeyPath) {

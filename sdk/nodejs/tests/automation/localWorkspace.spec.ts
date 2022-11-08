@@ -28,6 +28,7 @@ import {
 } from "../../automation";
 import { Config, output } from "../../index";
 import { asyncTest } from "../util";
+import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
 const userAgent = "pulumi/pulumi/test";
@@ -887,23 +888,10 @@ describe(`checkVersionIsValid`, () => {
     });
 });
 
-
-const getTestSuffix = () => {
-    return Math.floor(100000 + Math.random() * 900000);
-};
-
 const normalizeConfigKey = (key: string, projectName: string) => {
     const parts = key.split(":");
     if (parts.length < 2) {
         return `${projectName}:${key}`;
     }
     return "";
-};
-
-const getTestOrg = () => {
-    let testOrg = "pulumi-test";
-    if (process.env.PULUMI_TEST_ORG) {
-        testOrg = process.env.PULUMI_TEST_ORG;
-    }
-    return testOrg;
 };
