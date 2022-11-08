@@ -7,6 +7,8 @@
 name: Community Pull Request
 on:
   pull_request_target:
+    branches-ignore:
+      - 'master'
 
 permissions:
   contents: read
