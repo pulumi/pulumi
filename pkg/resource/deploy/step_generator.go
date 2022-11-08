@@ -140,11 +140,22 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 			}
 		} else {
 			// Else try and set it to the root stack
-			for urn := range sg.urns {
-				if urn.Type() == resource.RootStackType {
-					return urn, nil
-				}
-			}
+
+			// TODO: It looks like this currently has some issues with state ordering (see
+			// https://github.com/pulumi/pulumi/issues/10950). Best I can guess is the stack resource is
+			// hitting the step generator and so saving it's URN to sg.urns and issuing a Create step but not
+			// actually getting to writing it's state to the snapshot. Then in parallel with this something
+			// else is causing a pulumi:providers:pulumi default provider to be created, this picks up the
+			// stack URN from sg.urns and so sets it's parent automatically, but then races the step executor
+			// to write itself to state before the stack resource manages to. Long term we want to ensure
+			// there's always a stack resource present, and so that all resources (except the stack) have a
+			// parent (this will save us some work in each SDK), but for now lets just turn this support off.
+
+			//for urn := range sg.urns {
+			//	if urn.Type() == resource.RootStackType {
+			//		return urn, nil
+			//	}
+			//}
 		}
 	}
 

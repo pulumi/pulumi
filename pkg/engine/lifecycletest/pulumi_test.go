@@ -4116,6 +4116,7 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 
 func TestDefaultParents(t *testing.T) {
 	t.Parallel()
+	t.Skipf("Default parents disabled due to https://github.com/pulumi/pulumi/issues/10950")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
