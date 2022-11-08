@@ -215,6 +215,45 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 func runDeployment(ctx context.Context, opts display.Options, operation apitype.PulumiOperation, stack, url string,
 	args RemoteArgs) result.Result {
 
+	// Validate args.
+	if url == "" {
+		return result.FromError(errors.New("the url arg must be specified"))
+	}
+	if args.gitBranch != "" && args.gitCommit != "" {
+		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
+	}
+	if args.gitBranch == "" && args.gitCommit == "" {
+		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required"))
+	}
+	if args.gitAuthSSHPrivateKey != "" && args.gitAuthSSHPrivateKeyPath != "" {
+		return result.FromError(errors.New("`--remote-git-auth-ssh-private-key` and " +
+			"`--remote-git-auth-ssh-private-key-path` cannot both be specified"))
+	}
+
+	// Parse and validate the environment args.
+	env := map[string]apitype.SecretValue{}
+	for i, e := range append(args.envVars, args.secretEnvVars...) {
+		name, value, err := parseEnv(e)
+		if err != nil {
+			return result.FromError(err)
+		}
+		env[name] = apitype.SecretValue{
+			Value:  value,
+			Secret: i >= len(args.envVars),
+		}
+	}
+
+	// Read the SSH Private Key from the path, if necessary.
+	sshPrivateKey := args.gitAuthSSHPrivateKey
+	if args.gitAuthSSHPrivateKeyPath != "" {
+		key, err := os.ReadFile(args.gitAuthSSHPrivateKeyPath)
+		if err != nil {
+			return result.FromError(fmt.Errorf(
+				"reading SSH private key path %q: %w", args.gitAuthSSHPrivateKeyPath, err))
+		}
+		sshPrivateKey = string(key)
+	}
+
 	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return result.FromError(err)
@@ -232,48 +271,18 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		return result.FromError(err)
 	}
 
-	if url == "" {
-		return result.FromError(errors.New("the url arg must be specified"))
-	}
-	if args.gitCommit != "" && args.gitBranch != "" {
-		return result.FromError(errors.New("`--remote-git-branch` and `--remote-git-commit` cannot both be specified"))
-	}
-	if args.gitCommit == "" && args.gitBranch == "" {
-		return result.FromError(errors.New("either `--remote-git-branch` or `--remote-git-commit` is required"))
-	}
-
-	env := map[string]apitype.SecretValue{}
-	for i, e := range append(args.envVars, args.secretEnvVars...) {
-		name, value, err := parseEnv(e)
-		if err != nil {
-			return result.FromError(err)
-		}
-		env[name] = apitype.SecretValue{
-			Value:  value,
-			Secret: i >= len(args.envVars),
-		}
-	}
-
 	var gitAuth *apitype.GitAuthConfig
-	if args.gitAuthAccessToken != "" || args.gitAuthSSHPrivateKey != "" || args.gitAuthSSHPrivateKeyPath != "" ||
-		args.gitAuthPassword != "" || args.gitAuthUsername != "" {
+	if args.gitAuthAccessToken != "" || sshPrivateKey != "" || args.gitAuthPassword != "" ||
+		args.gitAuthUsername != "" {
 
 		gitAuth = &apitype.GitAuthConfig{}
 		switch {
 		case args.gitAuthAccessToken != "":
 			gitAuth.PersonalAccessToken = &apitype.SecretValue{Value: args.gitAuthAccessToken, Secret: true}
 
-		case args.gitAuthSSHPrivateKey != "" || args.gitAuthSSHPrivateKeyPath != "":
-			sshAuth := &apitype.SSHAuth{}
-			if args.gitAuthSSHPrivateKeyPath != "" {
-				content, err := os.ReadFile(args.gitAuthSSHPrivateKeyPath)
-				if err != nil {
-					return result.FromError(fmt.Errorf(
-						"reading SSH private key path %q: %w", args.gitAuthSSHPrivateKeyPath, err))
-				}
-				sshAuth.SSHPrivateKey = apitype.SecretValue{Value: string(content), Secret: true}
-			} else {
-				sshAuth.SSHPrivateKey = apitype.SecretValue{Value: args.gitAuthSSHPrivateKey, Secret: true}
+		case sshPrivateKey != "":
+			sshAuth := &apitype.SSHAuth{
+				SSHPrivateKey: apitype.SecretValue{Value: sshPrivateKey, Secret: true},
 			}
 			if args.gitAuthPassword != "" {
 				sshAuth.Password = &apitype.SecretValue{Value: args.gitAuthPassword, Secret: true}
