@@ -21,9 +21,9 @@ import (
 	"os"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	terminal "github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	terminal "gopkg.in/AlecAivazis/survey.v1/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"

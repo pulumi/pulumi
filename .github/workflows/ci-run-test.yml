@@ -98,6 +98,13 @@ jobs:
           echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
           command -v tar
           tar --version
+      - name: Reduce Windows test parallelism
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          echo "GO_TEST_PARALLELISM=4" >> "$GITHUB_ENV"
+          echo "GO_TEST_PKG_PARALLELISM=1" >> "$GITHUB_ENV"
+          # For debugging:
+          ps aux
       - name: "macOS use coreutils"
         if: ${{ runner.os == 'macOS' }}
         run: |

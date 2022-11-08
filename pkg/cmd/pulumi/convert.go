@@ -81,39 +81,22 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
-// runConvert converts a Pulumi program from YAML into PCL without generating a full pcl.Program
-func runConvertPcl(cwd string, outDir string) result.Result {
-	host, err := newPluginHost()
-	if err != nil {
-		return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
-	}
-	defer contract.IgnoreClose(host)
-	loader := schema.NewPluginLoader(host)
-	_, template, diags, err := yamlgen.LoadTemplate(cwd)
-	if err != nil {
-		return result.FromError(err)
-	}
-
-	if diags.HasErrors() {
-		return result.FromError(diags)
-	}
-
-	programText, diags, err := yamlgen.ConvertTemplateIL(template, loader)
-	if err != nil {
-		return result.FromError(err)
-	}
-
-	if outDir != "." {
-		err := os.MkdirAll(outDir, 0755)
+// pclGenerateProject writes out a pcl.Program directly as .pp files
+func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
+	if directory != "." {
+		err := os.MkdirAll(directory, 0755)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+			return fmt.Errorf("could not create output directory: %w", err)
 		}
 	}
 
-	outputFile := path.Join(outDir, "main.pp")
-	err = ioutil.WriteFile(outputFile, []byte(programText), 0600)
-	if err != nil {
-		return result.FromError(fmt.Errorf("could not write output program: %w", err))
+	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
+	for file, source := range p.Source() {
+		outputFile := path.Join(directory, file)
+		err := ioutil.WriteFile(outputFile, []byte(source), 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
 	}
 
 	return nil
@@ -136,11 +119,9 @@ func runConvert(cwd string, language string, outDir string, generateOnly bool) r
 		projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
-			// since we don't need Eject to get the full program,
-			// we can just convert the YAML directly to PCL
-			return runConvertPcl(cwd, outDir)
+			projectGenerator = pclGenerateProject
+			break
 		}
-
 		fallthrough
 
 	default:

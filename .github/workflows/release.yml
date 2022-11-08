@@ -20,10 +20,6 @@ on:
         required: false
         description: "Commit to branch from, if not the tag"
         type: string
-      next-version:
-        required: true
-        description: "Version to bump files to"
-        type: string
       release-notes:
         required: true
         description: "Release notes to publish"
@@ -148,9 +144,8 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
-      next-version: ${{ inputs.next-version }}
       release-notes: ${{ inputs.release-notes }}
-      queue-merge: false
+      queue-merge: ${{ inputs.queue-merge }}
     secrets: inherit
 
   dispatch:

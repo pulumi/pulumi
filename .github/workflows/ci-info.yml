@@ -16,9 +16,6 @@ on:
       version:
         description: "Version to produce"
         value: ${{ jobs.info.outputs.version }}
-      next-version:
-        description: "Next version to produce"
-        value: ${{ jobs.info.outputs.next-version }}
       release-notes:
         description: "Release notes for CHANGELOG"
         value: ${{ jobs.info.outputs.release-notes }}
@@ -38,7 +35,6 @@ jobs:
       contents: read
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
-      next-version: "${{ fromJSON(steps.version.outputs.next-version) }}"
       release-notes: "${{ fromJSON(steps.notes.outputs.release-notes) }}"
     env:
       GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -65,9 +61,6 @@ jobs:
           fi
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
-
-          NEXT_VERSION="$(.github/scripts/get-next-version "${PLAIN_VERSION}")"
-          ./.github/scripts/set-output next-version "${NEXT_VERSION}"
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.0' # decoupled from version sets, used by changelog tool

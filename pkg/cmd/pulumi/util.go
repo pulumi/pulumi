@@ -31,9 +31,9 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 	git "github.com/go-git/go-git/v5"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -366,8 +366,6 @@ func chooseStack(ctx context.Context,
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a stack"
 	if offerNew {
 		message += ", or create a new one:"
@@ -376,14 +374,12 @@ func chooseStack(ctx context.Context,
 	}
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	cmdutil.EndKeypadTransmitMode()
-
 	var option string
 	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: current,
-	}, &option, nil); err != nil {
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
 
@@ -963,4 +959,11 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 			}
 		}
 	}
+}
+
+func surveyIcons(color colors.Colorization) survey.AskOpt {
+	return survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
 }
