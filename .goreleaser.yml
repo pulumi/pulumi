@@ -58,6 +58,17 @@ archives:
       strip_parent: true
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 
+signs:
+- cmd: cosign
+  certificate: '${artifact}.pem'
+  args:
+    - sign-blob
+    - '--output-certificate=${certificate}'
+    - '--output-signature=${signature}'
+    - '${artifact}'
+  artifacts: binary
+  output: true
+
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
 

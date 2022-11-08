@@ -48,6 +48,9 @@ jobs:
     env:
       PULUMI_VERSION: ${{ inputs.version }}
 
+    permissions:
+      id-token: write
+
     steps:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
@@ -80,6 +83,7 @@ jobs:
       - name: Setup versioning env vars
         run: |
           ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.8.1
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v3
         with:
@@ -116,4 +120,5 @@ jobs:
           retention-days: 1
           path: |
             goreleaser/*.tar.gz
+            goreleaser/*.sig
             goreleaser/*.zip

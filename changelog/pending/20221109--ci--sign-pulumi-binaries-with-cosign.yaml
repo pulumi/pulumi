@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: ci
+  description: sign pulumi binaries with cosign
