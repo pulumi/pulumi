@@ -104,7 +104,7 @@ def create_remote_stack_git_source(
     Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
     """
     if not _is_fully_qualified_stack_name(stack_name):
-        raise Exception(f'"{stack_name}" stack name must be fully qualified.')
+        raise Exception(f'stack name "{stack_name}" must be fully qualified.')
 
     ws = _create_local_workspace(
         url=url,
@@ -133,7 +133,7 @@ def create_or_select_remote_stack_git_source(
     Git repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
     """
     if not _is_fully_qualified_stack_name(stack_name):
-        raise Exception(f'"{stack_name}" stack name must be fully qualified.')
+        raise Exception(f'stack name "{stack_name}" must be fully qualified.')
 
     ws = _create_local_workspace(
         url=url,
@@ -162,7 +162,7 @@ def select_remote_stack_git_source(
     Git repository. Pulumi operations on the stack (Preview, Update, Refresh, and Destroy) are performed remotely.
     """
     if not _is_fully_qualified_stack_name(stack_name):
-        raise Exception(f'"{stack_name}" stack name must be fully qualified.')
+        raise Exception(f'stack name "{stack_name}" must be fully qualified.')
 
     ws = _create_local_workspace(
         url=url,
@@ -185,12 +185,14 @@ def _create_local_workspace(
     opts: Optional[RemoteWorkspaceOptions] = None,
 ) -> LocalWorkspace:
 
-    if commit_hash is not None and branch is not None:
-        raise Exception("commit_hash and branch cannot both be specified.")
-    if commit_hash is None and branch is None:
-        raise Exception("at least commit_hash or branch are required.")
+    if not url:
+        raise Exception("url is required.")
+    if branch and commit_hash:
+        raise Exception("branch and commit_hash cannot both be specified.")
+    if not branch and not commit_hash:
+        raise Exception("either branch or commit_hash is required.")
     if auth is not None:
-        if auth.ssh_private_key is not None and auth.ssh_private_key_path is not None:
+        if auth.ssh_private_key and auth.ssh_private_key_path:
             raise Exception(
                 "ssh_private_key and ssh_private_key_path cannot both be specified."
             )

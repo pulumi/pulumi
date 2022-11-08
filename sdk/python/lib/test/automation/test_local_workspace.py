@@ -15,7 +15,6 @@
 import json
 import os
 import unittest
-from random import random
 from semver import VersionInfo
 from typing import List, Optional
 
@@ -42,6 +41,8 @@ from pulumi.automation import (
     fully_qualified_stack_name,
 )
 from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
+
+from .test_utils import get_test_org, get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
@@ -73,26 +74,10 @@ def test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
 
-def get_test_org():
-    test_org = "pulumi-test"
-    env_var = os.getenv("PULUMI_TEST_ORG")
-    if env_var is not None:
-        test_org = env_var
-    return test_org
-
-
-def stack_namer(project_name):
-    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
-
-
 def normalize_config_key(key: str, project_name: str):
     parts = key.split(":")
     if len(parts) < 2:
         return f"{project_name}:{key}"
-
-
-def get_test_suffix() -> int:
-    return int(100000 + random() * 900000)
 
 
 def found_plugin(plugin_list: List[PluginInfo], name: str, version: str) -> bool:
