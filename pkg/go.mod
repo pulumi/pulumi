@@ -68,7 +68,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.6.0
-	github.com/pulumi/pulumi-yaml v1.0.1
+	github.com/pulumi/pulumi-yaml v1.0.2
 	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
