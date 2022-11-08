@@ -30,7 +30,7 @@ func NewRemoteStackGitSource(
 	opts ...RemoteWorkspaceOption,
 ) (RemoteStack, error) {
 	if !isFullyQualifiedStackName(stackName) {
-		return RemoteStack{}, fmt.Errorf("%q stack name must be fully qualified", stackName)
+		return RemoteStack{}, fmt.Errorf("stack name %q must be fully qualified", stackName)
 	}
 
 	localOpts, err := remoteToLocalOptions(repo, opts...)
@@ -58,7 +58,7 @@ func UpsertRemoteStackGitSource(
 	opts ...RemoteWorkspaceOption,
 ) (RemoteStack, error) {
 	if !isFullyQualifiedStackName(stackName) {
-		return RemoteStack{}, fmt.Errorf("%q stack name must be fully qualified", stackName)
+		return RemoteStack{}, fmt.Errorf("stack name %q must be fully qualified", stackName)
 	}
 
 	localOpts, err := remoteToLocalOptions(repo, opts...)
@@ -85,7 +85,7 @@ func SelectRemoteStackGitSource(
 	opts ...RemoteWorkspaceOption,
 ) (RemoteStack, error) {
 	if !isFullyQualifiedStackName(stackName) {
-		return RemoteStack{}, fmt.Errorf("%q stack name must be fully qualified", stackName)
+		return RemoteStack{}, fmt.Errorf("stack name %q must be fully qualified", stackName)
 	}
 
 	localOpts, err := remoteToLocalOptions(repo, opts...)
@@ -111,11 +111,11 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 	if repo.URL == "" {
 		return nil, errors.New("repo.URL is required")
 	}
-	if repo.CommitHash != "" && repo.Branch != "" {
-		return nil, errors.New("repo.CommitHash and repo.Branch cannot both be specified")
+	if repo.Branch != "" && repo.CommitHash != "" {
+		return nil, errors.New("repo.Branch and repo.CommitHash cannot both be specified")
 	}
-	if repo.CommitHash == "" && repo.Branch == "" {
-		return nil, errors.New("at least repo.CommitHash or repo.Branch are required")
+	if repo.Branch == "" && repo.CommitHash == "" {
+		return nil, errors.New("either repo.Branch or repo.CommitHash is required")
 	}
 	if repo.Auth != nil {
 		if repo.Auth.SSHPrivateKey != "" && repo.Auth.SSHPrivateKeyPath != "" {
