@@ -125,3 +125,15 @@ jobs:
           go-version: ${{ fromJson(inputs.version-set).go }}
       - run: |
           make lint_actions
+
+  linear-history:
+    name: linear-history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # This should be the merge commit of the PR or candidate merge commit in the staging branch for `bors`.
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Check for non-linear history
+        run: ./scripts/git-linear-history-check.sh
