@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -33,8 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	"gopkg.in/yaml.v3"
 )
 
@@ -335,21 +335,17 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
-
-	cmdutil.EndKeypadTransmitMode()
 
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
 		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
-	}, &option, nil); err != nil {
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil

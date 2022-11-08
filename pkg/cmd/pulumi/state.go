@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -32,8 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 func newStateCmd() *cobra.Command {
@@ -77,8 +77,6 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
@@ -99,14 +97,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		optionMap[message] = ambiguousResource
 	}
 
-	cmdutil.EndKeypadTransmitMode()
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
 		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
-	}, &option, nil); err != nil {
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no resource selected")
 	}
 
@@ -154,14 +150,11 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	if showPrompt && cmdutil.Interactive() {
 		confirm := false
 		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
 		prompt += "This command will edit your stack's state directly. Confirm?"
-		cmdutil.EndKeypadTransmitMode()
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
-		}, &confirm, nil); err != nil || !confirm {
+		}, &confirm, surveyIcons(opts.Color)); err != nil || !confirm {
 			fmt.Println("confirmation declined")
 			return result.Bail()
 		}
