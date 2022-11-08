@@ -23,7 +23,6 @@ import (
 	"os"
 	"unicode/utf8"
 
-	gotty "github.com/ijc/Gotty"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -147,10 +146,30 @@ type messageRenderer struct {
 	printedProgressCache map[string]Progress
 }
 
-func newMessageRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
+func newInteractiveMessageRenderer(stdout io.Writer, opts Options,
+	terminalWidth, terminalHeight int, termInfo termInfo) progressRenderer {
+
 	progressOutput, closed := make(chan Progress), make(chan bool)
 	go func() {
-		ShowProgressOutput(progressOutput, stdout, false)
+		ShowProgressOutput(progressOutput, stdout, termInfo)
+		close(closed)
+	}()
+
+	return &messageRenderer{
+		opts:                 opts,
+		isTerminal:           true,
+		terminalWidth:        terminalWidth,
+		terminalHeight:       terminalHeight,
+		progressOutput:       progressOutput,
+		closed:               closed,
+		printedProgressCache: make(map[string]Progress),
+	}
+}
+
+func newNonInteractiveRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
+	progressOutput, closed := make(chan Progress), make(chan bool)
+	go func() {
+		ShowProgressOutput(progressOutput, stdout, nil)
 		close(closed)
 	}()
 
@@ -366,24 +385,10 @@ func (r *messageRenderer) updateTerminalDimensions() {
 // ShowProgressOutput displays a progress stream from `in` to `out`, `isTerminal` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
+func ShowProgressOutput(in <-chan Progress, out io.Writer, info termInfo) {
 	var (
 		ids = make(map[string]int)
 	)
-
-	var info termInfo
-
-	if isTerminal {
-		term := os.Getenv("TERM")
-		if term == "" {
-			term = "vt102"
-		}
-
-		var err error
-		if info, err = gotty.OpenTermInfo(term); err != nil {
-			info = &noTermInfo{}
-		}
-	}
 
 	for jm := range in {
 		diff := 0

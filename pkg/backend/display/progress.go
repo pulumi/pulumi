@@ -234,10 +234,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	}
 
 	isTerminal := true
-	renderer, err := newTreeRenderer(stdin, stdout, opts)
+	renderer, err := newInteractiveRenderer(stdin, stdout, opts)
 	if err != nil {
 		fmt.Println(err)
-		isTerminal, renderer = false, newMessageRenderer(stdout, op, opts)
+		isTerminal, renderer = false, newNonInteractiveRenderer(stdout, op, opts)
 	}
 
 	display := &ProgressDisplay{
@@ -360,7 +360,6 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 }
 
 func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
-
 	childIndentation := indentation + "│  "
 	lastChildIndentation := indentation + "   "
 

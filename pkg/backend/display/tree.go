@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -67,7 +68,7 @@ type fileLike interface {
 	Fd() uintptr
 }
 
-func newTreeRenderer(in io.Reader, out io.Writer, opts Options) (progressRenderer, error) {
+func newInteractiveRenderer(in io.Reader, out io.Writer, opts Options) (progressRenderer, error) {
 	if !opts.IsInteractive {
 		return nil, fmt.Errorf("the tree display can only be used in interactive mode")
 	}
@@ -77,11 +78,6 @@ func newTreeRenderer(in io.Reader, out io.Writer, opts Options) (progressRendere
 		return nil, fmt.Errorf("stdout must be a terminal")
 	}
 	outFD := int(outFile.Fd())
-
-	inFile, err := cancelreader.NewReader(in)
-	if err != nil {
-		return nil, fmt.Errorf("preparing stdin: %w", err)
-	}
 
 	width, height, err := terminal.GetSize(outFD)
 	if err != nil {
@@ -98,6 +94,17 @@ func newTreeRenderer(in io.Reader, out io.Writer, opts Options) (progressRendere
 	var info termInfo
 	if info, err = gotty.OpenTermInfo(termType); err != nil {
 		info = &noTermInfo{}
+	}
+
+	// Something about the tree renderer--possibly the raw terminal--does not yet play well with Windows, so for now
+	// we fall back to the legacy renderer on that platform.
+	if runtime.GOOS == "windows" {
+		return newInteractiveMessageRenderer(out, opts, width, height, info), nil
+	}
+
+	inFile, err := cancelreader.NewReader(in)
+	if err != nil {
+		return nil, fmt.Errorf("preparing stdin: %w", err)
 	}
 
 	state, err := terminal.MakeRaw(outFD)
