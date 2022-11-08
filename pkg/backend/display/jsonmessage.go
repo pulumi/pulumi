@@ -23,7 +23,6 @@ import (
 	"os"
 	"unicode/utf8"
 
-	gotty "github.com/ijc/Gotty"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -140,14 +139,57 @@ type messageRenderer struct {
 	nonInteractiveSpinner cmdutil.Spinner
 
 	progressOutput chan<- Progress
+	closed         <-chan bool
 
 	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
 	// changed between the last time we printed and now.
 	printedProgressCache map[string]Progress
 }
 
+func newInteractiveMessageRenderer(stdout io.Writer, opts Options,
+	terminalWidth, terminalHeight int, termInfo termInfo) progressRenderer {
+
+	progressOutput, closed := make(chan Progress), make(chan bool)
+	go func() {
+		ShowProgressOutput(progressOutput, stdout, termInfo)
+		close(closed)
+	}()
+
+	return &messageRenderer{
+		opts:                 opts,
+		isTerminal:           true,
+		terminalWidth:        terminalWidth,
+		terminalHeight:       terminalHeight,
+		progressOutput:       progressOutput,
+		closed:               closed,
+		printedProgressCache: make(map[string]Progress),
+	}
+}
+
+func newNonInteractiveRenderer(stdout io.Writer, op string, opts Options) progressRenderer {
+	progressOutput, closed := make(chan Progress), make(chan bool)
+	go func() {
+		ShowProgressOutput(progressOutput, stdout, nil)
+		close(closed)
+	}()
+
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(
+		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
+		nil, opts.Color, 1 /*timesPerSecond*/)
+	ticker.Stop()
+
+	return &messageRenderer{
+		opts:                  opts,
+		progressOutput:        progressOutput,
+		closed:                closed,
+		printedProgressCache:  make(map[string]Progress),
+		nonInteractiveSpinner: spinner,
+	}
+}
+
 func (r *messageRenderer) Close() error {
 	close(r.progressOutput)
+	<-r.closed
 	return nil
 }
 
@@ -196,7 +238,7 @@ func (r *messageRenderer) println(display *ProgressDisplay, line string) {
 
 func (r *messageRenderer) tick(display *ProgressDisplay) {
 	if r.isTerminal {
-		r.render(display)
+		r.render(display, false)
 	} else {
 		// Update the spinner to let the user know that that work is still happening.
 		r.nonInteractiveSpinner.Tick()
@@ -233,7 +275,7 @@ func (r *messageRenderer) renderRow(display *ProgressDisplay,
 func (r *messageRenderer) rowUpdated(display *ProgressDisplay, row Row) {
 	if r.isTerminal {
 		// if we're in a terminal, then refresh everything so that all our columns line up
-		r.render(display)
+		r.render(display, false)
 	} else {
 		// otherwise, just print out this single row.
 		colorizedColumns := row.ColorizedColumns()
@@ -246,7 +288,7 @@ func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine
 	if r.isTerminal {
 		// if we're in a terminal, then refresh everything.  The system events will come after
 		// all the normal rows
-		r.render(display)
+		r.render(display, false)
 	} else {
 		// otherwise, in a non-terminal, just print out the actual event.
 		r.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
@@ -254,9 +296,12 @@ func (r *messageRenderer) systemMessage(display *ProgressDisplay, payload engine
 }
 
 func (r *messageRenderer) done(display *ProgressDisplay) {
+	if r.isTerminal {
+		r.render(display, false)
+	}
 }
 
-func (r *messageRenderer) render(display *ProgressDisplay) {
+func (r *messageRenderer) render(display *ProgressDisplay, done bool) {
 	if !r.isTerminal || display.headerRow == nil {
 		return
 	}
@@ -316,6 +361,10 @@ func (r *messageRenderer) render(display *ProgressDisplay) {
 			systemID++
 		}
 	}
+
+	if done {
+		r.println(display, "")
+	}
 }
 
 // Ensure our stored dimension info is up to date.
@@ -336,24 +385,10 @@ func (r *messageRenderer) updateTerminalDimensions() {
 // ShowProgressOutput displays a progress stream from `in` to `out`, `isTerminal` describes if
 // `out` is a terminal. If this is the case, it will print `\n` at the end of each line and move the
 // cursor while displaying.
-func ShowProgressOutput(in <-chan Progress, out io.Writer, isTerminal bool) {
+func ShowProgressOutput(in <-chan Progress, out io.Writer, info termInfo) {
 	var (
 		ids = make(map[string]int)
 	)
-
-	var info termInfo
-
-	if isTerminal {
-		term := os.Getenv("TERM")
-		if term == "" {
-			term = "vt102"
-		}
-
-		var err error
-		if info, err = gotty.OpenTermInfo(term); err != nil {
-			info = &noTermInfo{}
-		}
-	}
 
 	for jm := range in {
 		diff := 0
