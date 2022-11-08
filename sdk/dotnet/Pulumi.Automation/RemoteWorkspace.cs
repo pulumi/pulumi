@@ -79,19 +79,19 @@ namespace Pulumi.Automation
         {
             if (!IsFullyQualifiedStackName(args.StackName))
             {
-                throw new ArgumentException($"{nameof(args.StackName)} not fully qualified.");
+                throw new ArgumentException($"{nameof(args.StackName)} \"{args.StackName}\" not fully qualified.");
             }
             if (string.IsNullOrWhiteSpace(args.Url))
             {
                 throw new ArgumentException($"{nameof(args.Url)} is required.");
             }
-            if (!string.IsNullOrWhiteSpace(args.CommitHash) && !string.IsNullOrWhiteSpace(args.Branch))
+            if (!string.IsNullOrWhiteSpace(args.Branch) && !string.IsNullOrWhiteSpace(args.CommitHash))
             {
-                throw new ArgumentException($"{nameof(args.CommitHash)} and {nameof(args.Branch)} cannot both be specified.");
+                throw new ArgumentException($"{nameof(args.Branch)} and {nameof(args.CommitHash)} cannot both be specified.");
             }
-            if (string.IsNullOrWhiteSpace(args.CommitHash) && string.IsNullOrWhiteSpace(args.Branch))
+            if (string.IsNullOrWhiteSpace(args.Branch) && string.IsNullOrWhiteSpace(args.CommitHash))
             {
-                throw new ArgumentException($"either {nameof(args.CommitHash)} or {nameof(args.Branch)} is required.");
+                throw new ArgumentException($"either {nameof(args.Branch)} or {nameof(args.CommitHash)} is required.");
             }
             if (!(args.Auth is null))
             {

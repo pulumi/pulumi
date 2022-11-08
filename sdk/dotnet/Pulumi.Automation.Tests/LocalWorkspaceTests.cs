@@ -21,30 +21,13 @@ using Xunit;
 using Xunit.Abstractions;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
+using static Pulumi.Automation.Tests.Utility;
+
 namespace Pulumi.Automation.Tests
 {
     public class LocalWorkspaceTests
     {
         private static readonly string _pulumiOrg = GetTestOrg();
-
-        private static string GetTestSuffix()
-        {
-            var random = new Random();
-            var result = random.Next(); // 31 bits, highest bit will be 0 (signed)
-            return result.ToString("x"); // 8 hex characters
-        }
-
-        private static string RandomStackName()
-        {
-            const string chars = "abcdefghijklmnopqrstuvwxyz";
-            return new string(Enumerable.Range(1, 8).Select(_ => chars[new Random().Next(chars.Length)]).ToArray());
-        }
-
-        private static string GetTestOrg() =>
-            Environment.GetEnvironmentVariable("PULUMI_TEST_ORG") ?? "pulumi-test";
-
-        private static string FullyQualifiedStackName(string org, string project, string stack) =>
-            $"{org}/{project}/{stack}";
 
         private static string NormalizeConfigKey(string key, string projectName)
         {
