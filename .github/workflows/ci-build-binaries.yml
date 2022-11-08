@@ -48,6 +48,9 @@ jobs:
     env:
       PULUMI_VERSION: ${{ inputs.version }}
 
+    permissions:
+      id-token: write
+
     steps:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717

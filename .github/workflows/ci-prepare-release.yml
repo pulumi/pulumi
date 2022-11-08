@@ -3,6 +3,8 @@ name: Prepare
 permissions:
   # To create a draft release
   contents: write
+  # To sign artifacts.
+  id-token: write
 
 on:
   workflow_call:
@@ -47,28 +49,40 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Install rsign2
-        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
-        with:
-          crate: rsign2
-          version: 0.6.1
-
       - name: Install b3sum
         uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
         with:
           crate: b3sum
           version: 1.3.0
 
+      - uses: sigstore/cosign-installer@9becc617647dfa20ae7b1151972e9b3a2c338a2b # v2.8.1
+
       - name: Download all artifacts
         uses: actions/download-artifact@v2
         with:
           path: artifacts.tmp
-
+      - name: Rename SDKs
+        # This step must match the rename SDKs step in the "publish" job below.
+        run: |
+          (
+            cd artifacts.tmp/artifacts-python-sdk
+            for file in *.whl ; do
+              mv -vT "$file" "sdk-python-$file"
+            done
+          )
+          (
+            cd artifacts.tmp/artifacts-nodejs-sdk
+            for file in *.tgz ; do
+              mv -vT "$file" "sdk-nodejs-$file"
+            done
+          )
       - name: Flatten artifact directories
         run: |
           mkdir -p ./artifacts
-          mkdir -p ./sums.tmp
           mv ./artifacts.tmp/artifacts-*/* ./artifacts
+
+      - name: Create sums.tmp
+        run: mkdir -p ./sums.tmp ./sigs.tmp
 
         # Each of these commands strips the ./ prefix to match existing (<=3.39) formatting.
       - name: Checksums with SHA256
@@ -85,37 +99,33 @@ jobs:
         working-directory: artifacts
         run: sha512sum ./* | sed 's/.\///' | tee ../sums.tmp/SHA512SUMS
 
-      - name: Sign checksums
-        working-directory: sums.tmp
-        # Requires a signing key to be configured.
-        if: false
+      - name: Sign binaries and checksums
         shell: bash
         env:
-          # RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
           version: ${{ inputs.version }}
         run: |
-          set -u
-          releaseKey="$(mktemp -d)/release.key"
-          echo "$RELEASE_KEY" > "${releaseKey}"
-          set -x
-          for file in *; do
-            echo | rsign sign \
-              -p "${GITHUB_WORKSPACE}/.github/workflows/release.pub" \
-              -s "${releaseKey}" \
-              -t "${{ inputs.project }} v$version signed with automated key" \
-              -c 'see website for signing information' \
-              -x "${file}.auto.minisig" \
-              "${file}"
+          ls -la
+          # Sign all artifacts and checksums:
+          for dir in "artifacts" "sums.tmp"; do
+            pushd "$dir"
+            for file in ./*; do
+                echo "$file"
+                COSIGN_EXPERIMENTAL=1 cosign sign-blob \
+                  --bundle="../sigs.tmp/${file}".sig  \
+                  "${file}"
+            done
+            popd
           done
-          rm "${releaseKey}"
-          cat ./*.auto.minisig
+
+          # flatten to a single directory to upload:
+          mv sums.tmp/* sigs.tmp
 
       - uses: actions/upload-artifact@v2
         with:
           name: artifacts-signatures
           retention-days: 1
           path: |
-            sums.tmp/*
+            sigs.tmp/*
           if-no-files-found: error
 
   publish:
@@ -136,6 +146,7 @@ jobs:
         with:
           path: artifacts.tmp
       - name: Rename SDKs
+        # This step must match the rename SDKs step in the "sign" job above.
         run: |
           (
             cd artifacts.tmp/artifacts-python-sdk
