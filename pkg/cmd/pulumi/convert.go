@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -208,6 +209,11 @@ func runConvert(cwd string, from string, language string, outDir string, generat
 			}
 		} else {
 			return result.FromError(fmt.Errorf("unrecognized source %s", from))
+		}
+	} else if from == "tf" {
+		proj, program, err = tfgen.Eject(cwd, loader)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
 		}
 	} else {
 		return result.FromError(fmt.Errorf("unrecognized source %s", from))
