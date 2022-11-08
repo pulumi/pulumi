@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/rivo/uniseg"
 )
 
 type treeRenderer struct {
@@ -157,11 +158,14 @@ func (r *treeRenderer) done(display *ProgressDisplay) {
 	r.frame(true)
 }
 
-func (r *treeRenderer) println(display *ProgressDisplay, text string) {
+func (r *treeRenderer) print(text string) {
 	_, err := fmt.Fprint(r.term, r.opts.Color.Colorize(strings.ReplaceAll(text, "\n", "\r\n")))
 	contract.IgnoreError(err)
-	_, err = fmt.Fprint(r.term, "\r\n")
-	contract.IgnoreError(err)
+}
+
+func (r *treeRenderer) println(display *ProgressDisplay, text string) {
+	r.print(text)
+	r.print("\n")
 }
 
 func (r *treeRenderer) render(display *ProgressDisplay) {
@@ -216,6 +220,9 @@ func (r *treeRenderer) markDirty() {
 // +--------------------------------------------+
 // | treetable header                           |
 // | treetable contents...                      |
+// | treetable footer                           |
+// | system messages header                     |
+// | system messages contents...                |
 // +--------------------------------------------+
 func (r *treeRenderer) frame(done bool) {
 	r.m.Lock()
@@ -252,6 +259,7 @@ func (r *treeRenderer) frame(done bool) {
 	// - If there are no system messages, devote the entire display to the tree table
 	// - If there are system messages, devote the first two thirds of the display to the tree table and the
 	//   last third to the system messages
+	var treeTableFooter string
 	if !done && totalHeight >= r.termHeight {
 		if systemMessagesHeight > 0 {
 			systemMessagesHeight = r.termHeight / 3
@@ -271,9 +279,22 @@ func (r *treeRenderer) frame(done bool) {
 		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
 
 		totalHeight = treeTableHeight + systemMessagesHeight + 1
+
+		upArrow := "  "
+		if r.treeTableOffset != 0 {
+			upArrow = "⬆ "
+		}
+		downArrow := "  "
+		if r.treeTableOffset != r.maxTreeTableOffset {
+			downArrow = "⬇ "
+		}
+		footer := fmt.Sprintf("%smore%s", upArrow, downArrow)
+		padding := r.termWidth - uniseg.GraphemeClusterCount(footer)
+		treeTableFooter = strings.Repeat(" ", padding) + footer
 	}
 
 	// Re-home the cursor.
+	clearLine(r.term, r.termInfo)
 	for ; r.rewind > 0; r.rewind-- {
 		cursorUp(r.term, r.termInfo, 1)
 		clearLine(r.term, r.termInfo)
@@ -284,6 +305,9 @@ func (r *treeRenderer) frame(done bool) {
 	r.println(nil, treeTableHeader)
 	for _, row := range treeTableRows {
 		r.println(nil, row)
+	}
+	if treeTableFooter != "" {
+		r.print(treeTableFooter)
 	}
 
 	// Render the system messages.
