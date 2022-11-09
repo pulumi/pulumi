@@ -324,10 +324,14 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	pluginInfos := deployment.Deployment.GetProviderInfo()
 	pluginDetails := []apitype.PluginDetail{}
 	for _, info := range pluginInfos {
+		versionString := ""
+		if info.Version != nil {
+			versionString = info.Version.String()
+		}
 		pluginDetails = append(pluginDetails, apitype.PluginDetail{
 			Name:    info.Name,
 			Kind:    string(info.Kind),
-			Version: info.Version.String(),
+			Version: versionString,
 			Path:    info.Path,
 			Hash:    hashBin(info.Path),
 		})
