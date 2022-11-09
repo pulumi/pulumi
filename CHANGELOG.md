@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.46.1 (2022-11-09)
+
+
+### Features
+
+- [cli] Enables debug tracing of Pulumi gRPC internals: `PULUMI_DEBUG_GRPC=$PWD/grpc.json pulumi up`
+  [#11085](https://github.com/pulumi/pulumi/pull/11085)
+
+- [cli/display] Improve the usability of the interactive dipslay by making the treetable scrollable
+  [#11200](https://github.com/pulumi/pulumi/pull/11200)
+
+- [pkg] Add `DeletedWith` as a resource option.
+  [#11095](https://github.com/pulumi/pulumi/pull/11095)
+
+- [programgen] More programs can be converted to Pulumi when using `pulumi convert`, provider bridging, and conversion tools by allowing property accesses and field names to fall back to a case insensitive lookup.
+  [#11266](https://github.com/pulumi/pulumi/pull/11266)
+
+
+### Bug Fixes
+
+- [engine] Disable auto parenting to see if that fixes #10950.
+  [#11272](https://github.com/pulumi/pulumi/pull/11272)
+
+- [yaml] [Updates Pulumi YAML to v1.0.2](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.2) which fixes a bug encountered using templates with project level config.
+  [#11296](https://github.com/pulumi/pulumi/pull/11296)
+
+- [sdkgen/go] Allow resource names that conflict with additional types.
+  [#11244](https://github.com/pulumi/pulumi/pull/11244)
+
+- [sdkgen/go] Guard against conflicting field names.
+  [#11262](https://github.com/pulumi/pulumi/pull/11262)
+
+- [sdk/python] Handle None being passed to register_resource_outputs.
+  [#11226](https://github.com/pulumi/pulumi/pull/11226)
+
 ## 3.46.0 (2022-11-02)
 
 
