@@ -1468,14 +1468,14 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports 
 		sort.Strings(modules)
 
 		for _, module := range modules {
-			fmt.Fprintf(w, "import {")
+			fmt.Fprintf(w, "import { ")
 			for i, name := range importedTypes[module].SortedValues() {
 				if i > 0 {
 					fmt.Fprint(w, ", ")
 				}
 				fmt.Fprint(w, name)
 			}
-			fmt.Fprintf(w, "} from \"%s\";\n", module)
+			fmt.Fprintf(w, " } from \"%s\";\n", module)
 		}
 		fmt.Fprintf(w, "\n")
 	}
@@ -1549,6 +1549,9 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 // It's a thin wrapper around the standard library's implementation.
 func getRelativePath(dirname string) string {
 	var rel, err = filepath.Rel(dirname, "")
+	if err != nil {
+		fmt.Println(err)
+	}
 	contract.Assert(err == nil)
 	return path.Dir(filepath.ToSlash(rel))
 }
@@ -1647,6 +1650,17 @@ func (mod *modContext) genTypes() ([]*ioFile, error) {
 		inputCtx  = buildCtx(true)
 		outputCtx = buildCtx(false)
 	)
+	// Convert the imports into a path relative to the root.
+
+	var modifiedImports = map[string]codegen.StringSet{}
+	for name, value := range imports {
+		var modifiedName = path.Base(name)
+		var relativePath = fmt.Sprintf("@/%s", modifiedName)
+		modifiedImports[relativePath] = value
+	}
+	inputCtx.imports = modifiedImports
+	outputCtx.imports = modifiedImports
+
 	// If there are no namespaces, then we generate empty
 	// input and output files.
 	if namespaces[""] == nil {
@@ -2566,6 +2580,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 
 	fmt.Fprintf(w, `{
     "compilerOptions": {
+		"baseUrl": ".",
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -2576,6 +2591,9 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
         "experimentalDecorators": true,
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
+		"paths": {
+			"@/*": ["*"]
+		},
         "strict": true
     },
     "files": [
