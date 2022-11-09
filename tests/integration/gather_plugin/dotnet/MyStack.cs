@@ -7,10 +7,10 @@ class MyStack : Stack
         // Create an AWS resource (S3 Bucket)
         var r = new Random(
             "default", 10, new ComponentResourceOptions{
-                PluginDownloadURL = "get.com",
+                PluginDownloadURL = "get.example.test",
             });
         var provider = new Provider("explicit", new CustomResourceOptions{
-                PluginDownloadURL = "get.pulumi/test/providers",
+                PluginDownloadURL = "get.pulumi.test/providers",
             });
         var e = new Random("explicit", 8, new ComponentResourceOptions{
                 Provider = provider,

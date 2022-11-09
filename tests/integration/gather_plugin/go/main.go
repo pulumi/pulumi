@@ -14,13 +14,13 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		r, err := NewRandom(ctx, "default", &RandomArgs{
 			Length: pulumi.Int(10),
-		}, pulumi.PluginDownloadURL("get.com"))
+		}, pulumi.PluginDownloadURL("get.example.test"))
 		if err != nil {
 			return err
 		}
 
 		provider, err := NewProvider(ctx, "explicit",
-			pulumi.PluginDownloadURL("get.pulumi/test/providers"))
+			pulumi.PluginDownloadURL("get.pulumi.test/providers"))
 		e, err := NewRandom(ctx, "explicit", &RandomArgs{
 			Length: pulumi.Int(8),
 		}, pulumi.Provider(provider))
