@@ -6,7 +6,7 @@ import * as inputs from "./types/input";
 import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
-import { God } from "./index";
+import {God} from "./index";
 
 export class Cat extends pulumi.CustomResource {
     /**

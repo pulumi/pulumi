@@ -1581,13 +1581,13 @@ func (mod *modContext) sdkImportsWithPath(nested, utilities bool, dirpath string
 	}
 	// Add utility imports if enabled.
 	if utilities {
-		imports = append(imports, mod.utilitiesImport(relRoot))
+		imports = append(imports, utilitiesImport(relRoot))
 	}
 
 	return imports
 }
 
-func (mod *modContext) utilitiesImport(relRoot string) string {
+func utilitiesImport(relRoot string) string {
 	return fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot)
 }
 
@@ -2236,7 +2236,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		imports = mod.sdkImports(false, true)
 	} else if len(children) > 0 || len(mod.functions) > 0 {
 		// Even if there are no resources, exports ref utilities.
-		imports = append(imports, mod.utilitiesImport(mod.getRelativePath()))
+		imports = append(imports, utilitiesImport(mod.getRelativePath()))
 	}
 	mod.genHeader(w, imports, nil, nil)
 

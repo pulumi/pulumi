@@ -6,7 +6,7 @@ import * as inputs from "./types/input";
 import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
-import { Cat, Dog } from "./index";
+import {Cat, Dog} from "./index";
 
 export class ToyStore extends pulumi.CustomResource {
     /**

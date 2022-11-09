@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-		"baseUrl": ".",
+        "baseUrl": ".",
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -12,7 +12,7 @@
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
 		"paths": {
-			"@/*": ["*"]
+            "@/*": ["*"]
 		},
         "strict": true
     },

@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import { Rec } from "./index";
+import {Rec} from "./index";
 
 export class Rec extends pulumi.CustomResource {
     /**

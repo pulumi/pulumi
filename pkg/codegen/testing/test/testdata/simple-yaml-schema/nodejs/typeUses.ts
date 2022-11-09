@@ -7,7 +7,7 @@ import * as outputs from "./types/output";
 import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
-import { Resource } from "./index";
+import {Resource} from "./index";
 
 export class TypeUses extends pulumi.CustomResource {
     /**
