@@ -6,5 +6,5 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 import * as utilities from "../utilities";
 
-import {Resource} from "..";
+import { Resource } from "..";
 

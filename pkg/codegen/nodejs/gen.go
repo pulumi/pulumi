@@ -1468,14 +1468,14 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports 
 		sort.Strings(modules)
 
 		for _, module := range modules {
-			fmt.Fprintf(w, "import { ")
+			fmt.Fprintf(w, "import {")
 			for i, name := range importedTypes[module].SortedValues() {
 				if i > 0 {
 					fmt.Fprint(w, ", ")
 				}
 				fmt.Fprint(w, name)
 			}
-			fmt.Fprintf(w, " } from \"%s\";\n", module)
+			fmt.Fprintf(w, "} from \"%s\";\n", module)
 		}
 		fmt.Fprintf(w, "\n")
 	}
@@ -1549,9 +1549,6 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 // It's a thin wrapper around the standard library's implementation.
 func getRelativePath(dirname string) string {
 	var rel, err = filepath.Rel(dirname, "")
-	if err != nil {
-		fmt.Println(err)
-	}
 	contract.Assert(err == nil)
 	return path.Dir(filepath.ToSlash(rel))
 }
@@ -1655,6 +1652,11 @@ func (mod *modContext) genTypes() ([]*ioFile, error) {
 	var modifiedImports = map[string]codegen.StringSet{}
 	for name, value := range imports {
 		var modifiedName = path.Base(name)
+		// Special case: If we're importing the top-level of the module, leave as is.
+		if name == ".." {
+			modifiedImports[name] = value
+			continue
+		}
 		var relativePath = fmt.Sprintf("@/%s", modifiedName)
 		modifiedImports[relativePath] = value
 	}
@@ -1776,7 +1778,7 @@ func (ns *namespace) intoIOFiles(ctx *ioContext, parent string) ([]*ioFile, erro
 // sortItems will sort each of the internal slices of this object.
 func (ns *namespace) sortItems() {
 	sort.Slice(ns.types, func(i, j int) bool {
-		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+		return objectTypeLessThan(ns.types[i], ns.types[j])
 	})
 	sort.Slice(ns.enums, func(i, j int) bool {
 		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
@@ -1858,8 +1860,6 @@ func (ns *namespace) genIndexFile(ctx *ioContext, dirRoot string) *ioFile {
 	var file = newIOFile(indexPath)
 	ctx.mod.genHeader(file.writer(), nil, nil, nil)
 	// Export the types defined at the current level.
-	// fmt.Fprintf(file.writer(), "export * from \"./input\";\n")
-	// fmt.Fprintf(file.writer(), "export * from \"./output\";\n")
 	// Now, recursively export the items in each submodule.
 	for _, child := range ns.children {
 		// Defensive coding: child should never be null, but
@@ -2580,7 +2580,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 
 	fmt.Fprintf(w, `{
     "compilerOptions": {
-		"baseUrl": ".",
+        "baseUrl": ".",
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -2592,7 +2592,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
 		"paths": {
-			"@/*": ["*"]
+            "@/*": ["*"]
 		},
         "strict": true
     },

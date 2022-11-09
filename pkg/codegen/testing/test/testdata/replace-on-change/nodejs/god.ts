@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import {Dog} from "./index";
+import { Dog } from "./index";
 
 export class God extends pulumi.CustomResource {
     /**

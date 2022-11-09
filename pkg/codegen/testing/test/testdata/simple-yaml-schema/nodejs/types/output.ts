@@ -7,7 +7,7 @@ import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 import * as utilities from "../utilities";
 
-import {Resource} from "..";
+import { Resource } from "..";
 
 export interface ConfigMap {
     config?: string;

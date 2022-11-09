@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import {Resource} from "./index";
+import { Resource } from "./index";
 
 export class FooResource extends pulumi.ComponentResource {
     /** @internal */
