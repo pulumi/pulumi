@@ -2198,6 +2198,12 @@ func genProjectFile(pkg *schema.Package,
 	packageReferences map[string]string,
 	projectReferences []string) ([]byte, error) {
 
+	if packageReferences == nil {
+		packageReferences = map[string]string{}
+	}
+	if _, ok := packageReferences["Pulumi"]; !ok {
+		packageReferences["Pulumi"] = "3.*"
+	}
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{
 		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
