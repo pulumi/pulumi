@@ -172,3 +172,15 @@ func ExpandShortEnumName(name string) string {
 	}
 	return name
 }
+
+// A simple in memory file system.
+type Fs map[string][]byte
+
+// Add a new file to the Fs.
+//
+// Panic if the file is a duplicate.
+func (fs Fs) Add(path string, contents []byte) {
+	_, has := fs[path]
+	contract.Assertf(!has, "duplicate file: %s", path)
+	fs[path] = contents
+}

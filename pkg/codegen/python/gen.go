@@ -397,14 +397,6 @@ func relPathToRelImport(relPath string) string {
 	return relImport
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
@@ -421,7 +413,7 @@ def get_plugin_download_url():
 	return buffer.Bytes()
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	dir := path.Join(mod.pyPkgName, mod.mod)
 
 	var exports []string
@@ -440,14 +432,14 @@ func (mod *modContext) gen(fs fs) error {
 		if !strings.HasSuffix(name, ".pyi") {
 			exports = append(exports, name[:len(name)-len(".py")])
 		}
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
-		fs.add(filepath.Join(dir, "_utilities.py"), mod.genUtilitiesFile())
-		fs.add(filepath.Join(dir, "py.typed"), []byte{})
+		fs.Add(filepath.Join(dir, "_utilities.py"), mod.genUtilitiesFile())
+		fs.Add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 
@@ -473,7 +465,7 @@ func (mod *modContext) gen(fs fs) error {
 				readme += "\n"
 			}
 		}
-		fs.add(filepath.Join(dir, "README.md"), []byte(readme))
+		fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	case "config":
 		if len(mod.pkg.Config) > 0 {
@@ -546,7 +538,7 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Index
 	if !mod.isEmpty() {
-		fs.add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
+		fs.Add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
 	}
 
 	return nil
@@ -927,7 +919,7 @@ func allTypesAreOverlays(types []*schema.ObjectType) bool {
 	return true
 }
 
-func (mod *modContext) genTypes(dir string, fs fs) error {
+func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 	genTypes := func(file string, input bool) error {
 		w := &bytes.Buffer{}
 
@@ -1003,7 +995,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 			}
 		}
 		if hasTypes {
-			fs.add(path.Join(dir, file), w.Bytes())
+			fs.Add(path.Join(dir, file), w.Bytes())
 		}
 		return nil
 	}
@@ -2866,9 +2858,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		pkgName = pyPack(pkg.Name)
 	}
 
-	files := fs{}
+	files := codegen.Fs{}
 	for p, f := range extraFiles {
-		files.add(filepath.Join(pkgName, p), f)
+		files.Add(filepath.Join(pkgName, p), f)
 	}
 
 	for _, mod := range modules {
@@ -2882,14 +2874,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	if err != nil {
 		return nil, err
 	}
-	files.add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
+	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
 	// Finally emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}
-	files.add("setup.py", []byte(setup))
+	files.Add("setup.py", []byte(setup))
 
 	return files, nil
 }

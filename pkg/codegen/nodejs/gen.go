@@ -1737,14 +1737,6 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	return nil
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func (mod *modContext) isReservedSourceFileName(name string) bool {
 	switch name {
 	case "index.ts":
@@ -1760,7 +1752,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 	}
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	var files []fileInfo
 	for _, path := range mod.extraSourceFiles {
 		files = append(files, fileInfo{
@@ -1777,7 +1769,7 @@ func (mod *modContext) gen(fs fs) error {
 			fileType:         fileType,
 			pathToNodeModule: p,
 		})
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	addResourceFile := func(resourceFileInfo resourceFileInfo, name, contents string) {
@@ -1787,7 +1779,7 @@ func (mod *modContext) gen(fs fs) error {
 			resourceFileInfo: resourceFileInfo,
 			pathToNodeModule: p,
 		})
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	addFunctionFile := func(info functionFileInfo, name, contents string) {
@@ -1797,7 +1789,7 @@ func (mod *modContext) gen(fs fs) error {
 			functionFileInfo: info,
 			pathToNodeModule: p,
 		})
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Utilities, config, readme
@@ -1806,7 +1798,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil, nil)
 		mod.genUtilitiesFile(buffer)
-		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
+		fs.Add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
@@ -1825,7 +1817,7 @@ func (mod *modContext) gen(fs fs) error {
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
-		fs.add(path.Join(modDir, "README.md"), []byte(readme))
+		fs.Add(path.Join(modDir, "README.md"), []byte(readme))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
@@ -1899,7 +1891,7 @@ func (mod *modContext) gen(fs fs) error {
 			fileName = path.Join(modDir, "index.ts")
 		}
 		fileName = path.Join("types", "enums", fileName)
-		fs.add(fileName, buffer.Bytes())
+		fs.Add(fileName, buffer.Bytes())
 	}
 
 	// Nested types
@@ -1909,12 +1901,12 @@ func (mod *modContext) gen(fs fs) error {
 		if err != nil {
 			return err
 		}
-		fs.add(path.Join(modDir, "input.ts"), []byte(input))
-		fs.add(path.Join(modDir, "output.ts"), []byte(output))
+		fs.Add(path.Join(modDir, "input.ts"), []byte(input))
+		fs.Add(path.Join(modDir, "output.ts"), []byte(output))
 	}
 
 	// Index
-	fs.add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
+	fs.Add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
 	return nil
 }
 
@@ -2161,14 +2153,14 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) error {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs) error {
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
 	//     3) install-pulumi-plugin.js: plugin install script
-	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
-	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
-	files.add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
+	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
+	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
+	fs.Add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
 	return nil
 }
 
@@ -2289,7 +2281,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	return string(npmjson) + "\n"
 }
 
-func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
+func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 	w := &bytes.Buffer{}
 
 	fmt.Fprintf(w, `{
@@ -2553,9 +2545,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	pkg.Language["nodejs"] = info
 
-	files := fs{}
+	files := codegen.Fs{}
 	for p, f := range extraFiles {
-		files.add(p, f)
+		files.Add(p, f)
 	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
