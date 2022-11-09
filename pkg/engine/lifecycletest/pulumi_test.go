@@ -980,7 +980,7 @@ func TestStackReference(t *testing.T) {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
 					switch entry.Step.Op() {
-					case deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReplace:
+					case deploy.OpUpdate:
 						// OK
 					default:
 						t.Fatalf("unexpected journal operation: %v", entry.Step.Op())

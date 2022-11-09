@@ -98,7 +98,7 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 	if !inputs["name"].DeepEquals(state["name"]) {
 		return plugin.DiffResult{
 			Changes:     plugin.DiffSome,
-			ReplaceKeys: []resource.PropertyKey{"name"},
+			ChangedKeys: []resource.PropertyKey{"name"},
 		}, nil
 	}
 
@@ -131,10 +131,15 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
-	contract.Failf("unexpected update for builtin resource %v", urn)
+	// Currently, we only support updates on StackReference resources among builtins.
 	contract.Assert(urn.Type() == stackReferenceType)
+	// Given new StackReference inputs, we need to read the new data into state.
+	newState, err := p.readStackReference(inputs)
+	if err != nil {
+		return nil, resource.StatusUnknown, err
+	}
 
-	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
+	return newState, resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
