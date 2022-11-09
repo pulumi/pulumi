@@ -17,7 +17,6 @@
 import * as assert from "assert";
 import { all } from "../output";
 import * as runtime from "../runtime";
-import { asyncTest } from "./util";
 import { allAliases, createUrn, ComponentResource, CustomResourceOptions, DependencyProviderResource } from "../resource";
 
 class MyResource extends ComponentResource {
@@ -45,22 +44,22 @@ describe("createUrn", () => {
         runtime._setStack(undefined);
     })
 
-    it("handles name and type", asyncTest(async () => {
+    it("handles name and type", async () => {
         const urn = await createUrn("n", "t").promise();
         assert.strictEqual(urn, "urn:pulumi:mystack::myproject::t::n");
-    }));
+    });
 
-    it("handles name and type and parent", asyncTest(async () => {
+    it("handles name and type and parent", async () => {
         const res = new MyResource("myres");
         const urn = await createUrn("n", "t", res).promise();
         assert.strictEqual(urn, "urn:pulumi:mystack::myproject::my:mod:MyResource$t::n");
-    }));
+    });
 
-    it("handles name and type and parent with parent", asyncTest(async () => {
+    it("handles name and type and parent with parent", async () => {
         const res = new MyParentResource("myres");
         const urn = await createUrn("n", "t", res.child).promise();
         assert.strictEqual(urn, "urn:pulumi:mystack::myproject::my:mod:MyParentResource$my:mod:MyResource$t::n");
-    }));
+    });
 });
 
 class TestResource extends ComponentResource {
@@ -140,7 +139,7 @@ describe("allAliases", () => {
     ];
 
     for (const testCase of testCases) {
-        it(testCase.name, asyncTest(async () => {
+        it(testCase.name, async () => {
             const res = new TestResource("myres", { aliases: testCase.parentAliases });
             const aliases = allAliases(testCase.childAliases, "myres-child", "test:resource:child", res, "myres");
             assert.strictEqual(aliases.length, testCase.results.length);
@@ -148,7 +147,7 @@ describe("allAliases", () => {
             for (let i = 0; i < aliasURNs.length; i++) {
                 assert.strictEqual(aliasURNs[i], testCase.results[i]);
             }
-        }));
+        });
     }
 });
 
