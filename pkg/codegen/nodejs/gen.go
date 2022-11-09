@@ -1853,7 +1853,8 @@ func (ns *namespace) genIndexFile(ctx *ioContext, dirRoot string) *ioFile {
 		if child == nil {
 			continue
 		}
-		fmt.Fprintf(file.writer(), "export * as %[1]s from \"./%[1]s\";\n", child.name)
+
+		fmt.Fprintf(file.writer(), "export * as %[1]s from \"./%[1]s/%[2]s\";\n", child.name, ctx.filetype())
 	}
 	return file
 }
