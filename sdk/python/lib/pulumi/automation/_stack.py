@@ -78,9 +78,15 @@ class UpdateSummary:
         self.config: ConfigMap = {}
         for key in config:
             config_value = config[key]
-            self.config[key] = ConfigValue(
-                value=config_value["value"], secret=config_value["secret"]
+            secret = config_value["secret"]
+            # If it is a secret, and we're not showing secrets, the value is excluded from the JSON results.
+            # In that case, we'll just use the sentinal `[secret]` value. Otherwise, we expect to get a value.
+            value = (
+                config_value.get("value", "[secret]")
+                if secret
+                else config_value["value"]
             )
+            self.config[key] = ConfigValue(value=value, secret=secret)
 
     def __repr__(self):
         return (
