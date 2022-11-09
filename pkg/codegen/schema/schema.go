@@ -1146,7 +1146,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	if f.Outputs != nil {
 		outs, err := pkg.marshalObject(f.Outputs, true)
 		if err != nil {
-			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+			return FunctionSpec{}, fmt.Errorf("marshaling outputs: %w", err)
 		}
 		outputs = &outs.ObjectTypeSpec
 	}
