@@ -1961,14 +1961,6 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	return w.String(), nil
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
@@ -1986,7 +1978,7 @@ func (mod *modContext) genUtilities() (string, error) {
 	return w.String(), nil
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	nsComponents := strings.Split(mod.namespaceName, ".")
 	if len(nsComponents) > 0 {
 		// Trim off "Pulumi.Pkg"
@@ -2012,7 +2004,7 @@ func (mod *modContext) gen(fs fs) error {
 	addFile := func(name, contents string) {
 		p := path.Join(dir, name)
 		files = append(files, p)
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Ensure that the target module directory contains a README.md file.
@@ -2020,7 +2012,7 @@ func (mod *modContext) gen(fs fs) error {
 	if readme != "" && readme[len(readme)-1] != '\n' {
 		readme += "\n"
 	}
-	fs.add(filepath.Join(dir, "README.md"), []byte(readme))
+	fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	// Utilities, config
 	switch mod.mod {
@@ -2029,7 +2021,7 @@ func (mod *modContext) gen(fs fs) error {
 		if err != nil {
 			return err
 		}
-		fs.add("Utilities.cs", []byte(utilities))
+		fs.Add("Utilities.cs", []byte(utilities))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			config, err := mod.genConfig(mod.pkg.Config)
@@ -2158,7 +2150,7 @@ func genPackageMetadata(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
 	projectReferences []string,
-	files fs) error {
+	files codegen.Fs) error {
 
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences)
 	if err != nil {
@@ -2177,7 +2169,7 @@ func genPackageMetadata(pkg *schema.Package,
 
 	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
-		files.add("version.txt", []byte(pkg.Version.String()))
+		files.Add("version.txt", []byte(pkg.Version.String()))
 		pulumiPlugin.Version = pkg.Version.String()
 	}
 
@@ -2186,9 +2178,9 @@ func genPackageMetadata(pkg *schema.Package,
 		return err
 	}
 
-	files.add(assemblyName+".csproj", projectFile)
-	files.add("logo.png", logo)
-	files.add("pulumi-plugin.json", plugin)
+	files.Add(assemblyName+".csproj", projectFile)
+	files.Add("logo.png", logo)
+	files.Add("pulumi-plugin.json", plugin)
 	return nil
 }
 
@@ -2472,9 +2464,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	assemblyName := info.GetRootNamespace() + "." + namespaceName(info.Namespaces, pkg.Name)
 
 	// Generate each module.
-	files := fs{}
+	files := codegen.Fs{}
 	for p, f := range extraFiles {
-		files.add(p, f)
+		files.Add(p, f)
 
 	}
 	for _, mod := range modules {

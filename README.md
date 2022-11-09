@@ -32,13 +32,13 @@ For example, create three web servers:
 ```typescript
 let aws = require("@pulumi/aws");
 let sg = new aws.ec2.SecurityGroup("web-sg", {
-    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"]}],
+    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
 });
 for (let i = 0; i < 3; i++) {
     new aws.ec2.Instance(`web-${i}`, {
         ami: "ami-7172b611",
         instanceType: "t2.micro",
-        securityGroups: [ sg.name ],
+        vpcSecurityGroupIds: [sg.id],
         userData: `#!/bin/bash
             echo "Hello, World!" > index.html
             nohup python -m SimpleHTTPServer 80 &`,

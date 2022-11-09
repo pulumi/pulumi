@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed templates/*.tmpl
@@ -1690,14 +1689,6 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 	}
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 // getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
 	dctx := mod.docGenContext
@@ -1713,13 +1704,13 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	dctx := mod.docGenContext
 	modName := mod.getModuleFileName()
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Resources
@@ -1758,7 +1749,7 @@ func (mod *modContext) gen(fs fs) error {
 		return err
 	}
 
-	fs.add(path.Join(modName, "_index.md"), buffer.Bytes())
+	fs.Add(path.Join(modName, "_index.md"), buffer.Bytes())
 	return nil
 }
 
@@ -2090,7 +2081,7 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 	defer glog.Flush()
 
 	glog.V(3).Infoln("generating package docs now...")
-	files := fs{}
+	files := codegen.Fs{}
 	modules := []string{}
 	modMap := dctx.modules()
 	for k := range modMap {

@@ -3560,7 +3560,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	name := packageName(pkg)
 	pathPrefix := packageRoot(pkg)
 
-	files := map[string][]byte{}
+	files := codegen.Fs{}
 
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
@@ -3575,13 +3575,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("Failed to format pulumi-plugin.json: %w", err)
 	}
-	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPluginJSON
+	files.Add(path.Join(pathPrefix, "pulumi-plugin.json"), pulumiPluginJSON)
 
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
-		if _, ok := files[relPath]; ok {
-			panic(fmt.Errorf("duplicate file: %s", relPath))
-		}
 
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
@@ -3590,7 +3587,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			panic(fmt.Errorf("invalid Go source code:\n\n%s\n: %w", relPath, err))
 		}
 
-		files[relPath] = formattedSource
+		files.Add(relPath, formattedSource)
 	}
 
 	for _, mod := range pkgMods {
