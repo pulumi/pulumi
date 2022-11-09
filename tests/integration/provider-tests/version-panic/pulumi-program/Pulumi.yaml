@@ -1,0 +1,12 @@
+name: provider-no-version
+runtime: yaml
+
+plugins:
+  providers:
+    - name: missingversion
+      path: ../
+
+resources:
+  provider:
+    type: pulumi:providers:missingversion
+    properties: {}
