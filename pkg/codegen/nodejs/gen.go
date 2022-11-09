@@ -1729,7 +1729,7 @@ func (ctx *ioContext) filetype() string {
 
 // intoIOFiles converts this namespace into one or more files.
 // It recursively builds one file for each node in the tree.
-// If input=true, then it builds input types. Otherwise, it
+// If ctx.input=true, then it builds input types. Otherwise, it
 // builds output types.
 // The parameters in ctx are stable regardless of the depth of recursion,
 // but parent is expected to change with each recursive call.
