@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg
-  description: Add `DeletedWith` as a resource option.

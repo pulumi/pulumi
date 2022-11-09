@@ -19,17 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
-	terminal "golang.org/x/term"
-
-	gotty "github.com/ijc/Gotty"
-	"github.com/muesli/cancelreader"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -41,15 +36,7 @@ type treeRenderer struct {
 
 	opts Options
 
-	// The file descriptor, width, and height of the terminal. Used so we can trim resource messages that are too long.
-	termFD     int
-	termInfo   termInfo
-	termWidth  int
-	termHeight int
-	termState  *terminal.State
-	term       io.Writer
-
-	inFile cancelreader.CancelReader
+	term terminal.Terminal
 
 	dirty  bool // True if the display has changed since the last redraw.
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
@@ -65,75 +52,30 @@ type treeRenderer struct {
 	maxTreeTableOffset int // The maximum scroll offset.
 }
 
-type fileLike interface {
-	Fd() uintptr
-}
-
-func newInteractiveRenderer(in io.Reader, out io.Writer, opts Options) (progressRenderer, error) {
-	if !opts.IsInteractive {
-		return nil, fmt.Errorf("the tree display can only be used in interactive mode")
-	}
-
-	outFile, ok := out.(fileLike)
-	if !ok {
-		return nil, fmt.Errorf("stdout must be a terminal")
-	}
-	outFD := int(outFile.Fd())
-
-	width, height, err := terminal.GetSize(outFD)
-	if err != nil {
-		return nil, fmt.Errorf("getting terminal dimensions: %w", err)
-	}
-	if width == 0 || height == 0 {
-		return nil, fmt.Errorf("terminal has unusable dimensions %v x %v", width, height)
-	}
-
-	termType := os.Getenv("TERM")
-	if termType == "" {
-		termType = "vt102"
-	}
-	var info termInfo
-	if info, err = gotty.OpenTermInfo(termType); err != nil {
-		info = &noTermInfo{}
-	}
-
+func newInteractiveRenderer(term terminal.Terminal, opts Options) progressRenderer {
 	// Something about the tree renderer--possibly the raw terminal--does not yet play well with Windows, so for now
 	// we fall back to the legacy renderer on that platform.
-	if runtime.GOOS == "windows" {
-		return newInteractiveMessageRenderer(out, opts, width, height, info), nil
-	}
-
-	inFile, err := cancelreader.NewReader(in)
-	if err != nil {
-		return nil, fmt.Errorf("preparing stdin: %w", err)
-	}
-
-	state, err := terminal.MakeRaw(outFD)
-	if err != nil {
-		return nil, fmt.Errorf("enabling raw terminal: %w", err)
+	if !term.IsRaw() {
+		return newInteractiveMessageRenderer(term, opts)
 	}
 
 	r := &treeRenderer{
-		opts:       opts,
-		termFD:     outFD,
-		termInfo:   info,
-		termWidth:  width,
-		termHeight: height,
-		termState:  state,
-		term:       out,
-		inFile:     inFile,
-		ticker:     time.NewTicker(16 * time.Millisecond),
-		keys:       make(chan string),
-		closed:     make(chan bool),
+		opts:   opts,
+		term:   term,
+		ticker: time.NewTicker(16 * time.Millisecond),
+		keys:   make(chan string),
+		closed: make(chan bool),
+	}
+	if opts.deterministicOutput {
+		r.ticker.Stop()
 	}
 	go r.handleEvents()
 	go r.pollInput()
-	return r, nil
+	return r
 }
 
 func (r *treeRenderer) Close() error {
-	r.inFile.Cancel()
-	return terminal.Restore(r.termFD, r.termState)
+	return r.term.Close()
 }
 
 func (r *treeRenderer) tick(display *ProgressDisplay) {
@@ -155,11 +97,11 @@ func (r *treeRenderer) done(display *ProgressDisplay) {
 	r.closed <- true
 	close(r.closed)
 
-	r.frame(true)
+	r.frame(false, true)
 }
 
 func (r *treeRenderer) print(text string) {
-	_, err := fmt.Fprint(r.term, r.opts.Color.Colorize(strings.ReplaceAll(text, "\n", "\r\n")))
+	_, err := r.term.Write([]byte(r.opts.Color.Colorize(text)))
 	contract.IgnoreError(err)
 }
 
@@ -197,7 +139,9 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 
 	r.treeTableRows = r.treeTableRows[:0]
 	for _, row := range treeTableRows {
-		r.treeTableRows = append(r.treeTableRows, r.renderRow(display, row, maxColumnLengths))
+		uncolorizedRow := display.uncolorizeColumns(row)
+		rendered := renderRow(row, uncolorizedRow, maxColumnLengths)
+		r.treeTableRows = append(r.treeTableRows, rendered)
 	}
 
 	// Convert system events into lines.
@@ -208,6 +152,9 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 	}
 
 	r.dirty = true
+	if r.opts.deterministicOutput {
+		r.frame(true, false)
+	}
 }
 
 func (r *treeRenderer) markDirty() {
@@ -224,17 +171,19 @@ func (r *treeRenderer) markDirty() {
 // | system messages header                     |
 // | system messages contents...                |
 // +--------------------------------------------+
-func (r *treeRenderer) frame(done bool) {
-	r.m.Lock()
-	defer r.m.Unlock()
+func (r *treeRenderer) frame(locked, done bool) {
+	if !locked {
+		r.m.Lock()
+		defer r.m.Unlock()
+	}
 
 	if !done && !r.dirty {
 		return
 	}
 	r.dirty = false
 
-	// Make sure our stored dimension info is up to date
-	r.updateTerminalDimensions()
+	termWidth, termHeight, err := r.term.Size()
+	contract.IgnoreError(err)
 
 	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages
@@ -260,9 +209,9 @@ func (r *treeRenderer) frame(done bool) {
 	// - If there are system messages, devote the first two thirds of the display to the tree table and the
 	//   last third to the system messages
 	var treeTableFooter string
-	if !done && totalHeight >= r.termHeight {
+	if !done && totalHeight >= termHeight {
 		if systemMessagesHeight > 0 {
-			systemMessagesHeight = r.termHeight / 3
+			systemMessagesHeight = termHeight / 3
 			if systemMessagesHeight <= 3 {
 				systemMessagesHeight = 0
 			} else {
@@ -273,7 +222,7 @@ func (r *treeRenderer) frame(done bool) {
 			}
 		}
 
-		treeTableHeight = r.termHeight - systemMessagesHeight - 1
+		treeTableHeight = termHeight - systemMessagesHeight - 1
 		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight - 1
 
 		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
@@ -289,22 +238,22 @@ func (r *treeRenderer) frame(done bool) {
 			downArrow = "⬇ "
 		}
 		footer := fmt.Sprintf("%smore%s", upArrow, downArrow)
-		padding := r.termWidth - uniseg.GraphemeClusterCount(footer)
+		padding := termWidth - uniseg.GraphemeClusterCount(footer)
 		treeTableFooter = strings.Repeat(" ", padding) + footer
 	}
 
 	// Re-home the cursor.
-	clearLine(r.term, r.termInfo)
+	r.term.ClearLine()
 	for ; r.rewind > 0; r.rewind-- {
-		cursorUp(r.term, r.termInfo, 1)
-		clearLine(r.term, r.termInfo)
+		r.term.CursorUp(1)
+		r.term.ClearLine()
 	}
 	r.rewind = totalHeight - 1
 
 	// Render the tree table.
-	r.println(nil, treeTableHeader)
+	r.println(nil, r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
-		r.println(nil, row)
+		r.println(nil, r.clampLine(row, termWidth))
 	}
 	if treeTableFooter != "" {
 		r.print(treeTableFooter)
@@ -325,38 +274,23 @@ func (r *treeRenderer) frame(done bool) {
 	}
 }
 
-func (r *treeRenderer) renderRow(display *ProgressDisplay, colorizedColumns []string, maxColumnLengths []int) string {
-	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
-	row := renderRow(colorizedColumns, uncolorizedColumns, maxColumnLengths)
-
+func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
 	// msgWithColors having the color code information embedded with it.  So we need to get
 	// the right substring of it, assuming that embedded colors are just markup and do not
 	// actually contribute to the length
-	maxRowLength := r.termWidth - 1
+	maxRowLength := maxWidth - 1
 	if maxRowLength < 0 {
 		maxRowLength = 0
 	}
-	return colors.TrimColorizedString(row, maxRowLength)
-}
-
-// Ensure our stored dimension info is up to date.
-func (r *treeRenderer) updateTerminalDimensions() {
-	currentTermWidth, currentTermHeight, err := terminal.GetSize(r.termFD)
-	contract.IgnoreError(err)
-
-	if currentTermWidth != r.termWidth ||
-		currentTermHeight != r.termHeight {
-		r.termWidth = currentTermWidth
-		r.termHeight = currentTermHeight
-	}
+	return colors.TrimColorizedString(line, maxRowLength)
 }
 
 func (r *treeRenderer) handleEvents() {
 	for {
 		select {
 		case <-r.ticker.C:
-			r.frame(false)
+			r.frame(false, false)
 		case key := <-r.keys:
 			switch key {
 			case "ctrl+c":
@@ -380,67 +314,12 @@ func (r *treeRenderer) handleEvents() {
 
 func (r *treeRenderer) pollInput() {
 	for {
-		key, err := readKey(r.inFile)
+		key, err := r.term.ReadKey()
 		if err == nil {
 			r.keys <- key
-		} else if errors.Is(err, cancelreader.ErrCanceled) || errors.Is(err, io.EOF) {
+		} else if errors.Is(err, io.EOF) {
 			close(r.keys)
 			return
 		}
-	}
-}
-
-func readKey(r io.Reader) (string, error) {
-	type stateFunc func(b byte) (stateFunc, string)
-
-	var stateIntermediate stateFunc
-	stateIntermediate = func(b byte) (stateFunc, string) {
-		if b >= 0x20 && b < 0x30 {
-			return stateIntermediate, ""
-		}
-		switch b {
-		case 'A':
-			return nil, "up"
-		case 'B':
-			return nil, "down"
-		default:
-			return nil, "<control>"
-		}
-	}
-	var stateParameter stateFunc
-	stateParameter = func(b byte) (stateFunc, string) {
-		if b >= 0x30 && b < 0x40 {
-			return stateParameter, ""
-		}
-		return stateIntermediate(b)
-	}
-	stateBracket := func(b byte) (stateFunc, string) {
-		if b == '[' {
-			return stateParameter, ""
-		}
-		return nil, "<control>"
-	}
-	stateEscape := func(b byte) (stateFunc, string) {
-		if b == 0x1b {
-			return stateBracket, ""
-		}
-		if b == 3 {
-			return nil, "ctrl+c"
-		}
-		return nil, string([]byte{b})
-	}
-
-	state := stateEscape
-	for {
-		var b [1]byte
-		if _, err := r.Read(b[:]); err != nil {
-			return "", err
-		}
-
-		next, key := state(b[0])
-		if next == nil {
-			return key, nil
-		}
-		state = next
 	}
 }

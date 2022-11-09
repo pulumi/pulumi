@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: yaml
-  description: "[Updates Pulumi YAML to v1.0.2](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.2) which fixes a bug encountered using templates with project level config."

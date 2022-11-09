@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Improve the usability of the interactive dipslay by making the treetable scrollable

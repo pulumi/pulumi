@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -232,18 +234,35 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	if stdout == nil {
 		stdout = os.Stdout
 	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
 
-	isTerminal := true
-	renderer, err := newInteractiveRenderer(stdin, stdout, opts)
-	if err != nil {
-		fmt.Println(err)
-		isTerminal, renderer = false, newNonInteractiveRenderer(stdout, op, opts)
+	isInteractive, term := opts.IsInteractive, opts.term
+	if isInteractive && term == nil {
+		raw := runtime.GOOS != "windows"
+		t, err := terminal.Open(stdin, stdout, raw)
+		if err != nil {
+			_, err = fmt.Fprintln(stderr, "Failed to open terminal; treating display as non-interactive (%w)", err)
+			contract.IgnoreError(err)
+			isInteractive = false
+		} else {
+			term = t
+		}
+	}
+
+	var renderer progressRenderer
+	if isInteractive {
+		renderer = newInteractiveRenderer(term, opts)
+	} else {
+		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 
 	display := &ProgressDisplay{
 		action:                 action,
 		isPreview:              isPreview,
-		isTerminal:             isTerminal,
+		isTerminal:             isInteractive,
 		opts:                   opts,
 		renderer:               renderer,
 		stack:                  stack,
@@ -258,6 +277,9 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	}
 
 	ticker := time.NewTicker(1 * time.Second)
+	if opts.deterministicOutput {
+		ticker.Stop()
+	}
 	display.processEvents(ticker, events)
 	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
@@ -1053,8 +1075,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return ""
 			}
 		}
-
-		if display.opts.SuppressTimings {
+		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
 			return opText
 		}
 
@@ -1229,7 +1250,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return ""
 		}
 
-		if display.opts.SuppressTimings {
+		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
 			return opText
 		}
 
