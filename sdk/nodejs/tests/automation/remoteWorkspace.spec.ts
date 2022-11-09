@@ -14,7 +14,206 @@
 
 import assert from "assert";
 
-import { isFullyQualifiedStackName } from "../../automation";
+import {
+    fullyQualifiedStackName,
+    isFullyQualifiedStackName,
+    LocalWorkspace,
+    RemoteGitAuthArgs,
+    RemoteGitProgramArgs,
+    RemoteStack,
+    RemoteWorkspace,
+    RemoteWorkspaceOptions,
+} from "../../automation";
+import { getTestOrg, getTestSuffix } from "./util";
+
+const testRepo = "https://github.com/pulumi/test-repo.git";
+
+describe("RemoteWorkspace", () => {
+    describe("selectStack", () => {
+        describe("throws appropriate errors", () => testErrors(RemoteWorkspace.selectStack));
+    });
+
+    describe("createStack", () => {
+        describe("throws appropriate errors", () => testErrors(RemoteWorkspace.createStack));
+
+        it(`runs through the stack lifecycle`, async function () {
+            // This test requires the service with access to Pulumi Deployments.
+            // Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
+            // and set PULUMI_TEST_DEPLOYMENTS_API to any value to enable the test.
+            if (!process.env.PULUMI_ACCESS_TOKEN) {
+                this.skip();
+                return;
+            }
+            if (!process.env.PULUMI_TEST_DEPLOYMENTS_API) {
+                this.skip();
+                return;
+            }
+
+            await testLifecycle(RemoteWorkspace.createStack);
+        });
+    });
+
+    describe("createOrSelectStack", () => {
+        describe("throws appropriate errors", () => testErrors(RemoteWorkspace.createOrSelectStack));
+
+        it(`runs through the stack lifecycle`, async function () {
+            // This test requires the service with access to Pulumi Deployments.
+            // Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
+            // and set PULUMI_TEST_DEPLOYMENTS_API to any value to enable the test.
+            if (!process.env.PULUMI_ACCESS_TOKEN) {
+                this.skip();
+                return;
+            }
+            if (!process.env.PULUMI_TEST_DEPLOYMENTS_API) {
+                this.skip();
+                return;
+            }
+
+            await testLifecycle(RemoteWorkspace.createOrSelectStack);
+        });
+    });
+});
+
+function testErrors(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions) => Promise<RemoteStack>) {
+    const stack = "owner/project/stack";
+    const tests: {
+        name: string;
+        stackName: string;
+        url: string;
+        branch?: string;
+        commitHash?: string;
+        auth?: RemoteGitAuthArgs;
+        error: string;
+    }[] = [
+        {
+            name: "stack empty",
+            stackName: "",
+            url: "",
+            error: `stack name "" must be fully qualified.`,
+        },
+        {
+            name: "stack just name",
+            stackName: "name",
+            url: "",
+            error: `stack name "name" must be fully qualified.`,
+        },
+        {
+            name: "stack just name & owner",
+            stackName: "owner/name",
+            url: "",
+            error: `stack name "owner/name" must be fully qualified.`,
+        },
+        {
+            name: "stack just sep",
+            stackName: "/",
+            url: "",
+            error: `stack name "/" must be fully qualified.`,
+        },
+        {
+            name: "stack just two seps",
+            stackName: "//",
+            url: "",
+            error: `stack name "//" must be fully qualified.`,
+        },
+        {
+            name: "stack just three seps",
+            stackName: "///",
+            url: "",
+            error: `stack name "///" must be fully qualified.`,
+        },
+        {
+            name: "stack invalid",
+            stackName: "owner/project/stack/wat",
+            url: "",
+            error: `stack name "owner/project/stack/wat" must be fully qualified.`,
+        },
+        {
+            name: "no url",
+            stackName: stack,
+            url: "",
+            error: `url is required.`,
+        },
+        {
+            name: "no branch or commit",
+            stackName: stack,
+            url: testRepo,
+            error: `either branch or commitHash is required.`,
+        },
+        {
+            name: "both branch and commit",
+            stackName: stack,
+            url: testRepo,
+            branch: "branch",
+            commitHash: "commit",
+            error: `branch and commitHash cannot both be specified.`,
+        },
+        {
+            name: "both ssh private key and path",
+            stackName: stack,
+            url: testRepo,
+            branch: "branch",
+            auth: {
+                sshPrivateKey: "key",
+                sshPrivateKeyPath: "path",
+            },
+            error: `sshPrivateKey and sshPrivateKeyPath cannot both be specified.`,
+        },
+    ];
+
+    tests.forEach(test => {
+        it(`${test.name}`, async () => {
+            const { stackName, url, branch, commitHash, auth } = test;
+            await assert.rejects(async () => {
+                await fn({ stackName, url, branch, commitHash, auth });
+            }, {
+                message: test.error,
+            });
+        });
+    });
+}
+
+async function testLifecycle(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions) => Promise<RemoteStack>) {
+    const stackName = fullyQualifiedStackName(getTestOrg(), "go_remote_proj", `int_test${getTestSuffix()}`);
+    const stack = await fn({
+        stackName,
+        url: testRepo,
+        branch: "refs/heads/master",
+        projectPath: "goproj",
+    },{
+        preRunCommands: [
+            `pulumi config set bar abc --stack ${stackName}`,
+            `pulumi config set --secret buzz secret --stack ${stackName}`,
+        ],
+    });
+
+    // pulumi up
+    const upRes = await stack.up();
+    assert.strictEqual(Object.keys(upRes.outputs).length, 3);
+    assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+    assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+    assert.strictEqual(upRes.outputs["exp_cfg"].value, "abc");
+    assert.strictEqual(upRes.outputs["exp_cfg"].secret, false);
+    assert.strictEqual(upRes.outputs["exp_secret"].value, "secret");
+    assert.strictEqual(upRes.outputs["exp_secret"].secret, true);
+    assert.strictEqual(upRes.summary.kind, "update");
+    assert.strictEqual(upRes.summary.result, "succeeded");
+
+    // pulumi preview
+    const preRes = await stack.preview();
+    assert.strictEqual(preRes.changeSummary.same, 1);
+
+    // pulumi refresh
+    const refRes = await stack.refresh();
+    assert.strictEqual(refRes.summary.kind, "refresh");
+    assert.strictEqual(refRes.summary.result, "succeeded");
+
+    // pulumi destroy
+    const destroyRes = await stack.destroy();
+    assert.strictEqual(destroyRes.summary.kind, "destroy");
+    assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+    await (await LocalWorkspace.create({})).removeStack(stackName);
+}
 
 describe("isFullyQualifiedStackName", () => {
     const tests = [

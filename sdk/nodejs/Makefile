@@ -69,7 +69,7 @@ unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc -s mocha --timeout 220000 'bin/tests/automation/**/*.spec.js'
 
 TSC_SUPPORTED_VERSIONS = ~3.7.3 ^3 ^4
 
