@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Reflow the interactive display if its width exceeds the width of the terminal
