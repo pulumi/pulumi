@@ -42,6 +42,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// The minimum version of @pulumi/pulumi compatible with the generated SDK.
+const MinimumValidSDKVersion string = "^3.42.0"
+const MinimumTypescriptVersion string = "^4.3.5"
+const MinimumNodeTypesVersion string = "^14"
+
 type typeDetails struct {
 	outputType bool
 	inputType  bool
@@ -2190,8 +2195,9 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	if info.TypeScriptVersion != "" {
 		devDependencies["typescript"] = info.TypeScriptVersion
 	} else {
-		devDependencies["typescript"] = "^4.3.5"
+		devDependencies["typescript"] = MinimumTypescriptVersion
 	}
+	devDependencies["@types/node"] = MinimumNodeTypesVersion
 
 	version := "${VERSION}"
 	versionSet := pkg.Version != nil && info.RespectSchemaVersion
@@ -2269,10 +2275,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	if npminfo.Dependencies[sdkPack] == "" &&
 		npminfo.DevDependencies[sdkPack] == "" &&
 		npminfo.PeerDependencies[sdkPack] == "" {
-		if npminfo.PeerDependencies == nil {
-			npminfo.PeerDependencies = make(map[string]string)
+		if npminfo.Dependencies == nil {
+			npminfo.Dependencies = make(map[string]string)
 		}
-		npminfo.PeerDependencies["@pulumi/pulumi"] = "latest"
+		npminfo.Dependencies["@pulumi/pulumi"] = MinimumValidSDKVersion
 	}
 
 	// Now write out the serialized form.
