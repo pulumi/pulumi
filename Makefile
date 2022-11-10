@@ -33,22 +33,24 @@ ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 	@touch .ensure.phony
 
 .PHONY: build-proto
-PROTO_FILES := $(sort $(shell find proto/ -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
+PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
+PROTO_CKSUM = cksum ${PROTO_FILES} | sort --key=3
 build-proto:
 	@printf "Protobuffer interfaces are ....... "
-	@if [ "$$(cat proto/.checksum.txt)" = "$$(cksum $(PROTO_FILES))" ]; then \
+	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
 		printf "\033[0;32mup to date\033[0m\n"; \
 	else \
 		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
 		cd proto && ./generate.sh || exit 1; \
-		cd ../ && cksum $(PROTO_FILES) > proto/.checksum.txt; \
+		cd ../ && ${PROTO_CKSUM} > proto/.checksum.txt; \
 		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
 	fi
 
 .PHONY: check-proto
 check-proto:
-	@if [ "$$(cat proto/.checksum.txt)" != "$$(cksum $(PROTO_FILES))" ]; then \
+	@if [ "$$(cat proto/.checksum.txt)" != "`${PROTO_CKSUM}`" ]; then \
 		echo "Protobuff checksum doesn't match. Run \`make build-proto\` to rebuild."; \
+		${PROTO_CKSUM} | diff - proto/.checksum.txt; \
 		exit 1; \
 	fi
 
