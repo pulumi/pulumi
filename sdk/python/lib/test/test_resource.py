@@ -20,7 +20,9 @@ import unittest
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
+from pulumi import ResourceOptions
 import pulumi
+
 
 
 T = TypeVar('T')
@@ -190,4 +192,14 @@ class DependencyTrackingMonitorWrapper:
 
 class MockResource(pulumi.CustomResource):
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
-        super().__init__('python:test:MockResource', name, {}, opts)
+        super().__init__("python:test:MockResource", name, {}, opts)
+
+
+class MergeResourceOptions(unittest.TestCase):
+    def test_parent(self):
+        opts1 = ResourceOptions()
+        assert opts1.protect is None
+        opts2 = ResourceOptions.merge(opts1, ResourceOptions(protect=True))
+        assert opts2.protect is True
+        opts3 = opts2.merge(ResourceOptions())
+        assert opts3.protect is True

@@ -612,6 +612,45 @@ class ResourceOptions:
             lambda x: list(x) if isinstance(x, Sequence) else [cast(Any, x)],
         )
 
+    def _copy(self) -> "ResourceOptions":
+        """
+        Copy a ResourceOptions.
+        """
+
+        # ResourceOptions.merge is a static method that is reassigned to a field, not a
+        # true method. This assignment captures the original class. When we copy a
+        # ResourceOptions, we need update merge to point to the new class.
+        #
+        # We can illustrate this with an example.
+        #
+        # instance_1 of type ResourceOptions :
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields:
+        #   ...
+        #
+        # instance_2 = copy.copy(instance_1):
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields
+        #   ...
+        #
+        # instance_2.parent = parent_2
+        #
+        # instance_3 = instance_2.merge(None)
+        #
+        # We get `instance_3.parent == None`, when we should get `instance_3.parent ==
+        # parent_2`. This is because merge had a handle to instance_1, instead of
+        # instance_2.
+        #
+        # The fix is to re-assign merge after the copy.
+
+        out = copy.copy(self)
+        # Expose 'merge' again this this object, but this time as an instance method.
+        # TODO[python/mypy#2427]: mypy disallows method assignment
+        out.merge = out._merge_instance  # type: ignore
+        return out
+
     # pylint: disable=method-hidden
     @staticmethod
     def merge(
@@ -652,8 +691,8 @@ class ResourceOptions:
         if not isinstance(opts2, ResourceOptions):
             raise TypeError("Expected opts2 to be a ResourceOptions instance")
 
-        dest = copy.copy(opts1)
-        source = copy.copy(opts2)
+        dest = opts1._copy()
+        source = opts2._copy()
 
         # This makes merging simple.
         def expand_providers(providers) -> Optional[Sequence["ProviderResource"]]:
@@ -895,7 +934,7 @@ class Resource:
         self._name = name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
-        opts = copy.copy(opts)
+        opts = opts._copy()
 
         self._providers = {}
         self._childResources = set()
