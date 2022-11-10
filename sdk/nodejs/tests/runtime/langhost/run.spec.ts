@@ -16,7 +16,6 @@ import assert from "assert";
 import * as childProcess from "child_process";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
-import { asyncTest } from "../../util";
 import { platformIndependentEOL } from "../../constants";
 
 import * as grpc from "@grpc/grpc-js";
@@ -1272,7 +1271,7 @@ describe("rpc", () => {
 
         const testFn = opts.only ? it.only : it;
 
-        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
+        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
                 // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
@@ -1465,7 +1464,7 @@ describe("rpc", () => {
                     }
                 }
             }
-        }));
+        });
     }
 });
 

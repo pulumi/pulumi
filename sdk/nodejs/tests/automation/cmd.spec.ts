@@ -14,10 +14,9 @@
 
 import * as assert from "assert";
 import { runPulumiCmd } from "../../automation";
-import { asyncTest } from "../util";
 
 describe("automation/cmd", () => {
-    it("calls onOutput when provided to runPulumiCmd", asyncTest(async () => {
+    it("calls onOutput when provided to runPulumiCmd", async () => {
         let output = "";
         let numCalls = 0;
         await runPulumiCmd(["--help"], ".", {}, (data: string) => {
@@ -27,5 +26,5 @@ describe("automation/cmd", () => {
         assert.ok(numCalls > 0, `expected numCalls > 0, got ${numCalls}`);
         assert.match(output, new RegExp("Usage[:]"));
         assert.match(output, new RegExp("[-][-]verbose"));
-    }));
+    });
 });

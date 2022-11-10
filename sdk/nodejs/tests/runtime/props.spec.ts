@@ -15,7 +15,6 @@
 import * as assert from "assert";
 import { ComponentResource, CustomResource, DependencyResource, Inputs, Output, Resource, ResourceOptions, runtime,
     secret } from "../../index";
-import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -188,7 +187,7 @@ describe("runtime", () => {
             }
 
             for (const test of generateTests()) {
-                it(`marshals ${test.name} correctly`, asyncTest(async () => {
+                it(`marshals ${test.name} correctly`, async () => {
                     runtime._setFeatureSupport("outputValues", true);
 
                     const inputs = { value: test.input };
@@ -200,11 +199,11 @@ describe("runtime", () => {
                     // Roundtrip.
                     const back = runtime.deserializeProperties(gstruct.Struct.fromJavaScript(actual));
                     await assertOutputsEqual(back.value, test.expectedRoundTrip);
-                }));
+                });
             }
         });
 
-        it("marshals basic properties correctly", asyncTest(async () => {
+        it("marshals basic properties correctly", async () => {
             const inputs: TestInputs = {
                 "aNum": 42,
                 "bStr": "a string",
@@ -231,8 +230,8 @@ describe("runtime", () => {
             assert.strictEqual(result.intEnum, TestIntEnum.One);
             assert.strictEqual(result.numEnum, TestNumEnum.One);
             assert.strictEqual(result.boolEnum, TestBoolEnum.One);
-        }));
-        it("marshals secrets correctly", asyncTest(async () => {
+        });
+        it("marshals secrets correctly", async () => {
             const inputs: Inputs = {
                 "secret1": secret(1),
                 "secret2": secret(undefined),
@@ -257,8 +256,8 @@ describe("runtime", () => {
             assert.ok(!runtime.isRpcSecret(result.secret2));
             assert.strictEqual(result.secret1, 1);
             assert.strictEqual(result.secret2, undefined);
-        }));
-        it("marshals resource references correctly during preview", asyncTest(async () => {
+        });
+        it("marshals resource references correctly during preview", async () => {
             runtime._setIsDryRun(true);
             runtime.setMocks(new TestMocks());
 
@@ -295,9 +294,9 @@ describe("runtime", () => {
                 "component": componentURN,
                 "custom": customID ? customID : runtime.unknownValue,
             });
-        }));
+        });
 
-        it("marshals resource references correctly during update", asyncTest(async () => {
+        it("marshals resource references correctly during update", async () => {
             runtime.setMocks(new TestMocks());
 
             const component = new TestComponentResource("test");
@@ -333,7 +332,7 @@ describe("runtime", () => {
                 "component": componentURN,
                 "custom": customID,
             });
-        }));
+        });
     });
 
     describe("deserializeProperty", () => {
@@ -394,7 +393,7 @@ describe("runtime", () => {
             assert.strictEqual(result.listWithMap.value[0].regular, "a normal value");
             assert.strictEqual(result.listWithMap.value[0].secret, "a secret value");
         });
-        it("deserializes resource references properly during preview", asyncTest(async () => {
+        it("deserializes resource references properly during preview", async () => {
             runtime.setMocks(new TestMocks());
             runtime._setFeatureSupport("resourceReferences", true);
             runtime.registerResourceModule("test", "index", new TestResourceModule());
@@ -430,11 +429,11 @@ describe("runtime", () => {
             assert.ok((<ComponentResource>deserialized["component"]).__pulumiComponentResource);
             assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
             assert.deepEqual(deserialized["unregistered"], unregisteredID);
-        }));
+        });
     });
 
     describe("resource error handling", () => {
-        it("registerResource errors propagate appropriately", asyncTest(async () => {
+        it("registerResource errors propagate appropriately", async () => {
             runtime.setMocks(new TestMocks());
 
             await assert.rejects(async () => {
@@ -446,6 +445,6 @@ describe("runtime", () => {
                 const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
                 return containsMessage && containsRegisterResource;
             });
-        }));
+        });
     });
 });

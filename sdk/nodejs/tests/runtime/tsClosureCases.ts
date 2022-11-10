@@ -18,7 +18,6 @@ import * as assert from "assert";
 import { runtime } from "../../index";
 import * as pulumi from "../../index";
 import { output } from "../../output";
-import { assertAsyncThrows, asyncTest } from "../util";
 import { platformIndependentEOL } from "../constants";
 import * as typescript from "typescript";
 import * as semver from "semver";
@@ -6705,7 +6704,7 @@ return function /*reproHandler*/(input) {
         //     continue;
         // }
 
-        it(test.title, asyncTest(async () => {
+        it(test.title, async () => {
             // Run pre-actions.
             if (test.pre) {
                 test.pre();
@@ -6717,19 +6716,20 @@ return function /*reproHandler*/(input) {
                 compareTextWithWildcards(test.expectText, sf.text);
             }
             else {
-                const message = await assertAsyncThrows(async () => {
+                await assert.rejects(async () => {
                     await serializeFunction(test);
+                }, err => {
+                    if (test.error) {
+                        // replace real locations with (0,0) so that our test baselines do not need to
+                        // updated any time this file changes.
+                        const regex = /\([0-9]+,[0-9]+\)/g;
+                        const withoutLocations = err.message.replace(regex, "(0,0)");
+                        compareTextWithWildcards(test.error, withoutLocations);
+                    }
+                    return true;
                 });
-
-                // replace real locations with (0,0) so that our test baselines do not need to
-                // updated any time this file changes.
-                const regex = /\([0-9]+,[0-9]+\)/g;
-                const withoutLocations = message.replace(regex, "(0,0)");
-                if (test.error) {
-                    compareTextWithWildcards(test.error, withoutLocations);
-                }
             }
-        }));
+        });
 
         // Schedule any additional tests.
         if (test.afters) {

@@ -16,14 +16,13 @@
 
 import * as assert from "assert";
 import { all, output, Output, unknown } from "../index";
-import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
-    return asyncTest(async () => {
+    return async () => {
         const unwrapped = output(val);
         const actual = await unwrapped.promise();
         assert.deepStrictEqual(actual, expected);
-    });
+    };
 }
 
 function testUntouched(val: any) {
@@ -39,7 +38,7 @@ function testOutput(val: any) {
 }
 
 function testResources(val: any, expected: any, resources: TestResource[], allResources: TestResource[], withUnknowns?: boolean) {
-    return asyncTest(async () => {
+    return async () => {
         const unwrapped = output(val);
         const actual = await unwrapped.promise(withUnknowns);
 
@@ -55,7 +54,7 @@ function testResources(val: any, expected: any, resources: TestResource[], allRe
                 assert.fail(`async resources did not contain: ${(<TestResource><any>res).name}`)
             }
         }
-    });
+    };
 }
 
 class TestResource {
@@ -278,7 +277,7 @@ describe("unwrap", () => {
     });
 
     describe("type system", () => {
-        it ("across promises", asyncTest(async () => {
+        it ("across promises", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: { d: true, e: Promise.resolve(4) } };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -288,9 +287,9 @@ describe("unwrap", () => {
 
             // The runtime value better be a number;
             x.c.e.toExponential();
-        }));
+        });
 
-        it ("across nested promises", asyncTest(async () => {
+        it ("across nested promises", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: Promise.resolve(4) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -300,9 +299,9 @@ describe("unwrap", () => {
 
             // The runtime value better be a number;
             x.c.e.toExponential();
-        }));
+        });
 
-        it ("across outputs", asyncTest(async () => {
+        it ("across outputs", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: [4, 5, 6] }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -312,9 +311,9 @@ describe("unwrap", () => {
 
             // The runtime value better be a number[]
             x.c.e.push(1);
-        }));
+        });
 
-        it ("across nested outputs", asyncTest(async () => {
+        it ("across nested outputs", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: output([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -324,9 +323,9 @@ describe("unwrap", () => {
 
             // The runtime value better be a number[]
             x.c.e.push(1);
-        }));
+        });
 
-        it ("across promise and output", asyncTest(async () => {
+        it ("across promise and output", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: Promise.resolve({ d: true, e: output([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -336,9 +335,9 @@ describe("unwrap", () => {
 
             // The runtime value better be a number[]
             x.c.e.push(1);
-        }));
+        });
 
-        it ("across output and promise", asyncTest(async () => {
+        it ("across output and promise", async () => {
             var v = { a: 1, b: Promise.resolve(""), c: output({ d: true, e: Promise.resolve([4, 5, 6]) }) };
             var xOutput = output(v);
             var x = await xOutput.promise();
@@ -348,14 +347,14 @@ describe("unwrap", () => {
 
             // The runtime value better be a number[]
             x.c.e.push(1);
-        }));
+        });
 
-        it ("does not wrap functions", asyncTest(async () => {
+        it ("does not wrap functions", async () => {
             var sentinel = function(_: () => void) {}
 
             // `v` should be type `() => void` rather than `UnwrappedObject<void>`.
             output(function() {}).apply(v => sentinel(v));
-        }));
+        });
     });
 
     it("handles all in one", test(

@@ -16,7 +16,6 @@ import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import * as assert from "assert";
 import { PushableAsyncIterable } from "../../runtime/asyncIterableUtil";
-import { asyncTest } from "../util";
 
 async function enumerate<T>(ts: AsyncIterable<T>): Promise<T[]> {
     const tss: T[] = [];
@@ -29,38 +28,38 @@ async function enumerate<T>(ts: AsyncIterable<T>): Promise<T[]> {
 describe("PushableAsyncIterable", () => {
     it(
         "correctly produces empty sequence",
-        asyncTest(async () => {
+        async () => {
             const queue = new PushableAsyncIterable<number>();
             queue.complete();
             assert.deepStrictEqual(await enumerate(queue), []);
-        }),
+        },
     );
 
     it(
         "correctly produces singleton sequence",
-        asyncTest(async () => {
+        async () => {
             const queue = new PushableAsyncIterable<number>();
             queue.push(1);
             queue.complete();
             assert.deepStrictEqual(await enumerate(queue), [1]);
-        }),
+        },
     );
 
     it(
         "correctly produces multiple sequence",
-        asyncTest(async () => {
+        async () => {
             const queue = new PushableAsyncIterable<number>();
             queue.push(1);
             queue.push(2);
             queue.push(3);
             queue.complete();
             assert.deepStrictEqual(await enumerate(queue), [1, 2, 3]);
-        }),
+        },
     );
 
     it(
         "correctly terminates outstanding operations afte complete",
-        asyncTest(async () => {
+        async () => {
             const queue = new PushableAsyncIterable<number>();
             const queueIter = queue[Symbol.asyncIterator]();
             const terminates = new Promise(async resolve => {
@@ -72,12 +71,12 @@ describe("PushableAsyncIterable", () => {
             queue.complete();
             await terminates;
             assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
-        }),
+        },
     );
 
     it(
         "correctly interleaves operations",
-        asyncTest(async () => {
+        async () => {
             const queue = new PushableAsyncIterable<number>();
             const queueIter = queue[Symbol.asyncIterator]();
             queue.push(1);
@@ -96,6 +95,6 @@ describe("PushableAsyncIterable", () => {
             assert.deepStrictEqual(await queueIter.next(), { value: 7, done: false });
             queue.complete();
             assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
-        }),
+        },
     );
 });
