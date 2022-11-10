@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix text cutting off prior to the edge of the terminal

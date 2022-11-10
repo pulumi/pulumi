@@ -33,40 +33,40 @@
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>             
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>             
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>             
- <{%bold%}><{%fg 3%}>~ <{%reset%}>  └─ aws:ec2:SecurityGroup         eks-sg                  <{%bold%}><{%fg 3%}>updating<{%reset%}><{%bold%}><{%fg 3%}><{%reset%}>     
+ <{%bold%}><{%fg 3%}>~ <{%reset%}>  └─ aws:ec2:SecurityGroup         eks-sg                  <{%bold%}><{%fg 3%}>updating<{%reset%}><{%bold%}><{%fg 3%}><{%reset%}>     [dif
 [1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K     <{%underline%}><{%fg 12%}>Type<{%reset%}>                             <{%underline%}><{%fg 12%}>Name<{%reset%}>                    <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>
  <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack              eks-dev                 running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Confi
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>            
- <{%fg 3%}>~ <{%reset%}>  └─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [
+ <{%fg 3%}>~ <{%reset%}>  └─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [diff
 [1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K     <{%underline%}><{%fg 12%}>Type<{%reset%}>                             <{%underline%}><{%fg 12%}>Name<{%reset%}>                    <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>
  <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack              eks-dev                 running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Confi
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>            
- <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [
+ <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [diff
  <{%bold%}><{%reset%}>  <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%bold%}><{%reset%}><{%reset%}>            
 [1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K     <{%underline%}><{%fg 12%}>Type<{%reset%}>                             <{%underline%}><{%fg 12%}>Name<{%reset%}>                    <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>
  <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack              eks-dev                 running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Confi
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>            
- <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [
+ <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [diff
  <{%reset%}>  <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%reset%}><{%reset%}>            
 [1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K     <{%underline%}><{%fg 12%}>Type<{%reset%}>                             <{%underline%}><{%fg 12%}>Name<{%reset%}>                    <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>
  <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack              eks-dev                 <{%reset%}><{%reset%}>            1 <{%fg 5%}>mes<{%reset%}>
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>            
- <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [
+ <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [diff
  <{%reset%}>  <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%reset%}><{%reset%}>            
 [1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K[1A[1K[K     <{%underline%}><{%fg 12%}>Type<{%reset%}>                             <{%underline%}><{%fg 12%}>Name<{%reset%}>                    <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}>
  <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack              eks-dev                 <{%reset%}><{%reset%}>            1 <{%fg 5%}>mes<{%reset%}>
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:Role                  eks-role                <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-service-policy  <{%reset%}><{%reset%}>            
  <{%reset%}>  <{%reset%}>  ├─ aws:iam:RolePolicyAttachment  eks-rpa-cluster-policy  <{%reset%}><{%reset%}>            
- <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [
+ <{%fg 3%}>~ <{%reset%}>  ├─ aws:ec2:SecurityGroup         eks-sg                  <{%fg 3%}>updated<{%reset%}>     [diff
  <{%reset%}>  <{%reset%}>  └─ aws:eks:Cluster               eks-cluster             <{%reset%}><{%reset%}>            
 
 
