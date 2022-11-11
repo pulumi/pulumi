@@ -2591,9 +2591,9 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
         "experimentalDecorators": true,
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
-		"paths": {
+        "paths": {
             "@/*": ["*"]
-		},
+        },
         "strict": true
     },
     "files": [
