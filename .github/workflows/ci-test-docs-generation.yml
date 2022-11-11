@@ -46,11 +46,11 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: 3.9.x # TODO(friel) use version_set
-      # TODO: https://github.com/pulumi/pulumi/issues/11000, this step causes spurious errors.
-      # - name: Set up DotNet
-      #   uses: actions/setup-dotnet@v2
-      #   with:
-      #     dotnet-version: 6.0.x # TODO(friel) use version_set
+      - name: Set up DotNet
+        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        with:
+          dotnet-version: 6.0.x # TODO(friel) use version_set
+          dotnet-quality: ga
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Check out source code
