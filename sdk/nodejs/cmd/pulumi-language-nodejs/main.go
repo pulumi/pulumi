@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -44,7 +45,6 @@ import (
 	"github.com/google/shlex"
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -115,7 +115,7 @@ func main() {
 	}()
 	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
@@ -129,7 +129,7 @@ func main() {
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
@@ -137,7 +137,7 @@ func main() {
 
 	// And finally wait for the server to stop serving.
 	if err := <-handle.Done; err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
+		cmdutil.Exit(fmt.Errorf("language host RPC stopped serving: %w", err))
 	}
 }
 
@@ -266,7 +266,7 @@ func getPluginsFromDir(
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
+		return nil, fmt.Errorf("reading plugin dir %s: %w", dir, err)
 	}
 
 	var plugins []*pulumirpc.PluginDependency
@@ -294,13 +294,13 @@ func getPluginsFromDir(
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
 			b, err := ioutil.ReadFile(curr)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "reading package.json %s", curr))
+				allErrors = multierror.Append(allErrors, fmt.Errorf("reading package.json %s: %w", curr, err))
 				continue
 			}
 
 			var info packageJSON
 			if err := json.Unmarshal(b, &info); err != nil {
-				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
+				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 				continue
 			}
 
@@ -308,7 +308,7 @@ func getPluginsFromDir(
 				version, err := semver.Parse(info.Version)
 				if err != nil {
 					allErrors = multierror.Append(
-						allErrors, errors.Wrapf(err, "Could not understand version %s in '%s'", info.Version, curr))
+						allErrors, fmt.Errorf("Could not understand version %s in '%s': %w", info.Version, curr, err))
 					continue
 				}
 
@@ -317,7 +317,7 @@ func getPluginsFromDir(
 
 			ok, name, version, server, err := getPackageInfo(info)
 			if err != nil {
-				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "unmarshaling package.json %s", curr))
+				allErrors = multierror.Append(allErrors, fmt.Errorf("unmarshaling package.json %s: %w", curr, err))
 			} else if ok {
 				plugins = append(plugins, &pulumirpc.PluginDependency{
 					Name:    name,
@@ -390,7 +390,7 @@ func getPluginName(info packageJSON) (string, error) {
 	//    }
 	// }
 
-	return "", errors.Errorf("Missing property \"name\" for the third-party plugin '%v' "+
+	return "", fmt.Errorf("Missing property \"name\" for the third-party plugin '%v' "+
 		"inside package.json under the \"pulumi\" section.", name)
 }
 
@@ -502,7 +502,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 
 	nodeBin, err := exec.LookPath("node")
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
+		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
 	}
 
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
@@ -537,12 +537,12 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 		args := host.constructArguments(req, runPath, address, pipesDirectory)
 		config, err := host.constructConfig(req)
 		if err != nil {
-			err = errors.Wrap(err, "failed to serialize configuration")
+			err = fmt.Errorf("failed to serialize configuration: %w", err)
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 		configSecretKeys, err := host.constructConfigSecretKeys(req)
 		if err != nil {
-			err = errors.Wrap(err, "failed to serialize configuration secret keys")
+			err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 
@@ -600,19 +600,19 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 				switch code := exiterr.ExitCode(); code {
 				case 0:
 					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
-					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+					err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
 				case nodeJSProcessExitedAfterShowingUserActionableMessage:
 					// Check if we got special exit code that means "we already gave the user an
 					// actionable message". In that case, we can simply bail out and terminate `pulumi`
 					// without showing any more messages.
 					return &pulumirpc.RunResponse{Error: "", Bail: true}
 				default:
-					err = errors.Errorf("Program exited with non-zero exit code: %d", code)
+					err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
 				}
 			} else {
 				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
 				// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-				err = errors.Wrapf(err, "Problem executing program (could not run language executor)")
+				err = fmt.Errorf("Problem executing program (could not run language executor): %w", err)
 			}
 
 			errResult = err.Error()
