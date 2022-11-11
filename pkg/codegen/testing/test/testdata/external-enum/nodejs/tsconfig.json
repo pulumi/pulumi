@@ -11,9 +11,9 @@
         "experimentalDecorators": true,
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
-		"paths": {
+        "paths": {
             "@/*": ["*"]
-		},
+        },
         "strict": true
     },
     "files": [
