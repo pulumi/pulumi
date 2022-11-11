@@ -1345,34 +1345,27 @@ func allOptionalInputs(fun *schema.Function) bool {
 	return true
 }
 
-func sortedFunctionProperties(fun *schema.Function) []*schema.Property {
-	optionalProperties := make([]*schema.Property, 0)
-	requiredProperties := make([]*schema.Property, 0)
-	for _, prop := range fun.Inputs.Properties {
-		if prop.IsRequired() {
-			requiredProperties = append(requiredProperties, prop)
-		} else {
-			optionalProperties = append(optionalProperties, prop)
+func multiArgProperties(fun *schema.Function) []*schema.Property {
+	properties := map[string]*schema.Property{}
+	propertyNames := []string{}
+	if fun.Inputs != nil {
+		for _, prop := range fun.Inputs.Properties {
+			properties[prop.Name] = prop
+			propertyNames = append(propertyNames, prop.Name)
 		}
 	}
 
-	sort.Slice(optionalProperties, func(i, j int) bool {
-		return optionalProperties[i].Name < optionalProperties[j].Name
-	})
+	props := make([]*schema.Property, 0)
+	for _, name := range *fun.MultiArgumentInputs {
+		property, ok := properties[name]
+		if !ok {
+			panic(fmt.Sprintf("multi-argument input %s not found in function inputs %v", name, propertyNames))
+		}
 
-	sort.Slice(requiredProperties, func(i, j int) bool {
-		return requiredProperties[i].Name < requiredProperties[j].Name
-	})
-
-	// first required properties, then optional properties
-	return append(requiredProperties, optionalProperties...)
-}
-
-func commaIf(cond bool) string {
-	if cond {
-		return ","
+		props = append(props, property)
 	}
-	return ""
+
+	return props
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
@@ -1383,6 +1376,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 	var typeParameter string
 	outputPropertiesReduced := fun.ReduceSingleOutputProperty && len(fun.Outputs.Properties) == 1
+	multiArgumentFunction := fun.MultiArgumentInputs != nil && len(*fun.MultiArgumentInputs) > 0
 	if fun.Outputs != nil && !outputPropertiesReduced {
 		typeParameter = fmt.Sprintf("<%sResult>", className)
 	} else if fun.Outputs != nil && outputPropertiesReduced {
@@ -1413,7 +1407,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
 
-	if !fun.MultiArgumentInputs && !outputPropertiesReduced {
+	if !multiArgumentFunction && !outputPropertiesReduced {
 		// Emit the datasource method.
 		// this is default behavior for all functions.
 		fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
@@ -1421,7 +1415,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		fmt.Fprintf(w,
 			"            => global::Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithDefaults());\n",
 			typeParameter, fun.Token, argsParamRef)
-	} else if !fun.MultiArgumentInputs && outputPropertiesReduced {
+	} else if !multiArgumentFunction && outputPropertiesReduced {
 		// property bag as input but single output property
 		fmt.Fprintf(w, "        public static async Task<%s> InvokeAsync(%sInvokeOptions? options = null)\n",
 			typeParameter, argsParamDef)
@@ -1431,32 +1425,31 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			typeParameter, fun.Token, argsParamRef)
 		fmt.Fprintf(w, "            return outputs[\"%s\"];\n", fun.Outputs.Properties[0].Name)
 		fmt.Fprint(w, "        }\n")
-	} else if fun.MultiArgumentInputs && !outputPropertiesReduced {
+	} else if multiArgumentFunction && !outputPropertiesReduced {
 		// multi-argument inputs and output property bag
 		// first generate the function definition
 		fmt.Fprintf(w, "        public static async Task<%s> InvokeAsync(", typeParameter)
-		properties := sortedFunctionProperties(fun)
-		for index, prop := range properties {
+		properties := multiArgProperties(fun)
+		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
 			argumentType := mod.typeString(prop.Type, "", false, false, true)
 			if !prop.IsRequired() {
 				argumentType += "? = null"
 			}
 
-			fmt.Fprintf(w, "%s%s %s", argumentType, commaIf(index < len(properties)-1), argumentName)
+			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
 		}
 
-		fmt.Fprint(w, ", InvokeOptions? invokeOptions = null)\n")
+		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
 
 		// now the function body
 		fmt.Fprint(w, "        {\n")
-		fmt.Fprint(w, "            var args = new Dictionary<string, object>\n")
-		fmt.Fprint(w, "            {\n")
+		fmt.Fprint(w, "            var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
 		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
-			fmt.Fprintf(w, "                [\"%s\"] = %s,\n", prop.Name, argumentName)
+			fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
 		}
-		fmt.Fprint(w, "            };\n")
+		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
 		fmt.Fprintf(w, "            var outputs = await global::Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", args, invokeOptions.WithDefaults());\n",
 			typeParameter, fun.Token)
 		fmt.Fprint(w, "            return outputs;\n")
@@ -1465,28 +1458,27 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	} else {
 		// multi-argument inputs and single output property
 		fmt.Fprintf(w, "        public static async Task<%s> InvokeAsync(", typeParameter)
-		properties := sortedFunctionProperties(fun)
-		for index, prop := range properties {
+		properties := multiArgProperties(fun)
+		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
 			argumentType := mod.typeString(prop.Type, "", false, false, true)
 			if !prop.IsRequired() {
 				argumentType += "? = null"
 			}
 
-			fmt.Fprintf(w, "%s%s %s", argumentType, commaIf(index < len(properties)-1), argumentName)
+			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
 		}
 
-		fmt.Fprint(w, ", InvokeOptions? invokeOptions = null)\n")
+		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
 
 		// now the function body
 		fmt.Fprint(w, "        {\n")
-		fmt.Fprint(w, "            var args = new Dictionary<string, object>\n")
-		fmt.Fprint(w, "            {\n")
+		fmt.Fprint(w, "            var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
 		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
-			fmt.Fprintf(w, "                [\"%s\"] = %s,\n", prop.Name, argumentName)
+			fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
 		}
-		fmt.Fprint(w, "            };\n")
+		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
 		fmt.Fprintf(w, "            var outputs = await global::Pulumi.Deployment.Instance.InvokeAsync<Dictionary<string, %s>>(\"%s\", args, invokeOptions.WithDefaults());\n",
 			typeParameter, fun.Token)
 		fmt.Fprintf(w, "            return outputs[\"%s\"];\n", fun.Outputs.Properties[0].Name)
@@ -1503,7 +1495,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "    }\n")
 
 	// Emit the args and result types, if any.
-	if fun.Inputs != nil && !fun.MultiArgumentInputs {
+	if fun.Inputs != nil && !multiArgumentFunction {
 		fmt.Fprintf(w, "\n")
 
 		args := &plainType{
@@ -1553,6 +1545,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 	className := tokenToFunctionName(fun.Token)
 	outputPropertiesReduced := fun.ReduceSingleOutputProperty && len(fun.Outputs.Properties) == 1
+	multiArgumentFunction := fun.MultiArgumentInputs != nil && len(*fun.MultiArgumentInputs) > 0
 
 	var argsDefault, sigil string
 	if allOptionalInputs(fun) {
@@ -1574,14 +1567,14 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 
 	fmt.Fprintf(w, "\n")
 
-	if !fun.MultiArgumentInputs && !outputPropertiesReduced {
+	if !multiArgumentFunction && !outputPropertiesReduced {
 		// Emit the doc comment, if any.
 		printComment(w, fun.Comment, "        ")
 		fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
 			className, outputArgsParamDef)
 		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
 			className, fun.Token, outputArgsParamRef)
-	} else if !fun.MultiArgumentInputs && outputPropertiesReduced {
+	} else if !multiArgumentFunction && outputPropertiesReduced {
 		// property bag as input but single output property
 		// Emit the doc comment, if any.
 		printComment(w, fun.Comment, "        ")
