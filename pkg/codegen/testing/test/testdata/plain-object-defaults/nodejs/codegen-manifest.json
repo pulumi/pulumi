@@ -11,6 +11,12 @@
     "tsconfig.json",
     "types/index.ts",
     "types/input.ts",
+    "types/mod1/index.ts",
+    "types/mod1/input.ts",
+    "types/mod1/output.ts",
+    "types/mod2/index.ts",
+    "types/mod2/input.ts",
+    "types/mod2/output.ts",
     "types/output.ts",
     "utilities.ts"
   ]

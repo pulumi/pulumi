@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "baseUrl": ".",
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -10,6 +11,9 @@
         "experimentalDecorators": true,
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "@/*": ["*"]
+        },
         "strict": true
     },
     "files": [
