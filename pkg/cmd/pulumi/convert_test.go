@@ -2,8 +2,12 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,6 +32,34 @@ func TestConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
-	result := runConvert("convert_testdata", "go", "convert_testdata/go", true)
+	result := runConvert("convert_testdata", "yaml", "go", "convert_testdata/go", true)
 	require.Nil(t, result, "convert failed: %v", result)
+}
+
+//nolint:paralleltest // sets env var, must be run in isolation
+func TestPclConvert(t *testing.T) {
+	t.Setenv("PULUMI_DEV", "TRUE")
+
+	// Check that we can run convert from PCL to PCL
+	tmp, err := os.MkdirTemp("", "pulumi-convert-test")
+	assert.NoError(t, err)
+
+	result := runConvert("pcl_convert_testdata", "pcl", "pcl", tmp, true)
+	assert.Nil(t, result)
+
+	// Check that we made one file
+	pclBytes, err := os.ReadFile(filepath.Join(tmp, "main.pp"))
+	assert.NoError(t, err)
+	// On Windows, we need to replace \r\n with \n to match the expected string below
+	pclCode := string(pclBytes)
+	if runtime.GOOS == "windows" {
+		pclCode = strings.Replace(pclCode, "\r\n", "\n", -1)
+	}
+	expectedPclCode := `key = readFile("key.pub")
+
+output result {
+    __logicalName = "result"
+    value = key
+}`
+	assert.Equal(t, expectedPclCode, pclCode)
 }
