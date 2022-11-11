@@ -838,6 +838,9 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
+// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
+// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
+// resulting comment. It guarantees that each line is terminated with newline character.
 func printComment(w io.Writer, comment string, indent bool) int {
 	comment = codegen.FilterExamples(comment, "go")
 
@@ -1312,7 +1315,6 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property) {
-
 	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
@@ -3602,7 +3604,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			} else {
 				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", name)
 			}
-			fmt.Fprintf(buffer, "\n")
 			fmt.Fprintf(buffer, "package %s\n", name)
 
 			setFile(path.Join(mod, "doc.go"), buffer.String())
