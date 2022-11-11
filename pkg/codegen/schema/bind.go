@@ -1506,14 +1506,16 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	}
 
 	fn := &Function{
-		Package:            t.pkg,
-		Token:              token,
-		Comment:            spec.Description,
-		Inputs:             inputs,
-		Outputs:            outputs,
-		DeprecationMessage: spec.DeprecationMessage,
-		Language:           language,
-		IsOverlay:          spec.IsOverlay,
+		Package:                    t.pkg,
+		Token:                      token,
+		Comment:                    spec.Description,
+		Inputs:                     inputs,
+		MultiArgumentInputs:        spec.MultiArgumentInputs,
+		Outputs:                    outputs,
+		ReduceSingleOutputProperty: spec.ReduceSingleOutputProperty,
+		DeprecationMessage:         spec.DeprecationMessage,
+		Language:                   language,
+		IsOverlay:                  spec.IsOverlay,
 	}
 	t.functionDefs[token] = fn
 

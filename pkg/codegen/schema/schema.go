@@ -538,8 +538,12 @@ type Function struct {
 	Comment string
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
+	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
+	MultiArgumentInputs bool
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectType
+	// Determines whether the function should return a single value from the outputs bag when it only has one property.
+	ReduceSingleOutputProperty bool
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
@@ -1521,8 +1525,12 @@ type FunctionSpec struct {
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
+	MultiArgumentInputs bool `json:"multiArgumentInputs,omitempty" yaml:"multiArgumentInputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	// Determines whether the function should return a single value from the outputs bag when it only has one property.
+	ReduceSingleOutputProperty bool `json:"reduceSingleOutputProperty,omitempty" yaml:"reduceSingleOutputProperty,omitempty"`
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
