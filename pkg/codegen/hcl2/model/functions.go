@@ -41,6 +41,10 @@ type StaticFunctionSignature struct {
 	VarargsParameter *Parameter
 	// The return type of the function.
 	ReturnType Type
+	// Determines whether the function should return a single value from the outputs bag when it only has one property.
+	ReduceSingleOutputProperty bool
+	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
+	MultiArgumentInputs *[]string
 }
 
 // GetSignature returns the static signature itself.

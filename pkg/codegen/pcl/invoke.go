@@ -153,6 +153,8 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		annotateObjectProperties(argsObject.Type(), fn.Inputs)
 	}
 
+	sig.ReduceSingleOutputProperty = fn.ReduceSingleOutputProperty
+	sig.MultiArgumentInputs = fn.MultiArgumentInputs
 	return sig, nil
 }
 

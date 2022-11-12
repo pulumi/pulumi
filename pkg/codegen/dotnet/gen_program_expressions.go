@@ -406,7 +406,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+							expr.Signature.MultiArgumentInputs)
 					})
 				default:
 					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
@@ -417,7 +418,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName)
+						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName,
+							expr.Signature.MultiArgumentInputs)
 					})
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
@@ -487,7 +489,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					}
 
 					destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+						expr.Signature.MultiArgumentInputs)
 				})
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
@@ -498,7 +501,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			case *model.ObjectConsExpression:
 				useImplicitTypeName := true
 				destTypeName := "Irrelevant"
-				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+					expr.Signature.MultiArgumentInputs)
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 			}
@@ -660,7 +664,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)
-	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false, nil)
 }
 
 func propertyNameOverrides(exprType model.Type) map[string]string {
@@ -699,10 +703,38 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 	return propertyName(property)
 }
 
+func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments *[]string) {
+	items := make(map[string]model.Expression)
+	for _, item := range expr.Items {
+		lit := item.Key.(*model.LiteralValueExpression)
+		propertyKey := lit.Value.AsString()
+		items[propertyKey] = item.Value
+	}
+
+	for index, arg := range *multiArguments {
+		if value, ok := items[arg]; ok {
+			g.Fgenf(w, "%.v", value)
+		}
+
+		if index < len(*multiArguments)-1 {
+			g.Fgen(w, ", ")
+		}
+	}
+}
+
 func (g *generator) genObjectConsExpressionWithTypeName(
-	w io.Writer, expr *model.ObjectConsExpression, destTypeName string, implicitTypeName bool) {
+	w io.Writer,
+	expr *model.ObjectConsExpression,
+	destTypeName string,
+	implicitTypeName bool,
+	multiArguments *[]string) {
 
 	if len(expr.Items) == 0 {
+		return
+	}
+
+	if multiArguments != nil {
+		g.genMultiArguments(w, expr, multiArguments)
 		return
 	}
 

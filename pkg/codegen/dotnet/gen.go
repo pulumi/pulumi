@@ -1566,18 +1566,16 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	outputArgsParamRef := fmt.Sprintf("args ?? new %s()", argsTypeName)
 
 	fmt.Fprintf(w, "\n")
+	// Emit the doc comment, if any.
+	printComment(w, fun.Comment, "        ")
 
 	if !multiArgumentFunction && !outputPropertiesReduced {
-		// Emit the doc comment, if any.
-		printComment(w, fun.Comment, "        ")
 		fmt.Fprintf(w, "        public static Output<%s> Invoke(%sInvokeOptions? options = null)\n",
 			typeParameter, outputArgsParamDef)
 		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Invoke<%s>(\"%s\", %s, options.WithDefaults());\n",
 			typeParameter, fun.Token, outputArgsParamRef)
 	} else if !multiArgumentFunction && outputPropertiesReduced {
 		// property bag as input but single output property
-		// Emit the doc comment, if any.
-		printComment(w, fun.Comment, "        ")
 		fmt.Fprintf(w, "        public static Output<%s> Invoke(%sInvokeOptions? options = null)\n",
 			typeParameter, outputArgsParamDef)
 		fmt.Fprint(w, "        {\n")
