@@ -1077,6 +1077,33 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	return info, nil
 }
 
+func multiArgProperties(fun *schema.Function) []*schema.Property {
+	if fun.MultiArgumentInputs == nil {
+		return fun.Inputs.Properties
+	}
+
+	properties := map[string]*schema.Property{}
+	propertyNames := []string{}
+	if fun.Inputs != nil {
+		for _, prop := range fun.Inputs.Properties {
+			properties[prop.Name] = prop
+			propertyNames = append(propertyNames, prop.Name)
+		}
+	}
+
+	props := make([]*schema.Property, 0)
+	for _, name := range *fun.MultiArgumentInputs {
+		property, ok := properties[name]
+		if !ok {
+			panic(fmt.Sprintf("multi-argument input %s not found in function inputs %v", name, propertyNames))
+		}
+
+		props = append(props, property)
+	}
+
+	return props
+}
+
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
 	name := tokenToFunctionName(fun.Token)
 	info := functionFileInfo{functionName: name}
@@ -1098,30 +1125,52 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
 	}
-	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n",
-		name, argsig, functionReturnType(fun))
+
+	outputPropertiesReduced := fun.ReduceSingleOutputProperty
+	multiArgumentFunction := fun.MultiArgumentInputs != nil && len(*fun.MultiArgumentInputs) > 0
+
+	funReturnType := functionReturnType(fun)
+	if outputPropertiesReduced {
+		funReturnType = mod.typeString(fun.Outputs.Properties[0].Type, false, nil)
+	}
+
+	properties := multiArgProperties(fun)
+	fmt.Fprintf(w, "export function %s(", name)
+	if multiArgumentFunction {
+		for _, prop := range properties {
+			if !prop.IsRequired() {
+				fmt.Fprintf(w, "%s?: ", prop.Name)
+			} else {
+				fmt.Fprintf(w, "%s: ", prop.Name)
+			}
+			fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
+		}
+	} else {
+		fmt.Fprintf(w, "%s", argsig)
+	}
+
+	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): Promise<%s> {\n", funReturnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
 
 	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional {
+	if fun.Inputs != nil && argsOptional && !multiArgumentFunction {
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
-	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "    if (!opts) {\n")
-	fmt.Fprintf(w, "        opts = {}\n")
-	fmt.Fprintf(w, "    }\n")
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n")
+	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.invoke(\"%s\", {\n", fun.Token)
 	if fun.Inputs != nil {
-		for _, p := range fun.Inputs.Properties {
+		for _, p := range properties {
 			// Pass the argument to the invocation.
 			body := fmt.Sprintf("args.%s", p.Name)
+			if multiArgumentFunction {
+				body = fmt.Sprintf("%s", p.Name)
+			}
+
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
 				if codegen.IsNOptionalInput(p.Type) {
 					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
@@ -1133,7 +1182,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
 	}
-	fmt.Fprintf(w, "    }, opts);\n")
+
+	if !outputPropertiesReduced {
+		fmt.Fprintf(w, "    }, opts);\n")
+	} else {
+		fmt.Fprintf(w, "    }, opts).then((r: %s) => r.%s);\n", functionReturnType(fun), fun.Outputs.Properties[0].Name)
+	}
+
 	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
