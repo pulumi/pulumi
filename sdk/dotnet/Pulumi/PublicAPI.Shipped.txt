@@ -83,6 +83,8 @@ Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Update.set -> void
 Pulumi.DictionaryResourceArgs
 Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
+Pulumi.DictionaryInvokeArgs
+Pulumi.DictionaryInvokeArgs.DictionaryInvokeArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
 Pulumi.DeploymentInstance
 Pulumi.DeploymentInstance.Call(string token, Pulumi.CallArgs args, Pulumi.Resource self = null, Pulumi.CallOptions options = null) -> void
