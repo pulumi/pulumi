@@ -34,6 +34,9 @@ var ignoreParentEdges bool
 // Whether or not we should ignore dependency edges when building up our graph.
 var ignoreDependencyEdges bool
 
+// Wether or not we should show the resource name instead of the urns when displaying the graph
+var showResourceName bool
+
 // The color of dependency edges in the graph. Defaults to #246C60, a blush-green.
 var dependencyEdgeColor string
 
@@ -94,6 +97,8 @@ func newStackGraphCmd() *cobra.Command {
 		"Ignores edges introduced by parent/child resource relationships")
 	cmd.PersistentFlags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
 		"Ignores edges introduced by dependency resource relationships")
+	cmd.PersistentFlags().BoolVar(&showResourceName, "show-resource-name", false,
+		"Display the name of the resource instead of their urns")
 	cmd.PersistentFlags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
 		"Sets the color of dependency edges in the graph")
 	cmd.PersistentFlags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
@@ -178,7 +183,7 @@ func (vertex *dependencyVertex) Data() interface{} {
 }
 
 func (vertex *dependencyVertex) Label() string {
-	return string(vertex.resource.URN)
+	return paintVertexLabel(vertex)
 }
 
 func (vertex *dependencyVertex) Ins() []graph.Edge {
@@ -212,6 +217,15 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 	}
 
 	return rootEdges
+}
+
+// Display resource label on the graph vertex. If ignore-resource-urn is passed to the
+// command line the graph will only display the resource name in the vertex label instead of the URNS.
+func paintVertexLabel(vertex *dependencyVertex) string {
+	if !showResourceName {
+		return string(vertex.resource.URN)
+	}
+	return string(vertex.resource.URN.Name())
 }
 
 // Makes a dependency graph from a deployment snapshot, allocating a vertex
