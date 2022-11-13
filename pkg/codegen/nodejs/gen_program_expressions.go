@@ -321,6 +321,37 @@ func enumName(enum *model.EnumType) (string, error) {
 	return fmt.Sprintf("%s.%s", pkg, name), nil
 }
 
+// genMultiArguments takes the input bag (object) of a function invoke and spreads the values of that object
+// into multi-argument function call.
+// For example, { a: 1, b: 2 } with multiInputArguments: ["a", "b"] would become: 1, 2
+//
+// However, when positional optional parameters are omitted, then undefind is used where they should be.
+// Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, null, 3
+// because b was omitted and c was provided so b had to be undefind
+func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []string) {
+	items := make(map[string]model.Expression)
+	for _, item := range expr.Items {
+		lit := item.Key.(*model.LiteralValueExpression)
+		propertyKey := lit.Value.AsString()
+		items[propertyKey] = item.Value
+	}
+
+	for index, arg := range multiArguments {
+		value, ok := items[arg]
+		if ok {
+			g.Fgenf(w, "%.v", value)
+		} else {
+			// a positional argument was not provided in the input bag
+			// assume it is optional
+			g.Fgenf(w, "undefined", value)
+		}
+
+		if index < len(multiArguments)-1 {
+			g.Fgen(w, ", ")
+		}
+	}
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -408,7 +439,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
-			g.Fgenf(w, "%.v", expr.Args[1])
+			if expr.Signature.MultiArgumentInputs != nil {
+				arg, ok := expr.Args[1].(*model.ObjectConsExpression)
+				if ok {
+					g.genMultiArguments(w, arg, *expr.Signature.MultiArgumentInputs)
+				} else {
+					g.Fgenf(w, "%.v", expr.Args[1])
+				}
+			} else {
+				g.Fgenf(w, "%.v", expr.Args[1])
+			}
 		}
 		if len(expr.Args) == 3 {
 			g.Fgenf(w, ", %.v", expr.Args[2])

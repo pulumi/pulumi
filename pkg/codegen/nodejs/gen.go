@@ -1259,6 +1259,7 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
+	fmt.Fprintf(w, "\n")
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
 
@@ -1271,7 +1272,7 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
 `, fnOutput, argsig, functionReturnType(fun), originalName)
-		fmt.Fprintf(w, "\n")
+
 	} else if !multiArgumentFunction && outputPropertiesReduced {
 		fmt.Fprintf(w, `
 export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {

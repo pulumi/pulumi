@@ -703,7 +703,14 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 	return propertyName(property)
 }
 
-func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments *[]string) {
+// genMultiArguments takes the input bag (object) of a function invoke and spreads the values of that object
+// into multi-argument function call.
+// For example, { a: 1, b: 2 } with multiInputArguments: ["a", "b"] would become: 1, 2
+//
+// However, when positional optional parameters are omitted, then NULL is used where they should be.
+// Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, null, 3
+// because b was omitted and c was provided so b had to be NULL
+func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []string) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
 		lit := item.Key.(*model.LiteralValueExpression)
@@ -711,12 +718,17 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 		items[propertyKey] = item.Value
 	}
 
-	for index, arg := range *multiArguments {
-		if value, ok := items[arg]; ok {
+	for index, arg := range multiArguments {
+		value, ok := items[arg]
+		if ok {
 			g.Fgenf(w, "%.v", value)
+		} else {
+			// a positional argument was not provided in the input bag
+			// assume it is optional
+			g.Fgenf(w, "null", value)
 		}
 
-		if index < len(*multiArguments)-1 {
+		if index < len(multiArguments)-1 {
 			g.Fgen(w, ", ")
 		}
 	}
@@ -734,7 +746,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	}
 
 	if multiArguments != nil {
-		g.genMultiArguments(w, expr, multiArguments)
+		g.genMultiArguments(w, expr, *multiArguments)
 		return
 	}
 
