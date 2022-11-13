@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "outDir": "bin",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "@/*": ["*"]
+        },
+        "strict": true
+    },
+    "files": [
+        "index.ts",
+        "my_mod/index.ts",
+        "my_mod/triceratops.ts",
+        "provider.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/my_mod/index.ts",
+        "types/my_mod/input.ts",
+        "types/my_mod/output.ts",
+        "types/output.ts",
+        "utilities.ts"
+    ]
+}

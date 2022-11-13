@@ -16,9 +16,11 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +28,7 @@ import (
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -43,23 +46,24 @@ type projectGeneratorFunc func(directory string, project workspace.Project, p *p
 
 func newConvertCmd() *cobra.Command {
 	var outDir string
+	var from string
 	var language string
 	var generateOnly bool
 
 	cmd := &cobra.Command{
 		Use:   "convert",
 		Args:  cmdutil.MaximumNArgs(0),
-		Short: "Convert Pulumi programs from YAML into other supported languages",
-		Long: "Convert Pulumi programs from YAML into other supported languages.\n" +
+		Short: "Convert Pulumi programs from a supported source program into other supported languages",
+		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
-			"The YAML program to convert will default to the manifest in the current working directory.\n",
+			"The source program to convert will default to the current working directory.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not resolve current working directory"))
 			}
 
-			return runConvert(cwd, language, outDir, generateOnly)
+			return runConvert(cwd, from, language, outDir, generateOnly)
 		}),
 	}
 
@@ -72,7 +76,11 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&outDir, "out", ".", "The output directory to write the convert project to")
+		&from, "from", "yaml", "Which converter plugin to use to read the source program")
+
+	cmd.PersistentFlags().StringVar(
+		//nolint:lll
+		&outDir, "out", ".", "The output directory to write the converted project to")
 
 	cmd.PersistentFlags().BoolVar(
 		//nolint:lll
@@ -102,7 +110,48 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 	return nil
 }
 
-func runConvert(cwd string, language string, outDir string, generateOnly bool) result.Result {
+// pclEject
+func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.Program, error) {
+	parser := hclsyntax.NewParser()
+	// Load all .pp files in the directory
+	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		if filepath.Ext(path) == ".pp" {
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+
+			err = parser.ParseFile(file, filepath.Base(path))
+			if err != nil {
+				return err
+			}
+			diags := parser.Diagnostics
+			if diags.HasErrors() {
+				return diags
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	if err != nil {
+		return nil, nil, err
+	}
+	if pdiags.HasErrors() || program == nil {
+		return nil, nil, fmt.Errorf("internal error: %w", pdiags)
+	}
+
+	return &workspace.Project{Name: "pcl"}, program, nil
+}
+
+func runConvert(cwd string, from string, language string, outDir string, generateOnly bool) result.Result {
 	var projectGenerator projectGeneratorFunc
 	switch language {
 	case "csharp", "c#":
@@ -141,37 +190,53 @@ func runConvert(cwd string, language string, outDir string, generateOnly bool) r
 	}
 	defer contract.IgnoreClose(host)
 	loader := schema.NewPluginLoader(host)
-	proj, pclProgram, err := yamlgen.Eject(cwd, loader)
-	if err != nil {
-		return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+
+	var proj *workspace.Project
+	var program *pcl.Program
+	if from == "" || from == "yaml" {
+		proj, program, err = yamlgen.Eject(cwd, loader)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+		}
+	} else if from == "pcl" {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
+			// No plugin for PCL to generate with
+			generateOnly = true
+			proj, program, err = pclEject(cwd, loader)
+			if err != nil {
+				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))
+			}
+		} else {
+			return result.FromError(fmt.Errorf("unrecognized source %s", from))
+		}
+	} else {
+		return result.FromError(fmt.Errorf("unrecognized source %s", from))
 	}
 
-	err = projectGenerator(outDir, *proj, pclProgram)
+	err = projectGenerator(outDir, *proj, program)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 	}
 
-	// Project should now exist at outDir. Run installDependencies in that directory
-	// Change the working directory to the specified directory.
-	if err := os.Chdir(outDir); err != nil {
-		return result.FromError(fmt.Errorf("changing the working directory: %w", err))
-	}
-
-	// Load the project, to
-	proj, root, err := readProject()
-	if err != nil {
-		return result.FromError(err)
-	}
-
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
-	if err != nil {
-		return result.FromError(err)
-	}
-
-	// defer ctx.Close()
-
+	// Project should now exist at outDir. Run installDependencies in that directory (if requested)
 	if !generateOnly {
+		// Change the working directory to the specified directory.
+		if err := os.Chdir(outDir); err != nil {
+			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
+		}
+
+		proj, root, err := readProject()
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		if err != nil {
+			return result.FromError(err)
+		}
+		defer ctx.Close()
+
 		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 			return result.FromError(err)
 		}

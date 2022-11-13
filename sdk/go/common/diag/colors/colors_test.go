@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rivo/uniseg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -84,6 +85,9 @@ func TestColorizer(t *testing.T) {
 			trimmedContent := content[:3]
 			actualTrimmed := TrimColorizedString(str, len(trimmedContent))
 			assert.Equal(t, c.command+trimmedContent+Reset, actualTrimmed)
+
+			assert.Equal(t, uniseg.GraphemeClusterCount("hello\n"), measureText(str))
+			assert.Equal(t, uniseg.GraphemeClusterCount(actualNever), measureText(str))
 		})
 	}
 }
@@ -133,4 +137,7 @@ func TestTrimColorizedString(t *testing.T) {
 	plain := "hello, world!!"
 	actual = TrimColorizedString(plain, len("hello"))
 	assert.Equal(t, "hello", actual)
+
+	assert.Equal(t, uniseg.GraphemeClusterCount("hello, world!!"), measureText(str))
+	assert.Equal(t, uniseg.GraphemeClusterCount(Never.Colorize(str)), measureText(str))
 }

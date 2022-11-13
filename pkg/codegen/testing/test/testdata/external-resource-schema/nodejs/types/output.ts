@@ -4,6 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
+import * as utilities from "../utilities";
 
 import * as pulumiRandom from "@pulumi/random";
 

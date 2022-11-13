@@ -4,9 +4,10 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
-
 import * as utilities from "../utilities";
 
+export * as mod1 from "./mod1/output";
+export * as mod2 from "./mod2/output";
 /**
  * Options for tuning the Kubernetes client used by a Provider.
  */
@@ -33,8 +34,3 @@ export function kubeClientSettingsProvideDefaults(val: KubeClientSettings): Kube
     };
 }
 
-export namespace mod1 {
-}
-
-export namespace mod2 {
-}
