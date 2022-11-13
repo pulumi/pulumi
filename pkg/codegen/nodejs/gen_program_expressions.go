@@ -343,7 +343,7 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 		} else {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
-			g.Fgenf(w, "undefined", value)
+			g.Fgen(w, "undefined")
 		}
 
 		if index < len(multiArguments)-1 {
