@@ -40,17 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type stringSet map[string]struct{}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
-
 type typeDetails struct {
 	outputType                        bool
 	inputType                         bool
@@ -304,7 +293,7 @@ func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
 }
 
 func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, input, wrapInput, state, requireInitializers bool) string {
-	elementTypeSet := stringSet{}
+	elementTypeSet := codegen.StringSet{}
 	var elementTypes []string
 	for _, e := range t.ElementTypes {
 		// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
@@ -314,8 +303,8 @@ func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, in
 		}
 
 		et := mod.typeString(e, qualifier, input, state, false)
-		if !elementTypeSet.has(et) {
-			elementTypeSet.add(et)
+		if !elementTypeSet.Has(et) {
+			elementTypeSet.Add(et)
 			elementTypes = append(elementTypes, et)
 		}
 	}
@@ -2409,7 +2398,7 @@ func genProjectFile(pkg *schema.Package,
 		packageReferences = map[string]string{}
 	}
 	if _, ok := packageReferences["Pulumi"]; !ok {
-		packageReferences["Pulumi"] = "3.*"
+		packageReferences["Pulumi"] = "[3.23.0,4)"
 	}
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{

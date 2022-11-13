@@ -170,6 +170,12 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
+		Directory:   "type-references-resource",
+		Description: "An instance where a type references a resource",
+		Skip:        allLanguages.Except("nodejs/any"),
+		// SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+	},
+	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
 		Skip:        codegen.NewStringSet("go/any"),
