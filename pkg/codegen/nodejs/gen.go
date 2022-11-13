@@ -1186,13 +1186,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if !outputPropertiesReduced {
 		fmt.Fprintf(w, "    }, opts);\n")
 	} else {
-		fmt.Fprintf(w, "    }, opts).then((r: %s) => r.%s);\n", functionReturnType(fun), fun.Outputs.Properties[0].Name)
+		fmt.Fprintf(w, "    }, opts).then((r: any) => r.%s);\n", fun.Outputs.Properties[0].Name)
 	}
 
 	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
-	if fun.Inputs != nil {
+	if fun.Inputs != nil && !multiArgumentFunction {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
 		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
@@ -1200,7 +1200,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 		info.functionArgsInterfaceName = argsInterfaceName
 	}
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && !outputPropertiesReduced {
 		fmt.Fprintf(w, "\n")
 		resultInterfaceName := title(name) + "Result"
 		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
@@ -1240,8 +1240,14 @@ func (mod *modContext) genFunctionOutputVersion(
 		return info, nil
 	}
 
+	outputPropertiesReduced := fun.ReduceSingleOutputProperty
+	multiArgumentFunction := fun.MultiArgumentInputs != nil && len(*fun.MultiArgumentInputs) > 0
+
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	reducedOutputReturnType := mod.typeString(fun.Outputs.Properties[0].Type, false, nil)
+	properties := multiArgProperties(fun)
+
 	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
@@ -1253,23 +1259,88 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
-	fmt.Fprintf(w, `
+	// Write the TypeDoc/JSDoc for the data source function.
+	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
+
+	if fun.DeprecationMessage != "" {
+		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
+	}
+	if !multiArgumentFunction && !outputPropertiesReduced {
+		fmt.Fprintf(w, `
 export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(args).apply(a => %s(a, opts))
+    return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
 `, fnOutput, argsig, functionReturnType(fun), originalName)
-	fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "\n")
+	} else if !multiArgumentFunction && outputPropertiesReduced {
+		fmt.Fprintf(w, `
+export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+	return pulumi.output(args).apply((a: any) => %s(a, opts))
+}
+`, fnOutput, argsig, reducedOutputReturnType, originalName)
+
+	} else if multiArgumentFunction && !outputPropertiesReduced {
+		fmt.Fprintf(w, "export function %s(", fnOutput)
+		for _, p := range properties {
+			if p.IsRequired() {
+				fmt.Fprintf(w, "%s: %s, ", p.Name, mod.typeString(p.Type, false, nil))
+			} else {
+				fmt.Fprintf(w, "%s?: %s, ", p.Name, mod.typeString(p.Type, false, nil))
+			}
+		}
+
+		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", functionReturnType(fun))
+		fmt.Fprint(w, "    var args = {\n")
+		for _, p := range properties {
+			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
+		}
+		fmt.Fprint(w, "    };\n")
+		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
+		for _, p := range properties {
+			// Pass the argument to the invocation.
+			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
+		}
+		fmt.Fprint(w, "opts))\n")
+		fmt.Fprint(w, "}\n")
+	} else {
+		// multiArgumentFunction && outputPropertiesReduced
+		fmt.Fprintf(w, "export function %s(", fnOutput)
+		for _, p := range properties {
+			propertyType := &schema.InputType{ElementType: p.Type}
+			if p.IsRequired() {
+				fmt.Fprintf(w, "%s: %s, ", p.Name, mod.typeString(propertyType, true /* input */, nil))
+			} else {
+				fmt.Fprintf(w, "%s?: %s, ", p.Name, mod.typeString(propertyType, true /* input */, nil))
+			}
+		}
+
+		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", reducedOutputReturnType)
+		fmt.Fprint(w, "    var args = {\n")
+		for _, p := range properties {
+			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
+		}
+		fmt.Fprint(w, "    };\n")
+		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
+		for _, p := range properties {
+			// Pass the argument to the invocation.
+			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
+		}
+		fmt.Fprint(w, "opts))\n")
+		fmt.Fprint(w, "}\n")
+	}
 
 	info.functionOutputVersionArgsInterfaceName = argTypeName
 
-	if err := mod.genPlainType(w,
-		argTypeName,
-		fun.Inputs.Comment,
-		fun.Inputs.InputShape.Properties,
-		true,  /* input */
-		false, /* readonly */
-		0 /* level */); err != nil {
-		return info, err
+	if !multiArgumentFunction {
+		if err := mod.genPlainType(w,
+			argTypeName,
+			fun.Inputs.Comment,
+			fun.Inputs.InputShape.Properties,
+			true,  /* input */
+			false, /* readonly */
+			0 /* level */); err != nil {
+			return info, err
+		}
 	}
 
 	return info, nil
