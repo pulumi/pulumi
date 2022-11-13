@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "Abs.cs",
+    "AbsMultiArgs.cs",
+    "AbsMultiArgsReducedOutput.cs",
+    "AbsMultiArgsReducedOutputSwapped.cs",
+    "AbsReducedOutput.cs",
+    "Provider.cs",
+    "Pulumi.Std.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

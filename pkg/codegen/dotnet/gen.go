@@ -1433,11 +1433,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
 			argumentType := mod.typeString(prop.Type, "", false, false, true)
+			paramDeclaration := fmt.Sprintf("%s %s", argumentType, argumentName)
 			if !prop.IsRequired() {
-				argumentType += "? = null"
+				paramDeclaration += " = null"
 			}
 
-			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
+			fmt.Fprintf(w, "%s", paramDeclaration)
+			fmt.Fprint(w, ", ")
 		}
 
 		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
@@ -1450,9 +1452,8 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
 		}
 		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
-		fmt.Fprintf(w, "            var outputs = await global::Pulumi.Deployment.Instance.InvokeAsync<%s>(\"%s\", args, invokeOptions.WithDefaults());\n",
+		fmt.Fprintf(w, "            return await global::Pulumi.Deployment.Instance.InvokeAsync<%s>(\"%s\", args, invokeOptions.WithDefaults());\n",
 			typeParameter, fun.Token)
-		fmt.Fprint(w, "            return outputs;\n")
 		fmt.Fprint(w, "        }\n")
 
 	} else {
@@ -1462,11 +1463,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		for _, prop := range properties {
 			argumentName := LowerCamelCase(prop.Name)
 			argumentType := mod.typeString(prop.Type, "", false, false, true)
+			paramDeclaration := fmt.Sprintf("%s %s", argumentType, argumentName)
 			if !prop.IsRequired() {
-				argumentType += "? = null"
+				paramDeclaration += " = null"
 			}
 
-			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
+			fmt.Fprintf(w, "%s", paramDeclaration)
+			fmt.Fprint(w, ", ")
 		}
 
 		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
@@ -1589,14 +1592,27 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		fmt.Fprintf(w, "        public static Output<%s> Invoke(", typeParameter)
 		properties := multiArgProperties(fun)
 		for _, prop := range properties {
+			var paramDeclaration string
 			argumentName := LowerCamelCase(prop.Name)
-			propertyType := &schema.InputType{ElementType: prop.Type}
-			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
-			if !prop.IsRequired() {
-				argumentType += "? = null"
+			if prop.IsRequired() {
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
+				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
+			} else {
+				// replace optional-ness with input-ness
+				// double? => Input<double>
+				// then we add ? to make it Input<double>? because we know it's optional
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				switch propType := prop.Type.(type) {
+				case *schema.OptionalType:
+					propertyType = &schema.InputType{ElementType: propType.ElementType}
+				}
+				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
+				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
 			}
 
-			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
+			fmt.Fprintf(w, "%s", paramDeclaration)
+			fmt.Fprint(w, ", ")
 		}
 
 		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
@@ -1618,14 +1634,27 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		fmt.Fprintf(w, "        public static Output<%s> Invoke(", typeParameter)
 		properties := multiArgProperties(fun)
 		for _, prop := range properties {
+			var paramDeclaration string
 			argumentName := LowerCamelCase(prop.Name)
-			propertyType := &schema.InputType{ElementType: prop.Type}
-			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
-			if !prop.IsRequired() {
-				argumentType += "? = null"
+			if prop.IsRequired() {
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
+				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
+			} else {
+				// replace optional-ness with input-ness
+				// double? => Input<double>
+				// then we add ? to make it Input<double>? because we know it's optional
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				switch propType := prop.Type.(type) {
+				case *schema.OptionalType:
+					propertyType = &schema.InputType{ElementType: propType.ElementType}
+				}
+				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
+				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
 			}
 
-			fmt.Fprintf(w, "%s %s, ", argumentType, argumentName)
+			fmt.Fprintf(w, "%s", paramDeclaration)
+			fmt.Fprint(w, ", ")
 		}
 
 		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
