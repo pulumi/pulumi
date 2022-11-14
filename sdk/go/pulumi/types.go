@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1247,4 +1247,65 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
 	RegisterOutputType(ResourceOutput{})
 	RegisterOutputType(ResourceArrayOutput{})
+}
+
+// coerceTypeConversion assigns src to dst, performing deep type coercion as necessary.
+func coerceTypeConversion(src interface{}, dst reflect.Type) (interface{}, error) {
+	makeError := func(src, dst reflect.Value) error {
+		return fmt.Errorf("expected value of type %s, not %s", dst.Type(), src.Type())
+	}
+	var coerce func(reflect.Value, reflect.Value) error
+	coerce = func(src, dst reflect.Value) error {
+		if src.Type().Kind() == reflect.Interface && !src.IsNil() {
+			src = src.Elem()
+		}
+		if src.Type().AssignableTo(dst.Type()) {
+			dst.Set(src)
+			return nil
+		}
+		switch dst.Type().Kind() {
+		case reflect.Map:
+			if src.Kind() != reflect.Map {
+				return makeError(src, dst)
+			}
+
+			dst.Set(reflect.MakeMapWithSize(dst.Type(), src.Len()))
+
+			for iter := src.MapRange(); iter.Next(); {
+				dstKey := reflect.New(dst.Type().Key()).Elem()
+				dstVal := reflect.New(dst.Type().Elem()).Elem()
+				if err := coerce(iter.Key(), dstKey); err != nil {
+					return fmt.Errorf("invalid key: %w", err)
+				}
+				if err := coerce(iter.Value(), dstVal); err != nil {
+					return fmt.Errorf("[%#v]: %w", dstKey.Interface(), err)
+				}
+				dst.SetMapIndex(dstKey, dstVal)
+			}
+
+			return nil
+		case reflect.Slice:
+			if src.Kind() != reflect.Slice {
+				return makeError(src, dst)
+			}
+			dst.Set(reflect.MakeSlice(dst.Type(), src.Len(), src.Cap()))
+			for i := 0; i < src.Len(); i++ {
+				dstVal := reflect.New(dst.Type().Elem()).Elem()
+				if err := coerce(src.Index(i), dstVal); err != nil {
+					return fmt.Errorf("[%d]: %w", i, err)
+				}
+				dst.Index(i).Set(dstVal)
+			}
+			return nil
+		default:
+			return makeError(src, dst)
+		}
+	}
+
+	srcV, dstV := reflect.ValueOf(src), reflect.New(dst).Elem()
+
+	if err := coerce(srcV, dstV); err != nil {
+		return nil, err
+	}
+	return dstV.Interface(), nil
 }

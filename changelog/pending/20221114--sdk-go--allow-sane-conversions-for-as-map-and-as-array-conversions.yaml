@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: sdk/go
+    description: Allow sane conversions for `As*Map*` and `As*Array*` conversions.

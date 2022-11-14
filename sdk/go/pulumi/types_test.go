@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func await(out Output) (interface{}, bool, bool, []Resource, error) {
@@ -987,4 +988,102 @@ func TestApplyTOutputJoin(t *testing.T) {
 	assertResult(t, out3, 5, true, true, r3)
 	assertResult(t, out31, 2, true, true, r3, r1)
 	assertResult(t, out312, nil, false, true, r3, r1, r2) /* out2 is unknown, hiding the output */
+}
+
+func TestTypeCoersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    interface{}
+		expected interface{}
+		err      string
+	}{
+		{"foo", "foo", ""},
+		{"foo", 0, "expected value of type int, not string"},
+		{
+			map[string]interface{}{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			map[string]string{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			"",
+		},
+		{
+			map[string]interface{}{
+				"foo":  "bar",
+				"fizz": 8,
+			},
+			map[string]string{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			`["fizz"]: expected value of type string, not int`,
+		},
+		{
+			[]interface{}{1, 2, 3},
+			[]int{1, 2, 3},
+			"",
+		},
+		{
+			[]interface{}{1, "two", 3},
+			[]int{1, 2, 3},
+			`[1]: expected value of type int, not string`,
+		},
+		{
+			[]interface{}{
+				map[string]interface{}{
+					"fizz":     []interface{}{3, 15},
+					"buzz":     []interface{}{5, 15},
+					"fizzbuzz": []interface{}{15},
+				},
+				map[string]interface{}{},
+			},
+			[]map[string][]int{
+				{
+					"fizz":     {3, 15},
+					"buzz":     {5, 15},
+					"fizzbuzz": {15},
+				},
+				{},
+			},
+			"",
+		},
+		{
+			[]interface{}{
+				map[string]interface{}{
+					"fizz":     []interface{}{3, 15},
+					"buzz":     []interface{}{"5", 15},
+					"fizzbuzz": []interface{}{15},
+				},
+				map[string]interface{}{},
+			},
+			[]map[string][]int{
+				{
+					"fizz":     {3, 15},
+					"buzz":     {5, 15},
+					"fizzbuzz": {15},
+				},
+				{},
+			},
+			`[0]: ["buzz"]: [0]: expected value of type int, not string`,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprintf("%v->%v", tt.input, tt.expected), func(t *testing.T) {
+			t.Parallel()
+			dstT := reflect.TypeOf(tt.expected)
+			val, err := coerceTypeConversion(tt.input, dstT)
+			if tt.err == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, val)
+			} else {
+				assert.EqualError(t, err, tt.err)
+			}
+		})
+	}
 }

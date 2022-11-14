@@ -19,7 +19,6 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 )
 
@@ -5011,70 +5010,80 @@ func (a AnyOutput) AsArchiveOutput() ArchiveOutput {
 }
 
 // AsArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []Archive or []interface{} and returns a `ArchiveArrayOutput` with that value.
-// AsArchiveArrayOutput panics if the value was not the expected type or a compatible array.
+// []Archive or a compatible type and returns a `ArchiveArrayOutput` with that value.
+// AsArchiveArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]Archive, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]Archive, len(array))
-			for i, v := range array {
-				value, ok := v.(Archive)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type Archive, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]Archive), nil
+		return v.([]Archive), nil
 	}).(ArchiveArrayOutput)
 }
 
 // AsArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]Archive and returns a `ArchiveMapOutput` with that value. AsArchiveMapOutput panics if the value
-// was not the expected type.
+// map[string]Archive or a compatible type and returns a `ArchiveMapOutput` with that value.
+// AsArchiveMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapOutput() ArchiveMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]Archive {
-		return i.(map[string]Archive)
+	return a.ApplyT(func(i interface{}) (map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]Archive), nil
 	}).(ArchiveMapOutput)
 }
 
 // AsArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]Archive and returns a `ArchiveArrayMapOutput` with that value. AsArchiveArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]Archive or a compatible type and returns a `ArchiveArrayMapOutput` with that value.
+// AsArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayMapOutput() ArchiveArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]Archive {
-		return i.(map[string][]Archive)
+	return a.ApplyT(func(i interface{}) (map[string][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]Archive), nil
 	}).(ArchiveArrayMapOutput)
 }
 
 // AsArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]Archive and returns a `ArchiveMapArrayOutput` with that value. AsArchiveMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]Archive or a compatible type and returns a `ArchiveMapArrayOutput` with that value.
+// AsArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapArrayOutput() ArchiveMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]Archive {
-		return i.([]map[string]Archive)
+	return a.ApplyT(func(i interface{}) ([]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]Archive), nil
 	}).(ArchiveMapArrayOutput)
 }
 
 // AsArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]Archive and returns a `ArchiveMapMapOutput` with that value. AsArchiveMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]Archive or a compatible type and returns a `ArchiveMapMapOutput` with that value.
+// AsArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveMapMapOutput() ArchiveMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]Archive {
-		return i.(map[string]map[string]Archive)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]Archive), nil
 	}).(ArchiveMapMapOutput)
 }
 
 // AsArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]Archive and returns a `ArchiveArrayArrayOutput` with that value. AsArchiveArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]Archive or a compatible type and returns a `ArchiveArrayArrayOutput` with that value.
+// AsArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]Archive {
-		return i.([][]Archive)
+	return a.ApplyT(func(i interface{}) ([][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]Archive), nil
 	}).(ArchiveArrayArrayOutput)
 }
 
@@ -5088,70 +5097,80 @@ func (a AnyOutput) AsAssetOutput() AssetOutput {
 }
 
 // AsAssetArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []Asset or []interface{} and returns a `AssetArrayOutput` with that value.
-// AsAssetArrayOutput panics if the value was not the expected type or a compatible array.
+// []Asset or a compatible type and returns a `AssetArrayOutput` with that value.
+// AsAssetArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]Asset, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]Asset, len(array))
-			for i, v := range array {
-				value, ok := v.(Asset)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type Asset, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]Asset), nil
+		return v.([]Asset), nil
 	}).(AssetArrayOutput)
 }
 
 // AsAssetMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]Asset and returns a `AssetMapOutput` with that value. AsAssetMapOutput panics if the value
-// was not the expected type.
+// map[string]Asset or a compatible type and returns a `AssetMapOutput` with that value.
+// AsAssetMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapOutput() AssetMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]Asset {
-		return i.(map[string]Asset)
+	return a.ApplyT(func(i interface{}) (map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]Asset), nil
 	}).(AssetMapOutput)
 }
 
 // AsAssetArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]Asset and returns a `AssetArrayMapOutput` with that value. AsAssetArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]Asset or a compatible type and returns a `AssetArrayMapOutput` with that value.
+// AsAssetArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayMapOutput() AssetArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]Asset {
-		return i.(map[string][]Asset)
+	return a.ApplyT(func(i interface{}) (map[string][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]Asset), nil
 	}).(AssetArrayMapOutput)
 }
 
 // AsAssetMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]Asset and returns a `AssetMapArrayOutput` with that value. AsAssetMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]Asset or a compatible type and returns a `AssetMapArrayOutput` with that value.
+// AsAssetMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapArrayOutput() AssetMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]Asset {
-		return i.([]map[string]Asset)
+	return a.ApplyT(func(i interface{}) ([]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]Asset), nil
 	}).(AssetMapArrayOutput)
 }
 
 // AsAssetMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]Asset and returns a `AssetMapMapOutput` with that value. AsAssetMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]Asset or a compatible type and returns a `AssetMapMapOutput` with that value.
+// AsAssetMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetMapMapOutput() AssetMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]Asset {
-		return i.(map[string]map[string]Asset)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]Asset), nil
 	}).(AssetMapMapOutput)
 }
 
 // AsAssetArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]Asset and returns a `AssetArrayArrayOutput` with that value. AsAssetArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]Asset or a compatible type and returns a `AssetArrayArrayOutput` with that value.
+// AsAssetArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetArrayArrayOutput() AssetArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]Asset {
-		return i.([][]Asset)
+	return a.ApplyT(func(i interface{}) ([][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]Asset), nil
 	}).(AssetArrayArrayOutput)
 }
 
@@ -5165,70 +5184,80 @@ func (a AnyOutput) AsAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 // AsAssetOrArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []AssetOrArchive or []interface{} and returns a `AssetOrArchiveArrayOutput` with that value.
-// AsAssetOrArchiveArrayOutput panics if the value was not the expected type or a compatible array.
+// []AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayOutput` with that value.
+// AsAssetOrArchiveArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]AssetOrArchive, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]AssetOrArchive, len(array))
-			for i, v := range array {
-				value, ok := v.(AssetOrArchive)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type AssetOrArchive, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]AssetOrArchive), nil
+		return v.([]AssetOrArchive), nil
 	}).(AssetOrArchiveArrayOutput)
 }
 
 // AsAssetOrArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]AssetOrArchive and returns a `AssetOrArchiveMapOutput` with that value. AsAssetOrArchiveMapOutput panics if the value
-// was not the expected type.
+// map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapOutput` with that value.
+// AsAssetOrArchiveMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]AssetOrArchive {
-		return i.(map[string]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) (map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]AssetOrArchive), nil
 	}).(AssetOrArchiveMapOutput)
 }
 
 // AsAssetOrArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]AssetOrArchive and returns a `AssetOrArchiveArrayMapOutput` with that value. AsAssetOrArchiveArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayMapOutput` with that value.
+// AsAssetOrArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]AssetOrArchive {
-		return i.(map[string][]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) (map[string][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]AssetOrArchive), nil
 	}).(AssetOrArchiveArrayMapOutput)
 }
 
 // AsAssetOrArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]AssetOrArchive and returns a `AssetOrArchiveMapArrayOutput` with that value. AsAssetOrArchiveMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapArrayOutput` with that value.
+// AsAssetOrArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]AssetOrArchive {
-		return i.([]map[string]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) ([]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]AssetOrArchive), nil
 	}).(AssetOrArchiveMapArrayOutput)
 }
 
 // AsAssetOrArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]AssetOrArchive and returns a `AssetOrArchiveMapMapOutput` with that value. AsAssetOrArchiveMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapMapOutput` with that value.
+// AsAssetOrArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]AssetOrArchive {
-		return i.(map[string]map[string]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]AssetOrArchive), nil
 	}).(AssetOrArchiveMapMapOutput)
 }
 
 // AsAssetOrArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]AssetOrArchive and returns a `AssetOrArchiveArrayArrayOutput` with that value. AsAssetOrArchiveArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayArrayOutput` with that value.
+// AsAssetOrArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]AssetOrArchive {
-		return i.([][]AssetOrArchive)
+	return a.ApplyT(func(i interface{}) ([][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]AssetOrArchive), nil
 	}).(AssetOrArchiveArrayArrayOutput)
 }
 
@@ -5242,79 +5271,93 @@ func (a AnyOutput) AsBoolOutput() BoolOutput {
 }
 
 // AsBoolPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *bool and returns a `BoolPtrOutput` with that value. AsBoolPtrOutput panics if the value
-// was not the expected type.
+// *bool or a compatible type and returns a `BoolPtrOutput` with that value.
+// AsBoolPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolPtrOutput() BoolPtrOutput {
-	return a.ApplyT(func(i interface{}) *bool {
-		return i.(*bool)
+	return a.ApplyT(func(i interface{}) (*bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*bool), nil
 	}).(BoolPtrOutput)
 }
 
 // AsBoolArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []bool or []interface{} and returns a `BoolArrayOutput` with that value.
-// AsBoolArrayOutput panics if the value was not the expected type or a compatible array.
+// []bool or a compatible type and returns a `BoolArrayOutput` with that value.
+// AsBoolArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]bool, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]bool, len(array))
-			for i, v := range array {
-				value, ok := v.(bool)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type bool, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]bool), nil
+		return v.([]bool), nil
 	}).(BoolArrayOutput)
 }
 
 // AsBoolMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]bool and returns a `BoolMapOutput` with that value. AsBoolMapOutput panics if the value
-// was not the expected type.
+// map[string]bool or a compatible type and returns a `BoolMapOutput` with that value.
+// AsBoolMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapOutput() BoolMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]bool {
-		return i.(map[string]bool)
+	return a.ApplyT(func(i interface{}) (map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]bool), nil
 	}).(BoolMapOutput)
 }
 
 // AsBoolArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]bool and returns a `BoolArrayMapOutput` with that value. AsBoolArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]bool or a compatible type and returns a `BoolArrayMapOutput` with that value.
+// AsBoolArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayMapOutput() BoolArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]bool {
-		return i.(map[string][]bool)
+	return a.ApplyT(func(i interface{}) (map[string][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]bool), nil
 	}).(BoolArrayMapOutput)
 }
 
 // AsBoolMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]bool and returns a `BoolMapArrayOutput` with that value. AsBoolMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]bool or a compatible type and returns a `BoolMapArrayOutput` with that value.
+// AsBoolMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapArrayOutput() BoolMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]bool {
-		return i.([]map[string]bool)
+	return a.ApplyT(func(i interface{}) ([]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]bool), nil
 	}).(BoolMapArrayOutput)
 }
 
 // AsBoolMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]bool and returns a `BoolMapMapOutput` with that value. AsBoolMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]bool or a compatible type and returns a `BoolMapMapOutput` with that value.
+// AsBoolMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolMapMapOutput() BoolMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]bool {
-		return i.(map[string]map[string]bool)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]bool), nil
 	}).(BoolMapMapOutput)
 }
 
 // AsBoolArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]bool and returns a `BoolArrayArrayOutput` with that value. AsBoolArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]bool or a compatible type and returns a `BoolArrayArrayOutput` with that value.
+// AsBoolArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsBoolArrayArrayOutput() BoolArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]bool {
-		return i.([][]bool)
+	return a.ApplyT(func(i interface{}) ([][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]bool), nil
 	}).(BoolArrayArrayOutput)
 }
 
@@ -5328,79 +5371,93 @@ func (a AnyOutput) AsFloat64Output() Float64Output {
 }
 
 // AsFloat64PtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *float64 and returns a `Float64PtrOutput` with that value. AsFloat64PtrOutput panics if the value
-// was not the expected type.
+// *float64 or a compatible type and returns a `Float64PtrOutput` with that value.
+// AsFloat64PtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64PtrOutput() Float64PtrOutput {
-	return a.ApplyT(func(i interface{}) *float64 {
-		return i.(*float64)
+	return a.ApplyT(func(i interface{}) (*float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*float64), nil
 	}).(Float64PtrOutput)
 }
 
 // AsFloat64ArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []float64 or []interface{} and returns a `Float64ArrayOutput` with that value.
-// AsFloat64ArrayOutput panics if the value was not the expected type or a compatible array.
+// []float64 or a compatible type and returns a `Float64ArrayOutput` with that value.
+// AsFloat64ArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]float64, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]float64, len(array))
-			for i, v := range array {
-				value, ok := v.(float64)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type float64, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]float64), nil
+		return v.([]float64), nil
 	}).(Float64ArrayOutput)
 }
 
 // AsFloat64MapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]float64 and returns a `Float64MapOutput` with that value. AsFloat64MapOutput panics if the value
-// was not the expected type.
+// map[string]float64 or a compatible type and returns a `Float64MapOutput` with that value.
+// AsFloat64MapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapOutput() Float64MapOutput {
-	return a.ApplyT(func(i interface{}) map[string]float64 {
-		return i.(map[string]float64)
+	return a.ApplyT(func(i interface{}) (map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]float64), nil
 	}).(Float64MapOutput)
 }
 
 // AsFloat64ArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]float64 and returns a `Float64ArrayMapOutput` with that value. AsFloat64ArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]float64 or a compatible type and returns a `Float64ArrayMapOutput` with that value.
+// AsFloat64ArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayMapOutput() Float64ArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]float64 {
-		return i.(map[string][]float64)
+	return a.ApplyT(func(i interface{}) (map[string][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]float64), nil
 	}).(Float64ArrayMapOutput)
 }
 
 // AsFloat64MapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]float64 and returns a `Float64MapArrayOutput` with that value. AsFloat64MapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]float64 or a compatible type and returns a `Float64MapArrayOutput` with that value.
+// AsFloat64MapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapArrayOutput() Float64MapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]float64 {
-		return i.([]map[string]float64)
+	return a.ApplyT(func(i interface{}) ([]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]float64), nil
 	}).(Float64MapArrayOutput)
 }
 
 // AsFloat64MapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]float64 and returns a `Float64MapMapOutput` with that value. AsFloat64MapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]float64 or a compatible type and returns a `Float64MapMapOutput` with that value.
+// AsFloat64MapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64MapMapOutput() Float64MapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]float64 {
-		return i.(map[string]map[string]float64)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]float64), nil
 	}).(Float64MapMapOutput)
 }
 
 // AsFloat64ArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]float64 and returns a `Float64ArrayArrayOutput` with that value. AsFloat64ArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]float64 or a compatible type and returns a `Float64ArrayArrayOutput` with that value.
+// AsFloat64ArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]float64 {
-		return i.([][]float64)
+	return a.ApplyT(func(i interface{}) ([][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]float64), nil
 	}).(Float64ArrayArrayOutput)
 }
 
@@ -5414,142 +5471,184 @@ func (a AnyOutput) AsIDOutput() IDOutput {
 }
 
 // AsIDPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *ID and returns a `IDPtrOutput` with that value. AsIDPtrOutput panics if the value
-// was not the expected type.
+// *ID or a compatible type and returns a `IDPtrOutput` with that value.
+// AsIDPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDPtrOutput() IDPtrOutput {
-	return a.ApplyT(func(i interface{}) *ID {
-		return i.(*ID)
+	return a.ApplyT(func(i interface{}) (*ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*ID), nil
 	}).(IDPtrOutput)
 }
 
 // AsIDArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []ID or []interface{} and returns a `IDArrayOutput` with that value.
-// AsIDArrayOutput panics if the value was not the expected type or a compatible array.
+// []ID or a compatible type and returns a `IDArrayOutput` with that value.
+// AsIDArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]ID, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]ID, len(array))
-			for i, v := range array {
-				value, ok := v.(ID)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type ID, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]ID), nil
+		return v.([]ID), nil
 	}).(IDArrayOutput)
 }
 
 // AsIDMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]ID and returns a `IDMapOutput` with that value. AsIDMapOutput panics if the value
-// was not the expected type.
+// map[string]ID or a compatible type and returns a `IDMapOutput` with that value.
+// AsIDMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapOutput() IDMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]ID {
-		return i.(map[string]ID)
+	return a.ApplyT(func(i interface{}) (map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]ID), nil
 	}).(IDMapOutput)
 }
 
 // AsIDArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]ID and returns a `IDArrayMapOutput` with that value. AsIDArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]ID or a compatible type and returns a `IDArrayMapOutput` with that value.
+// AsIDArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayMapOutput() IDArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]ID {
-		return i.(map[string][]ID)
+	return a.ApplyT(func(i interface{}) (map[string][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]ID), nil
 	}).(IDArrayMapOutput)
 }
 
 // AsIDMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]ID and returns a `IDMapArrayOutput` with that value. AsIDMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]ID or a compatible type and returns a `IDMapArrayOutput` with that value.
+// AsIDMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapArrayOutput() IDMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]ID {
-		return i.([]map[string]ID)
+	return a.ApplyT(func(i interface{}) ([]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]ID), nil
 	}).(IDMapArrayOutput)
 }
 
 // AsIDMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]ID and returns a `IDMapMapOutput` with that value. AsIDMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]ID or a compatible type and returns a `IDMapMapOutput` with that value.
+// AsIDMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDMapMapOutput() IDMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]ID {
-		return i.(map[string]map[string]ID)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]ID), nil
 	}).(IDMapMapOutput)
 }
 
 // AsIDArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]ID and returns a `IDArrayArrayOutput` with that value. AsIDArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]ID or a compatible type and returns a `IDArrayArrayOutput` with that value.
+// AsIDArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIDArrayArrayOutput() IDArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]ID {
-		return i.([][]ID)
+	return a.ApplyT(func(i interface{}) ([][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]ID), nil
 	}).(IDArrayArrayOutput)
 }
 
 // AsArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []interface{} and returns a `ArrayOutput` with that value. AsArrayOutput panics if the value
-// was not the expected type.
+// []interface{} or a compatible type and returns a `ArrayOutput` with that value.
+// AsArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayOutput() ArrayOutput {
-	return a.ApplyT(func(i interface{}) []interface{} {
-		return i.([]interface{})
+	return a.ApplyT(func(i interface{}) ([]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]interface{}), nil
 	}).(ArrayOutput)
 }
 
 // AsMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]interface{} and returns a `MapOutput` with that value. AsMapOutput panics if the value
-// was not the expected type.
+// map[string]interface{} or a compatible type and returns a `MapOutput` with that value.
+// AsMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapOutput() MapOutput {
-	return a.ApplyT(func(i interface{}) map[string]interface{} {
-		return i.(map[string]interface{})
+	return a.ApplyT(func(i interface{}) (map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]interface{}), nil
 	}).(MapOutput)
 }
 
 // AsArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]interface{} and returns a `ArrayMapOutput` with that value. AsArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]interface{} or a compatible type and returns a `ArrayMapOutput` with that value.
+// AsArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayMapOutput() ArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]interface{} {
-		return i.(map[string][]interface{})
+	return a.ApplyT(func(i interface{}) (map[string][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]interface{}), nil
 	}).(ArrayMapOutput)
 }
 
 // AsMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]interface{} and returns a `MapArrayOutput` with that value. AsMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]interface{} or a compatible type and returns a `MapArrayOutput` with that value.
+// AsMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapArrayOutput() MapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]interface{} {
-		return i.([]map[string]interface{})
+	return a.ApplyT(func(i interface{}) ([]map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]interface{}), nil
 	}).(MapArrayOutput)
 }
 
 // AsMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]interface{} and returns a `MapMapOutput` with that value. AsMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]interface{} or a compatible type and returns a `MapMapOutput` with that value.
+// AsMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsMapMapOutput() MapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]interface{} {
-		return i.(map[string]map[string]interface{})
+	return a.ApplyT(func(i interface{}) (map[string]map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]interface{}), nil
 	}).(MapMapOutput)
 }
 
 // AsArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]interface{} and returns a `ArrayArrayOutput` with that value. AsArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]interface{} or a compatible type and returns a `ArrayArrayOutput` with that value.
+// AsArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayArrayOutput() ArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]interface{} {
-		return i.([][]interface{})
+	return a.ApplyT(func(i interface{}) ([][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]interface{}), nil
 	}).(ArrayArrayOutput)
 }
 
 // AsArrayArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][][]interface{} and returns a `ArrayArrayMapOutput` with that value. AsArrayArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][][]interface{} or a compatible type and returns a `ArrayArrayMapOutput` with that value.
+// AsArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsArrayArrayMapOutput() ArrayArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][][]interface{} {
-		return i.(map[string][][]interface{})
+	return a.ApplyT(func(i interface{}) (map[string][][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]interface{}), nil
 	}).(ArrayArrayMapOutput)
 }
 
@@ -5563,79 +5662,93 @@ func (a AnyOutput) AsIntOutput() IntOutput {
 }
 
 // AsIntPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *int and returns a `IntPtrOutput` with that value. AsIntPtrOutput panics if the value
-// was not the expected type.
+// *int or a compatible type and returns a `IntPtrOutput` with that value.
+// AsIntPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntPtrOutput() IntPtrOutput {
-	return a.ApplyT(func(i interface{}) *int {
-		return i.(*int)
+	return a.ApplyT(func(i interface{}) (*int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*int), nil
 	}).(IntPtrOutput)
 }
 
 // AsIntArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []int or []interface{} and returns a `IntArrayOutput` with that value.
-// AsIntArrayOutput panics if the value was not the expected type or a compatible array.
+// []int or a compatible type and returns a `IntArrayOutput` with that value.
+// AsIntArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]int, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]int, len(array))
-			for i, v := range array {
-				value, ok := v.(int)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type int, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]int), nil
+		return v.([]int), nil
 	}).(IntArrayOutput)
 }
 
 // AsIntMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]int and returns a `IntMapOutput` with that value. AsIntMapOutput panics if the value
-// was not the expected type.
+// map[string]int or a compatible type and returns a `IntMapOutput` with that value.
+// AsIntMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapOutput() IntMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]int {
-		return i.(map[string]int)
+	return a.ApplyT(func(i interface{}) (map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]int), nil
 	}).(IntMapOutput)
 }
 
 // AsIntArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]int and returns a `IntArrayMapOutput` with that value. AsIntArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]int or a compatible type and returns a `IntArrayMapOutput` with that value.
+// AsIntArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayMapOutput() IntArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]int {
-		return i.(map[string][]int)
+	return a.ApplyT(func(i interface{}) (map[string][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]int), nil
 	}).(IntArrayMapOutput)
 }
 
 // AsIntMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]int and returns a `IntMapArrayOutput` with that value. AsIntMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]int or a compatible type and returns a `IntMapArrayOutput` with that value.
+// AsIntMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapArrayOutput() IntMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]int {
-		return i.([]map[string]int)
+	return a.ApplyT(func(i interface{}) ([]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]int), nil
 	}).(IntMapArrayOutput)
 }
 
 // AsIntMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]int and returns a `IntMapMapOutput` with that value. AsIntMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]int or a compatible type and returns a `IntMapMapOutput` with that value.
+// AsIntMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntMapMapOutput() IntMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]int {
-		return i.(map[string]map[string]int)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]int), nil
 	}).(IntMapMapOutput)
 }
 
 // AsIntArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]int and returns a `IntArrayArrayOutput` with that value. AsIntArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]int or a compatible type and returns a `IntArrayArrayOutput` with that value.
+// AsIntArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsIntArrayArrayOutput() IntArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]int {
-		return i.([][]int)
+	return a.ApplyT(func(i interface{}) ([][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]int), nil
 	}).(IntArrayArrayOutput)
 }
 
@@ -5649,79 +5762,93 @@ func (a AnyOutput) AsStringOutput() StringOutput {
 }
 
 // AsStringPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *string and returns a `StringPtrOutput` with that value. AsStringPtrOutput panics if the value
-// was not the expected type.
+// *string or a compatible type and returns a `StringPtrOutput` with that value.
+// AsStringPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringPtrOutput() StringPtrOutput {
-	return a.ApplyT(func(i interface{}) *string {
-		return i.(*string)
+	return a.ApplyT(func(i interface{}) (*string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*string), nil
 	}).(StringPtrOutput)
 }
 
 // AsStringArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []string or []interface{} and returns a `StringArrayOutput` with that value.
-// AsStringArrayOutput panics if the value was not the expected type or a compatible array.
+// []string or a compatible type and returns a `StringArrayOutput` with that value.
+// AsStringArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]string, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]string, len(array))
-			for i, v := range array {
-				value, ok := v.(string)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type string, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]string), nil
+		return v.([]string), nil
 	}).(StringArrayOutput)
 }
 
 // AsStringMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]string and returns a `StringMapOutput` with that value. AsStringMapOutput panics if the value
-// was not the expected type.
+// map[string]string or a compatible type and returns a `StringMapOutput` with that value.
+// AsStringMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapOutput() StringMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]string {
-		return i.(map[string]string)
+	return a.ApplyT(func(i interface{}) (map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]string), nil
 	}).(StringMapOutput)
 }
 
 // AsStringArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]string and returns a `StringArrayMapOutput` with that value. AsStringArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]string or a compatible type and returns a `StringArrayMapOutput` with that value.
+// AsStringArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayMapOutput() StringArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]string {
-		return i.(map[string][]string)
+	return a.ApplyT(func(i interface{}) (map[string][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]string), nil
 	}).(StringArrayMapOutput)
 }
 
 // AsStringMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]string and returns a `StringMapArrayOutput` with that value. AsStringMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]string or a compatible type and returns a `StringMapArrayOutput` with that value.
+// AsStringMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapArrayOutput() StringMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]string {
-		return i.([]map[string]string)
+	return a.ApplyT(func(i interface{}) ([]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]string), nil
 	}).(StringMapArrayOutput)
 }
 
 // AsStringMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]string and returns a `StringMapMapOutput` with that value. AsStringMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]string or a compatible type and returns a `StringMapMapOutput` with that value.
+// AsStringMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringMapMapOutput() StringMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]string {
-		return i.(map[string]map[string]string)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]string), nil
 	}).(StringMapMapOutput)
 }
 
 // AsStringArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]string and returns a `StringArrayArrayOutput` with that value. AsStringArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]string or a compatible type and returns a `StringArrayArrayOutput` with that value.
+// AsStringArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]string {
-		return i.([][]string)
+	return a.ApplyT(func(i interface{}) ([][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]string), nil
 	}).(StringArrayArrayOutput)
 }
 
@@ -5735,79 +5862,93 @@ func (a AnyOutput) AsURNOutput() URNOutput {
 }
 
 // AsURNPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// *URN and returns a `URNPtrOutput` with that value. AsURNPtrOutput panics if the value
-// was not the expected type.
+// *URN or a compatible type and returns a `URNPtrOutput` with that value.
+// AsURNPtrOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNPtrOutput() URNPtrOutput {
-	return a.ApplyT(func(i interface{}) *URN {
-		return i.(*URN)
+	return a.ApplyT(func(i interface{}) (*URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*URN), nil
 	}).(URNPtrOutput)
 }
 
 // AsURNArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []URN or []interface{} and returns a `URNArrayOutput` with that value.
-// AsURNArrayOutput panics if the value was not the expected type or a compatible array.
+// []URN or a compatible type and returns a `URNArrayOutput` with that value.
+// AsURNArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
 	return a.ApplyT(func(i interface{}) ([]URN, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]URN, len(array))
-			for i, v := range array {
-				value, ok := v.(URN)
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type URN, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
 		}
-		return i.([]URN), nil
+		return v.([]URN), nil
 	}).(URNArrayOutput)
 }
 
 // AsURNMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]URN and returns a `URNMapOutput` with that value. AsURNMapOutput panics if the value
-// was not the expected type.
+// map[string]URN or a compatible type and returns a `URNMapOutput` with that value.
+// AsURNMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapOutput() URNMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]URN {
-		return i.(map[string]URN)
+	return a.ApplyT(func(i interface{}) (map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]URN), nil
 	}).(URNMapOutput)
 }
 
 // AsURNArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string][]URN and returns a `URNArrayMapOutput` with that value. AsURNArrayMapOutput panics if the value
-// was not the expected type.
+// map[string][]URN or a compatible type and returns a `URNArrayMapOutput` with that value.
+// AsURNArrayMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayMapOutput() URNArrayMapOutput {
-	return a.ApplyT(func(i interface{}) map[string][]URN {
-		return i.(map[string][]URN)
+	return a.ApplyT(func(i interface{}) (map[string][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]URN), nil
 	}).(URNArrayMapOutput)
 }
 
 // AsURNMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// []map[string]URN and returns a `URNMapArrayOutput` with that value. AsURNMapArrayOutput panics if the value
-// was not the expected type.
+// []map[string]URN or a compatible type and returns a `URNMapArrayOutput` with that value.
+// AsURNMapArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapArrayOutput() URNMapArrayOutput {
-	return a.ApplyT(func(i interface{}) []map[string]URN {
-		return i.([]map[string]URN)
+	return a.ApplyT(func(i interface{}) ([]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]URN), nil
 	}).(URNMapArrayOutput)
 }
 
 // AsURNMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// map[string]map[string]URN and returns a `URNMapMapOutput` with that value. AsURNMapMapOutput panics if the value
-// was not the expected type.
+// map[string]map[string]URN or a compatible type and returns a `URNMapMapOutput` with that value.
+// AsURNMapMapOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNMapMapOutput() URNMapMapOutput {
-	return a.ApplyT(func(i interface{}) map[string]map[string]URN {
-		return i.(map[string]map[string]URN)
+	return a.ApplyT(func(i interface{}) (map[string]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]URN), nil
 	}).(URNMapMapOutput)
 }
 
 // AsURNArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
-// [][]URN and returns a `URNArrayArrayOutput` with that value. AsURNArrayArrayOutput panics if the value
-// was not the expected type.
+// [][]URN or a compatible type and returns a `URNArrayArrayOutput` with that value.
+// AsURNArrayArrayOutput panics if the value was not the expected type or a compatible type.
 func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
-	return a.ApplyT(func(i interface{}) [][]URN {
-		return i.([][]URN)
+	return a.ApplyT(func(i interface{}) ([][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]URN), nil
 	}).(URNArrayArrayOutput)
 }
 

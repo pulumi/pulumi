@@ -213,6 +213,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 	// Augment primitives with array and map types.
 	var builtins []*builtin
 	for _, p := range primitives {
+		p.Strategy = "primitive"
 		name := ""
 		if p.Name != "Input" {
 			builtins = append(builtins, p)
@@ -241,9 +242,6 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			RegisterInput: true,
 
 			InnerElementType: p.Type,
-		}
-		if p.Type != "interface{}" {
-			arrType.Strategy = "array-contravariance"
 		}
 		builtins = append(builtins, arrType)
 		mapType := &builtin{
