@@ -632,6 +632,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		qualifiedName.Project = currentProject.Name.String()
 	}
 
+	fmt.Println("\"" + qualifiedName.Name + "\"")
 	if !tokens.IsName(qualifiedName.Name) {
 		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
 	}
