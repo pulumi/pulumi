@@ -12,11 +12,7 @@ import * as utilities from "./utilities";
  * API Version: 2020-12-01-preview.
  */
 export function listConfigurations(args: ListConfigurationsArgs, opts?: pulumi.InvokeOptions): Promise<ListConfigurationsResult> {
-    if (!opts) {
-        opts = {}
-    }
-
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("myedgeorder::listConfigurations", {
         "configurationFilters": args.configurationFilters,
         "customerSubscriptionDetails": args.customerSubscriptionDetails,
@@ -53,10 +49,14 @@ export interface ListConfigurationsResult {
     readonly value: outputs.ConfigurationResponse[];
 }
 
-export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListConfigurationsResult> {
-    return pulumi.output(args).apply(a => listConfigurations(a, opts))
-}
+/**
+ * The list of configurations.
+ * API Version: 2020-12-01-preview.
+ */
 
+export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListConfigurationsResult> {
+    return pulumi.output(args).apply((a: any) => listConfigurations(a, opts))
+}
 export interface ListConfigurationsOutputArgs {
     /**
      * Holds details about product hierarchy information and filterable property.

@@ -11,11 +11,7 @@ import * as utilities from "./utilities";
  * API Version: 2021-02-01.
  */
 export function listStorageAccountKeys(args: ListStorageAccountKeysArgs, opts?: pulumi.InvokeOptions): Promise<ListStorageAccountKeysResult> {
-    if (!opts) {
-        opts = {}
-    }
-
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::listStorageAccountKeys", {
         "accountName": args.accountName,
         "expand": args.expand,
@@ -48,10 +44,14 @@ export interface ListStorageAccountKeysResult {
     readonly keys: outputs.StorageAccountKeyResponse[];
 }
 
-export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
-    return pulumi.output(args).apply(a => listStorageAccountKeys(a, opts))
-}
+/**
+ * The response from the ListKeys operation.
+ * API Version: 2021-02-01.
+ */
 
+export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
+    return pulumi.output(args).apply((a: any) => listStorageAccountKeys(a, opts))
+}
 export interface ListStorageAccountKeysOutputArgs {
     /**
      * The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.

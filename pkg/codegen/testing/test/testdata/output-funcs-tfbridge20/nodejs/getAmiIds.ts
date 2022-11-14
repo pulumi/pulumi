@@ -12,11 +12,7 @@ import * as utilities from "./utilities";
 /** @deprecated aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds */
 export function getAmiIds(args: GetAmiIdsArgs, opts?: pulumi.InvokeOptions): Promise<GetAmiIdsResult> {
     pulumi.log.warn("getAmiIds is deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds")
-    if (!opts) {
-        opts = {}
-    }
-
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getAmiIds", {
         "executableUsers": args.executableUsers,
         "filters": args.filters,
@@ -75,10 +71,14 @@ export interface GetAmiIdsResult {
     readonly sortAscending?: boolean;
 }
 
-export function getAmiIdsOutput(args: GetAmiIdsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetAmiIdsResult> {
-    return pulumi.output(args).apply(a => getAmiIds(a, opts))
-}
+/**
+ * Taken from pulumi-AWS to regress an issue
+ */
+/** @deprecated aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds */
 
+export function getAmiIdsOutput(args: GetAmiIdsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetAmiIdsResult> {
+    return pulumi.output(args).apply((a: any) => getAmiIds(a, opts))
+}
 /**
  * A collection of arguments for invoking getAmiIds.
  */

@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "outDir": "bin",
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "@/*": ["*"]
+        },
+        "strict": true
+    },
+    "files": [
+        "abs.ts",
+        "absMultiArgs.ts",
+        "absMultiArgsReducedOutput.ts",
+        "absMultiArgsReducedOutputSwapped.ts",
+        "absReducedOutput.ts",
+        "index.ts",
+        "provider.ts",
+        "utilities.ts"
+    ]
+}

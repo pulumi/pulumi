@@ -1138,12 +1138,20 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	fmt.Fprintf(w, "export function %s(", name)
 	if multiArgumentFunction {
 		for _, prop := range properties {
-			if !prop.IsRequired() {
-				fmt.Fprintf(w, "%s?: ", prop.Name)
-			} else {
+			if prop.IsRequired() {
 				fmt.Fprintf(w, "%s: ", prop.Name)
+				fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
+			} else {
+				fmt.Fprintf(w, "%s?: ", prop.Name)
+				// since we already applied the ? to the type, we can simplify
+				// the optional-ness of the type
+				switch propType := prop.Type.(type) {
+				case *schema.OptionalType:
+					fmt.Fprintf(w, "%s, ", mod.typeString(propType.ElementType, false, nil))
+				default:
+					fmt.Fprintf(w, "%s, ", mod.typeString(propType, false, nil))
+				}
 			}
-			fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
 		}
 	} else {
 		fmt.Fprintf(w, "%s", argsig)
@@ -1282,12 +1290,26 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 
 	} else if multiArgumentFunction && !outputPropertiesReduced {
 		fmt.Fprintf(w, "export function %s(", fnOutput)
-		for _, p := range properties {
-			if p.IsRequired() {
-				fmt.Fprintf(w, "%s: %s, ", p.Name, mod.typeString(p.Type, false, nil))
+		for _, prop := range properties {
+			paramDeclaration := ""
+			if prop.IsRequired() {
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				argumentType := mod.typeString(propertyType, true /* input */, nil)
+				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
 			} else {
-				fmt.Fprintf(w, "%s?: %s, ", p.Name, mod.typeString(p.Type, false, nil))
+				// replace optional-ness with input-ness
+				// number? => Input<number>
+				// then we add ? to make it pulumi.Input<number>? because we know it's optional
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				switch propType := prop.Type.(type) {
+				case *schema.OptionalType:
+					propertyType = &schema.InputType{ElementType: propType.ElementType}
+				}
+				argumentType := mod.typeString(propertyType, true /* input */, nil)
+				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
 			}
+
+			fmt.Fprintf(w, "%s, ", paramDeclaration)
 		}
 
 		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", functionReturnType(fun))
@@ -1306,13 +1328,26 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 	} else {
 		// multiArgumentFunction && outputPropertiesReduced
 		fmt.Fprintf(w, "export function %s(", fnOutput)
-		for _, p := range properties {
-			propertyType := &schema.InputType{ElementType: p.Type}
-			if p.IsRequired() {
-				fmt.Fprintf(w, "%s: %s, ", p.Name, mod.typeString(propertyType, true /* input */, nil))
+		for _, prop := range properties {
+			paramDeclaration := ""
+			if prop.IsRequired() {
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				argumentType := mod.typeString(propertyType, true /* input */, nil)
+				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
 			} else {
-				fmt.Fprintf(w, "%s?: %s, ", p.Name, mod.typeString(propertyType, true /* input */, nil))
+				// replace optional-ness with input-ness
+				// number? => Input<number>
+				// then we add ? to make it pulumi.Input<number>? because we know it's optional
+				propertyType := &schema.InputType{ElementType: prop.Type}
+				switch propType := prop.Type.(type) {
+				case *schema.OptionalType:
+					propertyType = &schema.InputType{ElementType: propType.ElementType}
+				}
+				argumentType := mod.typeString(propertyType, true /* input */, nil)
+				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
 			}
+
+			fmt.Fprintf(w, "%s, ", paramDeclaration)
 		}
 
 		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", reducedOutputReturnType)
@@ -1330,9 +1365,8 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 		fmt.Fprint(w, "}\n")
 	}
 
-	info.functionOutputVersionArgsInterfaceName = argTypeName
-
 	if !multiArgumentFunction {
+		info.functionOutputVersionArgsInterfaceName = argTypeName
 		if err := mod.genPlainType(w,
 			argTypeName,
 			fun.Inputs.Comment,
