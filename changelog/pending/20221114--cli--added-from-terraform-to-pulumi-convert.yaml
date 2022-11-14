@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Added "--from=tf" to pulumi convert.
