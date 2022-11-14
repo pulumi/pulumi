@@ -20,7 +20,7 @@ export function absMultiArgsReducedOutput(a: number, b?: number, opts?: pulumi.I
  * Returns the absolute value of a given float.
  * Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
  */
-export function absMultiArgsReducedOutputOutput(a: pulumi.Input<number>, b?: pulumi.Input<number>, opts?: pulumi.InvokeOptions): pulumi.Output<number> {
+export function absMultiArgsReducedOutputOutput(a: pulumi.Input<number>, b?: pulumi.Input<number | undefined>, opts?: pulumi.InvokeOptions): pulumi.Output<number> {
     var args = {
         "a": a,
         "b": b,

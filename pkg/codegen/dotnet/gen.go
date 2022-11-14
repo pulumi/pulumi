@@ -1591,20 +1591,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		for _, prop := range properties {
 			var paramDeclaration string
 			argumentName := LowerCamelCase(prop.Name)
+			propertyType := &schema.InputType{ElementType: prop.Type}
+			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 			if prop.IsRequired() {
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
 			} else {
-				// replace optional-ness with input-ness
-				// double? => Input<double>
-				// then we add ? to make it Input<double>? because we know it's optional
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				switch propType := prop.Type.(type) {
-				case *schema.OptionalType:
-					propertyType = &schema.InputType{ElementType: propType.ElementType}
-				}
-				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
 			}
 
@@ -1632,20 +1623,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		for _, prop := range properties {
 			var paramDeclaration string
 			argumentName := LowerCamelCase(prop.Name)
+			propertyType := &schema.InputType{ElementType: prop.Type}
+			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 			if prop.IsRequired() {
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
 			} else {
-				// replace optional-ness with input-ness
-				// double? => Input<double>
-				// then we add ? to make it Input<double>? because we know it's optional
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				switch propType := prop.Type.(type) {
-				case *schema.OptionalType:
-					propertyType = &schema.InputType{ElementType: propType.ElementType}
-				}
-				argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
 				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
 			}
 

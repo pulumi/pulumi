@@ -1292,20 +1292,11 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 		fmt.Fprintf(w, "export function %s(", fnOutput)
 		for _, prop := range properties {
 			paramDeclaration := ""
+			propertyType := &schema.InputType{ElementType: prop.Type}
+			argumentType := mod.typeString(propertyType, true /* input */, nil)
 			if prop.IsRequired() {
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				argumentType := mod.typeString(propertyType, true /* input */, nil)
 				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
 			} else {
-				// replace optional-ness with input-ness
-				// number? => Input<number>
-				// then we add ? to make it pulumi.Input<number>? because we know it's optional
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				switch propType := prop.Type.(type) {
-				case *schema.OptionalType:
-					propertyType = &schema.InputType{ElementType: propType.ElementType}
-				}
-				argumentType := mod.typeString(propertyType, true /* input */, nil)
 				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
 			}
 
@@ -1330,20 +1321,11 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 		fmt.Fprintf(w, "export function %s(", fnOutput)
 		for _, prop := range properties {
 			paramDeclaration := ""
+			propertyType := &schema.InputType{ElementType: prop.Type}
+			argumentType := mod.typeString(propertyType, true /* input */, nil)
 			if prop.IsRequired() {
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				argumentType := mod.typeString(propertyType, true /* input */, nil)
 				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
 			} else {
-				// replace optional-ness with input-ness
-				// number? => Input<number>
-				// then we add ? to make it pulumi.Input<number>? because we know it's optional
-				propertyType := &schema.InputType{ElementType: prop.Type}
-				switch propType := prop.Type.(type) {
-				case *schema.OptionalType:
-					propertyType = &schema.InputType{ElementType: propType.ElementType}
-				}
-				argumentType := mod.typeString(propertyType, true /* input */, nil)
 				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
 			}
 

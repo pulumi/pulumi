@@ -28,7 +28,7 @@ namespace Pulumi.Std
         /// Returns the absolute value of a given float. 
         /// Example: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.
         /// </summary>
-        public static Output<AbsMultiArgsResult> Invoke(Input<double> a, Input<double>? b = null, InvokeOptions? invokeOptions = null)
+        public static Output<AbsMultiArgsResult> Invoke(Input<double> a, Input<double?>? b = null, InvokeOptions? invokeOptions = null)
         {
             var builder = ImmutableDictionary.CreateBuilder<string, object?>();
             builder["a"] = a;
