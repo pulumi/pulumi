@@ -9,11 +9,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithDictParam(args?: FuncWithDictParamArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithDictParamResult> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithDictParam", {
         "a": args.a,
         "b": args.b,

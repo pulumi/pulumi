@@ -12,11 +12,8 @@ import * as utilities from "./utilities";
  * API Version: 2020-12-01-preview.
  */
 export function listConfigurations(args: ListConfigurationsArgs, opts?: pulumi.InvokeOptions): Promise<ListConfigurationsResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("myedgeorder::listConfigurations", {
         "configurationFilters": args.configurationFilters,
         "customerSubscriptionDetails": args.customerSubscriptionDetails,

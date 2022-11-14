@@ -8,11 +8,8 @@ import * as utilities from "./utilities";
  * n/a
  */
 export function funcWithEmptyOutputs(args: FuncWithEmptyOutputsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithEmptyOutputsResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithEmptyOutputs", {
         "name": args.name,
     }, opts);

@@ -8,11 +8,8 @@ import * as utilities from "./utilities";
  * Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
  */
 export function getClientConfig(opts?: pulumi.InvokeOptions): Promise<GetClientConfigResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getClientConfig", {
     }, opts);
 }

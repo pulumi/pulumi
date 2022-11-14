@@ -9,11 +9,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithListParam(args?: FuncWithListParamArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithListParamResult> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithListParam", {
         "a": args.a,
         "b": args.b,
