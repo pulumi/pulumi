@@ -24,7 +24,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -176,7 +175,10 @@ func CopyDir(src, dst string) error {
 // AssertHTTPResultWithRetry attempts to assert that an HTTP endpoint exists
 // and evaluate its response.
 func AssertHTTPResultWithRetry(
-	t *testing.T,
+	t interface {
+		Logf(string, ...interface{})
+		assert.TestingT // Errorf(string, ...interface{})
+	},
 	output interface{},
 	headers map[string]string,
 	maxWait time.Duration,
@@ -190,12 +192,14 @@ func AssertHTTPResultWithRetry(
 		hostname = fmt.Sprintf("http://%s", hostname)
 	}
 	var err error
-	var resp *http.Response
+	var body string
 	startTime := time.Now()
 	count, sleep := 0, 0
-	for true {
+	// break the loop with err != nil to signal a failure, err == nil to signal success
+	for {
 		now := time.Now()
-		req, err := http.NewRequest("GET", hostname, nil)
+		var req *http.Request
+		req, err = http.NewRequest("GET", hostname, nil)
 		if !assert.NoError(t, err, "error reading request: %v", err) {
 			return false
 		}
@@ -211,15 +215,23 @@ func AssertHTTPResultWithRetry(
 		}
 
 		client := &http.Client{Timeout: time.Second * 10}
+		var resp *http.Response
 		resp, err = client.Do(req)
 
-		if err == nil && resp.StatusCode == 200 {
-			break
+		if err == nil {
+			// Always try to read the body and close it, to help with connection reuse
+			b, err := ioutil.ReadAll(resp.Body)
+			if !assert.NoError(t, err) {
+				return false
+			}
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				body = string(b)
+				break
+			}
+			t.Logf("unexpected HTTP response status %s", resp.Status)
 		}
-		if now.Sub(startTime) >= maxWait {
-			t.Logf("Timeout after %v. Unable to http.get %v successfully.", maxWait, hostname)
-			break
-		}
+
 		count++
 		// delay 10s, 20s, then 30s and stay at 30s
 		if sleep > 30 {
@@ -227,19 +239,22 @@ func AssertHTTPResultWithRetry(
 		} else {
 			sleep += 10
 		}
-		time.Sleep(time.Duration(sleep) * time.Second)
+
+		// If sleeping would take us over the budgeted time, exit now
+		if now.Sub(startTime)+(time.Duration(sleep)*time.Second) >= maxWait {
+			err = fmt.Errorf("timeout after %v. Unable to http.get %v successfully", maxWait, hostname)
+			break
+		}
+
 		t.Logf("Http Error: %v\n", err)
 		t.Logf("  Retry: %v, elapsed wait: %v, max wait %v\n", count, now.Sub(startTime), maxWait)
+
+		time.Sleep(time.Duration(sleep) * time.Second)
 	}
 	if !assert.NoError(t, err) {
 		return false
 	}
-	// Read the body
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if !assert.NoError(t, err) {
-		return false
-	}
+
 	// Verify it matches expectations
-	return check(string(body))
+	return check(body)
 }
