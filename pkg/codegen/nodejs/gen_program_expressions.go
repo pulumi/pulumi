@@ -336,17 +336,27 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 		items[propertyKey] = item.Value
 	}
 
+	hasMoreArgs := func(index int) bool {
+		for _, arg := range multiArguments[index:] {
+			if _, ok := items[arg]; ok {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	for index, arg := range multiArguments {
 		value, ok := items[arg]
 		if ok {
 			g.Fgenf(w, "%.v", value)
-		} else {
+		} else if hasMoreArgs(index) {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
 			g.Fgen(w, "undefined")
 		}
 
-		if index < len(multiArguments)-1 {
+		if hasMoreArgs(index + 1) {
 			g.Fgen(w, ", ")
 		}
 	}

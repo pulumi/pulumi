@@ -407,7 +407,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
-							expr.Signature.MultiArgumentInputs)
+							funcExpr.Signature.MultiArgumentInputs)
 					})
 				default:
 					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
@@ -419,7 +419,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName,
-							expr.Signature.MultiArgumentInputs)
+							funcExpr.Signature.MultiArgumentInputs)
 					})
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
@@ -718,17 +718,27 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 		items[propertyKey] = item.Value
 	}
 
+	hasMoreArgs := func(index int) bool {
+		for _, arg := range multiArguments[index:] {
+			if _, ok := items[arg]; ok {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	for index, arg := range multiArguments {
 		value, ok := items[arg]
 		if ok {
 			g.Fgenf(w, "%.v", value)
-		} else {
+		} else if hasMoreArgs(index) {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
 			g.Fgen(w, "null")
 		}
 
-		if index < len(multiArguments)-1 {
+		if hasMoreArgs(index + 1) {
 			g.Fgen(w, ", ")
 		}
 	}

@@ -48,6 +48,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		mockProvider("eks", "0.40.0"),
 		mockProvider("aws-native", "0.13.0"),
 		mockProvider("docker", "3.1.0"),
+		mockProvider("std", "1.0.0"),
 		mockProvider("awsx", "1.0.0-beta.5"),
 		mockProvider("kubernetes", "3.0.0"),
 		mockProvider("aws", "4.37.1"),
