@@ -2182,9 +2182,25 @@ func genProjectFile(pkg *schema.Package,
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
 	}
+
+	// if we don't have a package reference to Pulumi SDK from nuget
+	// we need to add it, unless we are referencing a local Pulumi SDK project via a project reference
 	if _, ok := packageReferences["Pulumi"]; !ok {
-		packageReferences["Pulumi"] = "[3.23.0,4)"
+		referencedLocalPulumiProject := false
+		for _, projectReference := range projectReferences {
+			if strings.HasSuffix(projectReference, "Pulumi.csproj") {
+				referencedLocalPulumiProject = true
+				break
+			}
+		}
+
+		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
+		// which we usually do when testing schemas locally
+		if !referencedLocalPulumiProject {
+			packageReferences["Pulumi"] = "[3.23.0,4)"
+		}
 	}
+
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{
 		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
