@@ -150,7 +150,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 
 	// annotate the input args on the expression with the input type of the function
 	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
-		if len(argsObject.Items) > 0 && fn.Inputs != nil {
+		if fn.Inputs != nil {
 			annotateObjectProperties(argsObject.Type(), fn.Inputs)
 		}
 	}
