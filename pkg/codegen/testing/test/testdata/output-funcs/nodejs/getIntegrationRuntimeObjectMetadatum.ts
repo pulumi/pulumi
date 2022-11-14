@@ -11,11 +11,8 @@ import * as utilities from "./utilities";
  * API Version: 2018-06-01.
  */
 export function getIntegrationRuntimeObjectMetadatum(args: GetIntegrationRuntimeObjectMetadatumArgs, opts?: pulumi.InvokeOptions): Promise<GetIntegrationRuntimeObjectMetadatumResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getIntegrationRuntimeObjectMetadatum", {
         "factoryName": args.factoryName,
         "integrationRuntimeName": args.integrationRuntimeName,

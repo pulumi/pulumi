@@ -11,11 +11,8 @@ import * as utilities from "./utilities";
  * API Version: 2020-11-01.
  */
 export function getBastionShareableLink(args: GetBastionShareableLinkArgs, opts?: pulumi.InvokeOptions): Promise<GetBastionShareableLinkResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getBastionShareableLink", {
         "bastionHostName": args.bastionHostName,
         "resourceGroupName": args.resourceGroupName,

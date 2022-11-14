@@ -1110,11 +1110,8 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	}
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "    if (!opts) {\n")
-	fmt.Fprintf(w, "        opts = {}\n")
-	fmt.Fprintf(w, "    }\n")
 	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n")
+	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.invoke(\"%s\", {\n", fun.Token)

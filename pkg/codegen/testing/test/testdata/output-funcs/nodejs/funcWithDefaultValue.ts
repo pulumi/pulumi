@@ -8,11 +8,8 @@ import * as utilities from "./utilities";
  * Check codegen of functions with default values.
  */
 export function funcWithDefaultValue(args: FuncWithDefaultValueArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithDefaultValueResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithDefaultValue", {
         "a": args.a,
         "b": args.b,

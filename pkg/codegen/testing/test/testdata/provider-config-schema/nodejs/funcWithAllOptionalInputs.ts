@@ -9,11 +9,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithAllOptionalInputsResult> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("configstation::funcWithAllOptionalInputs", {
         "a": args.a,
         "b": args.b,
