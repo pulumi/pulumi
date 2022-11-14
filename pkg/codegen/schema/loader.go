@@ -182,14 +182,31 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 }
 
 func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
+	var ref PackageReference
+	var err error
 	if refLoader, ok := loader.(ReferenceLoader); ok {
-		return refLoader.LoadPackageReference(pkg, version)
+		ref, err = refLoader.LoadPackageReference(pkg, version)
+	} else {
+		p, pErr := loader.LoadPackage(pkg, version)
+		err = pErr
+		if err == nil {
+			ref = p.Reference()
+		}
 	}
-	p, err := loader.LoadPackage(pkg, version)
+
 	if err != nil {
 		return nil, err
 	}
-	return p.Reference(), nil
+
+	if pkg != ref.Name() || version != nil && ref.Version() != nil && !ref.Version().Equals(*version) {
+		if l, ok := loader.(*pluginLoader); ok {
+			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", pkg, version,
+				l.entries, ref.Name(), ref.Version())
+		}
+		return nil, fmt.Errorf("loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), pkg, version)
+	}
+
+	return ref, nil
 }
 
 func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {

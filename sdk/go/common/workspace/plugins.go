@@ -672,7 +672,11 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	info.LastUsedTime = tinfo.AccessTime()
 
 	if info.Kind == ResourcePlugin {
-		info.SchemaPath = filepath.Join(filepath.Dir(path), "schema-"+info.Name+".json")
+		var v string
+		if info.Version != nil {
+			v = "-" + info.Version.String() + "-"
+		}
+		info.SchemaPath = filepath.Join(filepath.Dir(path), "schema-"+info.Name+v+".json")
 		info.SchemaTime = tinfo.ModTime()
 	}
 
