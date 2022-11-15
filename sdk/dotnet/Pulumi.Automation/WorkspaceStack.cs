@@ -484,6 +484,9 @@ namespace Pulumi.Automation
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
+                if (options.Remove is true)
+                    args.Add("--remove");
+
                 ApplyUpdateOptions(options, args);
             }
 

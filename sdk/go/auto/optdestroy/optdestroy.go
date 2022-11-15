@@ -52,6 +52,13 @@ func TargetDependents() Option {
 	})
 }
 
+// Remove allows delete a stack after all resources in the stack have been deleted
+func Remove() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Remove = true
+	})
+}
+
 // ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
@@ -112,6 +119,8 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Allows remove a stack after all resources in the stack have been deleted
+	Remove bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr

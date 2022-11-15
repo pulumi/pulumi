@@ -500,6 +500,7 @@ class Stack:
         message: Optional[str] = None,
         target: Optional[List[str]] = None,
         target_dependents: Optional[bool] = None,
+        remove: Optional[bool] = None,
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
@@ -518,6 +519,7 @@ class Stack:
         :param message: Message (optional) to associate with the destroy operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param remove: Remove the stack after all resources in the stack have been deleted
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
@@ -738,6 +740,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     policy_packs = kwargs.get("policy_packs")
     policy_pack_configs = kwargs.get("policy_pack_configs")
     target_dependents = kwargs.get("target_dependents")
+    remove = kwargs.get("remove")
     parallel = kwargs.get("parallel")
     color = kwargs.get("color")
     log_flow = kwargs.get("log_flow")
@@ -766,6 +769,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
             extra_args.extend(["--policy-pack-config", p])
     if target_dependents:
         extra_args.append("--target-dependents")
+    if remove:
+        extra_args.append("--remove")
     if parallel:
         extra_args.extend(["--parallel", str(parallel)])
     if color:

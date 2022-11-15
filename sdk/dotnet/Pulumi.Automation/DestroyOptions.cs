@@ -9,6 +9,7 @@ namespace Pulumi.Automation
     {
         public bool? TargetDependents { get; set; }
 
+        public bool? Remove { get; set; }
         /// <summary>
         /// Show config secrets when they appear.
         /// </summary>

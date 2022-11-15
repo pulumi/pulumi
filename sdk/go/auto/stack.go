@@ -542,6 +542,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if destroyOpts.TargetDependents {
 		args = append(args, "--target-dependents")
 	}
+	if destroyOpts.Remove {
+		args = append(args, "--remove")
+	}
 	if destroyOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
 	}
