@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1503,6 +1504,9 @@ func getPluginPath(info *PluginInfo) string {
 	return filepath.Join(info.Path, info.Spec().File()) + exts[0]
 }
 
+var ignoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
+	"Discover additional plugins by examining the $PATH")
+
 // getPluginInfoAndPath searches for a compatible plugin kind, name, and version and returns either:
 //   - if found as an ambient plugin, nil and the path to the executable
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
@@ -1570,8 +1574,7 @@ func getPluginInfoAndPath(
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundled
+	includeAmbient := !(ignoreAmbientPlugins.Value()) || isBundled
 	if includeAmbient {
 		filename = (&PluginSpec{Kind: kind, Name: name}).File()
 		if path, err := exec.LookPath(filename); err == nil {

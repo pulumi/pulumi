@@ -29,9 +29,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2 "github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
-const ExportTargetDir = "PULUMI_CODEGEN_REPORT_DIR"
+var ExportTargetDir = env.String("CODEGEN_REPORT_DIR",
+	"The directory to generate a codegen report in")
 
 type GenerateProgramFn func(*hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
 
@@ -205,7 +207,7 @@ func (r *reporter) Close() error {
 func (r *reporter) DefaultExport() error {
 	r.m.Lock()
 	defer r.m.Unlock()
-	dir, ok := os.LookupEnv(ExportTargetDir)
+	dir, ok := ExportTargetDir.Underlying()
 	if !ok || r.reported {
 		return nil
 	}
@@ -215,7 +217,7 @@ func (r *reporter) DefaultExport() error {
 
 func (r *reporter) defaultExport(dir string) error {
 	if dir == "" {
-		err := fmt.Errorf("%q set to the empty string", ExportTargetDir)
+		err := fmt.Errorf("%q set to the empty string", ExportTargetDir.Var().Name())
 		fmt.Fprintln(os.Stderr, err.Error())
 		return err
 	}
