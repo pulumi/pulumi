@@ -1,0 +1,3 @@
+name: esm-js-with-package-json-in-parent-dir
+runtime: nodejs
+description: Use ECMAScript modules for a plain JS program.

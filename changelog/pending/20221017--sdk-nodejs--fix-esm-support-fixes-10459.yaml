@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: "Fixes lookup of closest package.json for ESM support - fixes #10459"

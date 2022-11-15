@@ -19,6 +19,7 @@ import * as path from "path";
 import * as tsnode from "ts-node";
 import * as ini from "ini";
 import * as semver from "semver";
+import { packageDirectorySync } from "pkg-dir";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as stack from "../../runtime/stack";
@@ -43,13 +44,26 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(mod.nodeJSProcessExitedAfterLoggingUserActionableMessage);
 }
 
-function projectRootFromProgramPath(program: string): string {
-    const stat = fs.lstatSync(program);
+function pulumiProjectRootFromProgramPath(programPath: string): string {
+    const stat = fs.lstatSync(programPath);
     if (stat.isDirectory()) {
-        return program;
+        return programPath;
     } else {
-        return path.dirname(program);
+        return path.dirname(programPath);
     }
+}
+
+function npmPackageRootFromProgramPath(programPath: string): string {
+    const programDirectory = path.dirname(programPath);
+
+    const packageDirectory = packageDirectorySync({
+        cwd: programDirectory,
+    });
+    if (packageDirectory === undefined) {
+        log.warn("Could not find a package.json file for the program. Using the pulumi program directory as the project root.");
+        return programDirectory;
+    }
+    return packageDirectory;
 }
 
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
@@ -122,7 +136,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     //
     // The first step of this is trying to slurp up a package.json for this program, if
     // one exists.
-    const projectRoot = projectRootFromProgramPath(program);
+    const projectRoot = pulumiProjectRootFromProgramPath(program);
     const packageObject = packageObjectFromProjectRoot(projectRoot);
 
     console.error("Here's what we think went wrong:");
@@ -336,8 +350,8 @@ ${defaultMessage}`);
         const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
 
         try {
-            const projectRoot = projectRootFromProgramPath(program);
-            const packageObject = packageObjectFromProjectRoot(projectRoot);
+            const npmPackageRoot = npmPackageRootFromProgramPath(program);
+            const packageObject = packageObjectFromProjectRoot(npmPackageRoot);
 
             let programExport: any;
 
@@ -376,7 +390,7 @@ ${defaultMessage}`);
             };
 
             // Check compatible engines before running the program:
-            const npmRc = npmRcFromProjectRoot(projectRoot);
+            const npmRc = npmRcFromProjectRoot(npmPackageRoot);
             if (npmRc["engine-strict"] && packageObject.engines && packageObject.engines.node) {
                 // found:
                 //   - { engines: { node: "<version>" } } in package.json
@@ -387,7 +401,7 @@ ${defaultMessage}`);
                 const currentNodeVersion = process.versions.node;
                 if (!semver.satisfies(currentNodeVersion, requiredNodeVersion)) {
                     const errorMessage = [
-                        `Your current Node version is incompatible to run ${projectRoot}`,
+                        `Your current Node version is incompatible to run ${npmPackageRoot}`,
                         `Expected version: ${requiredNodeVersion} as found in package.json > engines > node`,
                         `Actual Node version: ${currentNodeVersion}`,
                         `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
