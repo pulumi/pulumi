@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: adds option to have resource name in the node graph instead of full urns
