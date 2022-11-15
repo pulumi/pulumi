@@ -347,21 +347,26 @@ func chooseStack(ctx context.Context,
 	}
 	sort.Strings(options)
 
+	// If a stack is already selected, make that the default.
+	var defaultOption string
+	currStack, currErr := state.CurrentStack(ctx, b)
+	contract.IgnoreError(currErr)
+	if currStack != nil {
+		defaultOption = currStack.Ref().String()
+	}
+
 	// If we are offering to create a new stack, add that to the end of the list.
 	const newOption = "<create a new stack>"
 	if offerNew {
 		options = append(options, newOption)
+		// If we're offering the option to make a new stack AND we don't have a default current stack then
+		// make the new option the default
+		if defaultOption == "" {
+			defaultOption = newOption
+		}
 	} else if len(options) == 0 {
 		// If no options are available, we can't offer a choice!
 		return nil, errors.New("this command requires a stack, but there are none")
-	}
-
-	// If a stack is already selected, make that the default.
-	var current string
-	currStack, currErr := state.CurrentStack(ctx, b)
-	contract.IgnoreError(currErr)
-	if currStack != nil {
-		current = currStack.Ref().String()
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -378,7 +383,7 @@ func chooseStack(ctx context.Context,
 	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
-		Default: current,
+		Default: defaultOption,
 	}, &option, surveyIcons(opts.Color)); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
