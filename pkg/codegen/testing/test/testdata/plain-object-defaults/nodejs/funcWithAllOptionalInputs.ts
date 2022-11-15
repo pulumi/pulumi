@@ -11,11 +11,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithAllOptionalInputsResult> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("example::funcWithAllOptionalInputs", {
         "a": args.a ? inputs.helmReleaseSettingsProvideDefaults(args.a) : undefined,
         "b": args.b,

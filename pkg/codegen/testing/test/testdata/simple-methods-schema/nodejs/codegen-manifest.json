@@ -10,6 +10,9 @@
     "tsconfig.json",
     "types/index.ts",
     "types/input.ts",
+    "types/nested/index.ts",
+    "types/nested/input.ts",
+    "types/nested/output.ts",
     "types/output.ts",
     "utilities.ts"
   ]

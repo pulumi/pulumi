@@ -19,7 +19,6 @@ package pulumi
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 )
 
@@ -207,36 +206,26 @@ func getResolvedValue(input Input) (reflect.Value, bool) {
 }
 
 {{range .Builtins}}
-{{ if eq .Strategy "array-contravariance" }}
-// As{{.Name}}Output asserts that the type of the AnyOutput's underlying interface{} value is
-// {{.ElementType}} or []interface{} and returns a `{{.Name}}Output` with that value.
-// As{{.Name}}Output panics if the value was not the expected type or a compatible array.
-func (a AnyOutput) As{{.Name}}Output() {{.Name}}Output {
-	return a.ApplyT(func(i interface{}) ({{.ElementType}}, error) {
-		if array, ok := i.([]interface{}); ok {
-			if len(array) == 0 {
-				return nil, nil
-			}
-			out := make([]{{.InnerElementType}}, len(array))
-			for i, v := range array {
-				value, ok := v.({{.InnerElementType}})
-				if !ok {
-					return nil, fmt.Errorf("[%d]: expected value of type {{.InnerElementType}}, got %T", i, v)
-				}
-				out[i] = value
-			}
-			return out, nil
-		}
-		return i.({{.ElementType}}), nil
-	}).({{.Name}}Output)
-}
-{{else}}
+{{ if eq .Strategy "primitive" }}
 // As{{.Name}}Output asserts that the type of the AnyOutput's underlying interface{} value is
 // {{.ElementType}} and returns a `{{.Name}}Output` with that value. As{{.Name}}Output panics if the value
 // was not the expected type.
 func (a AnyOutput) As{{.Name}}Output() {{.Name}}Output {
 	return a.ApplyT(func(i interface{}) {{.ElementType}} {
 		return i.({{.ElementType}})
+	}).({{.Name}}Output)
+}
+{{else}}
+// As{{.Name}}Output asserts that the type of the AnyOutput's underlying interface{} value is
+// {{.ElementType}} or a compatible type and returns a `{{.Name}}Output` with that value.
+// As{{.Name}}Output panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) As{{.Name}}Output() {{.Name}}Output {
+	return a.ApplyT(func(i interface{}) ({{.ElementType}}, error) {
+        v, err := coerceTypeConversion(i, reflect.TypeOf((*{{.ElementType}})(nil)).Elem())
+        if err != nil {
+           return nil, err
+        }
+        return v.({{.ElementType}}), nil
 	}).({{.Name}}Output)
 }
 {{end}}

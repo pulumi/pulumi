@@ -4,6 +4,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
+import * as utilities from "../utilities";
 
-export namespace nested {
-}
+export * as nested from "./nested/output";
