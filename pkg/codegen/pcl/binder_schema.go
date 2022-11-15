@@ -237,7 +237,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	contract.Assert(len(diags) == 0)
 
 	for _, name := range packageNames.SortedValues() {
-		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" {
+		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
 			continue
 		}
 

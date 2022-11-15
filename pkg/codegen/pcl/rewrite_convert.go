@@ -98,13 +98,19 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		}
 		for i := range x.Items {
 			item := &x.Items[i]
+			if item.Key.Type() == model.DynamicType {
+				// We don't know the type of this expression, so we can't correct the
+				// type.
+				continue
+			}
 
 			key, ediags := item.Key.Evaluate(&hcl.EvalContext{}) // empty context, we need a constant string
 			*diags = diags.Extend(ediags)
 
-			traverser := hcl.TraverseIndex{Key: key}
-
-			valueType, tdiags := to.Traverse(traverser)
+			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
+				Key:      key,
+				SrcRange: item.Key.SyntaxNode().Range(),
+			})
 			*diags = diags.Extend(tdiags)
 
 			var valueChanged bool
@@ -113,12 +119,20 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			typecheck = typecheck || valueChanged
 		}
 	case *model.TupleConsExpression:
-		for i := range x.Expressions {
-			valueType, tdiags := to.Traverse(hcl.TraverseIndex{Key: cty.NumberIntVal(int64(i))})
+		for i, expr := range x.Expressions {
+			if expr.Type() == model.DynamicType {
+				// We don't know the type of this expression, so we can't correct the
+				// type.
+				continue
+			}
+			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
+				Key:      cty.NumberIntVal(int64(i)),
+				SrcRange: x.Syntax.Range(),
+			})
 			*diags = diags.Extend(tdiags)
 
 			var exprChanged bool
-			x.Expressions[i], exprChanged = rewriteConversions(x.Expressions[i], valueType.(model.Type), diags)
+			x.Expressions[i], exprChanged = rewriteConversions(expr, valueType.(model.Type), diags)
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:

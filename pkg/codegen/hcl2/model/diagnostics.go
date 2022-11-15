@@ -25,6 +25,10 @@ func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
 	return diagf(hcl.DiagError, subject, f, args...)
 }
 
+func warnf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+	return diagf(hcl.DiagWarning, subject, f, args...)
+}
+
 func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
@@ -111,8 +115,12 @@ func unsupportedCollectionType(collectionType Type, iteratorRange hcl.Range) *hc
 	return errorf(iteratorRange, "cannot iterate over a value of type %v", collectionType)
 }
 
-func undefinedVariable(variableName string, variableRange hcl.Range) *hcl.Diagnostic {
-	return errorf(variableRange, fmt.Sprintf("undefined variable %v", variableName))
+func undefinedVariable(variableName string, variableRange hcl.Range, warn bool) *hcl.Diagnostic {
+	f := errorf
+	if warn {
+		f = warnf
+	}
+	return f(variableRange, "undefined variable %v", variableName)
 }
 
 func internalError(rng hcl.Range, fmt string, args ...interface{}) *hcl.Diagnostic {

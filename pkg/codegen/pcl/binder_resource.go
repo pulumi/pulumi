@@ -361,24 +361,29 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	}
 
 	// Typecheck the attributes.
-	if objectType, ok := node.InputType.(*model.ObjectType); ok && !b.options.skipResourceTypecheck {
+	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+		diag := func(d *hcl.Diagnostic) {
+			if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
+				d.Severity = hcl.DiagWarning
+			}
+			diagnostics = append(diagnostics, d)
+		}
 		attrNames := codegen.StringSet{}
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
 
 			if typ, ok := objectType.Properties[attr.Name]; ok {
 				if !typ.ConversionFrom(attr.Value.Type()).Exists() {
-					diagnostics = append(diagnostics, model.ExprNotConvertible(typ, attr.Value))
+					diag(model.ExprNotConvertible(typ, attr.Value))
 				}
 			} else {
-				diagnostics = append(diagnostics, unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
+				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
 			}
 		}
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
 			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
-				diagnostics = append(diagnostics,
-					missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
+				diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
 			}
 		}
 	}

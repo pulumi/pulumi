@@ -103,9 +103,8 @@ func bindTraversalParts(receiver Traversable, traversal hcl.Traversal,
 		// OK
 	default:
 		// TODO(pdg): improve this diagnostic
-		if !allowMissingVariables {
-			diagnostics = append(diagnostics, undefinedVariable("", traversal.SourceRange()))
-		}
+		diagnostics = append(diagnostics, undefinedVariable("",
+			traversal.SourceRange(), allowMissingVariables))
 	}
 
 	return parts, diagnostics

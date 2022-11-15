@@ -215,6 +215,26 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#10834]
 	},
+	{
+		Directory:   "traverse-union-repro",
+		Description: `Handling the error "cannot traverse value of type union(...)"`,
+		BindOptions: []pcl.BindOption{
+			pcl.SkipResourceTypechecking,
+			pcl.AllowMissingVariables,
+			pcl.AllowMissingProperties,
+		},
+		// The example is known to be invalid. Specifically it hands a
+		// `[aws_subnet.test1.id]` to a `string` attribute, where `aws_subnet` is not in
+		// scope.
+		//
+		// The example is invalid in two ways:
+		// 1. `aws_subnet` is a missing variable.
+		// 2. `[...]` is a tuple, which can never be a string.
+		//
+		// Even though the generated code will not type check, it should still be
+		// directionally correct.
+		SkipCompile: allProgLanguages,
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
@@ -415,17 +435,21 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			opts := []pcl.BindOption{
-				pcl.PluginHost(utils.NewHost(testdataPath)),
-			}
-			opts = append(opts, tt.BindOptions...)
+			hclFiles := map[string]*hcl.File{
+				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes}}
+			opts := append(tt.BindOptions, pcl.PluginHost(utils.NewHost(testdataPath)))
 
 			program, diags, err := pcl.BindProgram(parser.Files, opts...)
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
+			bindDiags := new(bytes.Buffer)
+			if len(diags) > 0 {
+				require.NoError(t, hcl.NewDiagnosticTextWriter(bindDiags, hclFiles, 80, false).WriteDiagnostics(diags))
+				if diags.HasErrors() {
+					t.Fatalf("failed to bind program:\n%s", bindDiags)
+				}
+				t.Logf("bind diags:\n%s", bindDiags)
 			}
 			var files map[string][]byte
 			// generate a full project and check expected package versions
@@ -455,7 +479,12 @@ func TestProgramCodegen(
 				diags = tmpDiags
 			}
 			if diags.HasErrors() {
-				t.Fatalf("failed to generate program: %v", diags)
+				buf := new(bytes.Buffer)
+
+				err := hcl.NewDiagnosticTextWriter(buf, hclFiles, 80, false).WriteDiagnostics(diags)
+				require.NoError(t, err, "Failed to write diag")
+
+				t.Fatalf("failed to generate program:\n%s", buf)
 			}
 
 			if pulumiAccept {
