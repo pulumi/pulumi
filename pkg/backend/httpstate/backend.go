@@ -1166,7 +1166,7 @@ func (b *cloudBackend) runEngineAction(
 	case apitype.PreviewUpdate:
 		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.ResourceImportUpdate:
 		_, changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:

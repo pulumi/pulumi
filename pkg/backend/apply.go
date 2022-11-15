@@ -75,6 +75,7 @@ type response string
 
 const (
 	yes     response = "yes"
+	yesPlan response = "[experimental] yes, using Update Plans (https://pulumi.com/updateplans)"
 	no      response = "no"
 	details response = "details"
 )
@@ -133,14 +134,14 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
+	res, plan = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
 	close(eventsChannel)
 	return plan, changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) result.Result {
+	events []engine.Event, plan *deploy.Plan, opts UpdateOptions) (result.Result, *deploy.Plan) {
 	for {
 		var response string
 
@@ -151,6 +152,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		})
 
 		choices := []string{string(yes), string(no)}
+
+		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
+		// If we're in experimental mode we don't add this because "yes" will also use the plan
+		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.Experimental {
+			choices = append([]string{string(yesPlan)}, choices...)
+		}
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
@@ -179,16 +186,23 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, surveyIcons); err != nil {
-			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err))
+			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)), nil
 		}
 
 		if response == string(no) {
 			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
-			return result.Bail()
+			return result.Bail(), nil
 		}
 
 		if response == string(yes) {
-			return nil
+			// If we're in experimental mode always use the plan
+			if opts.Engine.Experimental {
+				return nil, plan
+			}
+			return nil, nil
+		}
+		if response == string(yesPlan) {
+			return nil, plan
 		}
 
 		if response == string(details) {
@@ -219,11 +233,11 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			return changes, res
 		}
 
-		// If we had an original plan use it, else if experimental use the newly generated plan (might be nil if we've turned
-		// plan generation off)
+		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
+		// newly generated plan
 		if originalPlan != nil {
 			op.Opts.Engine.Plan = originalPlan
-		} else if op.Opts.Engine.Experimental {
+		} else if plan != nil {
 			op.Opts.Engine.Plan = plan
 		} else {
 			op.Opts.Engine.Plan = nil
