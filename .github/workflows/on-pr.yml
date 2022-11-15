@@ -12,9 +12,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The jobs in this workflow are only run on branches. The `on-community-pr.yml` job provides
+# commands for running workflows from forks.
+
 jobs:
   changelog-comment:
     name: changelog preview
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       contents: read
       pull-requests: write
@@ -28,6 +32,7 @@ jobs:
 
   info:
     name: info
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     uses: ./.github/workflows/ci-info.yml
     permissions:
       contents: read
@@ -38,6 +43,7 @@ jobs:
 
   ci:
     name: CI
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [info]
     uses: ./.github/workflows/ci.yml
     permissions:
@@ -65,7 +71,11 @@ jobs:
 
   prepare-release:
     name: prepare
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+    if: |
+      ${{
+        github.event.pull_request.head.repo.full_name == github.repository
+        && contains(github.event.pull_request.labels.*.name, 'ci/test')
+      }}
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
