@@ -710,11 +710,20 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
+
+	// Respect `AcceptResources` unless `tok` is for the built-in `pulumi:pulumi:getResource` function,
+	// in which case always keep resources to maintain the original behavior for older SDKs that are not
+	// setting the `AccceptResources` flag.
+	keepResources := req.GetAcceptResources()
+	if tok == "pulumi:pulumi:getResource" {
+		keepResources = true
+	}
+
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
-		KeepResources: req.GetAcceptResources(),
+		KeepResources: keepResources,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)

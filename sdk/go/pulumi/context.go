@@ -723,8 +723,9 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:  "pulumi:pulumi:getResource",
-		Args: rpcArgs,
+		Tok:             "pulumi:pulumi:getResource",
+		Args:            rpcArgs,
+		AcceptResources: !disableResourceReferences,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invoke(%s, ...): error: %v", tok, err)
