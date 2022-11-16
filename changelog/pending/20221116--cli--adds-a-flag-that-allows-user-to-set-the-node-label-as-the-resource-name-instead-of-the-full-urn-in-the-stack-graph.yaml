@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Adds a flag that allows user to set the node label as the resource name instead of full URN in the stack graph
