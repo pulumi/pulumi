@@ -27,6 +27,7 @@ import (
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -50,6 +51,7 @@ func newConvertCmd() *cobra.Command {
 	var from string
 	var language string
 	var generateOnly bool
+	var mappings []string
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -64,7 +66,7 @@ func newConvertCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("could not resolve current working directory"))
 			}
 
-			return runConvert(cwd, from, language, outDir, generateOnly)
+			return runConvert(cwd, mappings, from, language, outDir, generateOnly)
 		}),
 	}
 
@@ -86,6 +88,10 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		//nolint:lll
 		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+
+	cmd.PersistentFlags().StringSliceVar(
+		//nolint:lll
+		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
 
 	return cmd
 }
@@ -152,7 +158,10 @@ func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Proje
 	return &workspace.Project{Name: "pcl"}, program, nil
 }
 
-func runConvert(cwd string, from string, language string, outDir string, generateOnly bool) result.Result {
+func runConvert(
+	cwd string, mappings []string, from string, language string,
+	outDir string, generateOnly bool) result.Result {
+
 	var projectGenerator projectGeneratorFunc
 	switch language {
 	case "csharp", "c#":
@@ -191,6 +200,11 @@ func runConvert(cwd string, from string, language string, outDir string, generat
 	}
 	defer contract.IgnoreClose(host)
 	loader := schema.NewPluginLoader(host)
+	// TODO: Mapper will be used by tfconvert (and others as we add them)
+	_, err = convert.NewPluginMapper(host, from, mappings)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
+	}
 
 	var proj *workspace.Project
 	var program *pcl.Program

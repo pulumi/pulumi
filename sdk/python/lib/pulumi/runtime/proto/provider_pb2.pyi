@@ -1135,3 +1135,49 @@ class ErrorResourceInitFailed(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "reasons", b"reasons"]) -> None: ...
 
 global___ErrorResourceInitFailed = ErrorResourceInitFailed
+
+@typing_extensions.final
+class GetMappingRequest(google.protobuf.message.Message):
+    """GetMappingRequest allows providers to return ecosystem specific information to allow the provider to be
+    converted from a source markup to Pulumi. It's expected that provider bridges that target a given ecosystem
+    (e.g. Terraform, Kubernetes) would also publish a conversion plugin to convert markup from that ecosystem
+    to Pulumi, using the bridged providers.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    KEY_FIELD_NUMBER: builtins.int
+    key: builtins.str
+    """the conversion key for the mapping being requested."""
+    def __init__(
+        self,
+        *,
+        key: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["key", b"key"]) -> None: ...
+
+global___GetMappingRequest = GetMappingRequest
+
+@typing_extensions.final
+class GetMappingResponse(google.protobuf.message.Message):
+    """GetMappingResponse returns convert plugin specific data for this provider. This will normally be human
+    readable JSON, but the engine doesn't mandate any form.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROVIDER_FIELD_NUMBER: builtins.int
+    DATA_FIELD_NUMBER: builtins.int
+    provider: builtins.str
+    """the provider key this is mapping for. For example the Pulumi provider "terraform-template" would return "template" for this."""
+    data: builtins.bytes
+    """the conversion plugin specific data."""
+    def __init__(
+        self,
+        *,
+        provider: builtins.str = ...,
+        data: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["data", b"data", "provider", b"provider"]) -> None: ...
+
+global___GetMappingResponse = GetMappingResponse
