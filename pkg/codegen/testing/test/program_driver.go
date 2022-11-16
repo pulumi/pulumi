@@ -57,6 +57,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "assets-archives",
 		Description: "Assets and archives",
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "synthetic-resource-properties",
@@ -227,6 +228,7 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("aws-static-website"),
 		Description: "AWS static website",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("awsx-fargate"),
@@ -237,6 +239,7 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("azure-app-service"),
 		Description: "Azure App Service",
 		Skip:        codegen.NewStringSet("go", "dotnet"),
+		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("azure-container-apps"),
@@ -269,6 +272,9 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("kubernetes"),
 		Description: "Kubernetes",
 		Skip:        codegen.NewStringSet("go"),
+		// PCL resource attribute type checking doesn't handle missing `const` attributes.
+		//
+		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),

@@ -24,22 +24,22 @@ return await Deployment.RunAsync(() =>
         Source = new RemoteAsset("https://pulumi.test"),
     });
 
-    var testFileArchive = new Aws.S3.BucketObject("testFileArchive", new()
+    var testFileArchive = new Aws.Lambda.Function("testFileArchive", new()
     {
-        Bucket = siteBucket.Id,
-        Source = new FileArchive("file.tar.gz"),
+        Role = siteBucket.Arn,
+        Code = new FileArchive("file.tar.gz"),
     });
 
-    var testRemoteArchive = new Aws.S3.BucketObject("testRemoteArchive", new()
+    var testRemoteArchive = new Aws.Lambda.Function("testRemoteArchive", new()
     {
-        Bucket = siteBucket.Id,
-        Source = new RemoteArchive("https://pulumi.test/foo.tar.gz"),
+        Role = siteBucket.Arn,
+        Code = new RemoteArchive("https://pulumi.test/foo.tar.gz"),
     });
 
-    var testAssetArchive = new Aws.S3.BucketObject("testAssetArchive", new()
+    var testAssetArchive = new Aws.Lambda.Function("testAssetArchive", new()
     {
-        Bucket = siteBucket.Id,
-        Source = new AssetArchive(new Dictionary<string, AssetOrArchive>
+        Role = siteBucket.Arn,
+        Code = new AssetArchive(new Dictionary<string, AssetOrArchive>
         {
             ["file.txt"] = new FileAsset("file.txt"),
             ["string.txt"] = new StringAsset("<h1>File contents</h1>"),
