@@ -243,8 +243,17 @@ def get_resource(
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
+
+            accept_resources = not (
+                os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
+                in {"TRUE", "1"}
+            )
             req = resource_pb2.ResourceInvokeRequest(
-                tok="pulumi:pulumi:getResource", args=inputs, provider="", version=""
+                tok="pulumi:pulumi:getResource",
+                args=inputs,
+                provider="",
+                version="",
+                acceptResources=accept_resources,
             )
 
             def do_invoke():

@@ -114,6 +114,7 @@ export function getResource(res: Resource, parent: Resource | undefined, props: 
         req.setArgs(gstruct.Struct.fromJavaScript(inputs));
         req.setProvider("");
         req.setVersion("");
+        req.setAcceptresources(!utils.disableResourceReferences);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.getResource(${label})`;
