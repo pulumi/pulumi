@@ -607,10 +607,9 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 			parts[i] = DynamicType
 		}
 
-		if !b.options.allowMissingVariables {
-			diagnostics = hcl.Diagnostics{
-				undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange()),
-			}
+		diagnostics = hcl.Diagnostics{
+			undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange(),
+				b.options.allowMissingVariables),
 		}
 		return &ScopeTraversalExpression{
 			Syntax:    syntax,

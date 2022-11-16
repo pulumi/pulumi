@@ -1,4 +1,4 @@
-package pcl
+package pcl_test
 
 import (
 	"bytes"
@@ -13,9 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
+
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestBindProgram(t *testing.T) {
 	t.Parallel()
@@ -23,6 +27,11 @@ func TestBindProgram(t *testing.T) {
 	testdata, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
+	}
+
+	bindOptions := map[string][]pcl.BindOption{}
+	for _, r := range test.PulumiPulumiProgramTests {
+		bindOptions[r.Directory+"-pp"] = r.BindOptions
 	}
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
@@ -56,16 +65,9 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
-				if fileName == "simple-range.pp" {
-					// simple-range.pp requires AllowMissingVariables
-					// TODO: remove this once we have a better way to handle this
-					// https://github.com/pulumi/pulumi/issues/10985
-					_, diags, bindError = BindProgram(parser.Files, loader, AllowMissingVariables)
-				} else {
-					// all other PCL files use a more restrict program bind
-					_, diags, bindError = BindProgram(parser.Files, loader)
-				}
+				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				// PCL binder options are taken from program_driver.go
+				_, diags, bindError = pcl.BindProgram(parser.Files, append(bindOptions[v.Name()], loader)...)
 
 				assert.NoError(t, bindError)
 				if diags.HasErrors() {

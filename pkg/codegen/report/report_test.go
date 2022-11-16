@@ -65,7 +65,7 @@ func TestReportExample(t *testing.T) {
 					"Might not bind": "error: could not locate a compatible plugin in " +
 						"deploytest, the makefile and & constructor of the plugin host " +
 						"must define the location of the schema: failed " +
-						"to locate compatible plugin",
+						`to locate compatible plugin: "not"`,
 				},
 				Files: map[string][]report.File{
 					"Might not bind": {{Name: "Might not bind", Body: "resource foo \"not:a:Resource\" { foo: \"bar\" }"}},

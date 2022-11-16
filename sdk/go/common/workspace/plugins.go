@@ -1780,7 +1780,7 @@ func SelectCompatiblePlugin(
 
 	if !hasMatch {
 		logging.V(7).Infof("SelectCompatiblePlugin(..., %s): failed to find match", name)
-		return PluginInfo{}, errors.New("failed to locate compatible plugin")
+		return PluginInfo{}, fmt.Errorf("failed to locate compatible plugin: %#v", name)
 	}
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): selecting plugin '%s': best match ", name, bestMatch.String())
 	return bestMatch, nil

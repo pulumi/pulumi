@@ -35,7 +35,11 @@ type UnionType struct {
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
-// Any element types that are union types are replaced with their element types.
+// NewUnionTypeAnnotated enforces 3 properties on the returned type:
+// 1. Any element types that are union types are replaced with their element types.
+// 2. Any duplicate types are removed.
+// 3. Unions have have more then 1 type. If only a single type is left after (1) and (2),
+// it is returned as is.
 func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	var elementTypes []Type
 	for _, t := range types {
@@ -46,10 +50,12 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 		}
 	}
 
+	// Remove duplicate types
+	// We first sort the types so duplicates will be adjacent
 	sort.Slice(elementTypes, func(i, j int) bool {
 		return elementTypes[i].String() < elementTypes[j].String()
 	})
-
+	// We then filter out adjacent duplicates
 	dst := 0
 	for src := 0; src < len(elementTypes); {
 		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
@@ -63,6 +69,8 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	}
 	elementTypes = elementTypes[:dst]
 
+	// If the union turns out to be the union of a single type, just return the underlying
+	// type.
 	if len(elementTypes) == 1 {
 		return elementTypes[0]
 	}
@@ -103,9 +111,10 @@ func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	var foundDiags hcl.Diagnostics
 	for _, t := range t.ElementTypes {
 		// We handle 'none' specially here: so that traversing an optional type returns an optional type.
-		if t == NoneType {
+		switch t {
+		case NoneType:
 			types = append(types, NoneType)
-		} else {
+		default:
 			// Note that we only report errors when the entire operation fails. We try to
 			// strike a balance between assuming that the traversal will dynamically
 			// succeed and good error reporting.
