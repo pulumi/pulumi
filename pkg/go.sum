@@ -1527,6 +1527,8 @@ github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221104131001-330791e758
 github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221104131001-330791e758b8/go.mod h1:J3Jy0quNlS1bNZIFQK3dxUz34AR4FyWlTvdp20gD74A=
 github.com/pulumi/pulumi-yaml v1.0.2 h1:8fuoFNJlYJm1ni1Fff8QsIvef3E+ilroTPDrYKyy088=
 github.com/pulumi/pulumi-yaml v1.0.2/go.mod h1:FKly+y0x5onXHEZALNnFglr6ZZnro4Y/jlN4sYLKYeM=
+github.com/pulumi/pulumi-yaml v1.0.3 h1:JDRQfGcQYxwJETIepa7T3B7wTV7Bk2P7uApmWvQZeL4=
+github.com/pulumi/pulumi-yaml v1.0.3/go.mod h1:KLFTyADnoNoPU9djMyRvXymrTH2SCBg9wnXaapuggEA=
 github.com/pulumi/ssh-agent v0.5.1 h1:7DT4FcZNHWBAp9BFI+k0+HeBYGWbJvilJ29ra/4FlRM=
 github.com/pulumi/ssh-agent v0.5.1/go.mod h1:e6cyz/FUcE3PcJZ0tiuygkRsnHnCZcSQoQU+APbnrVA=
 github.com/pulumi/terraform-diff-reader v0.0.0-20201211191010-ad4715e9285e h1:Dik4Qe/+xguB8JagPyXNlbOnRiXGmq/PSPQTGunYnTk=
