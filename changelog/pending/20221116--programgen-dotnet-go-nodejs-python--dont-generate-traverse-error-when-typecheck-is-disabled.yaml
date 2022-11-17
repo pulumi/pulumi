@@ -1,4 +1,0 @@
-changes:
-  - type: fix
-    scope: programgen/dotnet,go,nodejs,python
-    description: Don't generate traverse errors when typechecking a dynamic type

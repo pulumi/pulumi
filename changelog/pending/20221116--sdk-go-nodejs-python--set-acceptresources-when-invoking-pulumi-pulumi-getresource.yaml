@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go,nodejs,python
-  description: Set acceptResources when invoking pulumi:pulumi:getResource
