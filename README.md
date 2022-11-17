@@ -168,21 +168,6 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 ## <a name="platform"></a>Platform
 
-### CLI
-
-| Architecture | Build Status |
-| ------------ | ------------ |
-| Linux/macOS x64 | [![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi/actions/workflows/master.yml) |
-| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi)   |
-
-#### EOL Releases
-
-The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
-
-* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-3.0/).
-
-* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-2.0/).
-
 ### Languages
 
 |    | Language | Status | Runtime |
@@ -194,6 +179,14 @@ The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3,
 | <img src="https://www.pulumi.com/logos/tech/dotnet.svg" height=38 />      | [.NET (C#/F#/VB.NET)](https://www.pulumi.com/docs/intro/languages/dotnet/)     | Stable  | .NET Core 3.1+  |
 | <img src="https://www.pulumi.com/logos/tech/java.svg" height=38 />      | [Java](https://www.pulumi.com/docs/intro/languages/java/)     | Public Preview  | JDK 11+  |
 | <img src="https://www.pulumi.com/logos/tech/yaml.svg" height=38 />      | [YAML](https://www.pulumi.com/docs/intro/languages/yaml/)     | Public Preview  | n/a  |
+
+### EOL Releases
+
+The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
+
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-3.0/).
+
+* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-2.0/).
 
 ### Clouds
 
