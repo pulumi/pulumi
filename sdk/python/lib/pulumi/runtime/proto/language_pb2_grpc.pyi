@@ -60,6 +60,11 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GetProgramDependenciesResponse,
     ]
     """GetProgramDependencies returns the set of dependencies required by the program."""
+    RunPlugin: grpc.UnaryStreamMultiCallable[
+        pulumi.language_pb2.RunPluginRequest,
+        pulumi.language_pb2.RunPluginResponse,
+    ]
+    """RunPlugin executes a plugin program and returns its result asynchronously."""
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
@@ -108,5 +113,12 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> pulumi.language_pb2.GetProgramDependenciesResponse:
         """GetProgramDependencies returns the set of dependencies required by the program."""
+    
+    def RunPlugin(
+        self,
+        request: pulumi.language_pb2.RunPluginRequest,
+        context: grpc.ServicerContext,
+    ) -> collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse]:
+        """RunPlugin executes a plugin program and returns its result asynchronously."""
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

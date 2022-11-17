@@ -62,7 +62,7 @@ func TestWriter_NoTerminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, false)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, false)
 	assert.NoError(t, err)
 
 	// stdout and stderr should just write to server
@@ -91,7 +91,7 @@ func TestWriter_Terminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, true)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
@@ -169,7 +169,7 @@ func TestWriter_IsPTY(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, true)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty, check IsTerminal returns true
@@ -189,7 +189,7 @@ func TestWriter_SafeToCloseTwice(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, _, _, err := MakeStreams(server, true)
+	closer, _, _, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	err = closer.Close()

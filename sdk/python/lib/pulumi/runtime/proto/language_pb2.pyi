@@ -324,3 +324,59 @@ class InstallDependenciesResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing_extensions.Literal["stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
 
 global___InstallDependenciesResponse = InstallDependenciesResponse
+
+@typing_extensions.final
+class RunPluginRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PWD_FIELD_NUMBER: builtins.int
+    PROGRAM_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
+    ENV_FIELD_NUMBER: builtins.int
+    pwd: builtins.str
+    """the program's working directory."""
+    program: builtins.str
+    """the path to the program to execute."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """any arguments to pass to the program."""
+    @property
+    def env(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """any environment variables to set as part of the program."""
+    def __init__(
+        self,
+        *,
+        pwd: builtins.str = ...,
+        program: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
+        env: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "env", b"env", "program", b"program", "pwd", b"pwd"]) -> None: ...
+
+global___RunPluginRequest = RunPluginRequest
+
+@typing_extensions.final
+class RunPluginResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    STDOUT_FIELD_NUMBER: builtins.int
+    STDERR_FIELD_NUMBER: builtins.int
+    EXITCODE_FIELD_NUMBER: builtins.int
+    stdout: builtins.bytes
+    """a line of stdout text."""
+    stderr: builtins.bytes
+    """a line of stderr text."""
+    exitcode: builtins.int
+    """the exit code of the provider."""
+    def __init__(
+        self,
+        *,
+        stdout: builtins.bytes = ...,
+        stderr: builtins.bytes = ...,
+        exitcode: builtins.int = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["exitcode", b"exitcode", "output", b"output", "stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing_extensions.Literal["output", b"output"]) -> typing_extensions.Literal["stdout", "stderr", "exitcode"] | None: ...
+
+global___RunPluginResponse = RunPluginResponse

@@ -690,7 +690,7 @@ func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 func (host *dotnetLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
@@ -806,4 +806,9 @@ func (host *dotnetLanguageHost) GetProgramDependencies(
 	return &pulumirpc.GetProgramDependenciesResponse{
 		Dependencies: packages,
 	}, nil
+}
+
+func (host *dotnetLanguageHost) RunPlugin(
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	return errors.New("not supported")
 }

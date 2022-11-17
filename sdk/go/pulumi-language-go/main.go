@@ -50,13 +50,9 @@ import (
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
-func compileProgramCwd(outfile string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", errors.Wrap(err, "unable to get current working directory")
-	}
+func compileProgram(programDirectory string, outfile string) (string, error) {
 
-	goFileSearchPattern := filepath.Join(cwd, "*.go")
+	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
@@ -78,7 +74,9 @@ func compileProgramCwd(outfile string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "unable to find 'go' executable")
 	}
-	buildCmd := exec.Command(gobin, "build", "-o", outfile, cwd)
+	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
+	buildCmd := exec.Command(gobin, "build", "-o", outfile)
+	buildCmd.Dir = programDirectory
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
 	if err := buildCmd.Run(); err != nil {
@@ -369,8 +367,9 @@ func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
 	return status.ExitStatus(), nil
 }
 
-func runProgram(bin string, env []string) *pulumirpc.RunResponse {
+func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
 	cmd := exec.Command(bin)
+	cmd.Dir = pwd
 	status, err := runCmdStatus(cmd, env)
 	if err != nil {
 		return &pulumirpc.RunResponse{
@@ -414,7 +413,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to find '%s' executable", host.binary)
 		}
-		return runProgram(bin, env), nil
+		return runProgram(req.Pwd, bin, env), nil
 	}
 
 	// feature flag to enable deprecated old behavior and use `go run`
@@ -424,12 +423,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 			return nil, errors.Wrap(err, "unable to find 'go' executable")
 		}
 
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to get current working directory")
-		}
-
-		cmd := exec.Command(gobin, "run", cwd)
+		cmd := exec.Command(gobin, "run", req.Program)
 
 		status, err := runCmdStatus(cmd, env)
 		if err != nil {
@@ -453,7 +447,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgramCwd(host.buildTarget)
+	program, err := compileProgram(req.Program, host.buildTarget)
 	if err != nil {
 		return nil, errors.Wrap(err, "error in compiling Go")
 	}
@@ -462,7 +456,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		defer os.Remove(program)
 	}
 
-	return runProgram(program, env), nil
+	return runProgram(req.Pwd, program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
@@ -537,7 +531,7 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 func (host *goLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
@@ -562,7 +556,6 @@ func (host *goLanguageHost) InstallDependencies(
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
-
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
@@ -660,4 +653,51 @@ func (host *goLanguageHost) GetProgramDependencies(
 	return &pulumirpc.GetProgramDependenciesResponse{
 		Dependencies: result,
 	}, nil
+}
+
+func (host *goLanguageHost) RunPlugin(
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
+
+	program, err := compileProgram(req.Program, "")
+	if err != nil {
+		return errors.Wrap(err, "error in compiling Go")
+	}
+	defer os.Remove(program)
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	cmd := exec.Command(program, req.Args...)
+	cmd.Dir = req.Pwd
+	cmd.Env = req.Env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if err = cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				err = server.Send(&pulumirpc.RunPluginResponse{
+					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
+				})
+			} else {
+				err = errors.Wrapf(exiterr, "program exited unexpectedly")
+			}
+		} else {
+			return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -221,7 +221,7 @@ virtualenv: venv
 		projinfo := &engine.Projinfo{Proj: &workspace.Project{
 			Main:    proj.Main,
 			Runtime: proj.Runtime}, Root: root}
-		_, _, pluginCtx, err := engine.ProjectInfoContext(
+		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
 			cmdutil.Diag(),
@@ -235,7 +235,7 @@ virtualenv: venv
 
 		defer pluginCtx.Close()
 
-		if err := installPolicyPackDependencies(pluginCtx, proj, projPath, root); err != nil {
+		if err := installPolicyPackDependencies(pluginCtx, proj, pwd); err != nil {
 			return err
 		}
 	}
@@ -252,15 +252,15 @@ virtualenv: venv
 }
 
 func installPolicyPackDependencies(ctx *plugin.Context,
-	proj *workspace.PolicyPackProject, projPath, root string) error {
+	proj *workspace.PolicyPackProject, directory string) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-	lang, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
 	if err != nil {
 		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(root); err != nil {
+	if err = lang.InstallDependencies(directory); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}
