@@ -75,6 +75,9 @@ type StackReference interface {
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.Name
+
+	// Fully qualified name is the name
+	FullyQualifiedName() tokens.Name
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI

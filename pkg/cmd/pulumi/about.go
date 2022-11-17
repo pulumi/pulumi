@@ -86,16 +86,17 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins       []pluginAbout            `json:"plugins"`
-	Host          *hostAbout               `json:"host"`
-	Backend       *backendAbout            `json:"backend"`
-	CurrentStack  *currentStackAbout       `json:"currentStack"`
-	CLI           *cliAbout                `json:"cliAbout"`
-	Runtime       *projectRuntimeAbout     `json:"runtime"`
-	Dependencies  []programDependencyAbout `json:"dependencies"`
-	ErrorMessages []string                 `json:"errors"`
-	Errors        []error                  `json:"-"`
-	LogMessage    string                   `json:"-"`
+	Plugins        []pluginAbout            `json:"plugins"`
+	Host           *hostAbout               `json:"host"`
+	Backend        *backendAbout            `json:"backend"`
+	CurrentStack   *currentStackAbout       `json:"currentStack"`
+	CLI            *cliAbout                `json:"cliAbout"`
+	Runtime        *projectRuntimeAbout     `json:"runtime"`
+	Dependencies   []programDependencyAbout `json:"dependencies"`
+	ErrorMessages  []string                 `json:"errors"`
+	StackReference string                   `json:"stackReference"`
+	Errors         []error                  `json:"-"`
+	LogMessage     string                   `json:"-"`
 }
 
 func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
@@ -188,6 +189,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 		tmp := getBackendAbout(backend)
 		result.Backend = &tmp
 	}
+
 	return result
 }
 
@@ -330,9 +332,10 @@ func (b backendAbout) String() string {
 }
 
 type currentStackAbout struct {
-	Name       string       `json:"name"`
-	Resources  []aboutState `json:"resources"`
-	PendingOps []aboutState `json:"pendingOps"`
+	Name               string       `json:"name"`
+	FullyQualifiedName string       `json:"fullyQualifiedName"`
+	Resources          []aboutState `json:"resources"`
+	PendingOps         []aboutState `json:"pendingOps"`
 }
 
 type aboutState struct {
@@ -386,9 +389,10 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 		}
 	}
 	return currentStackAbout{
-		Name:       name,
-		Resources:  aboutResources,
-		PendingOps: aboutPending,
+		Name:               name,
+		FullyQualifiedName: stack.Ref().FullyQualifiedName().String(),
+		Resources:          aboutResources,
+		PendingOps:         aboutPending,
 	}, nil
 }
 
@@ -423,7 +427,12 @@ func (current currentStackAbout) String() string {
 			Rows:    rows,
 		}.String() + "\n"
 	}
-	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", current.Name, resources, pending)
+	return fmt.Sprintf(`Current Stack: %s
+
+Fully qualified stack name: %s
+
+%s
+%s`, current.Name, current.FullyQualifiedName, resources, pending)
 }
 
 func simpleTableRows(arr [][]string) []cmdutil.TableRow {

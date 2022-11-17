@@ -99,6 +99,11 @@ func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
+func (c localBackendReference) FullyQualifiedName() tokens.Name {
+	// TODO[pulumi/pulumi#11390]: Unable to provide this value until we solve this issue.
+	return tokens.Name("")
+}
+
 func IsFileStateBackendURL(urlstr string) bool {
 	u, err := url.Parse(urlstr)
 	if err != nil {
