@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/dotnet
-  description: Add DictionaryInvokeArgs for dynamically constructing invoke input bag of properties.

@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.47.0 (2022-11-17)
+
+
+### Features
+
+- [cli] Added "--from=tf" to pulumi convert.
+  [#11341](https://github.com/pulumi/pulumi/pull/11341)
+
+- [engine] Engine and Golang support for language plugins starting providers directly.
+  [#10916](https://github.com/pulumi/pulumi/pull/10916)
+
+- [sdk/dotnet] Add DictionaryInvokeArgs for dynamically constructing invoke input bag of properties.
+  [#11335](https://github.com/pulumi/pulumi/pull/11335)
+
+- [sdk/go] Allow sane conversions for `As*Map*` and `As*Array*` conversions.
+  [#11351](https://github.com/pulumi/pulumi/pull/11351)
+
+- [sdkgen/{dotnet,nodejs}] Add default dependencies for generated SDKs.
+  [#11315](https://github.com/pulumi/pulumi/pull/11315)
+
+- [sdkgen/nodejs] Splits input and output definitions into multiple files.
+  [#10831](https://github.com/pulumi/pulumi/pull/10831)
+
+
+### Bug Fixes
+
+- [cli] Fix stack selection prompt.
+  [#11354](https://github.com/pulumi/pulumi/pull/11354)
+
+- [engine] Always keep resources when pulumi:pulumi:getResource is invoked
+  [#11382](https://github.com/pulumi/pulumi/pull/11382)
+
+- [pkg] Fix a panic in codegen for an edge case involving object expressions without corresponding function arguments.
+  [#11311](https://github.com/pulumi/pulumi/pull/11311)
+
+- [programgen] Enable type checking for resource attributes
+  [#11371](https://github.com/pulumi/pulumi/pull/11371)
+
+- [cli/display] Fix text cutting off prior to the edge of the terminal
+  [#11202](https://github.com/pulumi/pulumi/pull/11202)
+
+- [programgen/{dotnet,go,nodejs,python}] Don't generate traverse errors when typechecking a dynamic type
+  [#11359](https://github.com/pulumi/pulumi/pull/11359)
+
+- [sdk/{go,nodejs,python}] Set acceptResources when invoking pulumi:pulumi:getResource
+  [#11382](https://github.com/pulumi/pulumi/pull/11382)
+
+- [sdk/python] Copy ResourceOptions correctly during a merge.
+  [#11327](https://github.com/pulumi/pulumi/pull/11327)
+
 ## 3.46.1 (2022-11-09)
 
 
