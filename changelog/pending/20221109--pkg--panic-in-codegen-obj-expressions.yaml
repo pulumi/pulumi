@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pkg
-  description: Fix a panic in codegen for an edge case involving object expressions without corresponding function arguments.

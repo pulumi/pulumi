@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Always keep resources when pulumi:pulumi:getResource is invoked
