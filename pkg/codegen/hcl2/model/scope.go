@@ -232,10 +232,11 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 	if s != nil {
 		if _, exists := s.defs[name]; !exists {
 			child := &Scope{
-				parent:    s,
-				syntax:    syntax,
-				defs:      map[string]Definition{},
-				functions: map[string]*Function{},
+				parent:               s,
+				syntax:               syntax,
+				defs:                 map[string]Definition{},
+				functions:            map[string]*Function{},
+				definitionSignatures: map[string]*StaticFunctionSignature{},
 			}
 			s.defs[name] = child
 			return child, true
@@ -247,10 +248,11 @@ func (s *Scope) DefineScope(name string, syntax hclsyntax.Node) (*Scope, bool) {
 // Push defines an anonymous child scope associated with the given syntax node.
 func (s *Scope) Push(syntax hclsyntax.Node) *Scope {
 	return &Scope{
-		parent:    s,
-		syntax:    syntax,
-		defs:      map[string]Definition{},
-		functions: map[string]*Function{},
+		parent:               s,
+		syntax:               syntax,
+		defs:                 map[string]Definition{},
+		functions:            map[string]*Function{},
+		definitionSignatures: map[string]*StaticFunctionSignature{},
 	}
 }
 
