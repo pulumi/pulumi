@@ -86,17 +86,16 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins        []pluginAbout            `json:"plugins"`
-	Host           *hostAbout               `json:"host"`
-	Backend        *backendAbout            `json:"backend"`
-	CurrentStack   *currentStackAbout       `json:"currentStack"`
-	CLI            *cliAbout                `json:"cliAbout"`
-	Runtime        *projectRuntimeAbout     `json:"runtime"`
-	Dependencies   []programDependencyAbout `json:"dependencies"`
-	ErrorMessages  []string                 `json:"errors"`
-	StackReference string                   `json:"stackReference"`
-	Errors         []error                  `json:"-"`
-	LogMessage     string                   `json:"-"`
+	Plugins       []pluginAbout            `json:"plugins"`
+	Host          *hostAbout               `json:"host"`
+	Backend       *backendAbout            `json:"backend"`
+	CurrentStack  *currentStackAbout       `json:"currentStack"`
+	CLI           *cliAbout                `json:"cliAbout"`
+	Runtime       *projectRuntimeAbout     `json:"runtime"`
+	Dependencies  []programDependencyAbout `json:"dependencies"`
+	ErrorMessages []string                 `json:"errors"`
+	Errors        []error                  `json:"-"`
+	LogMessage    string                   `json:"-"`
 }
 
 func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedStack string) summaryAbout {
@@ -427,12 +426,11 @@ func (current currentStackAbout) String() string {
 			Rows:    rows,
 		}.String() + "\n"
 	}
-	return fmt.Sprintf(`Current Stack: %s
-
-Fully qualified stack name: %s
-
-%s
-%s`, current.Name, current.FullyQualifiedName, resources, pending)
+	stackName := current.Name
+	if stackName != current.FullyQualifiedName {
+		stackName += fmt.Sprintf(" (fully qualified to %q)", current.FullyQualifiedName)
+	}
+	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", stackName, resources, pending)
 }
 
 func simpleTableRows(arr [][]string) []cmdutil.TableRow {
