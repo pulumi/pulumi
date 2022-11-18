@@ -1248,12 +1248,15 @@ func (mod *modContext) genFunctionOutputVersion(
 		return info, nil
 	}
 
-	outputPropertiesReduced := fun.ReduceSingleOutputProperty
+	outputPropertiesReduced := fun.ReduceSingleOutputProperty && fun.Outputs != nil && len(fun.Outputs.Properties) == 1
 	multiArgumentFunction := fun.MultiArgumentInputs != nil && len(*fun.MultiArgumentInputs) > 0
 
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
-	reducedOutputReturnType := mod.typeString(fun.Outputs.Properties[0].Type, false, nil)
+	reducedOutputReturnType := "void"
+	if outputPropertiesReduced {
+		reducedOutputReturnType = mod.typeString(fun.Outputs.Properties[0].Type, false, nil)
+	}
 	properties := multiArgProperties(fun)
 
 	info.functionOutputVersionName = fnOutput
