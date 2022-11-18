@@ -1480,6 +1480,13 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	path := memberPath("functions", token)
 
+	// Check that spec.MultiArgumentInputs => spec.Inputs
+	if len(spec.MultiArgumentInputs) > 0 && spec.Inputs == nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "cannot specify multi-argument inputs without specifying inputs",
+		})
+	}
 	var inputs *ObjectType
 	if spec.Inputs != nil {
 		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
@@ -1487,6 +1494,44 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
 		}
+
+		idx := make(map[string]int, len(spec.MultiArgumentInputs))
+		for i, k := range spec.MultiArgumentInputs {
+			idx[k] = i
+		}
+		// Check that MultiArgumentInputs matches up 1:1 with the input properties
+		for k, i := range idx {
+			if _, ok := spec.Inputs.Properties[k]; !ok {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("MultiArgumentInputs[%d] refers to non-existent property %#v", i, k),
+				})
+			}
+		}
+		for k := range spec.Inputs.Properties {
+			if _, ok := idx[k]; !ok {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  fmt.Sprintf("Property %#v not specified by MultiArgumentInputs", k),
+					Detail:   "If MultiArgumentInputs is given, all properties must be specified",
+				})
+			}
+		}
+
+		// Order output properties as specified by MultiArgumentInputs
+		sortProps := func(props []*Property) {
+			sort.Slice(props, func(i, j int) bool {
+				return idx[props[i].Name] < idx[props[j].Name]
+			})
+		}
+		sortProps(ins.Properties)
+		if ins.InputShape != nil {
+			sortProps(ins.InputShape.Properties)
+		}
+		if ins.PlainShape != nil {
+			sortProps(ins.PlainShape.Properties)
+		}
+
 		inputs = ins
 	}
 
@@ -1510,7 +1555,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		Token:                      token,
 		Comment:                    spec.Description,
 		Inputs:                     inputs,
-		MultiArgumentInputs:        spec.MultiArgumentInputs,
+		MultiArgumentInputs:        len(spec.MultiArgumentInputs) > 0,
 		Outputs:                    outputs,
 		ReduceSingleOutputProperty: spec.ReduceSingleOutputProperty,
 		DeprecationMessage:         spec.DeprecationMessage,

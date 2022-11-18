@@ -539,7 +539,7 @@ type Function struct {
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
 	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
-	MultiArgumentInputs *[]string
+	MultiArgumentInputs bool
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectType
 	// Determines whether the function should return a single value from the outputs bag when it only has one property.
@@ -1145,6 +1145,13 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		}
 		inputs = &ins.ObjectTypeSpec
 	}
+	var multiArgumentInputs []string
+	if f.MultiArgumentInputs {
+		multiArgumentInputs = make([]string, len(f.Inputs.Properties))
+		for i, prop := range f.Inputs.Properties {
+			multiArgumentInputs[i] = prop.Name
+		}
+	}
 
 	var outputs *ObjectTypeSpec
 	if f.Outputs != nil {
@@ -1161,10 +1168,13 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}
 
 	return FunctionSpec{
-		Description: f.Comment,
-		Inputs:      inputs,
-		Outputs:     outputs,
-		Language:    lang,
+		Description:         f.Comment,
+		DeprecationMessage:  f.DeprecationMessage,
+		IsOverlay:           f.IsOverlay,
+		Inputs:              inputs,
+		MultiArgumentInputs: multiArgumentInputs,
+		Outputs:             outputs,
+		Language:            lang,
 	}, nil
 }
 
@@ -1526,7 +1536,7 @@ type FunctionSpec struct {
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
-	MultiArgumentInputs *[]string `json:"multiArgumentInputs,omitempty" yaml:"multiArgumentInputs,omitempty"`
+	MultiArgumentInputs []string `json:"multiArgumentInputs,omitempty" yaml:"multiArgumentInputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Determines whether the function should return a single value from the outputs bag when it only has one property.
