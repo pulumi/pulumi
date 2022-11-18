@@ -119,18 +119,20 @@ func (c *Constant) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 // A scope has two namespaces: one that is exclusive to functions and one that contains both variables and functions.
 // When binding a reference, only the latter is checked; when binding a function, only the former is checked.
 type Scope struct {
-	parent    *Scope
-	syntax    hclsyntax.Node
-	defs      map[string]Definition
-	functions map[string]*Function
+	parent               *Scope
+	syntax               hclsyntax.Node
+	defs                 map[string]Definition
+	functions            map[string]*Function
+	definitionSignatures map[string]*StaticFunctionSignature
 }
 
 // NewRootScope returns a new unparented scope associated with the given syntax node.
 func NewRootScope(syntax hclsyntax.Node) *Scope {
 	return &Scope{
-		syntax:    syntax,
-		defs:      map[string]Definition{},
-		functions: map[string]*Function{},
+		syntax:               syntax,
+		defs:                 map[string]Definition{},
+		functions:            map[string]*Function{},
+		definitionSignatures: map[string]*StaticFunctionSignature{},
 	}
 }
 
@@ -182,6 +184,19 @@ func (s *Scope) BindFunctionReference(name string) (*Function, bool) {
 		}
 		if s.parent != nil {
 			return s.parent.BindFunctionReference(name)
+		}
+	}
+	return nil, false
+}
+
+// BindReferenceSignature returns the signature of a defined function
+func (s *Scope) BindReferenceSignature(name string) (*StaticFunctionSignature, bool) {
+	if s != nil {
+		if fnSig, ok := s.definitionSignatures[name]; ok {
+			return fnSig, true
+		}
+		if s.parent != nil {
+			return s.parent.BindReferenceSignature(name)
 		}
 	}
 	return nil, false

@@ -301,7 +301,7 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 }
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
-	return model.BindExpression(node, b.root, b.tokens, b.options.modelOptions()...)
+	return model.BindExpression(node, b.root, nil, b.tokens, b.options.modelOptions()...)
 }
 
 func modelExprToString(expr *model.Expression) string {

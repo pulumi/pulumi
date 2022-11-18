@@ -160,7 +160,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	for _, block := range node.syntax.Body.Blocks {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
-				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				expr, _ := model.BindExpression(rng.Expr, b.root, nil, b.tokens, b.options.modelOptions()...)
 				typ := model.ResolveOutputs(expr.Type())
 				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range())
 				rangeKey, rangeValue = rk, rv

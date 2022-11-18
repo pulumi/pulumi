@@ -75,7 +75,7 @@ func (*Attribute) isBodyItem() {}
 func BindAttribute(attribute *hclsyntax.Attribute, scope *Scope, tokens syntax.TokenMap,
 	opts ...BindOption) (*Attribute, hcl.Diagnostics) {
 
-	value, diagnostics := BindExpression(attribute.Expr, scope, tokens, opts...)
+	value, diagnostics := BindExpression(attribute.Expr, scope, &attribute.Name, tokens, opts...)
 	attributeTokens, _ := tokens.ForNode(attribute).(*syntax.AttributeTokens)
 	return &Attribute{
 		Syntax: attribute,

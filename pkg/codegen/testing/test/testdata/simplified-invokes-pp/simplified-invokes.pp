@@ -12,3 +12,12 @@ optionalArgs = invoke("std:index:AbsMultiArgs", {
    a: 10
    c: 30
 })
+
+nestedUse = invoke("std:index:AbsMultiArgs", {
+    a: everyArg.result
+    b: invoke("std:index:AbsMultiArgs", { a: 42 })
+})
+
+output result {
+    value = nestedUse
+}

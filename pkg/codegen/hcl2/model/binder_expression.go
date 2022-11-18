@@ -42,7 +42,7 @@ type expressionBinder struct {
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
-func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap,
+func BindExpression(syntax hclsyntax.Node, scope *Scope, defintion *string, tokens _syntax.TokenMap,
 	opts ...BindOption) (Expression, hcl.Diagnostics) {
 
 	var options bindOptions
@@ -57,7 +57,17 @@ func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap
 		tokens:      tokens,
 	}
 
-	return b.bindExpression(syntax)
+	boundExpr, diags := b.bindExpression(syntax)
+	switch expr := boundExpr.(type) {
+	case *FunctionCallExpression:
+		if defintion != nil {
+			// keep track of the computed signature of the function
+			b.scope.definitionSignatures[*defintion] = &expr.Signature
+			return boundExpr, diags
+		}
+	}
+
+	return boundExpr, diags
 }
 
 // BindExpressionText parses and binds an HCL2 expression using the given scope.
@@ -68,7 +78,7 @@ func BindExpressionText(source string, scope *Scope, initialPos hcl.Pos,
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
 	}
-	return BindExpression(syntax, scope, tokens, opts...)
+	return BindExpression(syntax, scope, nil, tokens, opts...)
 }
 
 // bindExpression binds a single HCL2 expression.
@@ -586,6 +596,29 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 	return expr, diagnostics
 }
 
+// checks whether a traversal {A}.{B} is a function result traversal
+// where A is a function call defined earlier and {B} is a property of the outputs of the function.
+// We use this to check whether the function returns a single reduced value
+func (b *expressionBinder) invokeCallTraversal(syntax *hclsyntax.ScopeTraversalExpr) (*StaticFunctionSignature, bool) {
+	if len(syntax.Traversal) != 2 {
+		return nil, false
+	}
+
+	functionRef := syntax.Traversal.RootName()
+	_, ok := syntax.Traversal[1].(hcl.TraverseAttr)
+	if !ok {
+		return nil, false
+	}
+
+	functionSignature, ok := b.scope.BindReferenceSignature(functionRef)
+	if !ok {
+		// not a function reference
+		return nil, false
+	}
+
+	return functionSignature, true
+}
+
 // bindScopeTraversalExpression binds a scope traversal expression. Each step of the traversal must be a legal
 // step with respect to its receiver. The root receiver is the definition in the current scope referred to by the root
 // name.
@@ -621,12 +654,21 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 		}, diagnostics
 	}
 
+	functionSignature, ok := b.invokeCallTraversal(syntax)
+
+	traversal := syntax.Traversal
+
+	if ok && functionSignature.ReduceSingleOutputProperty {
+		// {A}.{B} becomes just {A} because {B} is reduced away
+		traversal = []hcl.Traverser{traversal[0]}
+	}
+
 	expr := &ScopeTraversalExpression{
 		Syntax:    syntax,
 		Tokens:    tokens,
 		Parts:     []Traversable{def},
 		RootName:  syntax.Traversal.RootName(),
-		Traversal: syntax.Traversal,
+		Traversal: traversal,
 	}
 	typecheckDiags := expr.typecheck(false, b.options.allowMissingVariables)
 	diagnostics = append(diagnostics, typecheckDiags...)

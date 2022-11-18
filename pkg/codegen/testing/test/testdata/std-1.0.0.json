@@ -60,6 +60,7 @@
       "std:index:AbsMultiArgs": {
         "description": "Returns the absolute value of a given float. \nExample: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.",
         "multiArgumentInputs": ["a", "b", "c"],
+        "reduceSingleOutputProperty": true,
         "inputs": {
           "properties": {
             "a": {
