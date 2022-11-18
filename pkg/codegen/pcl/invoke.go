@@ -153,8 +153,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		annotateObjectProperties(argsObject.Type(), fn.Inputs)
 	}
 
-	sig.ReduceSingleOutputProperty = fn.ReduceSingleOutputProperty
-	sig.MultiArgumentInputs = fn.MultiArgumentInputs
+	sig.MultiArgumentInputs = &fn.MultiArgumentInputs
 	return sig, nil
 }
 
@@ -220,17 +219,12 @@ func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSigna
 		argsType = b.schemaTypeToType(fn.Inputs)
 	}
 
-	hasOutputs := fn.Outputs != nil
-	outputPropertiesReduced := hasOutputs && fn.ReduceSingleOutputProperty && len(fn.Outputs.Properties) == 1
 	var returnType model.Type
-	if !hasOutputs && !outputPropertiesReduced {
-		returnType = model.NewObjectType(map[string]model.Type{})
-	} else if hasOutputs && outputPropertiesReduced {
-		returnType = b.schemaTypeToType(fn.Outputs.Properties[0].Type)
-	} else {
+	if fn.Outputs != nil {
 		returnType = b.schemaTypeToType(fn.Outputs)
+	} else {
+		returnType = model.NewObjectType(map[string]model.Type{})
 	}
-
 	return b.makeSignature(argsType, model.NewPromiseType(returnType))
 }
 
@@ -241,14 +235,8 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 
 	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.Outputs != nil`.
 	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
-	outputPropertiesReduced := fn.ReduceSingleOutputProperty && len(fn.Outputs.Properties) == 1
-	if outputPropertiesReduced {
-		returnType := b.schemaTypeToType(fn.Outputs.Properties[0].Type)
-		return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
-	} else {
-		returnType := b.schemaTypeToType(fn.Outputs)
-		return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
-	}
+	returnType := b.schemaTypeToType(fn.Outputs)
+	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
 
 // Detects invoke calls that use an output version of a function.

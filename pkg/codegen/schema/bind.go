@@ -1146,6 +1146,13 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	return diags, nil
 }
 
+func (t *types) bindReturnType(path, token string, spec ReturnTypeSpec) (Type, hcl.Diagnostics, error) {
+	if len(spec.Properties) > 0 || len(spec.Required) > 0 || len(spec.ObjectTypeSpec.Plain) > 0 || len(spec.Language) > 0 {
+		return t.bindAnonymousObjectType(path, token, spec.ObjectTypeSpec)
+	}
+	return t.bindTypeSpec(path, spec.TypeSpec, true)
+}
+
 // bindAnonymousObjectType is used for binding object types that do not appear as part of a package's defined types.
 // This includes state inputs for resources that have them and function inputs and outputs.
 // Object types defined by a package are bound by bindTypeDef.
@@ -1490,9 +1497,9 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		inputs = ins
 	}
 
-	var outputs *ObjectType
+	var outputs Type
 	if spec.Outputs != nil {
-		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+		outs, outDiags, err := t.bindReturnType(path+"/outputs", token+"Result", *spec.Outputs)
 		diags = diags.Extend(outDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
@@ -1506,16 +1513,15 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	}
 
 	fn := &Function{
-		Package:                    t.pkg,
-		Token:                      token,
-		Comment:                    spec.Description,
-		Inputs:                     inputs,
-		MultiArgumentInputs:        spec.MultiArgumentInputs,
-		Outputs:                    outputs,
-		ReduceSingleOutputProperty: spec.ReduceSingleOutputProperty,
-		DeprecationMessage:         spec.DeprecationMessage,
-		Language:                   language,
-		IsOverlay:                  spec.IsOverlay,
+		Package:             t.pkg,
+		Token:               token,
+		Comment:             spec.Description,
+		Inputs:              inputs,
+		MultiArgumentInputs: spec.MultiArgumentInputs,
+		Outputs:             outputs,
+		DeprecationMessage:  spec.DeprecationMessage,
+		Language:            language,
+		IsOverlay:           spec.IsOverlay,
 	}
 	t.functionDefs[token] = fn
 

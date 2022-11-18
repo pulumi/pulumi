@@ -654,14 +654,7 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 		}, diagnostics
 	}
 
-	functionSignature, ok := b.invokeCallTraversal(syntax)
-
 	traversal := syntax.Traversal
-
-	if ok && functionSignature.ReduceSingleOutputProperty {
-		// {A}.{B} becomes just {A} because {B} is reduced away
-		traversal = []hcl.Traverser{traversal[0]}
-	}
 
 	expr := &ScopeTraversalExpression{
 		Syntax:    syntax,

@@ -124,8 +124,8 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 			if f.Inputs != nil {
 				runTests("/functions/"+f.Token+"/inputs/properties", f.Inputs.Properties, false)
 			}
-			if f.Outputs != nil {
-				runTests("/functions/"+f.Token+"/outputs/properties", f.Outputs.Properties, false)
+			if obj, ok := f.Outputs.(*schema.ObjectType); ok && obj != nil {
+				runTests("/functions/"+f.Token+"/outputs/properties", obj.Properties, false)
 			}
 		}
 		return
@@ -185,8 +185,8 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 		if f.Inputs != nil {
 			updateTests(f.Inputs.Properties)
 		}
-		if f.Outputs != nil {
-			updateTests(f.Outputs.Properties)
+		if obj, ok := f.Outputs.(*schema.ObjectType); ok && obj != nil {
+			updateTests(obj.Properties)
 		}
 	}
 
