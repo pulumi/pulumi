@@ -130,11 +130,11 @@ namespace Pulumi.Automation
                 {
                     try
                     {
-                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (StackAlreadyExistsException)
-                    {
                         await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackNotFoundException)
+                    {
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
                     }
                 }),
                 _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
