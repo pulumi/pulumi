@@ -356,6 +356,8 @@ func chooseStack(ctx context.Context,
 	}
 
 	// If we are offering to create a new stack, add that to the end of the list.
+	// Otherwise, default to a stack if one exists – otherwise pressing enter will result in
+	// the empty string being passed (see https://github.com/go-survey/survey/issues/342).
 	const newOption = "<create a new stack>"
 	if offerNew {
 		options = append(options, newOption)
@@ -367,6 +369,8 @@ func chooseStack(ctx context.Context,
 	} else if len(options) == 0 {
 		// If no options are available, we can't offer a choice!
 		return nil, errors.New("this command requires a stack, but there are none")
+	} else if defaultOption == "" {
+		defaultOption = options[0]
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
