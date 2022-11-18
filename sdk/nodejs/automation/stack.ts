@@ -24,7 +24,7 @@ import TailFile from "@logdna/tail-file";
 import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { StackAlreadyExistsError } from "./errors";
+import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
@@ -105,9 +105,9 @@ export class Stack {
             this.ready = workspace.selectStack(name);
             return this;
         case "createOrSelect":
-            this.ready = workspace.createStack(name).catch((err) => {
-                if (err instanceof StackAlreadyExistsError) {
-                    return workspace.selectStack(name);
+            this.ready = workspace.selectStack(name).catch((err) => {
+                if (err instanceof StackNotFoundError) {
+                    return workspace.createStack(name);
                 }
                 throw err;
             });

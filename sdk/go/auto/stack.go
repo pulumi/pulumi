@@ -184,24 +184,16 @@ func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, er
 	return s, nil
 }
 
-// UpsertStack tries to create a new stack using the given workspace and
-// stack name if the stack does not already exist,
-// or falls back to selecting the existing stack. If the stack does not exist,
-// it will be created and selected.
+// UpsertStack tries to select a stack using the given workspace and
+// stack name, or falls back to trying to create the stack if
+// it does not exist.
 func UpsertStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
-	s, err := NewStack(ctx, stackName, ws)
-	// error for all failures except if the stack already exists, as we'll
-	// just select the stack if it exists.
-	if err != nil && !IsCreateStack409Error(err) {
-		return s, err
+	s, err := SelectStack(ctx, stackName, ws)
+	// If the stack is not found, attempt to create it.
+	if err != nil && IsSelectStack404Error(err) {
+		return NewStack(ctx, stackName, ws)
 	}
-
-	err = ws.SelectStack(ctx, stackName)
-	if err != nil {
-		return s, err
-	}
-
-	return s, nil
+	return s, err
 }
 
 // Name returns the stack name
