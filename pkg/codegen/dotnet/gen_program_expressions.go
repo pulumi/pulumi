@@ -862,10 +862,11 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	invokedFunctionSchema, isFunctionInvoke := g.functionInvokes[rootName]
 
-	if isFunctionInvoke && !g.asyncInit {
+	if isFunctionInvoke && !g.asyncInit && len(expr.Parts) > 1 {
 		lambdaArg := LowerCamelCase(g.schemaTypeName(invokedFunctionSchema.Outputs))
 		// Assume invokes are returning Output<T> instead of Task<T>
 		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
+
 	}
 
 	var objType *schema.ObjectType
@@ -876,7 +877,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
 
-	if isFunctionInvoke && !g.asyncInit {
+	if isFunctionInvoke && !g.asyncInit && len(expr.Parts) > 1 {
 		g.Fgenf(w, ")")
 	}
 }

@@ -10,12 +10,7 @@ return await Deployment.RunAsync(() =>
 
     var optionalArgs = Std.AbsMultiArgs.Invoke(10, null, 30);
 
-    var nestedUse = Output.Tuple(everyArg, Std.AbsMultiArgs.Invoke(42)).Apply(values =>
-    {
-        var everyArg = values.Item1;
-        var invoke = values.Item2;
-        return Std.AbsMultiArgs.Invoke(everyArg, invoke);
-    });
+    var nestedUse = Std.AbsMultiArgs.Invoke(everyArg, Std.AbsMultiArgs.Invoke(42));
 
     return new Dictionary<string, object?>
     {

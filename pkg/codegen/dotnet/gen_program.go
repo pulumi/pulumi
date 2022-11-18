@@ -261,7 +261,6 @@ func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{
 }
 
 func (g *generator) findFunctionSchema(function string, location *hcl.Range) (*schema.Function, bool) {
-	function = LowerCamelCase(function)
 	for _, pkg := range g.program.PackageReferences() {
 		for it := pkg.Functions().Range(); it.Next(); {
 			if strings.HasSuffix(it.Token(), function) {
@@ -292,7 +291,14 @@ func (g *generator) isFunctionInvoke(localVariable *pcl.LocalVariable) (*schema.
 			functionNameParts := strings.Split(fullFunctionName, ".")
 			functionName := functionNameParts[len(functionNameParts)-1]
 			location := value.SyntaxNode().Range().Ptr()
-			return g.findFunctionSchema(functionName, location)
+			// first try with functionName as is
+			funcSchema, attemptOk := g.findFunctionSchema(functionName, location)
+			if !attemptOk {
+				// first try with functionName lowered camel case
+				return g.findFunctionSchema(LowerCamelCase(functionName), location)
+			}
+
+			return funcSchema, attemptOk
 		}
 	}
 
