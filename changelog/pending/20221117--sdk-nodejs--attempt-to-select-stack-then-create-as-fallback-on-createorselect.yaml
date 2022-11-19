@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs,go,dotnet
-  description: Attempt to select stack then create as fallback on 'createOrSelect'
