@@ -358,6 +358,13 @@ func (g *generator) withinAwaitBlock(run func()) {
 	}
 }
 
+func paramsIf(cond bool, params []model.Parameter) []model.Parameter {
+	if cond {
+		return params
+	}
+	return nil
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -407,7 +414,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
-							funcExpr.Signature.MultiArgumentInputs)
+							paramsIf(funcExpr.Signature.MultiArgumentInputs, funcExpr.Signature.Parameters))
 					})
 				default:
 					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
@@ -419,7 +426,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName,
-							funcExpr.Signature.MultiArgumentInputs)
+							paramsIf(funcExpr.Signature.MultiArgumentInputs, funcExpr.Signature.Parameters))
 					})
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
@@ -490,7 +497,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 					destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
 					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
-						expr.Signature.MultiArgumentInputs)
+						paramsIf(expr.Signature.MultiArgumentInputs, expr.Signature.Parameters))
 				})
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
@@ -502,7 +509,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				useImplicitTypeName := true
 				destTypeName := "Irrelevant"
 				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
-					expr.Signature.MultiArgumentInputs)
+					paramsIf(expr.Signature.MultiArgumentInputs, expr.Signature.Parameters))
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 			}
@@ -710,7 +717,7 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 // However, when positional optional parameters are omitted, then NULL is used where they should be.
 // Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, null, 3
 // because b was omitted and c was provided so b had to be NULL
-func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []string) {
+func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []model.Parameter) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
 		lit := item.Key.(*model.LiteralValueExpression)
@@ -720,7 +727,7 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 
 	hasMoreArgs := func(index int) bool {
 		for _, arg := range multiArguments[index:] {
-			if _, ok := items[arg]; ok {
+			if _, ok := items[arg.Name]; ok {
 				return true
 			}
 		}
@@ -729,7 +736,7 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 	}
 
 	for index, arg := range multiArguments {
-		value, ok := items[arg]
+		value, ok := items[arg.Name]
 		if ok {
 			g.Fgenf(w, "%.v", value)
 		} else if hasMoreArgs(index) {
@@ -749,14 +756,14 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	expr *model.ObjectConsExpression,
 	destTypeName string,
 	implicitTypeName bool,
-	multiArguments *[]string) {
+	multiArguments []model.Parameter) {
 
 	if len(expr.Items) == 0 {
 		return
 	}
 
 	if multiArguments != nil {
-		g.genMultiArguments(w, expr, *multiArguments)
+		g.genMultiArguments(w, expr, multiArguments)
 		return
 	}
 

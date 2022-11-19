@@ -328,7 +328,7 @@ func enumName(enum *model.EnumType) (string, error) {
 // However, when positional optional parameters are omitted, then undefind is used where they should be.
 // Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, null, 3
 // because b was omitted and c was provided so b had to be undefind
-func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []string) {
+func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpression, multiArguments []model.Parameter) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
 		lit := item.Key.(*model.LiteralValueExpression)
@@ -338,7 +338,7 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 
 	hasMoreArgs := func(index int) bool {
 		for _, arg := range multiArguments[index:] {
-			if _, ok := items[arg]; ok {
+			if _, ok := items[arg.Name]; ok {
 				return true
 			}
 		}
@@ -347,7 +347,7 @@ func (g *generator) genMultiArguments(w io.Writer, expr *model.ObjectConsExpress
 	}
 
 	for index, arg := range multiArguments {
-		value, ok := items[arg]
+		value, ok := items[arg.Name]
 		if ok {
 			g.Fgenf(w, "%.v", value)
 		} else if hasMoreArgs(index) {
@@ -449,10 +449,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
-			if expr.Signature.MultiArgumentInputs != nil {
+			if expr.Signature.MultiArgumentInputs {
 				arg, ok := expr.Args[1].(*model.ObjectConsExpression)
 				if ok {
-					g.genMultiArguments(w, arg, *expr.Signature.MultiArgumentInputs)
+					g.genMultiArguments(w, arg, expr.Signature.Parameters)
 				} else {
 					g.Fgenf(w, "%.v", expr.Args[1])
 				}
