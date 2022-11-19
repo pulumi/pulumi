@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.47.1 (2022-11-18)
+
+
+### Bug Fixes
+
+- [sdk/{dotnet,go,nodejs}] Attempt to select stack then create as fallback on 'createOrSelect'
+  [#11402](https://github.com/pulumi/pulumi/pull/11402)
+
 ## 3.47.0 (2022-11-17)
 
 
