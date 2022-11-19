@@ -1495,41 +1495,48 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
 		}
 
-		idx := make(map[string]int, len(spec.MultiArgumentInputs))
-		for i, k := range spec.MultiArgumentInputs {
-			idx[k] = i
-		}
-		// Check that MultiArgumentInputs matches up 1:1 with the input properties
-		for k, i := range idx {
-			if _, ok := spec.Inputs.Properties[k]; !ok {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("MultiArgumentInputs[%d] refers to non-existent property %#v", i, k),
-				})
+		if len(spec.MultiArgumentInputs) > 0 {
+			idx := make(map[string]int, len(spec.MultiArgumentInputs))
+			for i, k := range spec.MultiArgumentInputs {
+				idx[k] = i
 			}
-		}
-		for k := range spec.Inputs.Properties {
-			if _, ok := idx[k]; !ok {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  fmt.Sprintf("Property %#v not specified by MultiArgumentInputs", k),
-					Detail:   "If MultiArgumentInputs is given, all properties must be specified",
-				})
+			// Check that MultiArgumentInputs matches up 1:1 with the input properties
+			for k, i := range idx {
+				if _, ok := spec.Inputs.Properties[k]; !ok {
+					diags = diags.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("multiArgumentInputs[%d] refers to non-existent property %#v", i, k),
+					})
+				}
 			}
-		}
+			var detailGiven bool
+			for k := range spec.Inputs.Properties {
+				if _, ok := idx[k]; !ok {
+					diag := hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("Property %#v not specified by multiArgumentInputs", k),
+					}
+					if !detailGiven {
+						detailGiven = true
+						diag.Detail = "If multiArgumentInputs is given, all properties must be specified"
+					}
+					diags = diags.Append(&diag)
+				}
+			}
 
-		// Order output properties as specified by MultiArgumentInputs
-		sortProps := func(props []*Property) {
-			sort.Slice(props, func(i, j int) bool {
-				return idx[props[i].Name] < idx[props[j].Name]
-			})
-		}
-		sortProps(ins.Properties)
-		if ins.InputShape != nil {
-			sortProps(ins.InputShape.Properties)
-		}
-		if ins.PlainShape != nil {
-			sortProps(ins.PlainShape.Properties)
+			// Order output properties as specified by MultiArgumentInputs
+			sortProps := func(props []*Property) {
+				sort.Slice(props, func(i, j int) bool {
+					return idx[props[i].Name] < idx[props[j].Name]
+				})
+			}
+			sortProps(ins.Properties)
+			if ins.InputShape != nil {
+				sortProps(ins.InputShape.Properties)
+			}
+			if ins.PlainShape != nil {
+				sortProps(ins.PlainShape.Properties)
+			}
 		}
 
 		inputs = ins
