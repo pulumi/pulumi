@@ -42,7 +42,7 @@ type expressionBinder struct {
 }
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
-func BindExpression(syntax hclsyntax.Node, scope *Scope, defintion *string, tokens _syntax.TokenMap,
+func BindExpression(syntax hclsyntax.Node, scope *Scope, definition *string, tokens _syntax.TokenMap,
 	opts ...BindOption) (Expression, hcl.Diagnostics) {
 
 	var options bindOptions
@@ -60,9 +60,9 @@ func BindExpression(syntax hclsyntax.Node, scope *Scope, defintion *string, toke
 	boundExpr, diags := b.bindExpression(syntax)
 	switch expr := boundExpr.(type) {
 	case *FunctionCallExpression:
-		if defintion != nil {
+		if definition != nil {
 			// keep track of the computed signature of the function
-			b.scope.definitionSignatures[*defintion] = &expr.Signature
+			b.scope.definitionSignatures[*definition] = &expr.Signature
 			return boundExpr, diags
 		}
 	}

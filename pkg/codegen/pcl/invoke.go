@@ -245,10 +245,10 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 	if outputPropertiesReduced {
 		returnType := b.schemaTypeToType(fn.Outputs.Properties[0].Type)
 		return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
-	} else {
-		returnType := b.schemaTypeToType(fn.Outputs)
-		return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 	}
+
+	returnType := b.schemaTypeToType(fn.Outputs)
+	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
 
 // Detects invoke calls that use an output version of a function.

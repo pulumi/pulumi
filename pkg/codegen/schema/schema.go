@@ -1540,7 +1540,7 @@ type FunctionSpec struct {
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Determines whether the function should return a single value from the outputs bag when it only has one property.
-	ReduceSingleOutputProperty bool `json:"reduceSingleOutputProperty,omitempty" yaml:"reduceSingleOutputProperty,omitempty"`
+	ReduceSingleOutputProperty bool `json:"reduceSingleOutputProperty,omitempty" yaml:"reduceSingleOutputProperty,omitempty"` //nolint:lll
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
