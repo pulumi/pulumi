@@ -126,7 +126,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			UpdateKind:      apitype.UpdateUpdate,
 			UpdateID:        updateID,
 		}, newMockTokenSource(), nil)
-		persister.deploymentDiffState = newDeploymentDiffState()
+		persister.deploymentDiffState = newDeploymentDiffState(1)
 		persister.deploymentDiffState.minimalDiffSize = 1
 		return persister
 	}
