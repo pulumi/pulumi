@@ -1251,7 +1251,6 @@ func (b *cloudBackend) GetHistory(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack updates: %w", err)
 	}
-	//
 
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
