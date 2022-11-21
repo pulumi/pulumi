@@ -18,6 +18,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -119,6 +120,7 @@ type cloudBackend struct {
 	url            string
 	client         *client.Client
 	currentProject *workspace.Project
+	capabilities   func() capabilities
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -139,11 +141,17 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 		currentProject = nil
 	}
 
+	client := client.NewClient(cloudURL, apiToken, d)
+
+	// Start a background request to detect capabilities.
+	getCaps := detectCapabilities(context.Background(), d, client)
+
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client.NewClient(cloudURL, apiToken, d),
+		client:         client,
 		currentProject: currentProject,
+		capabilities:   getCaps,
 	}, nil
 }
 
@@ -1240,6 +1248,7 @@ func (b *cloudBackend) GetHistory(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack updates: %w", err)
 	}
+	//
 
 	// Convert apitype.UpdateInfo objects to the backend type.
 	var beUpdates []backend.UpdateInfo
@@ -1752,4 +1761,59 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 func (c httpstateBackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string) (resource.PropertyMap, error) {
 	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
+}
+
+// Represents feature-detected capabilities of the service the backend is connected to.
+type capabilities struct {
+	// If non-nil, indicates that delta checkpoint updates are supported.
+	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV1
+}
+
+// Builds a cached wrapper around doDetectCapabilities that starts the request in the background.
+func detectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) func() capabilities {
+	var caps capabilities
+	done := make(chan struct{})
+	fetch := func() {
+		caps = doDetectCapabilities(ctx, d, client)
+		close(done)
+	}
+	get := func() capabilities {
+		<-done
+		return caps
+	}
+	go fetch()
+	return get
+}
+
+func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) capabilities {
+	resp, err := client.GetCapabilities(ctx)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
+		return capabilities{}
+	}
+	caps, err := decodeCapabilities(resp.Capabilities)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
+		return capabilities{}
+	}
+	return caps
+}
+
+func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, error) {
+	var parsed capabilities
+	for _, entry := range wireLevel {
+		switch entry.Capability {
+		case apitype.DeltaCheckpointUploads:
+			// TODO should check entry.Version here?
+			var cap apitype.DeltaCheckpointUploadsConfigV1
+			if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
+				msg := "decoding DeltaCheckpointUploadsConfigV1 returned %w"
+				return capabilities{}, fmt.Errorf(msg, err)
+			}
+			parsed.deltaCheckpointUpdates = &cap
+		default:
+			continue
+		}
+	}
+	return parsed, nil
 }
