@@ -789,6 +789,7 @@ def translate_output_properties(
     typ: Optional[type] = None,
     transform_using_type_metadata: bool = False,
     path: Optional["_Path"] = None,
+    return_none_on_dict_type_mismatch: bool = False,
 ) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
@@ -827,7 +828,12 @@ def translate_output_properties(
     if is_rpc_secret(output):
         unwrapped = unwrap_rpc_secret(output)
         result = translate_output_properties(
-            unwrapped, output_transformer, typ, transform_using_type_metadata
+            unwrapped,
+            output_transformer,
+            typ,
+            transform_using_type_metadata,
+            path,
+            return_none_on_dict_type_mismatch,
         )
         return wrap_rpc_secret(result)
 
@@ -860,7 +866,8 @@ def translate_output_properties(
                         output_transformer,
                         get_type(k),
                         transform_using_type_metadata,
-                        path=_Path(k, parent=path),
+                        _Path(k, parent=path),
+                        return_none_on_dict_type_mismatch,
                     )
                     for k, v in output.items()
                 }
@@ -878,6 +885,8 @@ def translate_output_properties(
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
                         translate = lambda k: k
+            elif return_none_on_dict_type_mismatch:
+                return None
             else:
                 raise AssertionError(
                     (
@@ -893,7 +902,8 @@ def translate_output_properties(
                 output_transformer,
                 get_type(k),
                 transform_using_type_metadata,
-                path=_Path(k, parent=path),
+                _Path(k, parent=path),
+                return_none_on_dict_type_mismatch,
             )
             for k, v in output.items()
         }
@@ -906,7 +916,8 @@ def translate_output_properties(
                 output_transformer,
                 element_type,
                 transform_using_type_metadata,
-                path=_Path(str(i), parent=path),
+                _Path(str(i), parent=path),
+                return_none_on_dict_type_mismatch,
             )
             for i, v in enumerate(output)
         ]
@@ -1044,14 +1055,19 @@ def resolve_outputs(
         for key, value in list(serialized_props.items()):
             translated_key = translate(key)
             if translated_key not in all_properties:
-                # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
-                # the user.
+                # input prop the engine didn't give us a final value for.
+                # Just use the value passed into the resource by the user.
+                # Set `return_none_on_dict_type_mismatch` to return `None` rather than raising an error when the value
+                # is a dict and the type doesn't match (which is what would happen if the value didn't exist as an
+                # input prop). This allows `pulumi up` to work without erroring when there is an input and output prop
+                # with the same name but different types.
                 all_properties[translated_key] = translate_output_properties(
                     deserialize_property(value),
                     translate_to_pass,
                     types.get(key),
                     transform_using_type_metadata,
                     path=_Path(translated_key, resource=f"{res._name}"),
+                    return_none_on_dict_type_mismatch=True,
                 )
 
     resolve_properties(resolvers, all_properties, translated_deps)
