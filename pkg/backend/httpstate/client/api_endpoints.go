@@ -78,6 +78,8 @@ func init() {
 		routes.Path(path).Methods(method).Name(name)
 	}
 
+	addEndpoint("GET", "/api/capabilities", "getCapabilities")
+
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
