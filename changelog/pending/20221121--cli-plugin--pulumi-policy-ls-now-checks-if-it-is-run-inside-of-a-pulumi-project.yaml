@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: `pulumi policy ls` now checks if it is run inside of a pulumi project.

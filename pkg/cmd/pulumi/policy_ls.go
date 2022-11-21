@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPolicyLsCmd() *cobra.Command {
@@ -35,6 +37,14 @@ func newPolicyLsCmd() *cobra.Command {
 		Short: "List all Policy Packs for a Pulumi organization",
 		Long:  "List all Policy Packs for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			// Ensure we are in a project; if not, we will fail.
+			projPath, err := workspace.DetectProjectPath()
+			if err != nil {
+				return fmt.Errorf("could not detect current project: %w", err)
+			} else if projPath == "" {
+				return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+			}
+
 			ctx := commandContext()
 			// Get backend.
 			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
