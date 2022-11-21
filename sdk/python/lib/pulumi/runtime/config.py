@@ -56,6 +56,7 @@ def get_config_env() -> Dict[str, Any]:
     """
     if "PULUMI_CONFIG" in os.environ:
         env_config = os.environ["PULUMI_CONFIG"]
+        print("Found PULUMI_CONFIG in enviroment: {}".format(env_config))
         return json.loads(env_config)
     return {}
 
