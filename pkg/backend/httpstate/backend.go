@@ -30,6 +30,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -120,7 +121,7 @@ type cloudBackend struct {
 	url            string
 	client         *client.Client
 	currentProject *workspace.Project
-	capabilities   func() capabilities
+	capabilities   func(context.Context) capabilities
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -142,16 +143,14 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	}
 
 	client := client.NewClient(cloudURL, apiToken, d)
-
-	// Start a background request to detect capabilities.
-	getCaps := detectCapabilities(context.Background(), d, client)
+	capabilities := detectCapabilities(d, client)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
 		client:         client,
 		currentProject: currentProject,
-		capabilities:   getCaps,
+		capabilities:   capabilities,
 	}, nil
 }
 
@@ -774,6 +773,10 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	if err != nil {
 		return nil, err
 	}
+
+	// GetStack is typically the initial call to a series of calls to the backend. Although logically unrelated,
+	// this is a good time to start detecting capabilities so that capability request is not on the critical path.
+	go b.capabilities(ctx)
 
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
@@ -1769,19 +1772,19 @@ type capabilities struct {
 	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV1
 }
 
-// Builds a cached wrapper around doDetectCapabilities that starts the request in the background.
-func detectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) func() capabilities {
+// Builds a lazy wrapper around doDetectCapabilities.
+func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) capabilities {
+	var once sync.Once
 	var caps capabilities
 	done := make(chan struct{})
-	fetch := func() {
-		caps = doDetectCapabilities(ctx, d, client)
-		close(done)
-	}
-	get := func() capabilities {
+	get := func(ctx context.Context) capabilities {
+		once.Do(func() {
+			caps = doDetectCapabilities(ctx, d, client)
+			close(done)
+		})
 		<-done
 		return caps
 	}
-	go fetch()
 	return get
 }
 
