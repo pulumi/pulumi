@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add prompt to `up` to use experimental update plans.
