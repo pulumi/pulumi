@@ -181,7 +181,9 @@ func TestPatchUpdateCheckpointVerbatimPreservesIndent(t *testing.T) {
 }
 
 func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
 	t.Run("legacy-service-404", func(t *testing.T) {
+		t.Parallel()
 		s := newMockServer(404, "NOT FOUND")
 		defer s.Close()
 
@@ -192,6 +194,7 @@ func TestGetCapabilities(t *testing.T) {
 		assert.Empty(t, resp.Capabilities)
 	})
 	t.Run("updated-service-with-delta-checkpoint-capability", func(t *testing.T) {
+		t.Parallel()
 		cfg := apitype.DeltaCheckpointUploadsConfigV1{
 			CheckpointCutoffSizeBytes: 1024 * 1024 * 4,
 		}
