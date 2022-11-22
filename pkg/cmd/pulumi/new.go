@@ -158,6 +158,10 @@ func runNew(ctx context.Context, args newArgs) error {
 		if template, err = chooseTemplate(templates, opts); err != nil {
 			return err
 		}
+
+	}
+	if template.Errored() {
+		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
 	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
@@ -1085,7 +1089,7 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 			continue
 		}
 		// If template is broken, indicate it in the project description.
-		if template.Broken {
+		if template.Errored() {
 			template.ProjectDescription = brokenTemplateDescription
 		}
 
@@ -1093,11 +1097,11 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
-		if template.Broken {
+		nameToTemplateMap[option] = template
+		if template.Errored() {
 			brokenOptions = append(brokenOptions, option)
 		} else {
 			options = append(options, option)
-			nameToTemplateMap[option] = template
 		}
 	}
 	// After sorting the options, add the broken templates to the end
