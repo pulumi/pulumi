@@ -130,7 +130,10 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 			template, err := LoadTemplate(filepath.Join(path, name))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return nil, err
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err.Error(),
+				)
 			} else if err == nil {
 				result = append(result, template)
 			}
