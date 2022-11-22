@@ -94,8 +94,18 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	}
 
 	newMockServer := func() *httptest.Server {
-		return httptest.NewServer(
-			http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.URL.Path {
+			case "/api/capabilities":
+				resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{{
+					Capability:    apitype.DeltaCheckpointUploads,
+					Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":1}`),
+				}}}
+				err := json.NewEncoder(rw).Encode(resp)
+				assert.NoError(t, err)
+				return
+			case "/api/stacks/owner/project/stack/update/update-id/checkpointverbatim",
+				"/api/stacks/owner/project/stack/update/update-id/checkpointdelta":
 				lastRequest = req
 				rw.WriteHeader(200)
 				message := `{}`
@@ -107,7 +117,10 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				_, err = rw.Write([]byte(message))
 				assert.NoError(t, err)
 				req.Body = io.NopCloser(bytes.NewBuffer(rbytes))
-			}))
+			default:
+				panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+			}
+		}))
 	}
 
 	newMockTokenSource := func() tokenSourceCapability {
@@ -126,8 +139,6 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 			UpdateKind:      apitype.UpdateUpdate,
 			UpdateID:        updateID,
 		}, newMockTokenSource(), nil)
-		persister.deploymentDiffState = newDeploymentDiffState(1)
-		persister.deploymentDiffState.minimalDiffSize = 1
 		return persister
 	}
 
