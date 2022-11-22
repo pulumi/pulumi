@@ -130,7 +130,11 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 			template, err := LoadTemplate(filepath.Join(path, name))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return nil, err
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err.Error(),
+				)
+				result = append(result, Template{Name: name, Error: err})
 			} else if err == nil {
 				result = append(result, template)
 			}
@@ -197,9 +201,15 @@ type Template struct {
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 	Important   bool                                  // Indicates whether the template should be listed by default.
+	Error       error                                 // Non-nil if the template is broken.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.
+}
+
+// Errored returns if the template has an error
+func (t Template) Errored() bool {
+	return t.Error != nil
 }
 
 // PolicyPackTemplate represents a Policy Pack template.
