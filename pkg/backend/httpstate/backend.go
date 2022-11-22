@@ -1806,7 +1806,6 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 	for _, entry := range wireLevel {
 		switch entry.Capability {
 		case apitype.DeltaCheckpointUploads:
-			// TODO should check entry.Version here?
 			var cap apitype.DeltaCheckpointUploadsConfigV1
 			if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
 				msg := "decoding DeltaCheckpointUploadsConfigV1 returned %w"
