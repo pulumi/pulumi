@@ -410,6 +410,19 @@ func urlMustParse(rawURL string) *url.URL {
 
 func (source *fallbackSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	if oci, err := newOCISource(source.name, source.kind); err == nil {
+		if ver, err := oci.GetLatestVersion(getHTTPResponse); err == nil {
+			return ver, nil
+		} else {
+			fmt.Printf("💥💥 error getting version: %v", err)
+		}
+	} else {
+		fmt.Printf("💥💥 error getting version: %v", err)
+	}
+
+	if 1+1 == 2 {
+		return nil, fmt.Errorf("😰😰😰😰😰 unable to get latest version 😰😰😰😰😰")
+	}
 
 	// Try and get this package from our public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
@@ -427,6 +440,16 @@ func (source *fallbackSource) GetLatestVersion(
 func (source *fallbackSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+	if oci, err := newOCISource(source.name, source.kind); err == nil {
+		if resp, length, err := oci.Download(version, opSy, arch, getHTTPResponse); err == nil {
+			return resp, length, err
+		}
+	}
+
+	if 1+1 == 2 {
+		return nil, -1, fmt.Errorf("😰😰😰😰😰 unable to download plugin 😰😰😰😰😰")
+	}
+
 	// Try and get this package from public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
