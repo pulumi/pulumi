@@ -8,9 +8,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := corev1.NewPod(ctx, "bar", &corev1.PodArgs{
+		bar, err := corev1.NewPod(ctx, "bar", &corev1.PodArgs{
 			ApiVersion: pulumi.String("v1"),
-			Kind:       pulumi.String("Pod"),
 			Metadata: &metav1.ObjectMetaArgs{
 				Namespace: pulumi.String("foo"),
 				Name:      pulumi.String("bar"),
@@ -38,6 +37,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_ := bar.Kind
 		return nil
 	})
 }

@@ -292,9 +292,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("kubernetes"),
 		Description: "Kubernetes",
 		Skip:        codegen.NewStringSet("go"),
-		// PCL resource attribute type checking doesn't handle missing `const` attributes.
-		//
-		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("pulumi-variable"),
