@@ -222,11 +222,18 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	}
 
 	host := url.Host
-	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+
+	if os.Getenv("GITHUB_HOSTNAME") != "" {
+		logging.Warningf("Overriding PluginDownloadURL hostname with value set in env var GITHUB_HOSTNAME")
+		host = os.Getenv("GITHUB_HOSTNAME")
+	}
 
 	if host == "" {
 		return nil, fmt.Errorf("github:// url must have a host part, was: %s", url.String())
 	}
+
+	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+
 
 	if len(parts) != 1 && len(parts) != 2 {
 		return nil, fmt.Errorf(
