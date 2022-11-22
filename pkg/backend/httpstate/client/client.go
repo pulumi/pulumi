@@ -1096,7 +1096,8 @@ func is404(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+	var errResp *apitype.ErrorResponse
+	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
 		return true
 	}
 	return false
