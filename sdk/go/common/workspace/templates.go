@@ -134,6 +134,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 					"Failed to load template %s: %s",
 					name, err.Error(),
 				)
+				result = append(result, Template{Name: name, Broken: true})
 			} else if err == nil {
 				result = append(result, template)
 			}
@@ -200,6 +201,7 @@ type Template struct {
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 	Important   bool                                  // Indicates whether the template should be listed by default.
+	Broken      bool                                  // Indicates whether the template is currently broken.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.

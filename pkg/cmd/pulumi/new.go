@@ -50,6 +50,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const (
+	brokenTemplateDescription = "(This template is currently broken)"
+)
+
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error)
 
@@ -1073,21 +1077,32 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 
 	// Build the array and map.
 	var options []string
+	var brokenOptions []string
 	nameToTemplateMap := make(map[string]workspace.Template)
 	for _, template := range templates {
 		// If showAll is false, then only include templates marked Important
 		if !showAll && !template.Important {
 			continue
 		}
+		// If template is broken, indicate it in the project description.
+		if template.Broken {
+			template.ProjectDescription = brokenTemplateDescription
+		}
+
 		// Create the option string that combines the name, padding, and description.
 		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
-		// Add it to the array and map.
-		options = append(options, option)
-		nameToTemplateMap[option] = template
+		if template.Broken {
+			brokenOptions = append(brokenOptions, option)
+		} else {
+			options = append(options, option)
+			nameToTemplateMap[option] = template
+		}
 	}
+	// After sorting the options, add the broken templates to the end
 	sort.Strings(options)
+	options = append(options, brokenOptions...)
 
 	if !showAll {
 		// If showAll is false, include an option to show all
