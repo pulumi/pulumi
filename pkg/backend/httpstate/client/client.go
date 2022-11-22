@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"path"
 	"regexp"
@@ -49,6 +50,10 @@ type Client struct {
 	apiOrgs  []string
 	diag     diag.Sink
 	client   restClient
+
+	// Dedicated client for renewLease calls. Those are critical to complete in a timely manner. To avoid contending
+	// for shared connection pool these requests get a dedicated pool.
+	renewLeaseClient restClient
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -61,6 +66,11 @@ var newClient = func(apiURL, apiToken string, d diag.Sink) *Client {
 		client: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: http.DefaultClient,
+			},
+		},
+		renewLeaseClient: &defaultRESTClient{
+			client: &defaultHTTPClient{
+				client: &http.Client{Transport: newTransport()},
 			},
 		},
 	}
@@ -95,8 +105,13 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 // response is deserialized into that object.
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken, httpOptions httpCallOptions) error {
+	return pc.updateRESTCallWithClient(ctx, pc.client, method, path, queryObj, reqObj, respObj, token, httpOptions)
+}
 
-	return pc.client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
+// Similar to updateRESTCall but overriding restClient.
+func (pc *Client) updateRESTCallWithClient(ctx context.Context, client restClient, method, path string, queryObj,
+	reqObj, respObj interface{}, token updateAccessToken, httpOptions httpCallOptions) error {
+	return client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
 // getProjectPath returns the API path for the given owner and the given project name joined with path separators
@@ -890,7 +905,8 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// While renewing a lease uses POST, it is safe to send multiple requests (consider that we do this multiple times
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
-	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
+	if err := pc.updateRESTCallWithClient(ctx, pc.renewLeaseClient,
+		"POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
@@ -1069,4 +1085,25 @@ func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifie
 		return nil, fmt.Errorf("getting deployment %s updates failed: %w", id, err)
 	}
 	return resp, nil
+}
+
+// Builds a a new *http.Transport with the same config defaults as http.DefaultTransport but its own dedicated state.
+func newTransport() *http.Transport {
+	defTransport := http.DefaultTransport.(*http.Transport)
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     defTransport.ForceAttemptHTTP2,
+		MaxIdleConns:          defTransport.MaxIdleConns,
+		IdleConnTimeout:       defTransport.IdleConnTimeout,
+		TLSHandshakeTimeout:   defTransport.TLSHandshakeTimeout,
+		ExpectContinueTimeout: defTransport.ExpectContinueTimeout,
+	}
+	if defTransport.DialContext != nil {
+		dialer := &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}
+		defTransport.DialContext = dialer.DialContext
+	}
+	return transport
 }
