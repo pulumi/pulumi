@@ -113,8 +113,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-webserver",
 		Description: "AWS Webserver",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
 		Directory:   "simple-range",

@@ -40,6 +40,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// A signifier that the module is external, and will never match.
+//
+// This token is always an invalid module since ':' is not allowed within modules.
+const ExternalModuleSig = ":always-external:"
+
 type typeDetails struct {
 	// Note: if any of {ptr,array,map}Input are set, input and the corresponding output field must also be set. The
 	// mark* functions ensure that these invariants hold.
@@ -242,10 +247,7 @@ func (pkg *pkgContext) resolveEnumType(t *schema.EnumType) string {
 	}
 
 	extPkgCtx, _ := pkg.contextForExternalReference(t)
-	enumType := extPkgCtx.tokenToEnum(t.Token)
-	if !strings.Contains(enumType, ".") {
-		enumType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, enumType)
-	}
+	enumType := extPkgCtx.typeString(t)
 	return enumType
 }
 
@@ -730,6 +732,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	extPkgCtx.pkgImportAliases = pkgImportAliases
 	extPkgCtx.externalPackages = pkg.externalPackages
 	mod := tokenToPackage(extPkg, goInfo.ModuleToPackage, token)
+	extPkgCtx.mod = ExternalModuleSig
 
 	return extPkgCtx, *maps[mod].detailsForType(t)
 }
