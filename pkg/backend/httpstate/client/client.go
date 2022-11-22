@@ -49,6 +49,9 @@ type Client struct {
 	apiOrgs  []string
 	diag     diag.Sink
 	client   restClient
+
+	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
+	DisableCapabilityProbing bool
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -1072,6 +1075,10 @@ func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifie
 }
 
 func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesResponse, error) {
+	if pc.DisableCapabilityProbing {
+		return &apitype.CapabilitiesResponse{}, nil
+	}
+
 	var resp apitype.CapabilitiesResponse
 	err := pc.restCall(ctx, http.MethodGet, "/api/capabilities", nil, nil, &resp)
 	if is404(err) {
