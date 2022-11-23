@@ -57,7 +57,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "assets-archives",
 		Description: "Assets and archives",
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "synthetic-resource-properties",

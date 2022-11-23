@@ -449,10 +449,14 @@ func (g *generator) collectConvertImports(
 		//
 		// Fully solving this is deferred for later:
 		// TODO[pulumi/pulumi#8324].
-		if expr, ok := call.Args[0].(*model.TemplateExpression); ok {
-			if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
-				model.StringType.AssignableFrom(lit.Type()) &&
+		switch arg0 := call.Args[0].(type) {
+		case *model.TemplateExpression:
+			if lit, ok := arg0.Parts[0].(*model.LiteralValueExpression); ok &&
 				call.Type().AssignableFrom(lit.Type()) {
+				return
+			}
+		case *model.ScopeTraversalExpression:
+			if call.Type().AssignableFrom(arg0.Type()) {
 				return
 			}
 		}
