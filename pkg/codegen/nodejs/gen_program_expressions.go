@@ -373,11 +373,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.genRange(w, call, true)
 				return
 			}
-			g.Fgenf(w, "%.20v.map((k, v)", expr.Args[0])
+			// Mapping over a list with a tuple receiver accepts (value, index).
+			g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
 		case *model.MapType, *model.ObjectType:
 			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
 		}
-		g.Fgenf(w, " => {key: k, value: v})")
+		g.Fgenf(w, " => ({key: k, value: v}))")
 	case "fileArchive":
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
