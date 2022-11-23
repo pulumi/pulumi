@@ -122,6 +122,11 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
+		// If we're running in experimental mode then return the plan generated, else discard it. The user may
+		// be explicitly setting a plan but that's handled higher up the call stack.
+		if !op.Opts.Engine.Experimental {
+			plan = nil
+		}
 		return plan, changes, nil
 	}
 
