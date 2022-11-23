@@ -602,9 +602,6 @@ func TestProviderDownloadURL(t *testing.T) {
 	for _, lang := range languages {
 		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
-			localProvider := integration.LocalDependency{
-				Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider")),
-			}
 			dir := filepath.Join("gather_plugin", lang.name)
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    dir,
@@ -612,7 +609,6 @@ func TestProviderDownloadURL(t *testing.T) {
 				SkipPreview:            true,
 				SkipEmptyPreviewUpdate: true,
 				Dependencies:           []string{lang.dependency},
-				LocalProviders:         []integration.LocalDependency{localProvider},
 			})
 		})
 	}

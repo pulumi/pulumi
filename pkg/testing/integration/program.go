@@ -1821,39 +1821,52 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 
 	if pt.opts.LocalProviders != nil {
 		for _, provider := range pt.opts.LocalProviders {
+			// LocalProviders are relative to the working directory when running tests, NOT relative to the
+			// Pulumi.yaml. This is a bit odd, but makes it easier to construct the required paths in each
+			// test.
+			absPath, err := filepath.Abs(provider.Path)
+			if err != nil {
+				return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
+			}
+
 			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
 				Name: provider.Package,
-				Path: provider.Path,
+				Path: absPath,
 			})
 		}
 	}
 
+	// Absolute path of the source directory, for fixupPath to use below
+	absSource, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return "", "", fmt.Errorf("could not get absolute path for source directory %s: %w", sourceDir, err)
+	}
+
+	// Return a fixed up path if it's relative to sourceDir but not beneath it, else just returns the input
+	fixupPath := func(path string) (string, error) {
+		if filepath.IsAbs(path) {
+			return path, nil
+		}
+		absPlugin := filepath.Join(absSource, path)
+		if !strings.HasPrefix(absPlugin, absSource+string(filepath.Separator)) {
+			return absPlugin, nil
+		}
+		return path, nil
+	}
+
 	if projinfo.Proj.Plugins != nil {
-		for i, provider := range projinfo.Proj.Plugins.Providers {
-			if !filepath.IsAbs(provider.Path) {
-				path, err := filepath.Abs(provider.Path)
-				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
-				}
-				projinfo.Proj.Plugins.Providers[i].Path = path
-			}
+		optionSets := [][]workspace.PluginOptions{
+			projinfo.Proj.Plugins.Providers,
+			projinfo.Proj.Plugins.Languages,
+			projinfo.Proj.Plugins.Analyzers,
 		}
-		for i, language := range projinfo.Proj.Plugins.Languages {
-			if !filepath.IsAbs(language.Path) {
-				path, err := filepath.Abs(language.Path)
+		for _, options := range optionSets {
+			for i, opt := range options {
+				path, err := fixupPath(opt.Path)
 				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", language.Path, err)
+					return "", "", fmt.Errorf("could not get fixed path for plugin %s: %w", opt.Path, err)
 				}
-				projinfo.Proj.Plugins.Languages[i].Path = path
-			}
-		}
-		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
-			if !filepath.IsAbs(analyzer.Path) {
-				path, err := filepath.Abs(analyzer.Path)
-				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", analyzer.Path, err)
-				}
-				projinfo.Proj.Plugins.Analyzers[i].Path = path
+				options[i].Path = path
 			}
 		}
 	}
