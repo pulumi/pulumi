@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Don't print update plan message with --json.

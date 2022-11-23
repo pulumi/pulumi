@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.48.0 (2022-11-23)
+
+
+### Bug Fixes
+
+- [cli] Don't print update plan message with --json.
+  [#11454](https://github.com/pulumi/pulumi/pull/11454)
+
+- [cli] `up --yes` should not use update plans.
+  [#11445](https://github.com/pulumi/pulumi/pull/11445)
+
 ## 3.47.2 (2022-11-22)
 
 
