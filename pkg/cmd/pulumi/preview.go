@@ -261,14 +261,16 @@ func newPreviewCmd() *cobra.Command {
 						return result.FromError(err)
 					}
 
-					// Write out message on how to use the plan
-					var buf bytes.Buffer
-					fprintf(&buf, "Update plan written to '%s'", planFilePath)
-					fprintf(
-						&buf,
-						"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
-						planFilePath)
-					cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
+					// Write out message on how to use the plan (if not writing out --json)
+					if !jsonDisplay {
+						var buf bytes.Buffer
+						fprintf(&buf, "Update plan written to '%s'", planFilePath)
+						fprintf(
+							&buf,
+							"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
+							planFilePath)
+						cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
+					}
 				}
 				return nil
 			}
