@@ -1,6 +1,5 @@
 resource bar "kubernetes:core/v1:Pod" {
     apiVersion = "v1"
-    kind = "Pod"
     metadata = {
         namespace = "foo"
         name = "bar"
@@ -21,3 +20,6 @@ resource bar "kubernetes:core/v1:Pod" {
         ]
     }
 }
+
+// Test that we can assign from a constant without type errors
+kind = bar.kind

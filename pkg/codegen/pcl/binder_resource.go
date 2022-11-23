@@ -382,9 +382,16 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		}
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
-			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
-				diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
+			typ := objectType.Properties[k]
+			if model.IsOptionalType(typ) || attrNames.Has(k) {
+				// The type is present or optional. No error.
+				continue
 			}
+			if model.IsConstType(objectType.Properties[k]) {
+				// The type is const, so the value is implied. No error.
+				continue
+			}
+			diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
 		}
 	}
 
