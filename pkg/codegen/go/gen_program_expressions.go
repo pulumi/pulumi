@@ -168,8 +168,10 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 		}
 		memberTag, err := makeSafeEnumName(memberTag, enumName)
 		contract.AssertNoErrorf(err, "Enum is invalid")
-		namespace := tokenToModule(to.Token)
-		g.Fgenf(w, "%s.%s", namespace, memberTag)
+		pkg, mod, _, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
+		mod = g.getModOrAlias(pkg, mod, mod)
+
+		g.Fgenf(w, "%s.%s", mod, memberTag)
 	}
 }
 
