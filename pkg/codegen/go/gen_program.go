@@ -363,7 +363,7 @@ func (g *generator) collectImports(
 	program *pcl.Program,
 	stdImports,
 	pulumiImports,
-	preambleHelperMethods codegen.StringSet) (codegen.StringSet, codegen.StringSet, codegen.StringSet) {
+	preambleHelperMethods codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
@@ -432,8 +432,6 @@ func (g *generator) collectImports(
 		})
 		contract.Assert(len(diags) == 0)
 	}
-
-	return stdImports, pulumiImports, preambleHelperMethods
 }
 
 func (g *generator) collectConvertImports(
@@ -492,48 +490,38 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	return info, ok
 }
 
-func (g *generator) getPulumiImport(pkg, vPath, mod, name string) string {
-	info, _ := g.getGoPackageInfo(pkg)
+func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, _ := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+
+	importPath := func(mod string) string {
+		importBasePath := info.ImportBasePath
+		if importBasePath == "" {
+			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		}
+
+		if mod != "" && mod != IndexToken {
+			return fmt.Sprintf("%s/%s", importBasePath, mod)
+		}
+		return importBasePath
+	}
+
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
 
-	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
-	// namespaceless invokes "aws:index:..."
-	if mod == "" {
-		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+	path := importPath(mod)
+	if alias, ok := info.PackageImportAliases[path]; ok {
+		return fmt.Sprintf("%s %q", alias, path)
 	}
 
-	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
-	// a means to override this assumption.
-	if info.ImportBasePath != "" {
-		if mod != "" {
-			imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
-		} else {
-			imp = info.ImportBasePath
-		}
-	}
+	// Trim off anything after the first '/'.
+	// This handles transforming modules like s3/bucket to s3 (as found in
+	// aws:s3/bucket:Bucket).
+	mod = strings.SplitN(mod, "/", 2)[0]
 
-	if alias, ok := info.PackageImportAliases[imp]; ok {
-		return fmt.Sprintf("%s %q", alias, imp)
-	}
-
-	modSplit := strings.Split(mod, "/")
-	// account for mods like "eks/ClusterVpcConfig" index...
-	if len(modSplit) > 1 {
-		if modSplit[0] == "" || modSplit[0] == IndexToken {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
-			if info.ImportBasePath != "" {
-				imp = info.ImportBasePath
-			}
-		} else {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
-			if info.ImportBasePath != "" {
-				imp = fmt.Sprintf("%s/%s", info.ImportBasePath, modSplit[0])
-			}
-		}
-	}
-	return fmt.Sprintf("%q", imp)
+	return fmt.Sprintf("%#v", importPath(mod))
 }
 
 // genPostamble closes the method
