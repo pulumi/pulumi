@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.47.2 (2022-11-22)
+
+
+### Features
+
+- [cli] Add prompt to `up` to use experimental update plans.
+  [#11353](https://github.com/pulumi/pulumi/pull/11353)
+
+
+### Bug Fixes
+
+- [sdk/python] Don't error on type mismatches when using input values for outputs
+  [#11422](https://github.com/pulumi/pulumi/pull/11422)
+
 ## 3.47.1 (2022-11-18)
 
 
