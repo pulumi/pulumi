@@ -184,7 +184,11 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 			template, err := LoadPolicyPackTemplate(filepath.Join(path, name))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return nil, err
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err.Error(),
+				)
+				result = append(result, PolicyPackTemplate{Name: name, Error: err})
 			} else if err == nil {
 				result = append(result, template)
 			}
@@ -217,6 +221,12 @@ type PolicyPackTemplate struct {
 	Dir         string // The directory containing PulumiPolicy.yaml.
 	Name        string // The name of the template.
 	Description string // Description of the template.
+	Error       error  // Non-nil if the template is broken.
+}
+
+// Errored returns if the template has an error
+func (t PolicyPackTemplate) Errored() bool {
+	return t.Error != nil
 }
 
 // cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
