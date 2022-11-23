@@ -243,7 +243,7 @@ config:
   pulumi-test:d:
     a: D
   pulumi-test:e:
-  - E
+    - E
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
 		assert.NoError(t, err)
@@ -263,10 +263,10 @@ config:
   pulumi-test:d:
     a: D
   pulumi-test:e:
-  - E
+    - E
   pulumi-test:f:
     g:
-    - F
+      - F
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
 		assert.NoError(t, err)

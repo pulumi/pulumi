@@ -882,7 +882,7 @@ func TestProjectLoadYAML(t *testing.T) {
 
 	// Test nested bad key
 	_, err = loadProjectFromText(t, "hello:\n    6: bad")
-	assert.Contains(t, err.Error(), "expected only string keys, got '%!s(int=6)'")
+	assert.Contains(t, err.Error(), "project is missing a 'name' attribute")
 
 	// Test lack of name
 	_, err = loadProjectFromText(t, "{}")
