@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: `up --yes` should not use update plans.
