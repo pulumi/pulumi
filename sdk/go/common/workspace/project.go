@@ -178,6 +178,13 @@ type Project struct {
 
 	// Handle additional keys, albeit in a way that will remove comments and trivia.
 	AdditionalKeys map[string]interface{} `yaml:",inline"`
+
+	// The original byte representation of the file, used to attempt trivia-preserving edits
+	raw []byte
+}
+
+func (proj Project) RawValue() []byte {
+	return proj.raw
 }
 
 func isPrimitiveValue(value interface{}) bool {
@@ -531,6 +538,13 @@ type PolicyPackProject struct {
 	Website *string `json:"website,omitempty" yaml:"website,omitempty"`
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
+
+	// The original byte representation of the file, used to attempt trivia-preserving edits
+	raw []byte
+}
+
+func (proj PolicyPackProject) RawValue() []byte {
+	return proj.raw
 }
 
 func (proj *PolicyPackProject) Validate() error {
@@ -574,6 +588,13 @@ type ProjectStack struct {
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+
+	// The original byte representation of the file, used to attempt trivia-preserving edits
+	raw []byte
+}
+
+func (ps ProjectStack) RawValue() []byte {
+	return ps.raw
 }
 
 // Save writes a project definition to a file.

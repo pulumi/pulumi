@@ -131,6 +131,7 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
 	}
 
+	project.raw = b
 	singleton.internal[path] = &project
 	return &project, nil
 }
@@ -248,6 +249,7 @@ func (singleton *projectStackLoader) load(project *Project, path string) (*Proje
 		projectStack.Config = make(config.Map)
 	}
 
+	projectStack.raw = b
 	singleton.internal[path] = &projectStack
 	return &projectStack, nil
 }
