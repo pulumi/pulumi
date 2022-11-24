@@ -77,8 +77,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
-		SkipCompile: codegen.NewStringSet("nodejs"),
-		// Blocked on nodejs: TODO[pulumi/pulumi#8067]
 	},
 	{
 		Directory:   "aws-fargate",
