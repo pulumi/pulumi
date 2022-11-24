@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/nodejs
+  description: Fix NodeJS SDK when a component is using another component from the same schema as a property
