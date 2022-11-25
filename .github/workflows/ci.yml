@@ -293,6 +293,7 @@ jobs:
     name: Smoke Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
     if: ${{ needs.matrix.outputs.smoke-test-matrix != '{}' }}
+    # alow jobs to fail if the platform contains windows
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.smoke-test-matrix, 'macos') }}
       matrix: ${{ fromJson(needs.matrix.outputs.smoke-test-matrix) }}
@@ -309,6 +310,7 @@ jobs:
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
+      continue-on-error: ${{ contains(matrix.platform, 'windows') }}
     secrets: inherit
 
   test-collect-reports:

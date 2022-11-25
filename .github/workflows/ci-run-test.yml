@@ -50,6 +50,11 @@ on:
             "nodejs": "14.x",
             "python": "3.9.x"
           }
+      continue-on-error:
+        description: "Whether to continue running the job if the step fails"
+        required: false
+        default: false
+        type: boolean
 
 
 defaults:
@@ -83,6 +88,8 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       - name: "Windows cache workaround"
         # https://github.com/actions/cache/issues/752#issuecomment-1222415717
