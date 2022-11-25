@@ -1558,12 +1558,14 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		filteredOutputProps = filterOutputProperties(r.InputProperties, r.Properties)
 	}
 
-	// All resources have an implicit `id` output property, that we must inject into the docs.
-	filteredOutputProps = append(filteredOutputProps, &schema.Property{
-		Name:    "id",
-		Comment: "The provider-assigned unique ID for this managed resource.",
-		Type:    schema.StringType,
-	})
+	// All custom resources have an implicit `id` output property, that we must inject into the docs.
+	if !r.IsComponent {
+		filteredOutputProps = append(filteredOutputProps, &schema.Property{
+			Name:    "id",
+			Comment: "The provider-assigned unique ID for this managed resource.",
+			Type:    schema.StringType,
+		})
+	}
 
 	for _, lang := range dctx.supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
