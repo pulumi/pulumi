@@ -39,8 +39,8 @@ run_tests() {
 
 run_tests "${@}"
 
-echo "::set-output name=TEST_SUCCESS::${success}"
-echo "::set-output name=TEST_RETRIED::${retried}"
+echo "TEST_SUCCESS=${success}" >> "${GITHUB_OUTPUT:?}"
+echo "TEST_RETRIED=${retried}" >> "${GITHUB_OUTPUT:?}"
 
 if ! "${success}"; then
     exit 1

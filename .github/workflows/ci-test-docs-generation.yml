@@ -106,8 +106,8 @@ jobs:
 
           popd
 
-          echo "::set-output name=branchName::${BRANCH_NAME}"
-          echo "::set-output name=prNumber::${PR_NUMBER}"
+          echo "branchName=${BRANCH_NAME}" >> "${GITHUB_OUTPUT:?}"
+          echo "prNumber=${PR_NUMBER}" >> "${GITHUB_OUTPUT:?}"
 
       - name: Create draft docs PR
         uses: peter-evans/create-pull-request@v3
