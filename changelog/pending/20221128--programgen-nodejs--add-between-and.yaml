@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Add `.` between `?` and `[`.

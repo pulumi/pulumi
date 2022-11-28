@@ -594,8 +594,20 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
 		}
 
+		var indexPrefix string
 		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
 			g.Fgen(w, "?")
+			// `expr?[expr]` is not valid typescript, since it looks like a ternary
+			// operator.
+			//
+			// Typescript solves this by inserting a `.` in before the `[`: `expr?.[expr]`
+			//
+			// We need to do the same when generating index based expressions.
+			indexPrefix = "."
+		}
+
+		genIndex := func(inner string, value interface{}) {
+			g.Fgenf(w, "%s["+inner+"]", indexPrefix, value)
 		}
 
 		switch key.Type() {
@@ -604,13 +616,13 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			if isLegalIdentifier(keyVal) {
 				g.Fgenf(w, ".%s", keyVal)
 			} else {
-				g.Fgenf(w, "[%q]", keyVal)
+				genIndex("%q", keyVal)
 			}
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
-			g.Fgenf(w, "[%d]", idx)
+			genIndex("%d", idx)
 		default:
-			g.Fgenf(w, "[%q]", key.AsString())
+			genIndex("%q", key.AsString())
 		}
 	}
 }
