@@ -33,8 +33,6 @@ import (
 type deploymentDiffState struct {
 	lastSavedDeployment json.RawMessage
 	sequenceNumber      int
-	noChecksums         bool
-	strictMode          bool
 	minimalDiffSize     int
 }
 
@@ -44,8 +42,11 @@ type deploymentDiff struct {
 	deploymentDelta json.RawMessage
 }
 
-func newDeploymentDiffState() *deploymentDiffState {
-	return &deploymentDiffState{sequenceNumber: 1}
+func newDeploymentDiffState(minimalDiffSize int) *deploymentDiffState {
+	return &deploymentDiffState{
+		sequenceNumber:  1,
+		minimalDiffSize: minimalDiffSize,
+	}
 }
 
 func (dds *deploymentDiffState) SequenceNumber() int {
@@ -62,14 +63,10 @@ func (dds *deploymentDiffState) ShouldDiff(new *apitype.UntypedDeployment) bool 
 	if !dds.CanDiff() {
 		return false
 	}
-	small := dds.minimalDiffSize
-	if small == 0 {
-		small = 1024 * 32
-	}
-	if len(dds.lastSavedDeployment) < small {
+	if len(dds.lastSavedDeployment) < dds.minimalDiffSize {
 		return false
 	}
-	if len(new.Deployment) < small {
+	if len(new.Deployment) < dds.minimalDiffSize {
 		return false
 	}
 	return true
@@ -99,13 +96,11 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 	var checkpointHash string
 	checkpointHashReady := &sync.WaitGroup{}
 
-	if !dds.noChecksums {
-		checkpointHashReady.Add(1)
-		go func() {
-			defer checkpointHashReady.Done()
-			checkpointHash = dds.computeHash(childCtx, after)
-		}()
-	}
+	checkpointHashReady.Add(1)
+	go func() {
+		defer checkpointHashReady.Done()
+		checkpointHash = dds.computeHash(childCtx, after)
+	}()
 
 	delta, err := dds.computeEdits(childCtx, string(before), string(after))
 	if err != nil {

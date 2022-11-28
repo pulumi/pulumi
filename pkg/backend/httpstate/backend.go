@@ -18,6 +18,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -119,6 +121,7 @@ type cloudBackend struct {
 	url            string
 	client         *client.Client
 	currentProject *workspace.Project
+	capabilities   func(context.Context) capabilities
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -139,11 +142,15 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 		currentProject = nil
 	}
 
+	client := client.NewClient(cloudURL, apiToken, d)
+	capabilities := detectCapabilities(d, client)
+
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client.NewClient(cloudURL, apiToken, d),
+		client:         client,
 		currentProject: currentProject,
+		capabilities:   capabilities,
 	}, nil
 }
 
@@ -766,6 +773,10 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	if err != nil {
 		return nil, err
 	}
+
+	// GetStack is typically the initial call to a series of calls to the backend. Although logically unrelated,
+	// this is a good time to start detecting capabilities so that capability request is not on the critical path.
+	go b.capabilities(ctx)
 
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
@@ -1752,4 +1763,58 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 func (c httpstateBackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string) (resource.PropertyMap, error) {
 	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
+}
+
+// Represents feature-detected capabilities of the service the backend is connected to.
+type capabilities struct {
+	// If non-nil, indicates that delta checkpoint updates are supported.
+	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV1
+}
+
+// Builds a lazy wrapper around doDetectCapabilities.
+func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) capabilities {
+	var once sync.Once
+	var caps capabilities
+	done := make(chan struct{})
+	get := func(ctx context.Context) capabilities {
+		once.Do(func() {
+			caps = doDetectCapabilities(ctx, d, client)
+			close(done)
+		})
+		<-done
+		return caps
+	}
+	return get
+}
+
+func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) capabilities {
+	resp, err := client.GetCapabilities(ctx)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
+		return capabilities{}
+	}
+	caps, err := decodeCapabilities(resp.Capabilities)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
+		return capabilities{}
+	}
+	return caps
+}
+
+func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, error) {
+	var parsed capabilities
+	for _, entry := range wireLevel {
+		switch entry.Capability {
+		case apitype.DeltaCheckpointUploads:
+			var cap apitype.DeltaCheckpointUploadsConfigV1
+			if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
+				msg := "decoding DeltaCheckpointUploadsConfigV1 returned %w"
+				return capabilities{}, fmt.Errorf(msg, err)
+			}
+			parsed.deltaCheckpointUpdates = &cap
+		default:
+			continue
+		}
+	}
+	return parsed, nil
 }

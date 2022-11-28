@@ -49,6 +49,9 @@ type Client struct {
 	apiOrgs  []string
 	diag     diag.Sink
 	client   restClient
+
+	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
+	DisableCapabilityProbing bool
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -321,7 +324,7 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectName string) (bool, error) {
 	if err := pc.restCall(ctx, "HEAD", getProjectPath(owner, projectName), nil, nil, nil); err != nil {
 		// If this was a 404, return false - project not found.
-		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+		if is404(err) {
 			return false, nil
 		}
 
@@ -1069,4 +1072,33 @@ func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifie
 		return nil, fmt.Errorf("getting deployment %s updates failed: %w", id, err)
 	}
 	return resp, nil
+}
+
+func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesResponse, error) {
+	if pc.DisableCapabilityProbing {
+		return &apitype.CapabilitiesResponse{}, nil
+	}
+
+	var resp apitype.CapabilitiesResponse
+	err := pc.restCall(ctx, http.MethodGet, "/api/capabilities", nil, nil, &resp)
+	if is404(err) {
+		// The client continues to support legacy backends. They do not support /api/capabilities and are
+		// assumed here to have no additional capabilities.
+		return &apitype.CapabilitiesResponse{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying capabilities failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func is404(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errResp *apitype.ErrorResponse
+	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+		return true
+	}
+	return false
 }

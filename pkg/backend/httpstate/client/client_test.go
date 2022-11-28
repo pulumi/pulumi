@@ -179,3 +179,46 @@ func TestPatchUpdateCheckpointVerbatimPreservesIndent(t *testing.T) {
 
 	assert.Equal(t, string(indented), string(request.UntypedDeployment))
 }
+
+func TestGetCapabilities(t *testing.T) {
+	t.Parallel()
+	t.Run("legacy-service-404", func(t *testing.T) {
+		t.Parallel()
+		s := newMockServer(404, "NOT FOUND")
+		defer s.Close()
+
+		c := newMockClient(s)
+		resp, err := c.GetCapabilities(context.Background())
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Empty(t, resp.Capabilities)
+	})
+	t.Run("updated-service-with-delta-checkpoint-capability", func(t *testing.T) {
+		t.Parallel()
+		cfg := apitype.DeltaCheckpointUploadsConfigV1{
+			CheckpointCutoffSizeBytes: 1024 * 1024 * 4,
+		}
+		cfgJSON, err := json.Marshal(cfg)
+		require.NoError(t, err)
+		actualResp := apitype.CapabilitiesResponse{
+			Capabilities: []apitype.APICapabilityConfig{{
+				Version:       3,
+				Capability:    apitype.DeltaCheckpointUploads,
+				Configuration: json.RawMessage(cfgJSON),
+			}},
+		}
+		respJSON, err := json.Marshal(actualResp)
+		require.NoError(t, err)
+		s := newMockServer(200, string(respJSON))
+		defer s.Close()
+
+		c := newMockClient(s)
+		resp, err := c.GetCapabilities(context.Background())
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Capabilities, 1)
+		assert.Equal(t, apitype.DeltaCheckpointUploads, resp.Capabilities[0].Capability)
+		assert.Equal(t, `{"checkpointCutoffSizeBytes":4194304}`,
+			string(resp.Capabilities[0].Configuration))
+	})
+}

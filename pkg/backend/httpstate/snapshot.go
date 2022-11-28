@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -26,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -82,9 +80,6 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			return err
 		}
 		if err := persister.saveDiff(ctx, diff, token); err != nil {
-			if differ.strictMode {
-				return err
-			}
 			if logging.V(3) {
 				logging.V(3).Infof("ignoring error saving checkpoint "+
 					"with PatchUpdateCheckpointDelta, falling back to "+
@@ -139,17 +134,10 @@ func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.
 		sm:          sm,
 	}
 
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH")) {
-		p.deploymentDiffState = newDeploymentDiffState()
-
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH_STRICT")) {
-			p.deploymentDiffState.strictMode = true
-		}
-
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH_NO_CHECKSUMS")) {
-			p.deploymentDiffState.noChecksums = true
-		}
+	caps := cb.capabilities(ctx)
+	deltaCaps := caps.deltaCheckpointUpdates
+	if deltaCaps != nil {
+		p.deploymentDiffState = newDeploymentDiffState(deltaCaps.CheckpointCutoffSizeBytes)
 	}
-
 	return p
 }
