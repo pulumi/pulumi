@@ -94,27 +94,6 @@ jobs:
         run: |
           echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
           exit 1
-  windows-winget-install:
-    name: Install Pulumi with WinGet on Windows
-    runs-on: windows-latest
-    steps:
-      - name: Install WinGet CLI
-        shell: powershell
-        run: |
-          try { winget --help } catch { Add-AppxPackage -Path https://aka.ms/getwinget }
-      - name: Install Pulumi Using Winget
-        run: winget install pulumi
-      - name: Pulumi Version Details
-        id: vars
-        shell: bash
-        run: |
-          echo "::set-output name=installed-version::$(pulumi version)"
-          echo "::set-output name=expected-version::v$(curl -sS https://www.pulumi.com/latest-version)"
-      - name: Error if incorrect version found
-        if: ${{ steps.vars.outputs.expected-version != steps.vars.outputs.installed-version }}
-        run: |
-          echo "Expected version ${{ steps.vars.outputs.expected-version }} but found ${{ steps.vars.outputs.installed-version }}"
-          exit 1
   windows-direct-install:
     name: Install Pulumi via script on Windows
     runs-on: windows-latest
