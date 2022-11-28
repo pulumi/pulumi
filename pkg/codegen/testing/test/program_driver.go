@@ -88,7 +88,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: allProgLanguages.Except("python").Except("dotnet"),
+		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
