@@ -149,6 +149,9 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			return err
 		}
 	}
+	if template.Errored() {
+		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
+	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
@@ -366,15 +369,26 @@ func policyTemplatesToOptionArrayAndMap(
 
 	// Build the array and map.
 	var options []string
+	var brokenOptions []string
 	nameToTemplateMap := make(map[string]workspace.PolicyPackTemplate)
 	for _, template := range templates {
+		// If template is broken, indicate it in the project description.
+		if template.Errored() {
+			template.Description = brokenTemplateDescription
+		}
+
 		// Create the option string that combines the name, padding, and description.
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
 
-		// Add it to the array and map.
-		options = append(options, option)
 		nameToTemplateMap[option] = template
+		if template.Errored() {
+			brokenOptions = append(brokenOptions, option)
+		} else {
+			options = append(options, option)
+		}
 	}
+	// After sorting the options, add the broken templates to the end
 	sort.Strings(options)
+	options = append(options, brokenOptions...)
 	return options, nameToTemplateMap
 }

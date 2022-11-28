@@ -823,32 +823,22 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 
-	var selectedOption workspace.Template
+	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+	nopts := len(options)
+	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+	message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	for {
-		options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
-		nopts := len(options)
-		pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
-		message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
-		message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
-
-		var option string
-		if err := survey.AskOne(&survey.Select{
-			Message:  message,
-			Options:  options,
-			PageSize: pageSize,
-		}, &option, surveyIcons(opts.Color)); err != nil {
-			return workspace.Template{}, errors.New(chooseTemplateErr)
-		}
-
-		var has bool
-		selectedOption, has = optionToTemplateMap[option]
-		if has {
-			break
-		}
+	var option string
+	if err := survey.AskOne(&survey.Select{
+		Message:  message,
+		Options:  options,
+		PageSize: pageSize,
+	}, &option, surveyIcons(opts.Color)); err != nil {
+		return workspace.Template{}, errors.New(chooseTemplateErr)
 	}
 
-	return selectedOption, nil
+	return optionToTemplateMap[option], nil
 }
 
 // parseConfig parses the config values passed via command line flags.
