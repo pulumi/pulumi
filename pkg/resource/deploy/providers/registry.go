@@ -223,6 +223,12 @@ func (r *Registry) GetSchema(version int) ([]byte, error) {
 	return nil, errors.New("the provider registry has no schema")
 }
 
+func (r *Registry) GetMapping(key string) ([]byte, string, error) {
+	contract.Fail()
+
+	return nil, "", errors.New("the provider registry has no mappings")
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (r *Registry) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {

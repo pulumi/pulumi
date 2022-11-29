@@ -211,3 +211,9 @@ func (p *componentProvider) Attach(ctx context.Context,
 	p.host = host
 	return &pbempty.Empty{}, nil
 }
+
+// GetMapping fetches the conversion mapping (if any) for this resource provider.
+func (p *componentProvider) GetMapping(ctx context.Context,
+	req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	return &pulumirpc.GetMappingResponse{Provider: "", Data: nil}, nil
+}

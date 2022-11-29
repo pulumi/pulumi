@@ -46,6 +46,10 @@ func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
+func (p *builtinProvider) GetMapping(key string) ([]byte, string, error) {
+	return nil, "", nil
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
