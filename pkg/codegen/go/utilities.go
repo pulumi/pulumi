@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -152,4 +153,23 @@ func fieldName(pkg *pkgContext, r *schema.Resource, p *schema.Property) string {
 	res := s + "_"
 	contract.Assert(!isReservedResourceField(name, res))
 	return res
+}
+
+// Check if an array type will be generated for t.
+//
+// This includes inputty types like `pulumi.StringArray` and immediate types like
+// `[]string`.
+func modelIsArrayType(t model.Type) bool {
+	switch t := t.(type) {
+	case *model.ListType:
+		return true
+	case *model.TupleType:
+		return true
+	case *model.PromiseType:
+		return modelIsArrayType(t.ElementType)
+	case *model.OutputType:
+		return modelIsArrayType(t.ElementType)
+	default:
+		return false
+	}
 }

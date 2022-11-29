@@ -579,7 +579,6 @@ func (g *generator) genScopeTraversalExpression(
 		_, isInput = schemaType.(*schema.InputType)
 	}
 
-	var sourceIsPlain bool
 	switch root := expr.Parts[0].(type) {
 	case *pcl.Resource:
 		isInput = false
@@ -591,22 +590,12 @@ func (g *generator) genScopeTraversalExpression(
 				expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
 			}
 		}
-	case *pcl.LocalVariable:
-		if root, ok := root.Definition.Value.(*model.FunctionCallExpression); ok && !pcl.IsOutputVersionInvokeCall(root) {
-			sourceIsPlain = true
-		}
 	}
 
-	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
 	if isInput {
 		argTypeName := g.argumentTypeName(expr, expr.Type(), isInput)
-		if strings.HasSuffix(argTypeName, "Array") {
-			destTypeName := g.argumentTypeName(expr, destType, isInput)
-			// `argTypeName` == `destTypeName` and `argTypeName` ends with `Array`, we
-			// know that `destType` is an outputty type. If the source is plain (and thus
-			// not outputty), then the types can never line up and we will need a
-			// conversion helper method.
-			if argTypeName != destTypeName || sourceIsPlain {
+		if modelIsArrayType(expr.Type()) {
+			if !expr.Type().Equals(destType) {
 				// use a helper to transform prompt arrays into inputty arrays
 				var helper *promptToInputArrayHelper
 				if h, ok := g.arrayHelpers[argTypeName]; ok {

@@ -123,6 +123,12 @@ func ResolvePromises(t Type) Type {
 	return resolved
 }
 
+// IsResolved checks if there are any eventual types in t.
+func IsResolved(t Type) bool {
+	containsOutputs, containsPromises := ContainsEventuals(t)
+	return !containsOutputs && !containsPromises
+}
+
 // ContainsEventuals returns true if the input type contains output or promise types.
 func ContainsEventuals(t Type) (containsOutputs, containsPromises bool) {
 	return containsEventualsImpl(t, map[Type]struct{}{})

@@ -66,6 +66,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
+	lowerNonOutputInvokes(program)
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	packageDefs, err := programPackageDefs(program)
 	if err != nil {
@@ -1002,4 +1003,30 @@ func programPackageDefs(program *pcl.Program) ([]*schema.Package, error) {
 		defs[i] = def
 	}
 	return defs, nil
+}
+
+func lowerNonOutputInvokes(program *pcl.Program) {
+	type NonOutputVisitor = func(*model.FunctionCallExpression) (model.Expression, hcl.Diagnostics)
+	nonOutputs := func(f NonOutputVisitor) model.ExpressionVisitor {
+		return func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+			fCall, ok := n.(*model.FunctionCallExpression)
+			if !ok || pcl.IsOutputVersionInvokeCall(fCall) {
+				return n, nil
+			}
+			return f(fCall)
+		}
+	}
+
+	removeOutputs := nonOutputs(func(f *model.FunctionCallExpression) (model.Expression, hcl.Diagnostics) {
+		f.Signature.ReturnType = model.ResolvePromises(model.ResolveOutputs(f.Signature.ReturnType))
+		return f, nil
+	})
+	typecheck := func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+		n.Typecheck(false)
+		return n, nil
+	}
+
+	for _, node := range pcl.Linearize(program) {
+		node.VisitExpressions(removeOutputs, typecheck)
+	}
 }
