@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Convert the result of immediate invokes to ouputs when necessary.

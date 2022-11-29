@@ -81,9 +81,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-fargate",
 		Description: "AWS Fargate",
-
-		// TODO[pulumi/pulumi#8440]
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "aws-s3-logging",

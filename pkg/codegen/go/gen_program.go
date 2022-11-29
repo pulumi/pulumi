@@ -664,9 +664,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
-				g.Fgenf(w, "%s: ", strings.Title(attr.Name))
-				g.Fgenf(w, "%.v,\n", attr.Value)
-
+				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {
