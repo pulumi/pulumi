@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -595,7 +596,22 @@ func (g *generator) genScopeTraversalExpression(
 	if isInput {
 		argTypeName := g.argumentTypeName(expr, expr.Type(), isInput)
 		if modelIsArrayType(expr.Type()) {
-			if !expr.Type().Equals(destType) {
+
+			// okByInterface indicates that we are assigning to an interface I from a type
+			// T where T implements I.
+			var okByInterface bool
+			if union, ok := destType.(*model.UnionType); ok {
+				for _, elem := range union.ElementTypes {
+					if elem.AssignableFrom(expr.Type()) {
+						okByInterface = true
+						break
+					}
+				}
+			}
+
+			// We add a conversion if there needs to be a conversion, and its not a free
+			// conversion with an interface.
+			if !okByInterface && destType.ConversionFrom(expr.Type()) == model.SafeConversion {
 				// use a helper to transform prompt arrays into inputty arrays
 				var helper *promptToInputArrayHelper
 				if h, ok := g.arrayHelpers[argTypeName]; ok {

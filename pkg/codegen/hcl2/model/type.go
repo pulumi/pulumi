@@ -15,6 +15,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -28,6 +30,19 @@ const (
 	UnsafeConversion ConversionKind = 1
 	SafeConversion   ConversionKind = 2
 )
+
+func (k ConversionKind) String() string {
+	switch k {
+	case NoConversion:
+		return "NoConversion"
+	case UnsafeConversion:
+		return "UnsafeConversion"
+	case SafeConversion:
+		return "SafeConversion"
+	default:
+		panic(fmt.Sprintf("missing conversion case: %#v", k))
+	}
+}
 
 func (k ConversionKind) Exists() bool {
 	return k > NoConversion && k <= SafeConversion
