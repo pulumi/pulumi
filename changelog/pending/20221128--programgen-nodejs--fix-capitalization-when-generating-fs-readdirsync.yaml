@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Fix capitalization when generating `fs.readdirSync`.

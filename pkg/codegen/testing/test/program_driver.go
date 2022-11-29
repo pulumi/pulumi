@@ -66,13 +66,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
-		ExpectNYIDiags: allProgLanguages.Except("go"),
-		SkipCompile:    allProgLanguages.Except("dotnet"),
+		ExpectNYIDiags: codegen.NewStringSet("dotnet", "python"),
+		SkipCompile:    codegen.NewStringSet("go", "python"),
 		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8064]
 		//   TODO[pulumi/pulumi#8065]
-		// Blocked on nodejs: TODO[pulumi/pulumi#8063]
 	},
 	{
 		Directory:   "aws-eks",
