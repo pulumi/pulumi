@@ -579,9 +579,11 @@ func (g *generator) genScopeTraversalExpression(
 		_, isInput = schemaType.(*schema.InputType)
 	}
 
-	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
+	var sourceIsPlain bool
+	switch root := expr.Parts[0].(type) {
+	case *pcl.Resource:
 		isInput = false
-		if _, ok := pcl.GetSchemaForType(resource.InputType); ok {
+		if _, ok := pcl.GetSchemaForType(root.InputType); ok {
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
 			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
@@ -589,29 +591,39 @@ func (g *generator) genScopeTraversalExpression(
 				expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
 			}
 		}
+	case *pcl.LocalVariable:
+		if root, ok := root.Definition.Value.(*model.FunctionCallExpression); ok && !pcl.IsOutputVersionInvokeCall(root) {
+			sourceIsPlain = true
+		}
 	}
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
 	if isInput {
-		argType := g.argumentTypeName(expr, expr.Type(), isInput)
-		if strings.HasSuffix(argType, "Array") {
+		argTypeName := g.argumentTypeName(expr, expr.Type(), isInput)
+		if strings.HasSuffix(argTypeName, "Array") {
 			destTypeName := g.argumentTypeName(expr, destType, isInput)
-			if argType != destTypeName {
+			// `argTypeName` == `destTypeName` and `argTypeName` ends with `Array`, we
+			// know that `destType` is an outputty type. If the source is plain (and thus
+			// not outputty), then the types can never line up and we will need a
+			// conversion helper method.
+			if argTypeName != destTypeName || sourceIsPlain {
 				// use a helper to transform prompt arrays into inputty arrays
 				var helper *promptToInputArrayHelper
-				if h, ok := g.arrayHelpers[argType]; ok {
+				if h, ok := g.arrayHelpers[argTypeName]; ok {
 					helper = h
 				} else {
 					// helpers are emitted at the end in the postamble step
 					helper = &promptToInputArrayHelper{
-						destType: argType,
+						destType: argTypeName,
 					}
-					g.arrayHelpers[argType] = helper
+					g.arrayHelpers[argTypeName] = helper
 				}
+				// Wrap the emitted expression in a call to the generated helper function.
 				g.Fgenf(w, "%s(", helper.getFnName())
 				defer g.Fgenf(w, ")")
 			}
 		} else {
+			// Wrap the emitted expression in a type conversion.
 			g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
 			defer g.Fgenf(w, ")")
 		}
