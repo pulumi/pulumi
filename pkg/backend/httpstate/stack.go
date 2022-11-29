@@ -74,8 +74,8 @@ func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
-func (c cloudBackendReference) FullyQualifiedName() tokens.Name {
-	return tokens.Name(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
+func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
+	return tokens.IntoQName(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
 }
 
 // cloudStack is a cloud stack descriptor.

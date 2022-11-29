@@ -76,8 +76,8 @@ type StackReference interface {
 	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.Name
 
-	// Fully qualified name is the name
-	FullyQualifiedName() tokens.Name
+	// Fully qualified name of the stack.
+	FullyQualifiedName() tokens.QName
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI

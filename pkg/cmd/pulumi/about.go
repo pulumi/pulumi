@@ -188,7 +188,6 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 		tmp := getBackendAbout(backend)
 		result.Backend = &tmp
 	}
-
 	return result
 }
 
@@ -427,8 +426,8 @@ func (current currentStackAbout) String() string {
 		}.String() + "\n"
 	}
 	stackName := current.Name
-	if stackName != current.FullyQualifiedName {
-		stackName += fmt.Sprintf(" (fully qualified to %q)", current.FullyQualifiedName)
+	if current.FullyQualifiedName != "" {
+		stackName = current.FullyQualifiedName
 	}
 	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", stackName, resources, pending)
 }
