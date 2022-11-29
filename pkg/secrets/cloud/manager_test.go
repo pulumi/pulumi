@@ -22,9 +22,11 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -134,6 +136,95 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	t.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
 	t.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	t.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
+
+	testURL(ctx, t, url)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestAWSCloudManager_AssumedRole(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/11482
+	t.Setenv("AWS_REGION", "us-west-2")
+	ctx, cfg, caller := getAwsCaller(t)
+
+	// Make a key with our default config
+	key := createKey(ctx, t, cfg)
+	url := "awskms://" + *key.KeyMetadata.KeyId + "?awssdk=v2"
+
+	// Make a temporary role to assume
+	iamClient := iam.NewFromConfig(cfg)
+	roleName := "test-role-" + randomName(t)
+	assumeRolePolicyDocument := fmt.Sprintf(`{
+		"Version": "2012-10-17",
+		"Statement": {
+			"Effect": "Allow",
+			"Principal": { "AWS": "%s" },
+			"Action": "sts:AssumeRole"
+		}
+	}`, *caller.Arn)
+	role, err := iamClient.CreateRole(ctx, &iam.CreateRoleInput{
+		RoleName:                 &roleName,
+		AssumeRolePolicyDocument: &assumeRolePolicyDocument,
+	})
+	assertNoError(t, err)
+	defer func() {
+		_, err := iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
+			RoleName: &roleName,
+		})
+		assert.NoError(t, err)
+	}()
+
+	policyName := "test-policy-" + randomName(t)
+	policyDocument := fmt.Sprintf(`{
+		"Version": "2012-10-17",
+		"Statement": {
+			"Effect": "Allow",
+			"Action": [
+				"kms:Encrypt",
+				"kms:Decrypt"
+			],
+			"Resource": "%s"
+		}
+	}`, *key.KeyMetadata.Arn)
+	policy, err := iamClient.CreatePolicy(ctx, &iam.CreatePolicyInput{
+		PolicyName:     &policyName,
+		PolicyDocument: &policyDocument,
+	})
+	assertNoError(t, err)
+	defer func() {
+		_, err := iamClient.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
+			PolicyArn: policy.Policy.Arn,
+			RoleName:  &roleName,
+		})
+		assert.NoError(t, err)
+		_, err = iamClient.DeletePolicy(ctx, &iam.DeletePolicyInput{
+			PolicyArn: policy.Policy.Arn,
+		})
+		assert.NoError(t, err)
+	}()
+	_, err = iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
+		PolicyArn: policy.Policy.Arn,
+		RoleName:  &roleName,
+	})
+	assertNoError(t, err)
+
+	// Sleep for a bit otherwise the following AssumeRole fails
+	time.Sleep(10 * time.Second)
+
+	// Now assume that role and try and use the secret manager
+	stsClient := sts.NewFromConfig(cfg)
+	sessionName := "test-session-" + randomName(t)
+	assume, err := stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
+		RoleArn:         role.Role.Arn,
+		RoleSessionName: &sessionName,
+	})
+	assertNoError(t, err)
+
+	creds := assume.Credentials
+	t.Setenv("AWS_PROFILE", "")
+	t.Setenv("AWS_ACCESS_KEY_ID", *creds.AccessKeyId)
+	t.Setenv("AWS_SECRET_ACCESS_KEY", *creds.SecretAccessKey)
+	t.Setenv("AWS_SESSION_TOKEN", *creds.SessionToken)
+
 	testURL(ctx, t, url)
 }
 
