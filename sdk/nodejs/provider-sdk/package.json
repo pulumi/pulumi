@@ -1,0 +1,18 @@
+{
+  "name": "provider-sdk",
+  "version": "0.1.0",
+  "description": "A code first SDK for creating Pulumi Providers.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/pulumi/pulumi"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "latest"
+  },
+  "author": "",
+  "license": "ISC"
+}
