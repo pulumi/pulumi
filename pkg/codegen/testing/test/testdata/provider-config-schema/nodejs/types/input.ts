@@ -7,4 +7,8 @@ import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 
 export namespace config {
+    export interface SandwichArgs {
+        bread?: pulumi.Input<string>;
+        veggies?: pulumi.Input<pulumi.Input<string>[]>;
+    }
 }

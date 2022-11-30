@@ -151,9 +151,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema encoded using YAML",
 	},
 	{
-		Directory:        "provider-config-schema",
-		Description:      "Simple provider config schema",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "provider-config-schema",
+		Description: "Simple provider config schema",
+		// For golang skip check, see https://github.com/pulumi/pulumi/issues/11567
+		SkipCompileCheck: codegen.NewStringSet(dotnet, golang),
 	},
 	{
 		Directory:   "replace-on-change",

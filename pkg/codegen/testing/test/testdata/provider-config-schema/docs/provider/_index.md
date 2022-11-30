@@ -32,7 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Union[str, Color]]</span> = None<span class="p">)</span>
+             <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Union[str, Color]]</span> = None<span class="p">,</span>
+             <span class="nx">secret_sandwiches</span><span class="p">:</span> <span class="nx">Optional[Sequence[_config.SandwichArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
@@ -228,6 +229,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">string | <a href="#color">Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretsandwiches_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_csharp" style="color: inherit; text-decoration: inherit;">Secret<wbr>Sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">List&lt;Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Config.<wbr>Inputs.<wbr>Sandwich<wbr>Args&gt;</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -243,6 +253,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">string | <a href="#color">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretsandwiches_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_go" style="color: inherit; text-decoration: inherit;">Secret<wbr>Sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -258,6 +277,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">String | <a href="#color">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretsandwiches_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_java" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">List&lt;Sandwich<wbr>Args&gt;</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -273,6 +301,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">string | <a href="#color">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretsandwiches_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_nodejs" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">config<wbr>Sandwich<wbr>Args[]</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -288,6 +325,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">str | <a href="#color">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secret_sandwiches_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secret_sandwiches_python" style="color: inherit; text-decoration: inherit;">secret_<wbr>sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args]</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -303,6 +349,15 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
         <span class="property-type">String | <a href="#color">&#34;blue&#34; | &#34;red&#34;</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretsandwiches_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_yaml" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#sandwich">List&lt;Property Map&gt;</a></span>
+    </dt>
+    <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
 </pulumi-choosable>
 </div>
@@ -461,6 +516,140 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="tabular"><dt>"blue"</dt>
     <dd>blue</dd><dt>"red"</dt>
     <dd>red</dd></dl>
+</pulumi-choosable>
+</div>
+
+<h4 id="sandwich">Sandwich</h4>
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_csharp" style="color: inherit; text-decoration: inherit;">Bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_csharp" style="color: inherit; text-decoration: inherit;">Veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;string&gt;</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="go">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_go" style="color: inherit; text-decoration: inherit;">Bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_go" style="color: inherit; text-decoration: inherit;">Veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">[]string</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_java" style="color: inherit; text-decoration: inherit;">bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_java" style="color: inherit; text-decoration: inherit;">veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;String&gt;</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_nodejs" style="color: inherit; text-decoration: inherit;">bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_nodejs" style="color: inherit; text-decoration: inherit;">veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string[]</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="python">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_python" style="color: inherit; text-decoration: inherit;">bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_python" style="color: inherit; text-decoration: inherit;">veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Sequence[str]</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bread_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bread_yaml" style="color: inherit; text-decoration: inherit;">bread</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="veggies_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#veggies_yaml" style="color: inherit; text-decoration: inherit;">veggies</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;String&gt;</span>
+    </dt>
+    <dd></dd></dl>
 </pulumi-choosable>
 </div>
 
