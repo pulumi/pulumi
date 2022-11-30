@@ -105,7 +105,7 @@ CURRENT_VERSION_SET = {
     "name": "current",
     "dotnet": "7",
     "go": "1.19.x",
-    "nodejs": "19.x",
+    "nodejs": "19.1",
     "python": "3.10.x",
 }
 
