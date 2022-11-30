@@ -330,9 +330,10 @@ func (b backendAbout) String() string {
 }
 
 type currentStackAbout struct {
-	Name       string       `json:"name"`
-	Resources  []aboutState `json:"resources"`
-	PendingOps []aboutState `json:"pendingOps"`
+	Name               string       `json:"name"`
+	FullyQualifiedName string       `json:"fullyQualifiedName"`
+	Resources          []aboutState `json:"resources"`
+	PendingOps         []aboutState `json:"pendingOps"`
 }
 
 type aboutState struct {
@@ -386,9 +387,10 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 		}
 	}
 	return currentStackAbout{
-		Name:       name,
-		Resources:  aboutResources,
-		PendingOps: aboutPending,
+		Name:               name,
+		FullyQualifiedName: stack.Ref().FullyQualifiedName().String(),
+		Resources:          aboutResources,
+		PendingOps:         aboutPending,
 	}, nil
 }
 
@@ -423,7 +425,11 @@ func (current currentStackAbout) String() string {
 			Rows:    rows,
 		}.String() + "\n"
 	}
-	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", current.Name, resources, pending)
+	stackName := current.Name
+	if current.FullyQualifiedName != "" {
+		stackName = current.FullyQualifiedName
+	}
+	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", stackName, resources, pending)
 }
 
 func simpleTableRows(arr [][]string) []cmdutil.TableRow {

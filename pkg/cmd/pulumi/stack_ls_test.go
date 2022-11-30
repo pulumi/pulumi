@@ -82,6 +82,10 @@ func (msr *mockStackReference) Name() tokens.Name {
 	return tokens.Name(msr.name)
 }
 
+func (msr *mockStackReference) FullyQualifiedName() tokens.QName {
+	return msr.Name().Q()
+}
+
 func (msr *mockStackReference) String() string {
 	return msr.name
 }

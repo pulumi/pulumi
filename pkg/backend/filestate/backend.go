@@ -99,6 +99,10 @@ func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
+func (r localBackendReference) FullyQualifiedName() tokens.QName {
+	return r.Name().Q()
+}
+
 func IsFileStateBackendURL(urlstr string) bool {
 	u, err := url.Parse(urlstr)
 	if err != nil {
