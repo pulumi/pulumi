@@ -1,0 +1,3 @@
+name: resource_refs_get_resource_nodejs
+description: A program that ensures invoking 'pulumi:pulumi:getResource' returns resource refs
+runtime: nodejs
