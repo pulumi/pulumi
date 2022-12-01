@@ -155,7 +155,7 @@ type EnumType struct {
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
-	Comment string
+	Comment Description
 	// Elements are the predefined enum values.
 	Elements []*Enum
 	// ElementType is the underlying type for the enum.
@@ -171,7 +171,7 @@ type Enum struct {
 	// Value is the value of the enum.
 	Value interface{}
 	// Comment is the description for the enum value.
-	Comment string
+	Comment Description
 	// Name for the enum.
 	Name string
 	// DeprecationMessage indicates whether or not the value is deprecated.
@@ -222,7 +222,7 @@ type ObjectType struct {
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
-	Comment string
+	Comment Description
 	// Properties is the list of the type's properties.
 	Properties []*Property
 	// Language specifies additional language-specific data about the object type.
@@ -341,7 +341,7 @@ type Property struct {
 	// Name is the name of the property.
 	Name string
 	// Comment is the description of the property, if any.
-	Comment string
+	Comment Description
 	// Type is the type of the property.
 	Type Type
 	// ConstValue is the constant value for the property, if any.
@@ -388,7 +388,7 @@ type Resource struct {
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
-	Comment string
+	Comment Description
 	// IsProvider is true if the resource is a provider resource.
 	IsProvider bool
 	// InputProperties is the list of the resource's input properties.
@@ -538,7 +538,7 @@ type Function struct {
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
-	Comment string
+	Comment Description
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
 	// Outputs is the bag of output values for the function, if any.
@@ -590,7 +590,7 @@ type Package struct {
 	// Version is the version of the package.
 	Version *semver.Version
 	// Description is the description of the package.
-	Description string
+	Description Description
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
@@ -946,12 +946,17 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
 	}
 
+	pkgDescription, err := pkg.Description.marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	spec = &PackageSpec{
 		Name:                pkg.Name,
 		Version:             version,
 		DisplayName:         pkg.DisplayName,
 		Publisher:           pkg.Publisher,
-		Description:         pkg.Description,
+		Description:         pkgDescription,
 		Keywords:            pkg.Keywords,
 		Homepage:            pkg.Homepage,
 		License:             pkg.License,
@@ -996,7 +1001,10 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			}
 			spec.Types[t.Token] = o
 		case *EnumType:
-			spec.Types[t.Token] = pkg.marshalEnum(t)
+			spec.Types[t.Token], err = pkg.marshalEnum(t)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -1042,7 +1050,7 @@ func (pkg *Package) MarshalYAML() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (pkg *Package) marshalObjectData(comment string, properties []*Property, language map[string]interface{},
+func (pkg *Package) marshalObjectData(comment Description, properties []*Property, language map[string]interface{},
 	plain, isOverlay bool) (ObjectTypeSpec, error) {
 
 	required, props, err := pkg.marshalProperties(properties, plain)
@@ -1055,8 +1063,13 @@ func (pkg *Package) marshalObjectData(comment string, properties []*Property, la
 		return ObjectTypeSpec{}, err
 	}
 
+	desc, err := comment.marshal()
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
 	return ObjectTypeSpec{
-		Description: comment,
+		Description: desc,
 		Properties:  props,
 		Type:        "object",
 		Required:    required,
@@ -1073,12 +1086,16 @@ func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, e
 	return ComplexTypeSpec{ObjectTypeSpec: data}, nil
 }
 
-func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
+func (pkg *Package) marshalEnum(t *EnumType) (ComplexTypeSpec, error) {
 	values := make([]EnumValueSpec, len(t.Elements))
 	for i, el := range t.Elements {
+		desc, err := el.Comment.marshal()
+		if err != nil {
+			return ComplexTypeSpec{}, err
+		}
 		values[i] = EnumValueSpec{
 			Name:               el.Name,
-			Description:        el.Comment,
+			Description:        desc,
 			Value:              el.Value,
 			DeprecationMessage: el.DeprecationMessage,
 		}
@@ -1087,7 +1104,7 @@ func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
 	return ComplexTypeSpec{
 		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType, false).Type, IsOverlay: t.IsOverlay},
 		Enum:           values,
-	}
+	}, nil
 }
 
 func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
@@ -1163,11 +1180,18 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		return FunctionSpec{}, err
 	}
 
+	desc, err := f.Comment.marshal()
+	if err != nil {
+		return FunctionSpec{}, err
+	}
+
 	return FunctionSpec{
-		Description: f.Comment,
-		Inputs:      inputs,
-		Outputs:     outputs,
-		Language:    lang,
+		Description:        desc,
+		Inputs:             inputs,
+		Outputs:            outputs,
+		Language:           lang,
+		DeprecationMessage: f.DeprecationMessage,
+		IsOverlay:          f.IsOverlay,
 	}, nil
 }
 
@@ -1378,6 +1402,13 @@ func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+// DescriptionSpec is the serializable form of a structured description.
+type DescriptionSpec struct {
+	// TODO: Add comments here
+	Legacy     string
+	Structured []interface{}
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -1425,7 +1456,7 @@ type PropertySpec struct {
 	TypeSpec `yaml:",inline"`
 
 	// Description is the description of the property, if any.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Const is the constant value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
 	Const interface{} `json:"const,omitempty" yaml:"const,omitempty"`
@@ -1450,7 +1481,7 @@ type PropertySpec struct {
 // ObjectTypeSpec is the serializable form of an object type.
 type ObjectTypeSpec struct {
 	// Description is the description of the type, if any.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Properties, if present, is a map from property name to PropertySpec that describes the type's properties.
 	Properties map[string]PropertySpec `json:"properties,omitempty" yaml:"properties,omitempty"`
 	// Type must be "object" if this is an object type, or the underlying type for an enum.
@@ -1481,7 +1512,7 @@ type EnumValueSpec struct {
 	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Description of the enum value.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Value is the enum value itself.
 	Value interface{} `json:"value" yaml:"value"`
 	// DeprecationMessage indicates whether or not the value is deprecated.
@@ -1525,7 +1556,7 @@ type ResourceSpec struct {
 // FunctionSpec is the serializable form of a function description.
 type FunctionSpec struct {
 	// Description is the description of the function, if any.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
@@ -1565,7 +1596,7 @@ type PackageInfoSpec struct {
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
@@ -1608,7 +1639,7 @@ type PackageSpec struct {
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
