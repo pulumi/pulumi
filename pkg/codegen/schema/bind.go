@@ -453,6 +453,41 @@ func (t *types) externalPackage() PackageReference {
 	return t.pkg.Reference()
 }
 
+type expectFields func(fields ...string)
+type castString func(path string) string
+
+func bindHelpers(path string, errs *multierror.Error, obj map[string]interface{}) (expectFields, castString) {
+	expectFields := func(fields ...string) {
+		mFields := make(map[string]struct{}, len(fields))
+		for _, f := range fields {
+			mFields[f] = struct{}{}
+		}
+		for f := range obj {
+			if _, ok := mFields[f]; !ok {
+				errs.Errors = append(errs.Errors,
+					errorf(fmt.Sprintf("%s/%s", path, f), "invalid field"))
+			}
+		}
+	}
+	stringField := func(field string) string {
+		v, ok := obj["field"]
+		if !ok {
+			return ""
+		}
+		if s, ok := v.(string); ok {
+			return s
+		}
+		errs.Errors = append(errs.Errors,
+			errorf(fmt.Sprintf("%s/%s", path, field), "expected type %T, found type %T", "", v))
+		return ""
+	}
+
+	return expectFields, stringField
+}
+
+// TODO: Cleanup into separate functions.
+//
+// We should have adding new node types as an explicit design goal here.
 func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagnostic) {
 	if spec.Legacy != "" && len(spec.Structured) != 0 {
 		return nil, errorf(path, "cannot specify both legacy and structured")
@@ -464,84 +499,109 @@ func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagn
 	desc := Description{}
 
 	var errs multierror.Error
-	for i, node := range spec.Structured {
-		switch node := node.(type) {
+
+	stringOrObj := func(path string, v interface{}, s func(string), o func(map[string]interface{})) {
+		switch v := v.(type) {
 		case string:
-			desc = append(desc, DescriptionMarkdownNode{
-				Text: node,
-			})
+			s(v)
 		case map[string]interface{}:
-			expectFields := func(fields ...string) {
-				mFields := make(map[string]struct{}, len(fields))
-				for _, f := range fields {
-					mFields[f] = struct{}{}
-				}
-				for f := range node {
-					if _, ok := mFields[f]; !ok {
-						errs.Errors = append(errs.Errors,
-							errorf(fmt.Sprintf("%s/%d/%s", path, i, f), "invalid field"))
-					}
-				}
-			}
-			castString := func(field string, v interface{}) string {
-				if s, ok := v.(string); ok {
-					return s
-				}
-				errs.Errors = append(errs.Errors,
-					errorf(fmt.Sprintf("%s/%d/%s", path, i, field), "expected type %T, found type %T", "", v))
-				return ""
-			}
-			bindTrivia := func() DescriptionTrivia {
+			o(v)
+		default:
+			errs.Errors = append(errs.Errors, errorf(path, "expected string or object, found %T", v))
+		}
+	}
+
+	for i, node := range spec.Structured {
+		path := fmt.Sprintf("%s/%d", path, i)
+		stringOrObj(path, node, func(s string) {
+			desc = append(desc, DescriptionMarkdownNode{
+				Text: s,
+			})
+		}, func(node map[string]interface{}) {
+			expectFields, castString := bindHelpers(path, &errs, node)
+			bindTrivia := func(node map[string]interface{}) DescriptionTrivia {
 				v, ok := node["trivia"]
 				if !ok {
 					return DescriptionTrivia{}
 				}
-				t, err := bindTrivia(fmt.Sprintf("%s/%d/trivia", path, i), v)
-				if err != nil {
-					errs.Errors = append(errs.Errors, err)
+				path := path + "/trivia"
+				node, ok = v.(map[string]interface{})
+				if !ok {
+					errs.Errors = append(errs.Errors,
+						errorf(path, "expected trivia to be an object, found a %T", v))
+					return DescriptionTrivia{}
 				}
-				return t
+				expectFields, _ := bindHelpers(path, &errs, node)
+				expectFields("leading", "trailing")
+				bindTriviaNode := func(field string) DescriptionTriviaField {
+					var v DescriptionTriviaField
+					stringOrObj(path+"/trivia", node, func(s string) {
+						v = DescriptionMarkdownNode{
+							Text: s,
+						}
+					}, func(node map[string]interface{}) {
+						expectFields, castString := bindHelpers(path, &errs, node)
+						expectFields("raw-text")
+						v = DescriptionPlainNode{
+							Text: castString("raw-text"),
+						}
+					})
+					return v
+				}
+				return DescriptionTrivia{
+					Leading:  bindTriviaNode("leading"),
+					Trailing: bindTriviaNode("trailing"),
+				}
 			}
-			if s, ok := node["raw-text"]; ok {
+			if _, ok := node["raw-text"]; ok {
 				expectFields("raw-text")
 				desc = append(desc,
-					DescriptionPlainNode{Text: castString("raw-text", s)})
-				continue
+					DescriptionPlainNode{Text: castString("raw-text")})
+				return
 			}
-			if s, ok := node["pcl"]; ok {
+			if _, ok := node["pcl"]; ok {
 				expectFields("pcl", "trivia")
 				desc = append(desc, DescriptionPclNode{
-					Trivia: bindTrivia(),
-					Body:   castString("pcl", s),
+					Trivia: bindTrivia(node),
+					Body:   castString("pcl"),
 				})
-				continue
+				return
 			}
 			if v, ok := node["code"]; ok {
 				expectFields("code", "trivia")
-				code, err := bindCode(fmt.Sprintf("%s/%d/code", path, i), v)
-				if err != nil {
-					errs.Errors = append(errs.Errors, err)
+				block := DescriptionCodeNode{
+					Trivia: bindTrivia(node),
 				}
-				desc = append(desc, DescriptionCodeNode{
-					Trivia: bindTrivia(),
-					Code:   code,
-				})
+				if node, ok := v.(map[string]interface{}); ok {
+					block.Code = map[string]DescriptionCodeElement{}
+					for lang, v := range node {
+						body, ok := v.(map[string]interface{})
+						if !ok {
+							errs.Errors = append(errs.Errors,
+								errorf(path+"/"+lang, "expected type object, found a %T", v))
+							continue
+						}
+						expectFields, castString := bindHelpers(path+"/"+lang, &errs, body)
+						expectFields("trivia", "body")
+						block.Code[lang] = DescriptionCodeElement{
+							Trivia: bindTrivia(body),
+							Body:   castString("body"),
+						}
+					}
+				} else {
+					errs.Errors = append(errs.Errors,
+						errorf(path, "expected code to be an object, found a %T", v))
+				}
+				desc = append(desc, block)
+				return
 			}
 
 			errs.Errors = append(errs.Errors,
-				errorf(fmt.Sprintf("%s/%d", path, i),
+				errorf(path,
 					`expected object to contain one of "raw-text", "pcl", or "code"`))
-		}
+		})
 	}
 	return desc, nil
-}
-
-func bindTrivia(path string, v interface{}) (DescriptionTrivia, error) {
-	panic("unimplemented")
-}
-
-func bindCode(path string, v interface{}) (map[string]DescriptionCodeElement, error) {
-	panic("unimplemented")
 }
 
 // nolint: goconst

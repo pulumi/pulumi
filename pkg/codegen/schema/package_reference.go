@@ -22,7 +22,7 @@ type PackageReference interface {
 	Version() *semver.Version
 
 	// Description returns the packages description.
-	Description() string
+	Description() Description
 
 	// Types returns the package's types.
 	Types() PackageTypes
@@ -142,7 +142,7 @@ func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
 }
 
-func (p packageDefRef) Description() string {
+func (p packageDefRef) Description() Description {
 	return p.pkg.Description
 }
 
@@ -326,7 +326,7 @@ func (p *PartialPackage) Version() *semver.Version {
 	return p.types.pkg.Version
 }
 
-func (p *PartialPackage) Description() string {
+func (p *PartialPackage) Description() Description {
 	p.m.Lock()
 	defer p.m.Unlock()
 

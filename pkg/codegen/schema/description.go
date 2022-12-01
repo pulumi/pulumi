@@ -125,3 +125,6 @@ type descriptionNode struct {
 
 func (d descriptionNode) isDescriptionNode()  {}
 func (d descriptionNode) legacyText() *string { return d.legacyText() }
+
+func (d DescriptionMarkdownNode) isDescriptionTriviaField() {}
+func (d DescriptionPlainNode) isDescriptionTriviaField()    {}
