@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -229,22 +230,28 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		language[name] = json.RawMessage(v)
 	}
 
+	description, diag := bindDescription("#/description", info.Description)
+	if diag != nil {
+		diags = append(diags, diag)
+	}
+
 	pkg := &Package{
-		moduleFormat:        moduleFormatRegexp,
-		Name:                info.Name,
-		DisplayName:         info.DisplayName,
-		Version:             version,
-		Description:         info.Description,
-		Keywords:            info.Keywords,
-		Homepage:            info.Homepage,
-		License:             info.License,
-		Attribution:         info.Attribution,
-		Repository:          info.Repository,
-		PluginDownloadURL:   info.PluginDownloadURL,
-		Publisher:           info.Publisher,
-		AllowedPackageNames: info.AllowedPackageNames,
-		LogoURL:             info.LogoURL,
-		Language:            language,
+		moduleFormat:          moduleFormatRegexp,
+		Name:                  info.Name,
+		DisplayName:           info.DisplayName,
+		Version:               version,
+		Description:           description.pretendLegacy(),
+		StructuredDescription: description,
+		Keywords:              info.Keywords,
+		Homepage:              info.Homepage,
+		License:               info.License,
+		Attribution:           info.Attribution,
+		Repository:            info.Repository,
+		PluginDownloadURL:     info.PluginDownloadURL,
+		Publisher:             info.Publisher,
+		AllowedPackageNames:   info.AllowedPackageNames,
+		LogoURL:               info.LogoURL,
+		Language:              language,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -445,6 +452,167 @@ func (t *types) externalPackage() PackageReference {
 		return t.bindToReference
 	}
 	return t.pkg.Reference()
+}
+
+type expectFields func(fields ...string)
+type castString func(path string) string
+
+func bindHelpers(path string, errs *multierror.Error, obj map[string]interface{}) (expectFields, castString) {
+	expectFields := func(fields ...string) {
+		mFields := make(map[string]struct{}, len(fields))
+		for _, f := range fields {
+			mFields[f] = struct{}{}
+		}
+		for f := range obj {
+			if _, ok := mFields[f]; !ok {
+				errs.Errors = append(errs.Errors,
+					errorf(fmt.Sprintf("%s/%s", path, f), "invalid field"))
+			}
+		}
+	}
+	stringField := func(field string) string {
+		v, ok := obj["field"]
+		if !ok {
+			return ""
+		}
+		if s, ok := v.(string); ok {
+			return s
+		}
+		errs.Errors = append(errs.Errors,
+			errorf(fmt.Sprintf("%s/%s", path, field), "expected type %T, found type %T", "", v))
+		return ""
+	}
+
+	return expectFields, stringField
+}
+
+// TODO: Cleanup into separate functions.
+//
+// We should have adding new node types as an explicit design goal here.
+func bindDescription(path string, spec *DescriptionSpec) (Description, *hcl.Diagnostic) {
+	if spec == nil {
+		return Description{}, nil
+	}
+	if spec.Legacy != "" && len(spec.Structured) != 0 {
+		return nil, errorf(path, "cannot specify both legacy and structured")
+	}
+	if spec.Legacy != "" {
+		return Description{
+			DescriptionMarkdownNode{
+				descriptionNode: descriptionNode{
+					legacytxt: &spec.Legacy,
+				},
+				Text: spec.Legacy,
+			},
+		}, nil
+	}
+
+	desc := Description{}
+
+	var errs multierror.Error
+
+	stringOrObj := func(path string, v interface{}, s func(string), o func(map[string]interface{})) {
+		switch v := v.(type) {
+		case string:
+			s(v)
+		case map[string]interface{}:
+			o(v)
+		default:
+			errs.Errors = append(errs.Errors, errorf(path, "expected string or object, found %T", v))
+		}
+	}
+
+	for i, node := range spec.Structured {
+		path := fmt.Sprintf("%s/%d", path, i)
+		stringOrObj(path, node, func(s string) {
+			desc = append(desc, DescriptionMarkdownNode{
+				Text: s,
+			})
+		}, func(node map[string]interface{}) {
+			expectFields, castString := bindHelpers(path, &errs, node)
+			bindTrivia := func(node map[string]interface{}) DescriptionTrivia {
+				v, ok := node["trivia"]
+				if !ok {
+					return DescriptionTrivia{}
+				}
+				path := path + "/trivia"
+				node, ok = v.(map[string]interface{})
+				if !ok {
+					errs.Errors = append(errs.Errors,
+						errorf(path, "expected trivia to be an object, found a %T", v))
+					return DescriptionTrivia{}
+				}
+				expectFields, _ := bindHelpers(path, &errs, node)
+				expectFields("leading", "trailing")
+				bindTriviaNode := func(field string) DescriptionTriviaField {
+					var v DescriptionTriviaField
+					stringOrObj(path+"/trivia", node, func(s string) {
+						v = DescriptionMarkdownNode{
+							Text: s,
+						}
+					}, func(node map[string]interface{}) {
+						expectFields, castString := bindHelpers(path, &errs, node)
+						expectFields("raw-text")
+						v = DescriptionPlainNode{
+							Text: castString("raw-text"),
+						}
+					})
+					return v
+				}
+				return DescriptionTrivia{
+					Leading:  bindTriviaNode("leading"),
+					Trailing: bindTriviaNode("trailing"),
+				}
+			}
+			if _, ok := node["raw-text"]; ok {
+				expectFields("raw-text")
+				desc = append(desc,
+					DescriptionPlainNode{Text: castString("raw-text")})
+				return
+			}
+			if _, ok := node["pcl"]; ok {
+				expectFields("pcl", "trivia")
+				desc = append(desc, DescriptionPclNode{
+					Trivia: bindTrivia(node),
+					Body:   castString("pcl"),
+				})
+				return
+			}
+			if v, ok := node["code"]; ok {
+				expectFields("code", "trivia")
+				block := DescriptionCodeNode{
+					Trivia: bindTrivia(node),
+				}
+				if node, ok := v.(map[string]interface{}); ok {
+					block.Code = map[string]DescriptionCodeElement{}
+					for lang, v := range node {
+						body, ok := v.(map[string]interface{})
+						if !ok {
+							errs.Errors = append(errs.Errors,
+								errorf(path+"/"+lang, "expected type object, found a %T", v))
+							continue
+						}
+						expectFields, castString := bindHelpers(path+"/"+lang, &errs, body)
+						expectFields("trivia", "body")
+						block.Code[lang] = DescriptionCodeElement{
+							Trivia: bindTrivia(body),
+							Body:   castString("body"),
+						}
+					}
+				} else {
+					errs.Errors = append(errs.Errors,
+						errorf(path, "expected code to be an object, found a %T", v))
+				}
+				desc = append(desc, block)
+				return
+			}
+
+			errs.Errors = append(errs.Errors,
+				errorf(path,
+					`expected object to contain one of "raw-text", "pcl", or "code"`))
+		})
+	}
+	return desc, nil
 }
 
 // nolint: goconst
@@ -1061,9 +1229,14 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			language[name] = json.RawMessage(raw)
 		}
 
+		description, diag := bindDescription(path+"/description", spec.Description)
+		if diag != nil {
+			diags = diags.Append(diag)
+		}
 		p := &Property{
 			Name:                 name,
-			Comment:              spec.Description,
+			Comment:              description.pretendLegacy(),
+			StructuredComment:    description,
 			Type:                 t.newOptionalType(typ),
 			ConstValue:           cv,
 			DefaultValue:         dv,
@@ -1126,10 +1299,16 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 		language[name] = json.RawMessage(raw)
 	}
 
+	description, diag := bindDescription(path+"/description", spec.Description)
+	if diag != nil {
+		diags = diags.Append(diag)
+	}
+
 	obj.Package = t.pkg
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
-	obj.Comment = spec.Description
+	obj.Comment = description.pretendLegacy()
+	obj.StructuredComment = description
 	obj.Language = language
 	obj.Properties = properties
 	obj.properties = propertyMap
@@ -1138,7 +1317,8 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.InputShape.Package = t.pkg
 	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
-	obj.InputShape.Comment = spec.Description
+	obj.InputShape.Comment = description.pretendLegacy()
+	obj.InputShape.StructuredComment = description
 	obj.InputShape.Language = language
 	obj.InputShape.Properties = inputProperties
 	obj.InputShape.properties = inputPropertyMap
@@ -1181,25 +1361,36 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 
 	values := make([]*Enum, len(spec.Enum))
 	for i, spec := range spec.Enum {
-		value, valueDiags := bindConstValue(fmt.Sprintf("%s/enum/%v/value", path, i), "enum", spec.Value, typ)
+		path := fmt.Sprintf("%s/enum/%d", path, i)
+		value, valueDiags := bindConstValue(path+"/value", "enum", spec.Value, typ)
 		diags = diags.Extend(valueDiags)
+
+		description, diag := bindDescription(path+"/description", spec.Description)
+		if diag != nil {
+			diags = diags.Append(diag)
+		}
 
 		values[i] = &Enum{
 			Value:              value,
-			Comment:            spec.Description,
+			Comment:            description.pretendLegacy(),
+			StructuredComment:  description,
 			Name:               spec.Name,
 			DeprecationMessage: spec.DeprecationMessage,
 		}
 	}
-
+	description, diag := bindDescription(path+"/description", spec.Description)
+	if diag != nil {
+		diags = diags.Append(diag)
+	}
 	return &EnumType{
-		Package:          t.pkg,
-		PackageReference: t.externalPackage(),
-		Token:            token,
-		Elements:         values,
-		ElementType:      typ,
-		Comment:          spec.Description,
-		IsOverlay:        spec.IsOverlay,
+		Package:           t.pkg,
+		PackageReference:  t.externalPackage(),
+		Token:             token,
+		Elements:          values,
+		ElementType:       typ,
+		Comment:           description.pretendLegacy(),
+		StructuredComment: description,
+		IsOverlay:         spec.IsOverlay,
 	}, diags
 }
 
@@ -1385,11 +1576,17 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		language[name] = json.RawMessage(raw)
 	}
 
+	description, diag := bindDescription(path+"/description", spec.Description)
+	if diag != nil {
+		diags = diags.Append(diag)
+	}
+
 	*decl = Resource{
 		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
-		Comment:            spec.Description,
+		Comment:            description.pretendLegacy(),
+		StructuredComment:  description,
 		InputProperties:    inputProperties,
 		Properties:         properties,
 		StateInputs:        stateInputs,
@@ -1505,11 +1702,17 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		language[name] = json.RawMessage(raw)
 	}
 
+	description, diag := bindDescription(path+"/description", spec.Description)
+	if diag != nil {
+		diags = diags.Append(diag)
+	}
+
 	fn := &Function{
 		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
-		Comment:            spec.Description,
+		Comment:            description.pretendLegacy(),
+		StructuredComment:  description,
 		Inputs:             inputs,
 		Outputs:            outputs,
 		DeprecationMessage: spec.DeprecationMessage,
