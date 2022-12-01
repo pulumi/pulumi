@@ -205,9 +205,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					from, enumTag, underlyingType)
 				return
 			}
-			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", enumTag, from)
 			})
+			if diag != nil {
+				g.diagnostics = append(g.diagnostics, diag)
+			}
 			return
 		}
 		switch arg := from.(type) {

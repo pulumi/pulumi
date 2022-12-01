@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -549,7 +550,7 @@ func GenEnum(
 	from model.Expression,
 	safeEnum func(member *schema.Enum),
 	unsafeEnum func(from model.Expression),
-) {
+) *hcl.Diagnostic {
 	known := cty.NilVal
 	if from, ok := from.(*model.TemplateExpression); ok && len(from.Parts) == 1 {
 		if from, ok := from.Parts[0].(*model.LiteralValueExpression); ok {
@@ -566,8 +567,47 @@ func GenEnum(
 		contract.Assertf(ok,
 			"We have determined %s is a safe enum, which we define as "+
 				"being able to calculate a member for", t)
-		safeEnum(member)
+		if member != nil {
+			safeEnum(member)
+		} else {
+			unsafeEnum(from)
+			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			diag := &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),
+			}
+			if members := enumMemberValues(t); len(members) > 0 {
+				diag.Detail = fmt.Sprintf("Valid members are %v", listToString(members))
+			}
+			return diag
+		}
 	} else {
 		unsafeEnum(from)
 	}
+	return nil
+}
+
+func enumMemberValues(t *model.EnumType) []interface{} {
+	srcBase, ok := GetSchemaForType(t)
+	if !ok {
+		return nil
+	}
+	src := srcBase.(*schema.EnumType)
+	members := make([]interface{}, len(src.Elements))
+	for i, el := range src.Elements {
+		members[i] = el.Value
+	}
+	return members
+}
+
+func listToString(l []interface{}) string {
+	vals := ""
+	for i, v := range l {
+		if i == 0 {
+			vals = fmt.Sprintf("\"%v\"", v)
+		} else {
+			vals = fmt.Sprintf("%s, \"%v\"", vals, v)
+		}
+	}
+	return vals
 }
