@@ -2717,7 +2717,7 @@ var file_pulumi_provider_proto_rawDesc = []byte{
 	0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70,
 	0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70,
 	0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x32, 0xe9, 0x08, 0x0a, 0x10,
+	0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x32, 0xb6, 0x09, 0x0a, 0x10,
 	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72,
 	0x12, 0x48, 0x0a, 0x09, 0x47, 0x65, 0x74, 0x53, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x12, 0x1b, 0x2e,
 	0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x63, 0x68,
@@ -2788,11 +2788,16 @@ var file_pulumi_provider_proto_rawDesc = []byte{
 	0x74, 0x61, 0x63, 0x68, 0x12, 0x17, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63,
 	0x2e, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x41, 0x74, 0x74, 0x61, 0x63, 0x68, 0x1a, 0x16, 0x2e,
 	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
-	0x45, 0x6d, 0x70, 0x74, 0x79, 0x22, 0x00, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x70, 0x75, 0x6c,
-	0x75, 0x6d, 0x69, 0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x76, 0x33, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2f, 0x67, 0x6f, 0x3b, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x45, 0x6d, 0x70, 0x74, 0x79, 0x22, 0x00, 0x12, 0x4b, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x4d, 0x61,
+	0x70, 0x70, 0x69, 0x6e, 0x67, 0x12, 0x1c, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70,
+	0x63, 0x2e, 0x47, 0x65, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e,
+	0x47, 0x65, 0x74, 0x4d, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x00, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69,
+	0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x76, 0x33, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f,
+	0x3b, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -2920,25 +2925,27 @@ var file_pulumi_provider_proto_depIdxs = []int32{
 	44, // 58: pulumirpc.ResourceProvider.Cancel:input_type -> google.protobuf.Empty
 	44, // 59: pulumirpc.ResourceProvider.GetPluginInfo:input_type -> google.protobuf.Empty
 	45, // 60: pulumirpc.ResourceProvider.Attach:input_type -> pulumirpc.PluginAttach
-	3,  // 61: pulumirpc.ResourceProvider.GetSchema:output_type -> pulumirpc.GetSchemaResponse
-	12, // 62: pulumirpc.ResourceProvider.CheckConfig:output_type -> pulumirpc.CheckResponse
-	16, // 63: pulumirpc.ResourceProvider.DiffConfig:output_type -> pulumirpc.DiffResponse
-	5,  // 64: pulumirpc.ResourceProvider.Configure:output_type -> pulumirpc.ConfigureResponse
-	8,  // 65: pulumirpc.ResourceProvider.Invoke:output_type -> pulumirpc.InvokeResponse
-	8,  // 66: pulumirpc.ResourceProvider.StreamInvoke:output_type -> pulumirpc.InvokeResponse
-	10, // 67: pulumirpc.ResourceProvider.Call:output_type -> pulumirpc.CallResponse
-	12, // 68: pulumirpc.ResourceProvider.Check:output_type -> pulumirpc.CheckResponse
-	16, // 69: pulumirpc.ResourceProvider.Diff:output_type -> pulumirpc.DiffResponse
-	18, // 70: pulumirpc.ResourceProvider.Create:output_type -> pulumirpc.CreateResponse
-	20, // 71: pulumirpc.ResourceProvider.Read:output_type -> pulumirpc.ReadResponse
-	22, // 72: pulumirpc.ResourceProvider.Update:output_type -> pulumirpc.UpdateResponse
-	44, // 73: pulumirpc.ResourceProvider.Delete:output_type -> google.protobuf.Empty
-	25, // 74: pulumirpc.ResourceProvider.Construct:output_type -> pulumirpc.ConstructResponse
-	44, // 75: pulumirpc.ResourceProvider.Cancel:output_type -> google.protobuf.Empty
-	46, // 76: pulumirpc.ResourceProvider.GetPluginInfo:output_type -> pulumirpc.PluginInfo
-	44, // 77: pulumirpc.ResourceProvider.Attach:output_type -> google.protobuf.Empty
-	61, // [61:78] is the sub-list for method output_type
-	44, // [44:61] is the sub-list for method input_type
+	27, // 61: pulumirpc.ResourceProvider.GetMapping:input_type -> pulumirpc.GetMappingRequest
+	3,  // 62: pulumirpc.ResourceProvider.GetSchema:output_type -> pulumirpc.GetSchemaResponse
+	12, // 63: pulumirpc.ResourceProvider.CheckConfig:output_type -> pulumirpc.CheckResponse
+	16, // 64: pulumirpc.ResourceProvider.DiffConfig:output_type -> pulumirpc.DiffResponse
+	5,  // 65: pulumirpc.ResourceProvider.Configure:output_type -> pulumirpc.ConfigureResponse
+	8,  // 66: pulumirpc.ResourceProvider.Invoke:output_type -> pulumirpc.InvokeResponse
+	8,  // 67: pulumirpc.ResourceProvider.StreamInvoke:output_type -> pulumirpc.InvokeResponse
+	10, // 68: pulumirpc.ResourceProvider.Call:output_type -> pulumirpc.CallResponse
+	12, // 69: pulumirpc.ResourceProvider.Check:output_type -> pulumirpc.CheckResponse
+	16, // 70: pulumirpc.ResourceProvider.Diff:output_type -> pulumirpc.DiffResponse
+	18, // 71: pulumirpc.ResourceProvider.Create:output_type -> pulumirpc.CreateResponse
+	20, // 72: pulumirpc.ResourceProvider.Read:output_type -> pulumirpc.ReadResponse
+	22, // 73: pulumirpc.ResourceProvider.Update:output_type -> pulumirpc.UpdateResponse
+	44, // 74: pulumirpc.ResourceProvider.Delete:output_type -> google.protobuf.Empty
+	25, // 75: pulumirpc.ResourceProvider.Construct:output_type -> pulumirpc.ConstructResponse
+	44, // 76: pulumirpc.ResourceProvider.Cancel:output_type -> google.protobuf.Empty
+	46, // 77: pulumirpc.ResourceProvider.GetPluginInfo:output_type -> pulumirpc.PluginInfo
+	44, // 78: pulumirpc.ResourceProvider.Attach:output_type -> google.protobuf.Empty
+	28, // 79: pulumirpc.ResourceProvider.GetMapping:output_type -> pulumirpc.GetMappingResponse
+	62, // [62:80] is the sub-list for method output_type
+	44, // [44:62] is the sub-list for method input_type
 	44, // [44:44] is the sub-list for extension type_name
 	44, // [44:44] is the sub-list for extension extendee
 	0,  // [0:44] is the sub-list for field type_name
@@ -3414,6 +3421,9 @@ type ResourceProviderClient interface {
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
 	Attach(ctx context.Context, in *PluginAttach, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+	// response (not an error) if it doesn't have a mapping for the given key.
+	GetMapping(ctx context.Context, in *GetMappingRequest, opts ...grpc.CallOption) (*GetMappingResponse, error)
 }
 
 type resourceProviderClient struct {
@@ -3600,6 +3610,15 @@ func (c *resourceProviderClient) Attach(ctx context.Context, in *PluginAttach, o
 	return out, nil
 }
 
+func (c *resourceProviderClient) GetMapping(ctx context.Context, in *GetMappingRequest, opts ...grpc.CallOption) (*GetMappingResponse, error) {
+	out := new(GetMappingResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceProvider/GetMapping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceProviderServer is the server API for ResourceProvider service.
 type ResourceProviderServer interface {
 	// GetSchema fetches the schema for this resource provider.
@@ -3647,6 +3666,9 @@ type ResourceProviderServer interface {
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// Attach sends the engine address to an already running plugin.
 	Attach(context.Context, *PluginAttach) (*emptypb.Empty, error)
+	// GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+	// response (not an error) if it doesn't have a mapping for the given key.
+	GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error)
 }
 
 // UnimplementedResourceProviderServer can be embedded to have forward compatible implementations.
@@ -3703,6 +3725,9 @@ func (*UnimplementedResourceProviderServer) GetPluginInfo(context.Context, *empt
 }
 func (*UnimplementedResourceProviderServer) Attach(context.Context, *PluginAttach) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attach not implemented")
+}
+func (*UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMapping not implemented")
 }
 
 func RegisterResourceProviderServer(s *grpc.Server, srv ResourceProviderServer) {
@@ -4018,6 +4043,24 @@ func _ResourceProvider_Attach_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).GetMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceProvider/GetMapping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).GetMapping(ctx, req.(*GetMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.ResourceProvider",
 	HandlerType: (*ResourceProviderServer)(nil),
@@ -4085,6 +4128,10 @@ var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Attach",
 			Handler:    _ResourceProvider_Attach_Handler,
+		},
+		{
+			MethodName: "GetMapping",
+			Handler:    _ResourceProvider_GetMapping_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

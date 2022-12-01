@@ -176,6 +176,28 @@ function deserialize_pulumirpc_DiffResponse(buffer_arg) {
   return pulumi_provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetMappingRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.GetMappingRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetMappingRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetMappingRequest(buffer_arg) {
+  return pulumi_provider_pb.GetMappingRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetMappingResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.GetMappingResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetMappingResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetMappingResponse(buffer_arg) {
+  return pulumi_provider_pb.GetMappingResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetSchemaRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.GetSchemaRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetSchemaRequest');
@@ -504,6 +526,19 @@ attach: {
     requestDeserialize: deserialize_pulumirpc_PluginAttach,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+// response (not an error) if it doesn't have a mapping for the given key.
+getMapping: {
+    path: '/pulumirpc.ResourceProvider/GetMapping',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.GetMappingRequest,
+    responseType: pulumi_provider_pb.GetMappingResponse,
+    requestSerialize: serialize_pulumirpc_GetMappingRequest,
+    requestDeserialize: deserialize_pulumirpc_GetMappingRequest,
+    responseSerialize: serialize_pulumirpc_GetMappingResponse,
+    responseDeserialize: deserialize_pulumirpc_GetMappingResponse,
   },
 };
 

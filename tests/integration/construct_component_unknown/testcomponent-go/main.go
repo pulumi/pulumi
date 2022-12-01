@@ -243,6 +243,11 @@ func (p *testcomponentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempt
 	return &pbempty.Empty{}, nil
 }
 
+func (p *testcomponentProvider) GetMapping(
+	context.Context, *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	return &pulumirpc.GetMappingResponse{}, nil
+}
+
 func init() {
 	pulumi.RegisterOutputType(ComponentNestedOutput{})
 }

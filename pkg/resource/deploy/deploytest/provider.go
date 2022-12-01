@@ -66,6 +66,8 @@ type Provider struct {
 		options plugin.CallOptions) (plugin.CallResult, error)
 
 	CancelF func() error
+
+	GetMappingF func(key string) ([]byte, string, error)
 }
 
 func (prov *Provider) SignalCancellation() error {
@@ -215,4 +217,11 @@ func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, i
 		return plugin.CallResult{}, err
 	}
 	return prov.CallF(monitor, tok, args, info, options)
+}
+
+func (prov *Provider) GetMapping(key string) ([]byte, string, error) {
+	if prov.GetMappingF == nil {
+		return nil, "", nil
+	}
+	return prov.GetMappingF(key)
 }
