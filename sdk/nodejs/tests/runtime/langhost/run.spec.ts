@@ -1214,6 +1214,7 @@ describe("rpc", () => {
                                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
                                replaceOnChanges?: string[], providers?: any) => {
                 if (name === "singular" || name === "map" || name === "array") {
+                    assert.strictEqual(provider, "");
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
