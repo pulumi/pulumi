@@ -1130,7 +1130,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
 	mod.genProperties(w, obj.Properties, false /*setters*/, "", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/, false /*forDict*/)
 	})
 
 	// Produce an awaitable subclass.
@@ -1285,7 +1285,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		// If there's an argument type, emit it.
 		for _, prop := range res.InputProperties {
-			ty := mod.typeString(codegen.OptionalType(prop), true, true /*acceptMapping*/)
+			ty := mod.typeString(codegen.OptionalType(prop), true, true /*acceptMapping*/, false /*forDict*/)
 			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 		}
 
@@ -1471,7 +1471,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if hasStateInputs {
 			for _, prop := range res.StateInputs.Properties {
 				pname := InitParamName(prop.Name)
-				ty := mod.typeString(codegen.OptionalType(prop), true, true /*acceptMapping*/)
+				ty := mod.typeString(codegen.OptionalType(prop), true, true /*acceptMapping*/, false /*forDict*/)
 				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
 			}
 		}
@@ -1506,7 +1506,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Write out Python property getters for each of the resource's properties.
 	mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
-		ty := mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/, false /*forDict*/)
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	})
 
@@ -1610,7 +1610,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
 	mod.genProperties(w, properties, false /*setters*/, "    ", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/, false /*forDict*/)
 	})
 
 	return name
@@ -1678,7 +1678,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		}
 		for _, arg := range args {
 			pname := PyName(arg.Name)
-			ty := mod.typeString(arg.Type, true, false /*acceptMapping*/)
+			ty := mod.typeString(arg.Type, true, false /*acceptMapping*/, false /*forDict*/)
 			var defaultValue string
 			if !arg.IsRequired() {
 				defaultValue = " = None"
@@ -1913,7 +1913,7 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 			argType = codegen.OptionalType(arg)
 		}
 
-		ty := mod.typeString(argType, true /*input*/, true /*acceptMapping*/)
+		ty := mod.typeString(argType, true /*input*/, true /*acceptMapping*/, false /*forDict*/)
 		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
 	}
 	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
@@ -1993,7 +1993,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
-	underlyingType := mod.typeString(enum.ElementType, false, false)
+	underlyingType := mod.typeString(enum.ElementType, false, false, false /*forDict*/)
 
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
@@ -2330,7 +2330,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 		return
 	}
 
-	ty := mod.typeString(codegen.RequiredType(prop), true, acceptMapping)
+	ty := mod.typeString(codegen.RequiredType(prop), true, acceptMapping, false /*forDict*/)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -2349,22 +2349,16 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 	}
 }
 
-func (mod *modContext) typeStringForDict(t schema.Type, input, acceptMapping bool) string {
-	ty := mod.typeString(t, input, acceptMapping)
-	switch t.(type) {
-	case *schema.OptionalType:
-		return fmt.Sprintf("NotRequired[%s]", ty)
-	default:
-		return fmt.Sprintf("Required[%s]", ty)
-	}
-}
-
-func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) string {
+func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool, forDict bool) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
-		return fmt.Sprintf("Optional[%s]", mod.typeString(t.ElementType, input, acceptMapping))
+		typ := mod.typeString(t.ElementType, input, acceptMapping, forDict)
+		if forDict {
+			return fmt.Sprintf("NotRequired[Optional[%s]]", typ)
+		}
+		return fmt.Sprintf("Optional[%s]", typ)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, acceptMapping)
+		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, acceptMapping, forDict)
 		if typ == "Any" {
 			return typ
 		}
@@ -2372,10 +2366,13 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 	case *schema.EnumType:
 		return mod.enumType(t)
 	case *schema.ArrayType:
-		return fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, acceptMapping))
+		return fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, acceptMapping, forDict))
 	case *schema.MapType:
-		return fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, acceptMapping))
+		return fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, acceptMapping, forDict))
 	case *schema.ObjectType:
+		if forDict {
+			return mod.objectType(t, input, true /*dictType*/)
+		}
 		typ := mod.objectType(t, input, false /*dictType*/)
 		if !acceptMapping {
 			return typ
@@ -2389,7 +2386,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
-			return mod.typeString(t.UnderlyingType, input, acceptMapping)
+			return mod.typeString(t.UnderlyingType, input, acceptMapping, forDict)
 		}
 		return "Any"
 	case *schema.UnionType:
@@ -2398,11 +2395,11 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 				// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
 				// Eg. Output[str] rather than Output[Any]
 				if typ, ok := e.(*schema.EnumType); ok {
-					return mod.typeString(typ.ElementType, input, acceptMapping)
+					return mod.typeString(typ.ElementType, input, acceptMapping, forDict)
 				}
 			}
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, acceptMapping)
+				return mod.typeString(t.DefaultType, input, acceptMapping, forDict)
 			}
 			return "Any"
 		}
@@ -2410,7 +2407,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 		elementTypeSet := codegen.NewStringSet()
 		elements := slice.Prealloc[string](len(t.ElementTypes))
 		for _, e := range t.ElementTypes {
-			et := mod.typeString(e, input, acceptMapping)
+			et := mod.typeString(e, input, acceptMapping, forDict)
 			if !elementTypeSet.Has(et) {
 				elementTypeSet.Add(et)
 				elements = append(elements, et)
@@ -2605,9 +2602,9 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, input, false /*acceptMapping*/, false /*forDict*/)
 		if prop.DefaultValue != nil {
-			ty = mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/)
+			ty = mod.typeString(codegen.OptionalType(prop), input, false /*acceptMapping*/, false /*forDict*/)
 		}
 
 		var defaultValue string
@@ -2666,7 +2663,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	mod.genProperties(w, props, input /*setters*/, "", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, input, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, input, false /*acceptMapping*/, false /*forDict*/)
 	})
 
 	fmt.Fprintf(w, "\n")
@@ -2697,7 +2694,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	for _, prop := range props {
 
 		pname := PyName(prop.Name)
-		ty := mod.typeStringForDict(prop.Type, true /*input*/, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, true /*input*/, false /*acceptMapping*/, true /*forDict*/)
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
 	}
 
