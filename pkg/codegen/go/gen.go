@@ -845,9 +845,10 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 }
 
 func printComment(w io.Writer, comment schema.Description, indent bool) int {
-	comment = codegen.FilterExamples(comment, "go")
+	desc, err := comment.NarrowToLanguage("go").RenderToMarkdown(nil)
+	contract.IgnoreError(err)
 
-	lines := strings.Split(comment, "\n")
+	lines := strings.Split(desc, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -871,12 +872,12 @@ func printCommentWithDeprecationMessage(w io.Writer, comment schema.Description,
 		if lines > 0 {
 			fmt.Fprintf(w, "//\n")
 		}
-		printComment(w, fmt.Sprintf("Deprecated: %s", deprecationMessage), indent)
+		printComment(w, schema.MakeMarkdownDescription(fmt.Sprintf("Deprecated: %s", deprecationMessage)), indent)
 	}
 }
 
 func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
-	printComment(w, pkg.getInputUsage(name), false)
+	printComment(w, schema.MakeMarkdownDescription(pkg.getInputUsage(name)), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -1317,7 +1318,7 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 	return fieldName(pkg, r, field)
 }
 
-func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
+func (pkg *pkgContext) genPlainType(w io.Writer, name string, comment schema.Description, deprecationMessage string,
 	properties []*schema.Property) {
 	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
@@ -1342,7 +1343,7 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 		return nil
 	}
 
-	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name), false)
+	printComment(w, schema.MakeMarkdownDescription(fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name)), false)
 	fmt.Fprintf(w, "func (val *%[1]s) %[2]s() *%[1]s {\n", name, ProvideDefaultsMethodName)
 	fmt.Fprintf(w, "if val == nil {\n return nil\n}\n")
 	fmt.Fprintf(w, "tmp := *val\n")
@@ -3639,8 +3640,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		switch mod {
 		case "":
 			buffer := &bytes.Buffer{}
-			if pkg.pkg.Description() != "" {
-				printComment(buffer, pkg.pkg.Description(), false)
+			if desc := pkg.pkg.Description().NarrowToLanguage("go"); len(desc) > 0 {
+				printComment(buffer, desc, false)
 			} else {
 				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", name)
 			}
