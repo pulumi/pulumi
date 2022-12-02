@@ -895,7 +895,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
-		printComment(w, p.Comment, dblIndent)
+		printComment(w, p.StructuredComment, dblIndent)
 		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
 		fmt.Fprintf(w, "\n")
 	}
@@ -961,7 +961,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	for _, p := range variables {
 		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
-		printComment(w, p.Comment, "")
+		printComment(w, p.StructuredComment, "")
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1075,7 +1075,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
-	printComment(w, obj.Comment, "    ")
+	printComment(w, obj.StructuredComment, "    ")
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "    def __init__(__self__")
@@ -1506,7 +1506,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			fmt.Fprintf(w, "%s    @pulumi.getter(name=%q)\n", indent, prop.Name)
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
-		printComment(w, prop.Comment, indent+"        ")
+		printComment(w, prop.StructuredComment, indent+"        ")
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
 		if setters {
@@ -1538,7 +1538,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		// Produce a class definition with optional """ comment.
 		fmt.Fprintf(w, "    @pulumi.output_type\n")
 		fmt.Fprintf(w, "    class %s:\n", name)
-		printComment(w, obj.Comment, "        ")
+		printComment(w, obj.StructuredComment, "        ")
 
 		// Now generate an initializer with properties for all inputs.
 		fmt.Fprintf(w, "        def __init__(__self__")
@@ -1643,7 +1643,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
-		if comment, _ := fun.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+		if comment, _ := fun.StructuredComment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
 			fmt.Fprintln(docs, comment)
 		}
 		if len(args) > 0 {
@@ -1817,7 +1817,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
-	if comment, _ := fun.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+	if comment, _ := fun.StructuredComment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
 		fmt.Fprintln(docs, comment)
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
@@ -1940,7 +1940,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
-		printComment(w, enum.Comment, indent)
+		printComment(w, enum.StructuredComment, indent)
 		for _, e := range enum.Elements {
 			// If the enum doesn't have a name, set the value as the name.
 			if e.Name == "" {
@@ -1959,7 +1959,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			} else {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
-			printComment(w, e.Comment, indent)
+			printComment(w, e.StructuredComment, indent)
 		}
 	default:
 		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
@@ -2096,7 +2096,7 @@ func genPackageMetadata(
 		fmt.Fprintf(w, "      python_requires='%s',\n", pythonRequires)
 	}
 	fmt.Fprintf(w, "      version=VERSION,\n")
-	if description, _ := pkg.Description.NarrowToLanguage("python").RenderToMarkdown(nil); description != "" {
+	if description, _ := pkg.StructuredDescription.NarrowToLanguage("python").RenderToMarkdown(nil); description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
@@ -2225,7 +2225,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	b := &bytes.Buffer{}
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	if comment, _ := res.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+	if comment, _ := res.StructuredComment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
 		fmt.Fprintln(b, comment)
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
@@ -2287,7 +2287,7 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment schema.Description,
 }
 
 func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, acceptMapping bool) {
-	comment, _ := prop.Comment.NarrowToLanguage("python").RenderToMarkdown(nil)
+	comment, _ := prop.StructuredComment.NarrowToLanguage("python").RenderToMarkdown(nil)
 	if comment == "" {
 		return
 	}
@@ -2467,7 +2467,7 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
-	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType)
+	return mod.genType(w, name, obj.StructuredComment, obj.Properties, input, resourceOutputType)
 }
 
 func (mod *modContext) genType(w io.Writer, name string, comment schema.Description, properties []*schema.Property, input, resourceOutput bool) error {

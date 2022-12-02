@@ -21,8 +21,11 @@ type PackageReference interface {
 	// Version returns the package version.
 	Version() *semver.Version
 
+	// Depreciated in favor of StructuredDescription.
+	Description() string
+
 	// Description returns the packages description.
-	Description() Description
+	StructuredDescription() Description
 
 	// Types returns the package's types.
 	Types() PackageTypes
@@ -142,8 +145,12 @@ func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
 }
 
-func (p packageDefRef) Description() Description {
+func (p packageDefRef) Description() string {
 	return p.pkg.Description
+}
+
+func (p packageDefRef) StructuredDescription() Description {
+	return p.pkg.StructuredDescription
 }
 
 func (p packageDefRef) Types() PackageTypes {
@@ -326,7 +333,7 @@ func (p *PartialPackage) Version() *semver.Version {
 	return p.types.pkg.Version
 }
 
-func (p *PartialPackage) Description() Description {
+func (p *PartialPackage) Description() string {
 	p.m.Lock()
 	defer p.m.Unlock()
 
@@ -334,6 +341,16 @@ func (p *PartialPackage) Description() Description {
 		return p.def.Description
 	}
 	return p.types.pkg.Description
+}
+
+func (p *PartialPackage) StructuredDescription() Description {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.StructuredDescription
+	}
+	return p.types.pkg.StructuredDescription
 }
 
 func (p *PartialPackage) Types() PackageTypes {

@@ -236,21 +236,22 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 	}
 
 	pkg := &Package{
-		moduleFormat:        moduleFormatRegexp,
-		Name:                info.Name,
-		DisplayName:         info.DisplayName,
-		Version:             version,
-		Description:         description,
-		Keywords:            info.Keywords,
-		Homepage:            info.Homepage,
-		License:             info.License,
-		Attribution:         info.Attribution,
-		Repository:          info.Repository,
-		PluginDownloadURL:   info.PluginDownloadURL,
-		Publisher:           info.Publisher,
-		AllowedPackageNames: info.AllowedPackageNames,
-		LogoURL:             info.LogoURL,
-		Language:            language,
+		moduleFormat:          moduleFormatRegexp,
+		Name:                  info.Name,
+		DisplayName:           info.DisplayName,
+		Version:               version,
+		Description:           description.pretendLegacy(),
+		StructuredDescription: description,
+		Keywords:              info.Keywords,
+		Homepage:              info.Homepage,
+		License:               info.License,
+		Attribution:           info.Attribution,
+		Repository:            info.Repository,
+		PluginDownloadURL:     info.PluginDownloadURL,
+		Publisher:             info.Publisher,
+		AllowedPackageNames:   info.AllowedPackageNames,
+		LogoURL:               info.LogoURL,
+		Language:              language,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -1218,7 +1219,8 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		}
 		p := &Property{
 			Name:                 name,
-			Comment:              description,
+			Comment:              description.pretendLegacy(),
+			StructuredComment:    description,
 			Type:                 t.newOptionalType(typ),
 			ConstValue:           cv,
 			DefaultValue:         dv,
@@ -1289,7 +1291,8 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.Package = t.pkg
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
-	obj.Comment = description
+	obj.Comment = description.pretendLegacy()
+	obj.StructuredComment = description
 	obj.Language = language
 	obj.Properties = properties
 	obj.properties = propertyMap
@@ -1298,7 +1301,8 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.InputShape.Package = t.pkg
 	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
-	obj.InputShape.Comment = description
+	obj.InputShape.Comment = description.pretendLegacy()
+	obj.InputShape.StructuredComment = description
 	obj.InputShape.Language = language
 	obj.InputShape.Properties = inputProperties
 	obj.InputShape.properties = inputPropertyMap
@@ -1352,7 +1356,8 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 
 		values[i] = &Enum{
 			Value:              value,
-			Comment:            description,
+			Comment:            description.pretendLegacy(),
+			StructuredComment:  description,
 			Name:               spec.Name,
 			DeprecationMessage: spec.DeprecationMessage,
 		}
@@ -1362,13 +1367,14 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 		diags = diags.Append(diag)
 	}
 	return &EnumType{
-		Package:          t.pkg,
-		PackageReference: t.externalPackage(),
-		Token:            token,
-		Elements:         values,
-		ElementType:      typ,
-		Comment:          description,
-		IsOverlay:        spec.IsOverlay,
+		Package:           t.pkg,
+		PackageReference:  t.externalPackage(),
+		Token:             token,
+		Elements:          values,
+		ElementType:       typ,
+		Comment:           description.pretendLegacy(),
+		StructuredComment: description,
+		IsOverlay:         spec.IsOverlay,
 	}, diags
 }
 
@@ -1563,7 +1569,8 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
-		Comment:            description,
+		Comment:            description.pretendLegacy(),
+		StructuredComment:  description,
 		InputProperties:    inputProperties,
 		Properties:         properties,
 		StateInputs:        stateInputs,
@@ -1688,7 +1695,8 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
-		Comment:            description,
+		Comment:            description.pretendLegacy(),
+		StructuredComment:  description,
 		Inputs:             inputs,
 		Outputs:            outputs,
 		DeprecationMessage: spec.DeprecationMessage,

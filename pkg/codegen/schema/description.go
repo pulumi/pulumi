@@ -107,6 +107,16 @@ func (d Description) RenderToMarkdown(convert PclConverter) (string, error) {
 	return rendered, nil
 }
 
+// A pest effort attempt at legacy behavor during the transition from `string` to
+// `Description`.
+func (d Description) pretendLegacy() string {
+	if legacy, s, _ := d.checkLegacy(); legacy {
+		return s
+	}
+	s, _ := d.RenderToMarkdown(nil)
+	return s
+}
+
 func LegacyFilterExamples(source []byte, node ast.Node, lang string) {
 	var c, next ast.Node
 	for c = node.FirstChild(); c != nil; c = next {

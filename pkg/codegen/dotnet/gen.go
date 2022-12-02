@@ -562,7 +562,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
-		if c := prop.Comment.NarrowToLanguage("csharp"); len(c) > 0 {
+		if c := prop.StructuredComment.NarrowToLanguage("csharp"); len(c) > 0 {
 			fmt.Fprintf(w, "\n")
 			printComment(w, c, indent)
 		}
@@ -611,7 +611,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			initializer = " = null!;"
 		}
 
-		printComment(w, prop.Comment, indent)
+		printComment(w, prop.StructuredComment, indent)
 
 		if generateInputAttribute {
 			pt.genInputPropertyAttribute(w, indent, prop)
@@ -717,7 +717,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 			typ = codegen.RequiredType(prop)
 		}
 		fieldType := pt.mod.typeString(typ, pt.propertyTypeQualifier, false, false, false)
-		printComment(w, prop.Comment, indent+"    ")
+		printComment(w, prop.StructuredComment, indent+"    ")
 		fmt.Fprintf(w, "%s    public readonly %s %s;\n", indent, fieldType, fieldName)
 	}
 	if len(pt.properties) > 0 {
@@ -889,7 +889,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Write the documentation comment for the resource class
-	printComment(w, r.Comment.NarrowToLanguage("csharp"), "    ")
+	printComment(w, r.StructuredComment.NarrowToLanguage("csharp"), "    ")
 
 	// Open the class.
 	className := name
@@ -940,7 +940,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			secretProps = append(secretProps, prop.Name)
 		}
 
-		printComment(w, prop.Comment, "        ")
+		printComment(w, prop.StructuredComment, "        ")
 		fmt.Fprintf(w, "        [Output(\"%s\")]\n", wireName)
 		fmt.Fprintf(w, "        public Output<%s> %s { get; private set; } = null!;\n", propertyType, propertyName)
 		fmt.Fprintf(w, "\n")
@@ -1172,7 +1172,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		// Emit the doc comment, if any.
-		printComment(w, fun.Comment, "        ")
+		printComment(w, fun.StructuredComment, "        ")
 
 		if fun.DeprecationMessage != "" {
 			fmt.Fprintf(w, "        [Obsolete(@\"%s\")]\n", strings.ReplaceAll(fun.DeprecationMessage, `"`, `""`))
@@ -1248,7 +1248,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		}
 		if len(args) > 0 {
-			comment, escape := fun.Inputs.Comment, true
+			comment, escape := fun.Inputs.StructuredComment, true
 			if len(comment) == 0 {
 				comment, escape = schema.MakeMarkdownDescription(fmt.Sprintf(
 					"The set of arguments for the <see cref=\"%s.%s\"/> method.", className, methodName)), false
@@ -1272,7 +1272,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if fun.Outputs != nil {
 			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(fun.Outputs.Properties) == 1
 
-			comment, escape := fun.Inputs.Comment, true
+			comment, escape := fun.Inputs.StructuredComment, true
 			if len(comment) == 0 {
 				comment, escape =
 					schema.MakeMarkdownDescription(
@@ -1371,7 +1371,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "    {\n")
 
 	// Emit the doc comment, if any.
-	printComment(w, fun.Comment, "        ")
+	printComment(w, fun.StructuredComment, "        ")
 
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
@@ -1452,7 +1452,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	fmt.Fprintf(w, "\n")
 
 	// Emit the doc comment, if any.
-	printComment(w, fun.Comment, "        ")
+	printComment(w, fun.StructuredComment, "        ")
 	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
 		className, outputArgsParamDef)
 	fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
@@ -1527,7 +1527,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	}
 
 	// Print documentation comment
-	printComment(w, enum.Comment, indent)
+	printComment(w, enum.StructuredComment, indent)
 
 	underlyingType := mod.typeString(enum.ElementType, "", false, false, false)
 	switch enum.ElementType {
@@ -1555,7 +1555,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 
 		// Enum values
 		for _, e := range enum.Elements {
-			printComment(w, e.Comment, indent)
+			printComment(w, e.StructuredComment, indent)
 			printObsoleteAttribute(w, e.DeprecationMessage, indent)
 			fmt.Fprintf(w, "%[1]spublic static %[2]s %[3]s { get; } = new %[2]s(", indent, enumName, e.Name)
 			if enum.ElementType == schema.StringType {
@@ -1613,7 +1613,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		fmt.Fprintf(w, "%s{\n", indent)
 		for _, e := range enum.Elements {
 			indent := strings.Repeat(indent, 2)
-			printComment(w, e.Comment, indent)
+			printComment(w, e.StructuredComment, indent)
 			printObsoleteAttribute(w, e.DeprecationMessage, indent)
 			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
 		}
@@ -1642,7 +1642,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 	pt := &plainType{
 		mod:                   mod,
 		name:                  mod.typeName(obj, state, input, args),
-		comment:               obj.Comment,
+		comment:               obj.StructuredComment,
 		propertyTypeQualifier: propertyTypeQualifier,
 		properties:            obj.Properties,
 		state:                 state,
@@ -1777,7 +1777,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		}
 
 		fmt.Fprintf(w, "        private static readonly __Value<%[1]s> _%[2]s = new __Value<%[1]s>(() => %[3]s);\n", propertyType, p.Name, initializer)
-		printComment(w, p.Comment, "        ")
+		printComment(w, p.StructuredComment, "        ")
 		fmt.Fprintf(w, "        public static %s %s\n", propertyType, propertyName)
 		fmt.Fprintf(w, "        {\n")
 		fmt.Fprintf(w, "            get => _%s.Get();\n", p.Name)
@@ -1813,7 +1813,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 					initializer = " = null!;"
 				}
 
-				printComment(w, prop.Comment, "            ")
+				printComment(w, prop.StructuredComment, "            ")
 				fmt.Fprintf(w, "                public %s %s { get; set; }%s\n", typ, name, initializer)
 			}
 

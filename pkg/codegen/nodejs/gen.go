@@ -423,7 +423,7 @@ func (mod *modContext) genPlainType(w io.Writer, name string, comment schema.Des
 
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
 	for _, p := range properties {
-		printComment(w, p.Comment, p.DeprecationMessage, indent+"    ")
+		printComment(w, p.StructuredComment, p.DeprecationMessage, indent+"    ")
 
 		prefix := ""
 		if readonly {
@@ -628,7 +628,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, r.Comment.NarrowToLanguage("typescript"), r.DeprecationMessage, "")
+	printComment(w, r.StructuredComment.NarrowToLanguage("typescript"), r.DeprecationMessage, "")
 
 	var baseType, optionsType string
 	switch {
@@ -703,7 +703,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired()
 	}
 	for _, prop := range r.Properties {
-		printComment(w, prop.Comment, prop.DeprecationMessage, "    ")
+		printComment(w, prop.StructuredComment, prop.DeprecationMessage, "    ")
 
 		// Make a little comment in the code so it's easy to pick out output properties.
 		var outcomment string
@@ -935,7 +935,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
-		printComment(w, fun.Comment.NarrowToLanguage("typescript"), fun.DeprecationMessage, "    ")
+		printComment(w, fun.StructuredComment.NarrowToLanguage("typescript"), fun.DeprecationMessage, "    ")
 
 		// Now, emit the method signature.
 		var args []*schema.Property
@@ -1017,7 +1017,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0); err != nil {
+		if err := mod.genPlainType(w, stateType, r.StateInputs.StructuredComment, r.StateInputs.Properties, true, false, 0); err != nil {
 			return resourceFileInfo{}, err
 		}
 		info.stateInterfaceName = stateType
@@ -1045,7 +1045,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				args = append(args, arg)
 			}
 			if len(args) > 0 {
-				comment := fun.Inputs.Comment
+				comment := fun.Inputs.StructuredComment
 				if len(comment.NarrowToLanguage("typescript")) == 0 {
 					comment = schema.MakeMarkdownDescription(
 						fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name))
@@ -1057,7 +1057,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 		if fun.Outputs != nil {
-			comment := fun.Inputs.Comment
+			comment := fun.Inputs.StructuredComment
 			if len(comment.NarrowToLanguage("typescript")) == 0 {
 				comment = schema.MakeMarkdownDescription(
 					fmt.Sprintf("The results of the %s.%s method.", name, method.Name))
@@ -1090,7 +1090,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	info := functionFileInfo{functionName: name}
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, fun.Comment.NarrowToLanguage("typescript"), "", "")
+	printComment(w, fun.StructuredComment.NarrowToLanguage("typescript"), "", "")
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
@@ -1145,7 +1145,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
-		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
+		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.StructuredComment, fun.Inputs.Properties, true, false, 0); err != nil {
 			return info, err
 		}
 		info.functionArgsInterfaceName = argsInterfaceName
@@ -1153,7 +1153,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 		resultInterfaceName := title(name) + "Result"
-		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
+		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.StructuredComment, fun.Outputs.Properties, false, true, 0); err != nil {
 			return info, err
 		}
 		info.functionResultInterfaceName = resultInterfaceName
@@ -1220,7 +1220,7 @@ func (mod *modContext) genFunctionOutputVersion(
 
 	if err := mod.genPlainType(w,
 		argTypeName,
-		fun.Inputs.Comment,
+		fun.Inputs.StructuredComment,
 		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
@@ -1270,7 +1270,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	}
 
 	name := mod.getObjectName(obj, input)
-	err := mod.genPlainType(w, name, obj.Comment, properties, input, false, level)
+	err := mod.genPlainType(w, name, obj.StructuredComment, properties, input, false, level)
 	if err != nil {
 		return err
 	}
@@ -1527,7 +1527,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	for _, p := range variables {
 		getfunc, cast := mod.configGetter(p)
 
-		printComment(w, p.Comment, "", "")
+		printComment(w, p.StructuredComment, "", "")
 
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
@@ -1741,7 +1741,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		e.Name = safeName
 
-		printComment(w, e.Comment, e.DeprecationMessage, indent)
+		printComment(w, e.StructuredComment, e.DeprecationMessage, indent)
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
 			fmt.Fprintf(w, "%q,\n", val)
@@ -1752,7 +1752,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	fmt.Fprintf(w, "} as const;\n")
 	fmt.Fprintf(w, "\n")
 
-	printComment(w, enum.Comment, "", "")
+	printComment(w, enum.StructuredComment, "", "")
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
 	return nil
 }

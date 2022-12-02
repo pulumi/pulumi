@@ -154,8 +154,10 @@ type EnumType struct {
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
+	// Depreciated in favor of StructuredComment.
+	Comment string
 	// Comment is the description of the type, if any.
-	Comment Description
+	StructuredComment Description
 	// Elements are the predefined enum values.
 	Elements []*Enum
 	// ElementType is the underlying type for the enum.
@@ -170,8 +172,10 @@ type EnumType struct {
 type Enum struct {
 	// Value is the value of the enum.
 	Value interface{}
+	// Depreciated in favor of StructuredComment.
+	Comment string
 	// Comment is the description for the enum value.
-	Comment Description
+	StructuredComment Description
 	// Name for the enum.
 	Name string
 	// DeprecationMessage indicates whether or not the value is deprecated.
@@ -221,8 +225,10 @@ type ObjectType struct {
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
+	// Depreciated in favor of StructuredComment.
+	Comment string
 	// Comment is the description of the type, if any.
-	Comment Description
+	StructuredComment Description
 	// Properties is the list of the type's properties.
 	Properties []*Property
 	// Language specifies additional language-specific data about the object type.
@@ -340,8 +346,10 @@ type DefaultValue struct {
 type Property struct {
 	// Name is the name of the property.
 	Name string
+	// Deprecated in favor of StructuredComment.
+	Comment string
 	// Comment is the description of the property, if any.
-	Comment Description
+	StructuredComment Description
 	// Type is the type of the property.
 	Type Type
 	// ConstValue is the constant value for the property, if any.
@@ -387,8 +395,10 @@ type Resource struct {
 	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
 	Token string
+	// Deprecated in favor of StructuredComment
+	Comment string
 	// Comment is the description of the resource, if any.
-	Comment Description
+	StructuredComment Description
 	// IsProvider is true if the resource is a provider resource.
 	IsProvider bool
 	// InputProperties is the list of the resource's input properties.
@@ -537,8 +547,10 @@ type Function struct {
 	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
 	Token string
+	// Deprecated in favor of StructuredComment.
+	Comment string
 	// Comment is the description of the function, if any.
-	Comment Description
+	StructuredComment Description
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
 	// Outputs is the bag of output values for the function, if any.
@@ -589,8 +601,10 @@ type Package struct {
 	DisplayName string
 	// Version is the version of the package.
 	Version *semver.Version
+	// Depreciated in favor of StructuredDescription
+	Description string
 	// Description is the description of the package.
-	Description Description
+	StructuredDescription Description
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
@@ -946,7 +960,7 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
 	}
 
-	pkgDescription, err := pkg.Description.marshal()
+	pkgDescription, err := pkg.StructuredDescription.marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -1079,7 +1093,7 @@ func (pkg *Package) marshalObjectData(comment Description, properties []*Propert
 }
 
 func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, error) {
-	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language, plain, t.IsOverlay)
+	data, err := pkg.marshalObjectData(t.StructuredComment, t.Properties, t.Language, plain, t.IsOverlay)
 	if err != nil {
 		return ComplexTypeSpec{}, err
 	}
@@ -1089,7 +1103,7 @@ func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, e
 func (pkg *Package) marshalEnum(t *EnumType) (ComplexTypeSpec, error) {
 	values := make([]EnumValueSpec, len(t.Elements))
 	for i, el := range t.Elements {
-		desc, err := el.Comment.marshal()
+		desc, err := el.StructuredComment.marshal()
 		if err != nil {
 			return ComplexTypeSpec{}, err
 		}
@@ -1108,7 +1122,7 @@ func (pkg *Package) marshalEnum(t *EnumType) (ComplexTypeSpec, error) {
 }
 
 func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
-	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language, true, r.IsOverlay)
+	object, err := pkg.marshalObjectData(r.StructuredComment, r.Properties, r.Language, true, r.IsOverlay)
 	if err != nil {
 		return ResourceSpec{}, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -1180,7 +1194,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		return FunctionSpec{}, err
 	}
 
-	desc, err := f.Comment.marshal()
+	desc, err := f.StructuredComment.marshal()
 	if err != nil {
 		return FunctionSpec{}, err
 	}
@@ -1233,7 +1247,7 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
 		}
 
-		desc, err := p.Comment.marshal()
+		desc, err := p.StructuredComment.marshal()
 		if err != nil {
 			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
 		}
