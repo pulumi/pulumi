@@ -272,10 +272,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Description: "Cue random",
 	},
 	{
-		Directory:   transpiled("cue-static-web-app"),
-		Description: "Cue static web app",
-	},
-	{
 		Directory:   transpiled("getting-started"),
 		Description: "Getting started",
 	},
