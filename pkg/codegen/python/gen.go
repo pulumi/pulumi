@@ -333,8 +333,13 @@ func (mod *modContext) tokenToModule(tok string) string {
 	return tokenToModule(tok, mod.pkg, mod.modNameOverrides)
 }
 
-func printComment(w io.Writer, comment string, indent string) {
-	lines := strings.Split(comment, "\n")
+func printComment(w io.Writer, comment schema.Description, indent string) {
+	desc, err := comment.NarrowToLanguage("python").RenderToMarkdown(nil)
+	contract.IgnoreError(err)
+	if desc == "" {
+		return
+	}
+	lines := strings.Split(desc, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -496,7 +501,10 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 
 		if readme == "" {
-			readme = mod.pkg.Description()
+			readme, err := mod.pkg.Description().NarrowToLanguage("python").RenderToMarkdown(nil)
+			if err != nil {
+				return err
+			}
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
@@ -1189,7 +1197,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "__all__ = ['%s', '%s']\n\n", resourceArgsName, name)
 
 	// Produce an args class.
-	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
+	argsComment := schema.MakeMarkdownDescription(fmt.Sprintf("The set of arguments for constructing a %s resource.", name))
 	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false)
 	if err != nil {
 		return "", err
@@ -1202,7 +1210,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	hasStateInputs := !res.IsProvider && !res.IsComponent && res.StateInputs != nil &&
 		len(res.StateInputs.Properties) > 0
 	if hasStateInputs {
-		stateComment := fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name)
+		stateComment := schema.MakeMarkdownDescription(fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name))
 		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, true, false)
 		if err != nil {
 			return "", err
@@ -1498,9 +1506,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			fmt.Fprintf(w, "%s    @pulumi.getter(name=%q)\n", indent, prop.Name)
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
-		if prop.Comment != "" {
-			printComment(w, prop.Comment, indent+"        ")
-		}
+		printComment(w, prop.Comment, indent+"        ")
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
 		if setters {
@@ -1637,8 +1643,8 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
-		if fun.Comment != "" {
-			fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+		if comment, _ := fun.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+			fmt.Fprintln(docs, comment)
 		}
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
@@ -1646,7 +1652,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 				mod.genPropDocstring(docs, PyName(arg.Name), arg, false /*acceptMapping*/)
 			}
 		}
-		printComment(w, docs.String(), "        ")
+		printComment(w, schema.MakeMarkdownDescription(docs.String()), "        ")
 
 		if fun.DeprecationMessage != "" {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", methodName,
@@ -1811,8 +1817,8 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
-	if fun.Comment != "" {
-		fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+	if comment, _ := fun.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+		fmt.Fprintln(docs, comment)
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
@@ -1822,7 +1828,7 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 			mod.genPropDocstring(docs, PyName(arg.Name), arg, true /*acceptMapping*/)
 		}
 	}
-	printComment(w, docs.String(), "    ")
+	printComment(w, schema.MakeMarkdownDescription(docs.String()), "    ")
 }
 
 func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Function) {
@@ -1953,9 +1959,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			} else {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
-			if e.Comment != "" {
-				printComment(w, e.Comment, indent)
-			}
+			printComment(w, e.Comment, indent)
 		}
 	default:
 		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
@@ -2092,8 +2096,8 @@ func genPackageMetadata(
 		fmt.Fprintf(w, "      python_requires='%s',\n", pythonRequires)
 	}
 	fmt.Fprintf(w, "      version=VERSION,\n")
-	if pkg.Description != "" {
-		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
+	if description, _ := pkg.Description.NarrowToLanguage("python").RenderToMarkdown(nil); description != "" {
+		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(description))
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")
@@ -2221,8 +2225,8 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	b := &bytes.Buffer{}
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	if res.Comment != "" {
-		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
+	if comment, _ := res.Comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
+		fmt.Fprintln(b, comment)
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
@@ -2241,7 +2245,7 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	}
 
 	// printComment handles the prefix and triple quotes.
-	printComment(w, b.String(), "        ")
+	printComment(w, schema.MakeMarkdownDescription(b.String()), "        ")
 }
 
 func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
@@ -2262,15 +2266,15 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	}
 
 	// printComment handles the prefix and triple quotes.
-	printComment(w, b.String(), "        ")
+	printComment(w, schema.MakeMarkdownDescription(b.String()), "        ")
 }
 
-func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties []*schema.Property) {
+func (mod *modContext) genTypeDocstring(w io.Writer, comment schema.Description, properties []*schema.Property) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
 	// If this type has documentation, write it at the top of the docstring.
-	if comment != "" {
+	if comment, _ := comment.NarrowToLanguage("python").RenderToMarkdown(nil); comment != "" {
 		fmt.Fprintln(b, comment)
 	}
 
@@ -2279,11 +2283,12 @@ func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties 
 	}
 
 	// printComment handles the prefix and triple quotes.
-	printComment(w, b.String(), "        ")
+	printComment(w, schema.MakeMarkdownDescription(b.String()), "        ")
 }
 
 func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, acceptMapping bool) {
-	if prop.Comment == "" {
+	comment, _ := prop.Comment.NarrowToLanguage("python").RenderToMarkdown(nil)
+	if comment == "" {
 		return
 	}
 
@@ -2291,7 +2296,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
-	lines := strings.Split(prop.Comment, "\n")
+	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -2465,7 +2470,7 @@ func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input 
 	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType)
 }
 
-func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, input, resourceOutput bool) error {
+func (mod *modContext) genType(w io.Writer, name string, comment schema.Description, properties []*schema.Property, input, resourceOutput bool) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -2492,7 +2497,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	name = pythonCase(name)
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
-	if !input && comment != "" {
+	if !input {
 		printComment(w, comment, "    ")
 	}
 

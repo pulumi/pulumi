@@ -542,8 +542,8 @@ func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagn
 					}, func(node map[string]interface{}) {
 						expectFields, castString := bindHelpers(path, &errs, node)
 						expectFields("raw-text")
-						v = DescriptionPlainNode{
-							Text: castString("raw-text"),
+						v = DescriptionMarkdownNode{
+							Text: "```\n" + castString("raw-text") + "\n```",
 						}
 					})
 					return v
@@ -552,12 +552,6 @@ func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagn
 					Leading:  bindTriviaNode("leading"),
 					Trailing: bindTriviaNode("trailing"),
 				}
-			}
-			if _, ok := node["raw-text"]; ok {
-				expectFields("raw-text")
-				desc = append(desc,
-					DescriptionPlainNode{Text: castString("raw-text")})
-				return
 			}
 			if _, ok := node["pcl"]; ok {
 				expectFields("pcl", "trivia")
