@@ -16,20 +16,14 @@ package importer
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-// A LangaugeGenerator generates code for a given Pulumi program to an io.Writer.
-type LanguageGenerator func(w io.Writer, p *pcl.Program) error
 
 // A NameTable maps URNs to language-specific variable names.
 type NameTable map[resource.URN]string
@@ -38,6 +32,19 @@ type NameTable map[resource.URN]string
 type DiagnosticsError struct {
 	diagnostics         hcl.Diagnostics
 	newDiagnosticWriter func(w io.Writer, width uint, color bool) hcl.DiagnosticWriter
+}
+
+func NewDiagnosticsError(
+	diagnostics hcl.Diagnostics,
+	newDiagnosticWriter func(w io.Writer, width uint, color bool) hcl.DiagnosticWriter) *DiagnosticsError {
+	return &DiagnosticsError{
+		diagnostics:         diagnostics,
+		newDiagnosticWriter: newDiagnosticWriter,
+	}
+}
+
+func NewDiagnosticsErrorFromParser(parser *syntax.Parser) *DiagnosticsError {
+	return NewDiagnosticsError(parser.Diagnostics, parser.NewDiagnosticWriter)
 }
 
 func (e *DiagnosticsError) Diagnostics() hcl.Diagnostics {
@@ -58,51 +65,4 @@ func (e *DiagnosticsError) Error() string {
 
 func (e *DiagnosticsError) String() string {
 	return e.Error()
-}
-
-// GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
-func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
-	names NameTable) error {
-
-	var hcl2Text bytes.Buffer
-	for i, state := range states {
-		hcl2Def, err := GenerateHCL2Definition(loader, state, names)
-		if err != nil {
-			return err
-		}
-
-		pre := ""
-		if i > 0 {
-			pre = "\n"
-		}
-		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
-		contract.IgnoreError(err)
-	}
-
-	parser := syntax.NewParser()
-	if err := parser.ParseFile(&hcl2Text, string("anonymous.pp")); err != nil {
-		return err
-	}
-	if parser.Diagnostics.HasErrors() {
-		// HCL2 text generation should always generate proper code.
-		return fmt.Errorf("internal error: %w", &DiagnosticsError{
-			diagnostics:         parser.Diagnostics,
-			newDiagnosticWriter: parser.NewDiagnosticWriter,
-		})
-	}
-
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
-	if err != nil {
-		return err
-	}
-	if diags.HasErrors() {
-		// It is possible that the provided states do not contain appropriately-shaped inputs, so this may be user
-		// error.
-		return &DiagnosticsError{
-			diagnostics:         diags,
-			newDiagnosticWriter: program.NewDiagnosticWriter,
-		}
-	}
-
-	return gen(w, program)
 }

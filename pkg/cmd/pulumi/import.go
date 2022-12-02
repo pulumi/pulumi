@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/importer"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -208,6 +209,45 @@ func getCurrentDeploymentForStack(
 
 type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
+// generateLanguageDefinitions generates program with a list of resource definitions from the given resource states.
+func generateLanguageDefinitions(loader schema.Loader, states []*resource.State, names importer.NameTable) (*pcl.Program, error) {
+	var hcl2Text bytes.Buffer
+	for i, state := range states {
+		hcl2Def, err := importer.GenerateHCL2Definition(loader, state, names)
+		if err != nil {
+			return nil, err
+		}
+
+		pre := ""
+		if i > 0 {
+			pre = "\n"
+		}
+		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+		contract.IgnoreError(err)
+	}
+
+	parser := syntax.NewParser()
+	if err := parser.ParseFile(&hcl2Text, string("anonymous.pp")); err != nil {
+		return nil, err
+	}
+	if parser.Diagnostics.HasErrors() {
+		// HCL2 text generation should always generate proper code.
+		return nil, fmt.Errorf("internal error: %w", importer.NewDiagnosticsErrorFromParser(parser))
+	}
+
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+	if err != nil {
+		return nil, err
+	}
+	if diags.HasErrors() {
+		// It is possible that the provided states do not contain appropriately-shaped inputs, so this may be user
+		// error.
+		return nil, importer.NewDiagnosticsError(diags, program.NewDiagnosticWriter)
+	}
+
+	return program, nil
+}
+
 func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool) (bool, error) {
@@ -262,22 +302,26 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectNa
 		return false, err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
-		files, _, err := programGenerator(p)
-		if err != nil {
-			return err
-		}
+	program, err := generateLanguageDefinitions(loader, resources, names)
+	if err != nil {
+		return false, err
+	}
 
-		var contents []byte
-		for _, v := range files {
-			contents = v
-		}
+	files, _, err := programGenerator(program)
+	if err != nil {
+		return false, err
+	}
 
-		if _, err := w.Write(contents); err != nil {
-			return err
-		}
-		return nil
-	}, resources, names)
+	var contents []byte
+	for _, v := range files {
+		contents = v
+	}
+
+	if _, err := out.Write(contents); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func newImportCmd() *cobra.Command {
