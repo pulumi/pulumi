@@ -336,13 +336,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				if isOutput {
 					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
 				} else {
-					pcl.GenEnum(to, from, func(member *schema.Enum) {
+					diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
 						memberTag, err := enumMemberName(tokenToName(to.Token), member)
 						contract.AssertNoErrorf(err, "Failed to get member name on enum '%s'", enum)
 						g.Fgenf(w, "%s.%s", enum, memberTag)
 					}, func(from model.Expression) {
 						g.Fgenf(w, "%s[%.v]", enum, from)
 					})
+					if diag != nil {
+						g.diagnostics = append(g.diagnostics, diag)
+					}
 				}
 			} else {
 				g.Fgenf(w, "%v", from)

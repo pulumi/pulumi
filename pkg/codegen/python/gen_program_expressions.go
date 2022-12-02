@@ -247,7 +247,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
-				pcl.GenEnum(to, from, func(member *schema.Enum) {
+				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
 					tag := member.Name
 					if tag == "" {
 						tag = fmt.Sprintf("%v", member.Value)
@@ -258,6 +258,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}, func(from model.Expression) {
 					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
 				})
+				if diag != nil {
+					g.diagnostics = append(g.diagnostics, diag)
+				}
 			}
 		default:
 			switch arg := from.(type) {

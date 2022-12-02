@@ -335,9 +335,12 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 		if isOutput {
 			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
 		} else {
-			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+			diag := pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", convertFn, from)
 			})
+			if diag != nil {
+				g.diagnostics = append(g.diagnostics, diag)
+			}
 		}
 	default:
 		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
