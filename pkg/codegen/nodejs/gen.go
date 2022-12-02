@@ -384,12 +384,14 @@ func sanitizeComment(str string) string {
 	return strings.Replace(str, "*/", "*&#47;", -1)
 }
 
-func printComment(w io.Writer, comment, deprecationMessage, indent string) {
-	if comment == "" && deprecationMessage == "" {
+func printComment(w io.Writer, comment schema.Description, deprecationMessage, indent string) {
+	desc, err := comment.NarrowToLanguage("typescript").RenderToMarkdown(nil)
+	contract.IgnoreError(err)
+	if desc == "" && deprecationMessage == "" {
 		return
 	}
 
-	lines := strings.Split(sanitizeComment(comment), "\n")
+	lines := strings.Split(sanitizeComment(desc), "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -413,7 +415,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 // Generates a plain interface type.
 //
 // We use this to represent both argument and plain object types.
-func (mod *modContext) genPlainType(w io.Writer, name, comment string,
+func (mod *modContext) genPlainType(w io.Writer, name string, comment schema.Description,
 	properties []*schema.Property, input, readonly bool, level int) error {
 	indent := strings.Repeat("    ", level)
 
@@ -479,8 +481,8 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	//     const def = (val: LayeredTypeArgs) => ({
 	//         ...val,
 	defaultProvderName := provideDefaultsFuncNameFromName(name)
-	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
-		defaultProvderName, name), "", indent)
+	printComment(w, schema.MakeMarkdownDescription(fmt.Sprintf("%s sets the appropriate defaults for %s",
+		defaultProvderName, name)), "", indent)
 	fmt.Fprintf(w, "%sexport function %s(val: %s): "+
 		"%s {\n", indent, defaultProvderName, name, name)
 	fmt.Fprintf(w, "%s    return {\n", indent)
@@ -626,7 +628,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	info.resourceClassName = name
 
 	// Write the TypeDoc/JSDoc for the resource class
-	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
+	printComment(w, r.Comment.NarrowToLanguage("typescript"), r.DeprecationMessage, "")
 
 	var baseType, optionsType string
 	switch {
@@ -933,7 +935,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
-		printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ")
+		printComment(w, fun.Comment.NarrowToLanguage("typescript"), fun.DeprecationMessage, "    ")
 
 		// Now, emit the method signature.
 		var args []*schema.Property
@@ -1023,7 +1025,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
-	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
+	argsComment := schema.MakeMarkdownDescription(fmt.Sprintf("The set of arguments for constructing a %s resource.", name))
 	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0); err != nil {
 		return resourceFileInfo{}, err
 	}
@@ -1044,8 +1046,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 			if len(args) > 0 {
 				comment := fun.Inputs.Comment
-				if comment == "" {
-					comment = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
+				if len(comment.NarrowToLanguage("typescript")) == 0 {
+					comment = schema.MakeMarkdownDescription(
+						fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name))
 				}
 				if err := mod.genPlainType(w, methodName+"Args", comment, args, true, false, 1); err != nil {
 					return err
@@ -1055,8 +1058,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 		if fun.Outputs != nil {
 			comment := fun.Inputs.Comment
-			if comment == "" {
-				comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
+			if len(comment.NarrowToLanguage("typescript")) == 0 {
+				comment = schema.MakeMarkdownDescription(
+					fmt.Sprintf("The results of the %s.%s method.", name, method.Name))
 			}
 			if err := mod.genPlainType(w, methodName+"Result", comment, fun.Outputs.Properties, false, true, 1); err != nil {
 				return err
@@ -1086,7 +1090,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 	info := functionFileInfo{functionName: name}
 
 	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
+	printComment(w, fun.Comment.NarrowToLanguage("typescript"), "", "")
 
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
@@ -1829,7 +1833,10 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := def.Language["nodejs"].(NodePackageInfo).Readme
 		if readme == "" {
-			readme = def.Description
+			readme, err := mod.pkg.Description().NarrowToLanguage("typescript").RenderToMarkdown(nil)
+			if err != nil {
+				return err
+			}
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
