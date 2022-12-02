@@ -1558,6 +1558,20 @@
 				"byteLength": 42,
 				"prefix": "foobar"
 			}
+		},
+		{
+			"urn": "urn:pulumi:stack::project::aws:iam/policy:Policy::Policy",
+			"custom": true,
+			"type": "aws:iam/policy:Policy",
+			"inputs": {
+				"sid": "AllowManageOwnVirtualMFADevice",
+				"effect": "Allow",
+				"action": [
+					"iam:CreateVirtualMFADevice",
+					"iam:DeleteVirtualMFADevice"
+				],
+				"resource": "arn:aws:iam::*:mfa/${aws:username}"
+			}
 		}
     ]
 }
