@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -59,15 +60,6 @@ func newPolicyPublishCmd() *cobra.Command {
 			policyPackRef := fmt.Sprintf("%s/", orgName)
 
 			//
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			//
-
-			policyPack, err := requirePolicyPack(ctx, policyPackRef)
-			if err != nil {
-				return err
-			}
-
-			//
 			// Load metadata about the current project.
 			//
 
@@ -84,6 +76,16 @@ func newPolicyPublishCmd() *cobra.Command {
 
 			plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
 				projinfo.Proj.Runtime.Options(), false, nil, nil)
+			if err != nil {
+				return err
+			}
+			secretsProvider := stack.NewDefaultSecretsProvider(plugctx.Host)
+
+			//
+			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			//
+
+			policyPack, err := requirePolicyPack(ctx, secretsProvider, policyPackRef)
 			if err != nil {
 				return err
 			}
@@ -105,7 +107,7 @@ func newPolicyPublishCmd() *cobra.Command {
 	return cmd
 }
 
-func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPack, error) {
+func requirePolicyPack(ctx context.Context, secretsProvider stack.SecretsProvider, policyPack string) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
 	//
@@ -120,7 +122,7 @@ func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPa
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
+	b, err := httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), secretsProvider, cloudURL, displayOptions)
 	if err != nil {
 		return nil, err
 	}

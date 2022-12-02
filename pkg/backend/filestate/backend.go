@@ -84,7 +84,8 @@ type localBackend struct {
 
 	lockID string
 
-	gzip bool
+	gzip            bool
+	secretsProvider stack.SecretsProvider
 }
 
 type localBackendReference struct {
@@ -114,7 +115,7 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-func New(d diag.Sink, originalURL string) (Backend, error) {
+func New(d diag.Sink, secretsProvider stack.SecretsProvider, originalURL string) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -174,12 +175,13 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
 	return &localBackend{
-		d:           d,
-		originalURL: originalURL,
-		url:         u,
-		bucket:      &wrappedBucket{bucket: bucket},
-		lockID:      lockID.String(),
-		gzip:        gzipCompression,
+		d:               d,
+		originalURL:     originalURL,
+		url:             u,
+		bucket:          &wrappedBucket{bucket: bucket},
+		lockID:          lockID.String(),
+		gzip:            gzipCompression,
+		secretsProvider: secretsProvider,
 	}, nil
 }
 
@@ -228,8 +230,8 @@ func massageBlobPath(path string) (string, error) {
 	return FilePathPrefix + path, nil
 }
 
-func Login(d diag.Sink, url string) (Backend, error) {
-	be, err := New(d, url)
+func Login(d diag.Sink, secretsProvider stack.SecretsProvider, url string) (Backend, error) {
+	be, err := New(d, secretsProvider, url)
 	if err != nil {
 		return nil, err
 	}
@@ -820,7 +822,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, b.secretsProvider)
 	if err != nil {
 		return err
 	}

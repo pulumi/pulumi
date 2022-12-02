@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -24,7 +25,7 @@ type testSecretsManager struct {
 
 func (t *testSecretsManager) Type() string { return "test" }
 
-func (t *testSecretsManager) State() interface{} { return nil }
+func (t *testSecretsManager) State() json.RawMessage { return nil }
 
 func (t *testSecretsManager) Encrypter() (config.Encrypter, error) {
 	return t, nil
@@ -191,8 +192,8 @@ type mapTestSecretsProvider struct {
 	m *mapTestSecretsManager
 }
 
-func (p *mapTestSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
-	m, err := DefaultSecretsProvider.OfType(ty, state)
+func (p *mapTestSecretsProvider) OfType(ctx context.Context, ty string, version *semver.Version, state json.RawMessage) (secrets.Manager, error) {
+	m, err := Base64SecretsProvider.OfType(ctx, ty, version, state)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +209,7 @@ type mapTestSecretsManager struct {
 
 func (t *mapTestSecretsManager) Type() string { return t.sm.Type() }
 
-func (t *mapTestSecretsManager) State() interface{} { return t.sm.State() }
+func (t *mapTestSecretsManager) State() json.RawMessage { return t.sm.State() }
 
 func (t *mapTestSecretsManager) Encrypter() (config.Encrypter, error) {
 	return t.sm.Encrypter()

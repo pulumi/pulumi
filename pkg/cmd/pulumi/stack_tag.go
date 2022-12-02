@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -64,7 +65,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, *stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -97,7 +98,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, *stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -154,7 +155,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, *stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -185,7 +186,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, *stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

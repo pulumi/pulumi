@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -43,7 +44,7 @@ func newPolicyEnableCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0])
+			policyPack, err := requirePolicyPack(ctx, stack.ErrorSecretsProvider, cliArgs[0])
 			if err != nil {
 				return err
 			}

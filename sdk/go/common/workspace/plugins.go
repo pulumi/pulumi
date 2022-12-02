@@ -1246,12 +1246,14 @@ const (
 	LanguagePlugin PluginKind = "language"
 	// ResourcePlugin is a plugin that can be used as a resource provider for custom CRUD operations.
 	ResourcePlugin PluginKind = "resource"
+
+	SecretsPlugin PluginKind = "secrets"
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
 func IsPluginKind(k string) bool {
 	switch PluginKind(k) {
-	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin:
+	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin, SecretsPlugin:
 		return true
 	default:
 		return false
@@ -1567,7 +1569,8 @@ func getPluginInfoAndPath(
 		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
 		(kind == ResourcePlugin && name == "pulumi-python") ||
 		(kind == AnalyzerPlugin && name == "policy") ||
-		(kind == AnalyzerPlugin && name == "policy-python")
+		(kind == AnalyzerPlugin && name == "policy-python") ||
+		(kind == SecretsPlugin && name == "cloud")
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.

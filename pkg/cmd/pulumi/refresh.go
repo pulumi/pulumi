@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -158,22 +159,25 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
+			// Fetch the project.
+			proj, pctx, err := getProjectContext(opts.Display.Color)
+			if err != nil {
+				return result.FromError(err)
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
+			m, err := getUpdateMetadata(message, pctx.Root, execKind, execAgent, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
@@ -262,7 +266,7 @@ func newRefreshCmd() *cobra.Command {
 
 			changes, res := s.Refresh(ctx, backend.UpdateOperation{
 				Proj:               proj,
-				Root:               root,
+				Root:               pctx.Root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,

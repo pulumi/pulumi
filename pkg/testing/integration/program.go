@@ -44,8 +44,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
@@ -54,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	user "github.com/tweekmonster/luser"
 )
 
@@ -655,10 +658,15 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
+	d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{})
+	ctx, err := plugin.NewContext(d, d, nil, nil, "", nil, false, nil)
+	require.NoError(t, err)
+	sp := stack.NewDefaultSecretsProvider(ctx.Host)
+
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
+		sp)
 	assert.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)

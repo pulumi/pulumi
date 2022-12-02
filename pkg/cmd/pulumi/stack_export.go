@@ -50,8 +50,15 @@ func newStackExportCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stack.NewDefaultSecretsProvider(pctx.Host)
+
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -90,7 +97,7 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)
 				}

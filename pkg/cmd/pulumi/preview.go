@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -150,7 +151,21 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, true, displayOpts, false /*setCurrent*/)
+			// Fetch the project.
+			proj, pctx, err := getProjectContext(displayOpts.Color)
+			if err != nil {
+				return result.FromError(err)
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			if client != "" {
+				proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+					"address": client,
+				})
+			}
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, true, displayOpts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -160,17 +175,12 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProjectForUpdate(client)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "")
+			m, err := getUpdateMetadata(message, pctx.Root, execKind, execAgent, planFilePath != "")
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
@@ -238,7 +248,7 @@ func newPreviewCmd() *cobra.Command {
 
 			plan, changes, res := s.Preview(ctx, backend.UpdateOperation{
 				Proj:               proj,
-				Root:               root,
+				Root:               pctx.Root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,

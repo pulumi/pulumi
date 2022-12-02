@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -56,7 +57,7 @@ func newCancelCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}

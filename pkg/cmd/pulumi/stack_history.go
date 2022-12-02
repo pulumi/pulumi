@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -41,7 +42,15 @@ This command displays data about previous updates for a stack.`,
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, stack, false /*offerNew */, opts, false /*setCurrent*/)
+
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, false /*offerNew */, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -52,7 +61,7 @@ This command displays data about previous updates for a stack.`,
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				crypter, err := getStackDecrypter(s)
+				crypter, err := getStackDecrypter(ctx, pctx.Host, s)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
 				}

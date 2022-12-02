@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -61,7 +62,14 @@ func newStackGraphCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stack.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

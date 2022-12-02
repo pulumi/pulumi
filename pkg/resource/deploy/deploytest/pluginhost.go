@@ -349,6 +349,21 @@ func (host *pluginHost) LanguageRuntime(
 	return host.languageRuntime, nil
 }
 
+func (host *pluginHost) Secrets(name string, version *semver.Version) (plugin.SecretsProvider, error) {
+	plug, err := host.plugin(workspace.SecretsPlugin, name, version, nil)
+	if err != nil {
+		return nil, err
+	}
+	if plug == nil {
+		v := "nil"
+		if version != nil {
+			v = version.String()
+		}
+		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", name, v)
+	}
+	return plug.(plugin.SecretsProvider), nil
+}
+
 func (host *pluginHost) SignalCancellation() error {
 	host.m.Lock()
 	defer host.m.Unlock()

@@ -63,6 +63,10 @@ type Host interface {
 	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
 	ListAnalyzers() []Analyzer
 
+	// Secrets loads a new copy of the secrets plugin for a given name. If a plugin for this could not be
+	// found, or an error occurs while creating it, a non-nil error is returned.
+	Secrets(name string, version *semver.Version) (SecretsProvider, error)
+
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
@@ -372,6 +376,18 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 		return nil, err
 	}
 	return plugin.(Provider), nil
+}
+
+func (host *defaultHost) Secrets(name string, version *semver.Version) (SecretsProvider, error) {
+	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+		// Try to load and bind to a plugin.
+		plug, err := NewSecretsProviderPlugin(host, host.ctx, host.ctx.Pwd, name, version)
+		return plug, err
+	})
+	if plugin == nil || err != nil {
+		return nil, err
+	}
+	return plugin.(SecretsProvider), nil
 }
 
 func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,

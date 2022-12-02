@@ -134,9 +134,7 @@ func (b *localBackend) getTarget(
 	}, nil
 }
 
-func (b *localBackend) getStack(
-	ctx context.Context,
-	name tokens.Name) (*deploy.Snapshot, string, error) {
+func (b *localBackend) getStack(ctx context.Context, name tokens.Name) (*deploy.Snapshot, string, error) {
 	if name == "" {
 		return nil, "", errors.New("invalid empty stack name")
 	}
@@ -149,7 +147,7 @@ func (b *localBackend) getStack(
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, chk)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, b.secretsProvider, chk)
 	if err != nil {
 		return nil, "", err
 	}

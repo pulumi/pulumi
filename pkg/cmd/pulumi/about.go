@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -174,7 +175,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx)
+	backend, err = nonInteractiveCurrentBackend(ctx, stack.ErrorSecretsProvider)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {

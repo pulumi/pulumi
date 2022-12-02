@@ -27,6 +27,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -133,15 +136,21 @@ func newLoginCmd() *cobra.Command {
 				}
 			}
 
+			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: displayOptions.Color})
+			pctx, err := plugin.NewContext(d, d, nil, nil, ".", nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defaultSecretsProvider := stack.NewDefaultSecretsProvider(pctx.Host)
+
 			var be backend.Backend
-			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
-				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
+				be, err = filestate.Login(cmdutil.Diag(), defaultSecretsProvider, cloudURL)
 				if defaultOrg != "" {
 					return fmt.Errorf("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), defaultSecretsProvider, cloudURL, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
 					cloudURL, err := workspace.GetCurrentCloudURL()

@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -56,12 +57,15 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			b, err := currentBackend(ctx, opts.Display)
+			// Fetch the project.
+			proj, pctx, err := getProjectContext(opts.Display.Color)
 			if err != nil {
 				return result.FromError(err)
 			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
 
-			proj, root, err := readProject()
+			b, err := currentBackend(ctx, secretsProvider, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -72,7 +76,7 @@ func newQueryCmd() *cobra.Command {
 
 			res := b.Query(ctx, backend.QueryOperation{
 				Proj:   proj,
-				Root:   root,
+				Root:   pctx.Root,
 				Opts:   opts,
 				Scopes: cancellationScopes,
 			})

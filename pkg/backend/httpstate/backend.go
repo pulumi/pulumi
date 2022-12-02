@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -117,18 +118,19 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d              diag.Sink
-	url            string
-	client         *client.Client
-	currentProject *workspace.Project
-	capabilities   func(context.Context) capabilities
+	d               diag.Sink
+	url             string
+	client          *client.Client
+	currentProject  *workspace.Project
+	capabilities    func(context.Context) capabilities
+	secretsProvider stack.SecretsProvider
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string) (Backend, error) {
+func New(d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -146,16 +148,17 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	capabilities := detectCapabilities(d, client)
 
 	return &cloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         client,
-		currentProject: currentProject,
-		capabilities:   capabilities,
+		d:               d,
+		url:             cloudURL,
+		client:          client,
+		currentProject:  currentProject,
+		capabilities:    capabilities,
+		secretsProvider: secretsProvider,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string, opts display.Options) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -241,16 +244,16 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	// Welcome the user since this was an interactive login.
 	WelcomeUser(opts)
 
-	return New(d, cloudURL)
+	return New(d, secretsProvider, cloudURL)
 }
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
-	Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error)
+	Current(ctx context.Context, d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string) (Backend, error)
 
 	// Login logs into the target cloud URL and returns the cloud backend for it.
-	Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error)
+	Login(ctx context.Context, d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string, opts display.Options) (Backend, error)
 }
 
 // NewLoginManager returns a LoginManager for handling backend logins.
@@ -267,7 +270,7 @@ var newLoginManager = func() LoginManager {
 type defaultLoginManager struct{}
 
 // Current returns the current cloud backend if one is already logged in.
-func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL string) (Backend, error) {
+func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -291,7 +294,7 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 				return nil, err
 			}
 
-			return New(d, cloudURL)
+			return New(d, secretsProvider, cloudURL)
 		}
 	}
 
@@ -327,14 +330,14 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, secretsProvider, cloudURL)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
 func (m defaultLoginManager) Login(
-	ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+	ctx context.Context, d diag.Sink, secretsProvider stack.SecretsProvider, cloudURL string, opts display.Options) (Backend, error) {
 
-	current, err := m.Current(ctx, d, cloudURL)
+	current, err := m.Current(ctx, d, secretsProvider, cloudURL)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +403,7 @@ func (m defaultLoginManager) Login(
 		}
 
 		if accessToken == "" {
-			return loginWithBrowser(ctx, d, cloudURL, opts)
+			return loginWithBrowser(ctx, d, secretsProvider, cloudURL, opts)
 		}
 
 		// Welcome the user since this was an interactive login.
@@ -426,7 +429,7 @@ func (m defaultLoginManager) Login(
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, secretsProvider, cloudURL)
 }
 
 // WelcomeUser prints a Welcome to Pulumi message.

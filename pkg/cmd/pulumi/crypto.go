@@ -15,19 +15,18 @@
 package main
 
 import (
-	"fmt"
-	"strings"
+	"context"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	pluginSecrets "github.com/pulumi/pulumi/pkg/v3/secrets/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
-	sm, err := getStackSecretsManager(s)
+func getStackEncrypter(ctx context.Context, host plugin.Host, s backend.Stack) (config.Encrypter, error) {
+	sm, err := getStackSecretsManager(ctx, host, s)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +34,8 @@ func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {
 	return sm.Encrypter()
 }
 
-func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
-	sm, err := getStackSecretsManager(s)
+func getStackDecrypter(ctx context.Context, host plugin.Host, s backend.Stack) (config.Decrypter, error) {
+	sm, err := getStackSecretsManager(ctx, host, s)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 	return sm.Decrypter()
 }
 
-func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
+func getStackSecretsManager(ctx context.Context, host plugin.Host, s backend.Stack) (secrets.Manager, error) {
 	project, _, err := readProject()
 
 	if err != nil {
@@ -62,33 +61,15 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return nil, err
 		}
 
-		// nolint: goconst
-		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider, false /* rotateSecretsProvider */)
+		if (ps.SecretsProvider.Name == "" && ps.EncryptionSalt == "") || ps.SecretsProvider.Name == "default" {
+			return s.DefaultSecretManager(ctx, host, configFile)
 		}
 
-		if ps.EncryptionSalt != "" {
-			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
-		}
+		return pluginSecrets.NewPluginSecretsManagerFromConfig(ctx, host, s.Ref().Name(), configFile)
 
-		return s.DefaultSecretManager(configFile)
 	}()
 	if err != nil {
 		return nil, err
 	}
 	return stack.NewCachingSecretsManager(sm), nil
-}
-
-func validateSecretsProvider(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
-	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
-	}
-	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
-		kind,
-		strings.Join(supportedKinds, ","))
-
 }

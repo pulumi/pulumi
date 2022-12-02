@@ -68,7 +68,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil)
+	}, b64.Base64SecretsManager, resources, nil)
 }
 
 func TestDeletion(t *testing.T) {

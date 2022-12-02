@@ -27,8 +27,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -682,128 +680,6 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 			},
 		},
 	})
-}
-
-//nolint:paralleltest // mutates environment variables
-func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
-	testOptions := integration.ProgramTestOptions{
-		Dir:             "cloud_secrets_provider",
-		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("passphrase"),
-		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
-		Secrets: map[string]string{
-			"mysecret": "THISISASECRET",
-		},
-		CloudURL:   integration.MakeTempBackend(t),
-		NoParallel: true, // mutates environment variables
-	}
-
-	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			t.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
-			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
-			assert.Equal(t, secretsProvider.Type, "passphrase")
-
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
-
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
-			assert.True(t, ok)
-
-			_, ok = out["ciphertext"]
-			assert.True(t, ok)
-		},
-	})
-
-	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
-			assert.Equal(t, secretsProvider.Type, "passphrase")
-
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
-			assert.Error(t, err)
-		},
-	})
-
-	t.Run("works-when-passphrase-set", func(t *testing.T) {
-		integration.ProgramTest(t, &workingTestOptions)
-	})
-
-	t.Run("error-when-passphrase-not-set", func(t *testing.T) {
-		integration.ProgramTest(t, &brokenTestOptions)
-	})
-}
-
-func TestCloudSecretProvider(t *testing.T) {
-	t.Parallel()
-
-	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
-	if awsKmsKeyAlias == "" {
-		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
-	}
-
-	azureKeyVault := os.Getenv("PULUMI_TEST_AZURE_KEY")
-	if azureKeyVault == "" {
-		t.Skipf("Skipping: PULUMI_TEST_AZURE_KEY is not set")
-	}
-
-	gcpKmsKey := os.Getenv("PULUMI_TEST_GCP_KEY")
-	if azureKeyVault == "" {
-		t.Skipf("Skipping: PULUMI_TEST_GCP_KEY is not set")
-	}
-
-	// Generic test options for all providers
-	testOptions := integration.ProgramTestOptions{
-		Dir:             "cloud_secrets_provider",
-		Dependencies:    []string{"@pulumi/pulumi"},
-		SecretsProvider: fmt.Sprintf("awskms://alias/%s", awsKmsKeyAlias),
-		Secrets: map[string]string{
-			"mysecret": "THISISASECRET",
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			secretsProvider := stackInfo.Deployment.SecretsProviders
-			assert.NotNil(t, secretsProvider)
-			assert.Equal(t, secretsProvider.Type, "cloud")
-
-			_, err := cloud.NewCloudSecretsManagerFromState(secretsProvider.State)
-			assert.NoError(t, err)
-
-			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
-			assert.True(t, ok)
-
-			_, ok = out["ciphertext"]
-			assert.True(t, ok)
-		},
-	}
-
-	localTestOptions := testOptions.With(integration.ProgramTestOptions{
-		CloudURL: integration.MakeTempBackend(t),
-	})
-
-	azureTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("azurekeyvault://%s", azureKeyVault),
-	})
-
-	gcpTestOptions := testOptions.With(integration.ProgramTestOptions{
-		SecretsProvider: fmt.Sprintf("gcpkms://projects/%s", gcpKmsKey),
-	})
-
-	// Run with default Pulumi service backend
-	t.Run("service", func(t *testing.T) {
-		integration.ProgramTest(t, &testOptions)
-	})
-
-	// Check Azure secrets provider
-	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
-
-	// Check gcloud secrets provider
-	t.Run("gcp", func(t *testing.T) { integration.ProgramTest(t, &gcpTestOptions) })
-
-	// Also run with local backend
-	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
-
 }
 
 // Tests a resource with a large (>4mb) string prop in Node.js

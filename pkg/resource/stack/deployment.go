@@ -222,7 +222,8 @@ func DeserializeDeploymentV3(
 			return nil, errors.New("deployment uses a SecretsProvider but no SecretsProvider was provided")
 		}
 
-		sm, err := secretsProv.OfType(deployment.SecretsProviders.Type, deployment.SecretsProviders.State)
+		// TODO(fraser): We should store version and pass it in here
+		sm, err := secretsProv.OfType(ctx, deployment.SecretsProviders.Type, nil, deployment.SecretsProviders.State)
 		if err != nil {
 			return nil, err
 		}

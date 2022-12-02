@@ -28,6 +28,7 @@ GO_TEST_FAST = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
+	cd cloud-secrets && go mod download
 	cd pkg && go mod download
 	cd tests && go mod download
 	@touch .ensure.phony
@@ -61,9 +62,13 @@ generate::
 
 ifeq ($(PULUMI_TEST_COVERAGE_PATH),)
 build:: build-proto go.ensure
+	cd cloud-secrets && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
+	cd passphrase-secrets && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install:: .ensure.phony go.ensure
+	cd cloud-secrets && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
+	cd passphrase-secrets && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 else
 build:: build_cover ensure_cover
@@ -75,6 +80,8 @@ install:: install_cover
 endif
 
 build_debug::
+	cd cloud-secrets && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
+	cd passphrase-secrets && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 build_cover::
@@ -89,6 +96,8 @@ developer_docs::
 install_all:: install
 
 dist:: build
+	cd cloud-secrets && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
+	cd passphrase-secrets && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}"
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: brew
@@ -97,7 +106,11 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
+lint:: golangci-lint.ensure lint_cloud_secrets list_passphrase_secrets lint_pkg lint_sdk lint_tests
+lint_cloud_secrets: lint_deps
+	cd cloud-secrets && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint_passphrase_secrets: lint_deps
+	cd passphrase-secrets && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_pkg: lint_deps
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_sdk: lint_deps

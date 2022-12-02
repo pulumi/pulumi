@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
@@ -64,7 +65,7 @@ type Stack interface {
 	ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error
 
 	// Return the default secrets manager to use for this stack.
-	DefaultSecretManager(configFile string) (secrets.Manager, error)
+	DefaultSecretManager(ctx context.Context, host plugin.Host, configFile string) (secrets.Manager, error)
 }
 
 // RemoveStack returns the stack, or returns an error if it cannot.

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -358,7 +359,7 @@ type MockStack struct {
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	ExportDeploymentF     func(ctx context.Context) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF     func(ctx context.Context, deployment *apitype.UntypedDeployment) error
-	DefaultSecretManagerF func(configFile string) (secrets.Manager, error)
+	DefaultSecretManagerF func(ctx context.Context, host plugin.Host, configFile string) (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -487,9 +488,9 @@ func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	panic("not implemented")
 }
 
-func (ms *MockStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
+func (ms *MockStack) DefaultSecretManager(ctx context.Context, host plugin.Host, configFile string) (secrets.Manager, error) {
 	if ms.DefaultSecretManagerF != nil {
-		return ms.DefaultSecretManagerF(configFile)
+		return ms.DefaultSecretManagerF(ctx, host, configFile)
 	}
 	panic("not implemented")
 }

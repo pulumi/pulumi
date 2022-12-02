@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -48,7 +49,7 @@ func newStackSelectCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(ctx, opts)
+			b, err := currentBackend(ctx, stk.ErrorSecretsProvider, opts)
 			if err != nil {
 				return err
 			}
@@ -76,7 +77,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := stackInit(ctx, b, stack, false, secretsProvider)
+					s, err := stackInit(ctx, nil, b, stack, false, secretsProvider)
 					if err != nil {
 						return err
 					}
@@ -87,7 +88,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(ctx, b, true, opts, true /*setCurrent*/)
+			stack, err := chooseStack(ctx, nil, b, true, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}

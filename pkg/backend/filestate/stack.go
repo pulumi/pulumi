@@ -18,12 +18,14 @@ import (
 	"context"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pluginSecrets "github.com/pulumi/pulumi/pkg/v3/secrets/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -107,8 +109,8 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
-func (s *localStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
-	return NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
+func (s *localStack) DefaultSecretManager(ctx context.Context, host plugin.Host, configFile string) (secrets.Manager, error) {
+	return pluginSecrets.NewPluginSecretsManager(ctx, host, s.Ref().Name(), configFile, "passphrase", nil, false /* rotateSecretsProvider */)
 }
 
 type localStackSummary struct {

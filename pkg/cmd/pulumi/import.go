@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -202,12 +203,14 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 
 func getCurrentDeploymentForStack(
 	ctx context.Context,
+	host plugin.Host,
 	s backend.Stack) (*deploy.Snapshot, error) {
 	deployment, err := s.ExportDeployment(ctx)
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+	defaultSecretsProvider := stack.NewDefaultSecretsProvider(host)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, defaultSecretsProvider)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
@@ -485,10 +488,12 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, root, err := readProject()
+			proj, pctx, err := getProjectContext(opts.Display.Color)
 			if err != nil {
 				return result.FromError(err)
 			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
 
 			var programGenerator programGeneratorFunc
 			switch proj.Runtime.Name() {
@@ -509,17 +514,17 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stack, false, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
+			m, err := getUpdateMetadata(message, pctx.Root, execKind, execAgent, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
@@ -549,7 +554,7 @@ func newImportCmd() *cobra.Command {
 
 			_, res := s.Import(ctx, backend.UpdateOperation{
 				Proj:               proj,
-				Root:               root,
+				Root:               pctx.Root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,
@@ -558,7 +563,7 @@ func newImportCmd() *cobra.Command {
 			}, imports)
 
 			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
+				deployment, err := getCurrentDeploymentForStack(ctx, pctx.Host, s)
 				if err != nil {
 					return result.FromError(err)
 				}

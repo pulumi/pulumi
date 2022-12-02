@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -75,7 +76,7 @@ func newUpCmd() *cobra.Command {
 	var suppressOutputs bool
 	var suppressPermalink string
 	var yes bool
-	var secretsProvider string
+	var secretsProviderType string
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
@@ -84,7 +85,20 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions) result.Result {
-		s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
+		proj, pctx, err := getProjectContext(opts.Display.Color)
+		if err != nil {
+			return result.FromError(err)
+		}
+		defer pctx.Close()
+		secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+		if client != "" {
+			proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+				"address": client,
+			})
+		}
+
+		s, err := requireStack(ctx, nil, secretsProvider, stack, true, opts.Display, false /*setCurrent*/)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -94,17 +108,12 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		proj, root, err := readProjectForUpdate(client)
-		if err != nil {
-			return result.FromError(err)
-		}
-
-		m, err := getUpdateMetadata(message, root, execKind, execAgent, planFilePath != "")
+		m, err := getUpdateMetadata(message, pctx.Root, execKind, execAgent, planFilePath != "")
 		if err != nil {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
-		sm, err := getStackSecretsManager(s)
+		sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
@@ -181,7 +190,7 @@ func newUpCmd() *cobra.Command {
 
 		changes, res := s.Update(ctx, backend.UpdateOperation{
 			Proj:               proj,
-			Root:               root,
+			Root:               pctx.Root,
 			M:                  m,
 			Opts:               opts,
 			StackConfiguration: cfg,
@@ -229,11 +238,6 @@ func newUpCmd() *cobra.Command {
 			}
 		}
 
-		// Validate secrets provider type
-		if err := validateSecretsProvider(secretsProvider); err != nil {
-			return result.FromError(err)
-		}
-
 		// Create temp directory for the "virtual workspace".
 		temp, err := ioutil.TempDir("", "pulumi-up-")
 		if err != nil {
@@ -253,7 +257,7 @@ func newUpCmd() *cobra.Command {
 		var description string
 		var s backend.Stack
 		if stack != "" {
-			if s, name, description, err = getStack(ctx, stack, opts.Display); err != nil {
+			if s, name, description, err = getStack(ctx, stk.ErrorSecretsProvider, stack, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
@@ -298,8 +302,8 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, promptForValue, stack, name, false /*setCurrent*/, yes,
-				opts.Display, secretsProvider); err != nil {
+			if s, err = promptAndCreateStack(ctx, nil, stk.ErrorSecretsProvider, promptForValue, stack, name, false /*setCurrent*/, yes,
+				opts.Display, secretsProviderType); err != nil {
 				return result.FromError(err)
 			}
 			// The backend will print "Created stack '<stack>'." on success.
@@ -329,7 +333,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
-		sm, err := getStackSecretsManager(s)
+		sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
@@ -469,7 +473,7 @@ func newUpCmd() *cobra.Command {
 
 				err = validateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showReplacementSteps, showSames, showReads,
-					suppressOutputs, secretsProvider, &targets, replaces, targetReplaces,
+					suppressOutputs, secretsProviderType, &targets, replaces, targetReplaces,
 					targetDependents, planFilePath, stackConfigFile)
 				if err != nil {
 					return result.FromError(err)
@@ -516,7 +520,7 @@ func newUpCmd() *cobra.Command {
 		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
+		&secretsProviderType, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only "+
 			"used when creating a new stack from an existing template")
 
@@ -683,7 +687,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(ctx, s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, nil, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}

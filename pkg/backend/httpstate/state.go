@@ -220,7 +220,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, stack.DefaultSecretsProvider)
+	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, b.secretsProvider)
 	if err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -53,7 +54,14 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, true, opts, false /*setCurrent*/)
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stack.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stackName, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

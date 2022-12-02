@@ -17,47 +17,79 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	secretPlugin "github.com/pulumi/pulumi/pkg/v3/secrets/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
-var DefaultSecretsProvider SecretsProvider = &defaultSecretsProvider{}
+// A secrets provider that always errors.
+var ErrorSecretsProvider SecretsProvider = &errorSecretsProvider{}
 
-// SecretsProvider allows for the creation of secrets managers based on a well-known type name.
-type SecretsProvider interface {
-	// OfType returns a secrets manager for the given type, initialized with its previous state.
-	OfType(ty string, state json.RawMessage) (secrets.Manager, error)
+type errorSecretsProvider struct{}
+
+func (errorSecretsProvider) OfType(ctx context.Context, ty string, version *semver.Version, state json.RawMessage) (secrets.Manager, error) {
+	return nil, fmt.Errorf("can not create secret providers with ErrorSecretsProvider")
 }
 
-// defaultSecretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
-// it is the global location where new secrets managers can be registered for use when
-// decrypting checkpoints.
-type defaultSecretsProvider struct{}
+// A secrets provider that supports creating a base64 secrets manager. Only good enough for tests.
+var Base64SecretsProvider SecretsProvider = &base64SecretsProvider{}
 
-// OfType returns a secrets manager for the given secrets type. Returns an error
-// if the type is uknown or the state is invalid.
-func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.Manager, error) {
+type base64SecretsProvider struct{}
+
+func (base64SecretsProvider) OfType(ctx context.Context, ty string, version *semver.Version, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case b64.Type:
 		sm = b64.NewBase64SecretsManager()
-	case passphrase.Type:
-		sm, err = passphrase.NewPromptingPassphaseSecretsManagerFromState(state)
+	default:
+		err = errors.New("unknown secret provider type")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
+	}
+
+	return NewCachingSecretsManager(sm), nil
+}
+
+// DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
+func NewDefaultSecretsProvider(host plugin.Host) SecretsProvider {
+	return &defaultSecretsProvider{host: host}
+}
+
+// SecretsProvider allows for the creation of secrets managers based on a well-known type name.
+type SecretsProvider interface {
+	// OfType returns a secrets manager for the given type, initialized with its previous state.
+	OfType(ctx context.Context, ty string, version *semver.Version, state json.RawMessage) (secrets.Manager, error)
+}
+
+// defaultSecretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
+// it is the global location where new secrets managers can be registered for use when
+// decrypting checkpoints.
+type defaultSecretsProvider struct {
+	host plugin.Host
+}
+
+// OfType returns a secrets manager for the given secrets type. Returns an error
+// if the type is unknown or the state is invalid.
+func (dsp defaultSecretsProvider) OfType(ctx context.Context, ty string, version *semver.Version, state json.RawMessage) (secrets.Manager, error) {
+	var sm secrets.Manager
+	var err error
+	switch ty {
+	case b64.Type:
+		sm = b64.NewBase64SecretsManager()
 	case service.Type:
 		sm, err = service.NewServiceSecretsManagerFromState(state)
-	case cloud.Type:
-		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
-		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
+		sm, err = secretPlugin.NewPluginSecretsManagerFromState(ctx, dsp.host, ty, version, state)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
@@ -90,7 +122,7 @@ func (csm *cachingSecretsManager) Type() string {
 	return csm.manager.Type()
 }
 
-func (csm *cachingSecretsManager) State() interface{} {
+func (csm *cachingSecretsManager) State() json.RawMessage {
 	return csm.manager.State()
 }
 

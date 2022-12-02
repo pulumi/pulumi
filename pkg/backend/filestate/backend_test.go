@@ -17,7 +17,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -105,11 +104,8 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.UntypedDeployment, error) {
-	sm, err := passphrase.NewPassphaseSecretsManager(phrase, state)
-	if err != nil {
-		return nil, err
-	}
+func makeUntypedDeployment(name tokens.QName) (*apitype.UntypedDeployment, error) {
+	sm:= b64.Base64SecretsManager
 
 	resources := []*resource.State{
 		{
@@ -414,7 +410,7 @@ func TestParseEmptyStackFails(t *testing.T) {
 func TestHtmlEscaping(t *testing.T) {
 	t.Parallel()
 
-	sm := b64.NewBase64SecretsManager()
+	sm := b64.Base64SecretsManager
 	resources := []*resource.State{
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),

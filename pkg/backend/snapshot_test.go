@@ -49,7 +49,7 @@ func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
 }
 
 func (m *MockStackPersister) SecretsManager() secrets.Manager {
-	return b64.NewBase64SecretsManager()
+	return b64.Base64SecretsManager
 }
 
 func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
@@ -95,7 +95,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil)
+	}, b64.Base64SecretsManager, resources, nil)
 }
 
 func TestIdenticalSames(t *testing.T) {

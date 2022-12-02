@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -30,7 +31,7 @@ const (
 )
 
 func newStackInitCmd() *cobra.Command {
-	var secretsProvider string
+	var secretsProviderType string
 	var stackName string
 	var stackToCopy string
 	var noSelect bool
@@ -73,7 +74,14 @@ func newStackInitCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(ctx, opts)
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			b, err := currentBackend(ctx, secretsProvider, opts)
 			if err != nil {
 				return err
 			}
@@ -84,11 +92,6 @@ func newStackInitCmd() *cobra.Command {
 				}
 
 				stackName = args[0]
-			}
-
-			// Validate secrets provider type
-			if err := validateSecretsProvider(secretsProvider); err != nil {
-				return err
 			}
 
 			if stackName == "" && cmdutil.Interactive() {
@@ -119,7 +122,7 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(ctx, b, stackRef, createOpts, !noSelect, secretsProvider)
+			newStack, err := createStack(ctx, pctx.Host, b, stackRef, createOpts, !noSelect, secretsProviderType)
 			if err != nil {
 				return err
 			}
@@ -131,7 +134,7 @@ func newStackInitCmd() *cobra.Command {
 				}
 
 				// load the old stack and its project
-				copyStack, err := requireStack(ctx, stackToCopy, false, opts, false /*setCurrent*/)
+				copyStack, err := requireStack(ctx, pctx.Host, secretsProvider, stackToCopy, false, opts, false /*setCurrent*/)
 				if err != nil {
 					return err
 				}
@@ -147,7 +150,7 @@ func newStackInitCmd() *cobra.Command {
 				}
 
 				// copy the config from the old to the new
-				return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+				return copyEntireConfigMap(ctx, pctx.Host, copyStack, copyProjectStack, newStack, newProjectStack)
 			}
 
 			return nil
@@ -156,7 +159,7 @@ func newStackInitCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
+		&secretsProviderType, "secrets-provider", "default", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
 		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
 	cmd.PersistentFlags().BoolVar(

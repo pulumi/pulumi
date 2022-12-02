@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -87,7 +88,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -107,7 +108,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, nil, s)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}

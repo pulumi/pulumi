@@ -38,45 +38,12 @@ func NewServiceSecretsManager(s Stack, stackName tokens.Name, configFile string)
 	client := s.Backend().(Backend).Client()
 	id := s.StackIdentifier()
 
-	// We should only save the ProjectStack at this point IF we have changed the
-	// secrets provider. To change the secrets provider to a serviceSecretsManager
-	// we would need to ensure that there are no remnants of the old secret manager
-	// To remove those remnants, we would set those values to be empty in the project
-	// stack, as per changeProjectStackSecretDetails func.
-	// If we do not check to see if the secrets provider has changed, then we will actually
-	// reload the configuration file to be sorted or an empty {} when creating a stack
-	// this is not the desired behaviour.
-	if changeProjectStackSecretDetails(info) {
-		if err := workspace.SaveProjectStack(stackName.Q(), info); err != nil {
-			return nil, err
-		}
+	info.SecretsProvider = workspace.SecretsProvider{}
+	info.EncryptedKey = ""
+	info.EncryptionSalt = ""
+	if err := workspace.SaveProjectStack(stackName.Q(), info); err != nil {
+		return nil, err
 	}
 
 	return service.NewServiceSecretsManager(client, id)
-}
-
-// A passphrase secrets provider has an encryption salt, therefore, changing
-// from passphrase to serviceSecretsManager requires the encryption salt
-// to be removed.
-// A cloud secrets manager has an encryption key and a secrets provider,
-// therefore, changing from cloud to serviceSecretsManager requires the
-// encryption key and secrets provider to be removed.
-// Regardless of what the current secrets provider is, all of these values
-// need to be empty otherwise `getStackSecretsManager` in crypto.go can
-// potentially return the incorrect secret type for the stack.
-func changeProjectStackSecretDetails(info *workspace.ProjectStack) bool {
-	var requiresSave bool
-	if info.SecretsProvider != "" {
-		info.SecretsProvider = ""
-		requiresSave = true
-	}
-	if info.EncryptedKey != "" {
-		info.EncryptedKey = ""
-		requiresSave = true
-	}
-	if info.EncryptionSalt != "" {
-		info.EncryptionSalt = ""
-		requiresSave = true
-	}
-	return requiresSave
 }

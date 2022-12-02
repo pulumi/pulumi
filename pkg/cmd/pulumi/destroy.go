@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -161,22 +162,30 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stack, false, opts.Display, false /*setCurrent*/)
+			proj, pctx, err := getProjectContext(opts.Display.Color)
+			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
+				pctx, err = getCwdContext(opts.Display.Color)
+				if err != nil {
+					return result.FromError(err)
+				}
+			} else if err != nil {
+				return result.FromError(err)
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
-			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
+			if proj == nil {
+				proj = &workspace.Project{}
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
-				proj = &workspace.Project{}
-				root = ""
-			} else if err != nil {
-				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
+			m, err := getUpdateMetadata(message, pctx.Root, execKind, execAgent, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -186,7 +195,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 			if err != nil {
 				// fallback on snapshot SecretsManager
 				sm = snap.SecretsManager
@@ -252,7 +261,7 @@ func newDestroyCmd() *cobra.Command {
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{
 				Proj:               proj,
-				Root:               root,
+				Root:               pctx.Root,
 				M:                  m,
 				Opts:               opts,
 				StackConfiguration: cfg,

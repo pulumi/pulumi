@@ -62,6 +62,9 @@ func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
 func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
+func (host *testPluginHost) Secrets(nm string, version *semver.Version) (plugin.SecretsProvider, error) {
+	return nil, errors.New("unsupported")
+}
 func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	return host.provider(pkg, version)
 }

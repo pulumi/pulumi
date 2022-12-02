@@ -105,8 +105,10 @@ func (sm *serviceSecretsManager) Type() string {
 	return Type
 }
 
-func (sm *serviceSecretsManager) State() interface{} {
-	return sm.state
+func (sm *serviceSecretsManager) State() json.RawMessage {
+	raw, err := json.Marshal(sm.state)
+	contract.AssertNoError(err)
+	return raw
 }
 
 func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {

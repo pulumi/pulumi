@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -131,7 +132,7 @@ func runTotalStateEdit(
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(ctx, stackName, true, opts, false /*setCurrent*/)
+	s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, stackName, true, opts, false /*setCurrent*/)
 	if err != nil {
 		return result.FromError(err)
 	}

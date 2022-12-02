@@ -36,7 +36,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -72,7 +74,7 @@ type newArgs struct {
 	listTemplates     bool
 }
 
-func runNew(ctx context.Context, args newArgs) error {
+func runNew(ctx context.Context, secretsProvider stack.SecretsProvider, args newArgs) error {
 	if !args.interactive && !args.yes {
 		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
 	}
@@ -86,11 +88,6 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
 		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
-	}
-
-	// Validate secrets provider type
-	if err := validateSecretsProvider(args.secretsProvider); err != nil {
-		return err
 	}
 
 	// Get the current working directory.
@@ -119,14 +116,14 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	if !args.generateOnly {
-		if _, err = currentBackend(ctx, opts); err != nil {
+		if _, err = currentBackend(ctx, secretsProvider, opts); err != nil {
 			return err
 		}
 	}
 
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
-		if err := validateProjectName(ctx, args.name, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, secretsProvider, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -182,7 +179,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(ctx, stackName, opts)
+		existingStack, existingName, existingDesc, err := getStack(ctx, secretsProvider, stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -213,7 +210,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(ctx, defaultValue, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, secretsProvider, defaultValue, args.generateOnly, opts); err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
@@ -224,7 +221,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(ctx, s, args.generateOnly, opts) }
+		validate := func(s string) error { return validateProjectName(ctx, secretsProvider, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -254,10 +251,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Println()
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := readProject()
+	proj, pctx, err := getProjectContext(opts.Color)
 	if err != nil {
 		return err
 	}
+	defer pctx.Close()
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
@@ -274,7 +272,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	appendFileName := "Pulumi.yaml.append"
-	appendFile := filepath.Join(root, appendFileName)
+	appendFile := filepath.Join(pctx.Root, appendFileName)
 	os.Remove(appendFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -282,7 +280,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(ctx, args.prompt,
+		if s, err = promptAndCreateStack(ctx, pctx.Host, secretsProvider, args.prompt,
 			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -306,7 +304,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Install dependencies.
 	if !args.generateOnly {
 		span := opentracing.SpanFromContext(ctx)
-		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		projinfo := &engine.Projinfo{Proj: proj, Root: pctx.Root}
 		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
@@ -441,8 +439,20 @@ func newNewCmd() *cobra.Command {
 				return nil
 			}
 
+			pwd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			d := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{Color: cmdutil.GetGlobalColorization(), Pwd: pwd})
+			pctx, err := plugin.NewContext(d, d, nil, nil, pwd, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stack.NewDefaultSecretsProvider(pctx.Host)
+
 			args.yes = args.yes || skipConfirmations()
-			return runNew(ctx, args)
+			return runNew(ctx, secretsProvider, args)
 		}),
 	}
 
@@ -520,14 +530,14 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
-func validateProjectName(ctx context.Context, projectName string, generateOnly bool, opts display.Options) error {
+func validateProjectName(ctx context.Context, secretsProvider stack.SecretsProvider, projectName string, generateOnly bool, opts display.Options) error {
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
 
 	if !generateOnly {
-		b, err := currentBackend(ctx, opts)
+		b, err := currentBackend(ctx, secretsProvider, opts)
 		if err != nil {
 			return err
 		}
@@ -546,8 +556,8 @@ func validateProjectName(ctx context.Context, projectName string, generateOnly b
 }
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
-func getStack(ctx context.Context, stack string, opts display.Options) (backend.Stack, string, string, error) {
-	b, err := currentBackend(ctx, opts)
+func getStack(ctx context.Context, secretsProvider stack.SecretsProvider, stack string, opts display.Options) (backend.Stack, string, string, error) {
+	b, err := currentBackend(ctx, secretsProvider, opts)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -575,11 +585,11 @@ func getStack(ctx context.Context, stack string, opts display.Options) (backend.
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
+func promptAndCreateStack(ctx context.Context, host plugin.Host, secretsProvider stack.SecretsProvider, prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
-	secretsProvider string) (backend.Stack, error) {
+	secretsProviderType string) (backend.Stack, error) {
 
-	b, err := currentBackend(ctx, opts)
+	b, err := currentBackend(ctx, secretsProvider, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +599,7 @@ func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, stackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, host, b, stackName, setCurrent, secretsProviderType)
 		if err != nil {
 			return nil, err
 		}
@@ -614,7 +624,7 @@ func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, formattedStackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, host, b, formattedStackName, setCurrent, secretsProviderType)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -629,13 +639,13 @@ func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
 
 // stackInit creates the stack.
 func stackInit(
-	ctx context.Context, b backend.Backend, stackName string,
-	setCurrent bool, secretsProvider string) (backend.Stack, error) {
+	ctx context.Context, host plugin.Host, b backend.Backend, stackName string,
+	setCurrent bool, secretsProviderType string) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(ctx, b, stackRef, nil, setCurrent, secretsProvider)
+	return createStack(ctx, host, b, stackRef, nil, setCurrent, secretsProviderType)
 }
 
 // saveConfig saves the config for the stack.
@@ -831,6 +841,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	host plugin.Host,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
@@ -857,7 +868,7 @@ func promptForConfig(
 	}
 	sort.Sort(keys)
 
-	sm, err := getStackSecretsManager(stack)
+	sm, err := getStackSecretsManager(ctx, host, stack)
 	if err != nil {
 		return nil, err
 	}

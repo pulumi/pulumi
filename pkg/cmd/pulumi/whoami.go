@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +40,7 @@ func newWhoAmICmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(ctx, opts)
+			b, err := currentBackend(ctx, stk.ErrorSecretsProvider, opts)
 			if err != nil {
 				return err
 			}

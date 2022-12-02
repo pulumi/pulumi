@@ -307,7 +307,7 @@ func TestStackCommands(t *testing.T) {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
 			context.Background(),
-			&deployment, stack.DefaultSecretsProvider)
+			&deployment, stack.Base64SecretsProvider)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -59,17 +60,19 @@ func newLogsCmd() *cobra.Command {
 			}
 
 			// Fetch the project.
-			proj, _, err := readProject()
+			proj, pctx, err := getProjectContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
-			if err != nil {
-				return err
-			}
-
-			sm, err := getStackSecretsManager(s)
+			sm, err := getStackSecretsManager(ctx, pctx.Host, s)
 			if err != nil {
 				return fmt.Errorf("getting secrets manager: %w", err)
 			}

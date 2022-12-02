@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -188,7 +189,7 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
-func (s *cloudStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
+func (s *cloudStack) DefaultSecretManager(ctx context.Context, host plugin.Host, configFile string) (secrets.Manager, error) {
 	return NewServiceSecretsManager(s, s.Ref().Name(), configFile)
 }
 

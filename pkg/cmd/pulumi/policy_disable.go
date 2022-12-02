@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ func newPolicyDisableCmd() *cobra.Command {
 			ctx := commandContext()
 			// Obtain current PolicyPack, tied to the Pulumi service backend.
 			var err error
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0])
+			policyPack, err := requirePolicyPack(ctx, stack.ErrorSecretsProvider, cliArgs[0])
 			if err != nil {
 				return err
 			}

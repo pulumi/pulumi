@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -51,8 +52,15 @@ func newStackImportCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			pctx, err := getCwdContext(opts.Color)
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+
 			// Fetch the current stack and import a deployment.
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, pctx.Host, secretsProvider, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -77,7 +85,7 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
+			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, secretsProvider)
 			if err != nil {
 				return checkDeploymentVersionError(err, stackName.String())
 			}

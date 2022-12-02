@@ -30,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -63,7 +65,14 @@ func newStackLsCmd() *cobra.Command {
 				projFilter: projFilter,
 				tagFilter:  tagFilter,
 			}
-			return runStackLS(ctx, cmdArgs)
+
+			pctx, err := getCwdContext(cmdutil.GetGlobalColorization())
+			if err != nil {
+				return err
+			}
+			defer pctx.Close()
+			secretsProvider := stk.NewDefaultSecretsProvider(pctx.Host)
+			return runStackLS(ctx, secretsProvider, cmdArgs)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -90,7 +99,7 @@ type stackLSArgs struct {
 	tagFilter  string
 }
 
-func runStackLS(ctx context.Context, args stackLSArgs) error {
+func runStackLS(ctx context.Context, secretsProvider stack.SecretsProvider, args stackLSArgs) error {
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
 	strPtrIfSet := func(s string) *string {
@@ -128,7 +137,7 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(ctx, secretsProvider, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

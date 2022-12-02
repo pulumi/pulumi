@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -576,10 +577,110 @@ func (proj *PluginProject) Validate() error {
 	return nil
 }
 
+// SecretsProvider is this stack's secrets provider.
+type SecretsProvider struct {
+	Name    string          // Name is the name of the plugin for the secret provider.
+	Version *semver.Version // Version is the optional plugin version for the secret provider.
+	State   json.RawMessage // State is the plugin defined state for the secret provider.
+}
+
+// Returns true iff only Name is set.
+func (sp SecretsProvider) IsSimple() bool {
+	return sp.Version == nil && sp.State == nil
+}
+
+func (sp SecretsProvider) MarshalYAML() (interface{}, error) {
+	if sp.IsSimple() {
+		return sp.Name, nil
+	}
+
+	contents := map[string]interface{}{
+		"name":  sp.Name,
+		"state": sp.State,
+	}
+	if sp.Version != nil {
+		contents["version"] = sp.Version.String()
+	}
+
+	return contents, nil
+}
+
+func (sp SecretsProvider) MarshalJSON() ([]byte, error) {
+	if sp.IsSimple() {
+		return json.Marshal(sp.Name)
+	}
+
+	contents := map[string]interface{}{
+		"name":  sp.Name,
+		"state": sp.State,
+	}
+	if sp.Version != nil {
+		contents["version"] = sp.Version.String()
+	}
+
+	return json.Marshal(contents)
+}
+
+func (sp *SecretsProvider) UnmarshalJSON(data []byte) error {
+	if err := json.Unmarshal(data, &sp.Name); err == nil {
+		return nil
+	}
+
+	var payload struct {
+		name    string
+		version string
+		state   json.RawMessage
+	}
+
+	if err := json.Unmarshal(data, &payload); err == nil {
+		sp.Name = payload.name
+		sp.State = payload.state
+		sp.Version = nil
+		if payload.version != "" {
+			ver, err := semver.Parse(payload.version)
+			if err != nil {
+				return err
+			}
+			sp.Version = &ver
+		}
+		return nil
+	}
+
+	return errors.New("secretsprovider section must be a string or an object with name, optional version, and state attributes")
+}
+
+func (sp *SecretsProvider) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if err := unmarshal(&sp.Name); err == nil {
+		return nil
+	}
+
+	var payload struct {
+		name    string
+		version string
+		state   json.RawMessage
+	}
+
+	if err := unmarshal(&payload); err == nil {
+		sp.Name = payload.name
+		sp.State = payload.state
+		sp.Version = nil
+		if payload.version != "" {
+			ver, err := semver.Parse(payload.version)
+			if err != nil {
+				return err
+			}
+			sp.Version = &ver
+		}
+		return nil
+	}
+
+	return errors.New("secretsprovider section must be a string or an object with name, optional version, and state attributes")
+}
+
 // ProjectStack holds stack specific information about a project.
 type ProjectStack struct {
 	// SecretsProvider is this stack's secrets provider.
-	SecretsProvider string `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
+	SecretsProvider SecretsProvider `json:"secretsprovider,omitempty" yaml:"secretsprovider,omitempty"`
 	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
 	// Only used for cloud-based secrets providers.
 	EncryptedKey string `json:"encryptedkey,omitempty" yaml:"encryptedkey,omitempty"`

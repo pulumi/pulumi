@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -47,7 +48,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
 			// Get backend.
-			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+			b, err := currentBackend(ctx, stack.ErrorSecretsProvider, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return fmt.Errorf("failed to get current backend: %w", err)
 			}

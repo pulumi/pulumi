@@ -29,7 +29,7 @@ type Manager interface {
 	Type() string
 	// An opaque state, which can be JSON serialized and used later to reconstruct the provider when deserializing
 	// the deployment into a snapshot.
-	State() interface{}
+	State() json.RawMessage
 	// Encrypter returns a `config.Encrypter` that can be used to encrypt values when serializing a snapshot into a
 	// deployment, or an error if one can not be constructed.
 	Encrypter() (config.Encrypter, error)

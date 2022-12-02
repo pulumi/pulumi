@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	stk "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -46,7 +47,7 @@ func newStackOutputCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and its output properties.
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, nil, stk.ErrorSecretsProvider, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
