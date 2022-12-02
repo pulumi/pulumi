@@ -20,9 +20,28 @@ func TestPrintNoTokens(t *testing.T) {
 						Value: cty.True,
 					},
 				},
+				&Attribute{
+					Name: "literal",
+					Value: &TemplateExpression{
+						Parts: []Expression{
+							&LiteralValueExpression{
+								Value: cty.StringVal("foo${bar} %{"),
+							},
+							&LiteralValueExpression{
+								Value: cty.StringVal("$"),
+							},
+							&LiteralValueExpression{
+								Value: cty.StringVal("%{"),
+							},
+						},
+					},
+				},
 			},
 		},
 	}
-	expected := "block {\n    attribute = true\n}"
+	expected := `block {
+    attribute = true
+    literal = "foo$${bar} %%{$%%{"
+}`
 	assert.Equal(t, expected, fmt.Sprintf("%v", b))
 }
