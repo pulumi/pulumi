@@ -844,6 +844,9 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
+// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
+// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
+// resulting comment. It guarantees that each line is terminated with newline character.
 func printComment(w io.Writer, comment schema.Description, indent bool) int {
 	desc, err := comment.NarrowToLanguage("go").RenderToMarkdown(nil)
 	contract.IgnoreError(err)
