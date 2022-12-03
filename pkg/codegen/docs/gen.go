@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed templates/*.tmpl
@@ -59,7 +60,6 @@ func titleLookup(shortName string) (string, bool) {
 		"aiven":                                "Aiven",
 		"akamai":                               "Akamai",
 		"alicloud":                             "Alibaba Cloud",
-		"artifactory":                          "Artifactory",
 		"auth0":                                "Auth0",
 		"aws":                                  "AWS Classic",
 		"awsx":                                 "AWSx (Pulumi Crosswalk for AWS)",
@@ -73,28 +73,27 @@ func titleLookup(shortName string) (string, bool) {
 		"aws-quickstart-vpc":                   "AWS QuickStart VPC",
 		"aws-s3-replicated-bucket":             "AWS S3 Replicated Bucket",
 		"azure":                                "Azure Classic",
+		"azure-justrun":                        "Azure Justrun",
 		"azure-native":                         "Azure Native",
 		"azure-quickstart-acr-geo-replication": "Azure QuickStart ACR Geo Replication",
 		"azure-quickstart-aks":                 "Azure QuickStart AKS",
 		"azure-quickstart-compute":             "Azure QuickStart Compute",
 		"azure-quickstart-sql":                 "Azure QuickStart SQL",
-		"azuread":                              "Azure Active Directory",
+		"azuread":                              "Azure Active Directory (Azure AD)",
 		"azuredevops":                          "Azure DevOps",
 		"azuresel":                             "Azure",
 		"civo":                                 "Civo",
 		"cloudamqp":                            "CloudAMQP",
 		"cloudflare":                           "Cloudflare",
 		"cloudinit":                            "cloud-init",
-		"command":                              "Command (preview)",
 		"confluent":                            "Confluent Cloud",
-		"consul":                               "Consul",
+		"consul":                               "HashiCorp Consul",
 		"coredns-helm":                         "CoreDNS (Helm)",
 		"datadog":                              "Datadog",
 		"digitalocean":                         "DigitalOcean",
 		"dnsimple":                             "DNSimple",
 		"docker":                               "Docker",
 		"docker-buildkit":                      "Docker BuildKit",
-		"ec":                                   "ElasticCloud (EC)",
 		"eks":                                  "Amazon EKS",
 		"equinix-metal":                        "Equinix Metal",
 		"f5bigip":                              "f5 BIG-IP",
@@ -123,7 +122,7 @@ func titleLookup(shortName string) (string, bool) {
 		"kubernetes-ingress-nginx":             "NGINX Ingress Controller (Helm)",
 		"kubernetes-coredns":                   "CoreDNS (Helm)",
 		"kubernetes-cert-manager":              "Jetstack Cert Manager (Helm)",
-		"nomad":                                "Nomad",
+		"nomad":                                "HashiCorp Nomad",
 		"ns1":                                  "NS1",
 		"okta":                                 "Okta",
 		"openstack":                            "OpenStack",
@@ -134,7 +133,7 @@ func titleLookup(shortName string) (string, bool) {
 		"prometheus-helm":                      "Prometheus (Helm)",
 		"rabbitmq":                             "RabbitMQ",
 		"rancher2":                             "Rancher 2",
-		"random":                               "Random",
+		"random":                               "random",
 		"rke":                                  "Rancher RKE",
 		"run-my-darn-container":                "Run My Darn Container",
 		"shipa":                                "Shipa",
@@ -1562,14 +1561,12 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		filteredOutputProps = filterOutputProperties(r.InputProperties, r.Properties)
 	}
 
-	// All custom resources have an implicit `id` output property, that we must inject into the docs.
-	if !r.IsComponent {
-		filteredOutputProps = append(filteredOutputProps, &schema.Property{
-			Name:    "id",
-			Comment: "The provider-assigned unique ID for this managed resource.",
-			Type:    schema.StringType,
-		})
-	}
+	// All resources have an implicit `id` output property, that we must inject into the docs.
+	filteredOutputProps = append(filteredOutputProps, &schema.Property{
+		Name:    "id",
+		Comment: "The provider-assigned unique ID for this managed resource.",
+		Type:    schema.StringType,
+	})
 
 	for _, lang := range dctx.supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
@@ -1695,6 +1692,14 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 	}
 }
 
+type fs map[string][]byte
+
+func (fs fs) add(path string, contents []byte) {
+	_, has := fs[path]
+	contract.Assertf(!has, "duplicate file: %s", path)
+	fs[path] = contents
+}
+
 // getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
 	dctx := mod.docGenContext
@@ -1710,13 +1715,13 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-func (mod *modContext) gen(fs codegen.Fs) error {
+func (mod *modContext) gen(fs fs) error {
 	dctx := mod.docGenContext
 	modName := mod.getModuleFileName()
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		fs.Add(p, []byte(contents))
+		fs.add(p, []byte(contents))
 	}
 
 	// Resources
@@ -1755,7 +1760,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		return err
 	}
 
-	fs.Add(path.Join(modName, "_index.md"), buffer.Bytes())
+	fs.add(path.Join(modName, "_index.md"), buffer.Bytes())
 	return nil
 }
 
@@ -2087,7 +2092,7 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 	defer glog.Flush()
 
 	glog.V(3).Infoln("generating package docs now...")
-	files := codegen.Fs{}
+	files := fs{}
 	modules := []string{}
 	modMap := dctx.modules()
 	for k := range modMap {
