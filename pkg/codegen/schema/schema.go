@@ -1428,6 +1428,54 @@ type DescriptionSpec struct {
 	Structured []interface{}
 }
 
+func (d *DescriptionSpec) unmarshal(unmarshal func([]byte, interface{}) error) func([]byte) error {
+	return func(data []byte) error {
+		var s string
+		legacyErr := unmarshal(data, &s)
+		if legacyErr == nil {
+			d.Legacy = s
+			return nil
+		}
+		structuredErr := unmarshal(data, &d.Structured)
+		if structuredErr == nil {
+			return nil
+		}
+
+		// Both options have failed to parse, so we error
+		return fmt.Errorf("expected string or []DescriptionNode:\n* %s\n* %s",
+			legacyErr.Error(), structuredErr.Error())
+	}
+}
+
+func (d DescriptionSpec) marshal(marshal func(interface{}) ([]byte, error)) func() ([]byte, error) {
+	return func() ([]byte, error) {
+		if d.Legacy != "" && len(d.Structured) > 0 {
+			return nil, fmt.Errorf("cannot marshal multiple fields in a union")
+		}
+		if d.Legacy != "" {
+			return marshal(d.Legacy)
+		}
+
+		return marshal(d.Structured)
+	}
+}
+
+func (d *DescriptionSpec) UnmarshalJSON(data []byte) error {
+	return d.unmarshal(json.Unmarshal)(data)
+}
+
+func (d DescriptionSpec) MarshalJSON() ([]byte, error) {
+	return d.marshal(json.Marshal)()
+}
+
+func (d *DescriptionSpec) UnmarshalYAML(data []byte) error {
+	return d.unmarshal(yaml.Unmarshal)(data)
+}
+
+func (d DescriptionSpec) MarshalYAML() ([]byte, error) {
+	return d.marshal(yaml.Marshal)()
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or

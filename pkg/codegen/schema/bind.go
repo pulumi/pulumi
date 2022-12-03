@@ -494,7 +494,14 @@ func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagn
 		return nil, errorf(path, "cannot specify both legacy and structured")
 	}
 	if spec.Legacy != "" {
-		panic("parse the doc")
+		return Description{
+			DescriptionMarkdownNode{
+				descriptionNode: descriptionNode{
+					legacytxt: &spec.Legacy,
+				},
+				Text: spec.Legacy,
+			},
+		}, nil
 	}
 
 	desc := Description{}
