@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,9 +27,8 @@ import (
 // that directory. However DetectProjectAndPath will do symlink resolution, while ioutil.TempDir normally does
 // not. This can lead to asserts especially on macos where TmpDir will have returned /var/folders/XX, but
 // after sym link resolution that is /private/var/folders/XX.
-func mkTempDir(t *testing.T, pattern string) string {
-	tmpDir, err := ioutil.TempDir("", pattern)
-	assert.NoError(t, err)
+func mkTempDir(t *testing.T) string {
+	tmpDir := t.TempDir()
 	result, err := filepath.EvalSymlinks(tmpDir)
 	assert.NoError(t, err)
 	return result
@@ -38,7 +36,7 @@ func mkTempDir(t *testing.T, pattern string) string {
 
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectAndPath(t *testing.T) {
-	tmpDir := mkTempDir(t, "TestDetectProjectAndPath")
+	tmpDir := mkTempDir(t)
 	cwd, err := os.Getwd()
 	assert.NoError(t, err)
 	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
@@ -99,7 +97,7 @@ func TestProjectStackPath(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := mkTempDir(t, "TestProjectStackPath")
+			tmpDir := mkTempDir(t)
 			cwd, err := os.Getwd()
 			assert.NoError(t, err)
 			defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()

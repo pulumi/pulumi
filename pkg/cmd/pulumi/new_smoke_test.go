@@ -15,7 +15,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,8 +43,7 @@ func chdir(t *testing.T, dir string) {
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
 	var args = newArgs{
@@ -68,8 +66,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
@@ -91,8 +88,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
@@ -123,8 +119,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
-	fileStateDir, _ := ioutil.TempDir("", "local-state-dir")
-	defer os.RemoveAll(fileStateDir)
+	fileStateDir := t.TempDir()
 
 	// Now override to local filesystem backend
 	backendURL := "file://" + filepath.ToSlash(fileStateDir)
@@ -132,8 +127,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 
 	backendInstance = nil
-	tempdir, _ := ioutil.TempDir("", "test-env-local")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 

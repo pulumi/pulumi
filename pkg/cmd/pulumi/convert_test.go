@@ -41,8 +41,7 @@ func TestPclConvert(t *testing.T) {
 	t.Setenv("PULUMI_DEV", "TRUE")
 
 	// Check that we can run convert from PCL to PCL
-	tmp, err := os.MkdirTemp("", "pulumi-convert-test")
-	assert.NoError(t, err)
+	tmp := t.TempDir()
 
 	result := runConvert("pcl_convert_testdata", []string{}, "pcl", "pcl", tmp, true)
 	assert.Nil(t, result)

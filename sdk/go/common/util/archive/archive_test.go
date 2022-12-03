@@ -28,8 +28,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -122,7 +120,7 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {
 	doTest := func(prefixPathInsideTar, path string) {
-		tarball, err := archiveContents(prefixPathInsideTar, path, files...)
+		tarball, err := archiveContents(t, prefixPathInsideTar, path, files...)
 		assert.NoError(t, err)
 
 		tarReader := bytes.NewReader(tarball)
@@ -137,15 +135,8 @@ func doArchiveTest(t *testing.T, path string, files ...fileContents) {
 	}
 }
 
-func archiveContents(prefixPathInsideTar, path string, files ...fileContents) ([]byte, error) {
-	dir, err := os.MkdirTemp("", "archive-test")
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		contract.IgnoreError(os.RemoveAll(dir))
-	}()
+func archiveContents(t *testing.T, prefixPathInsideTar, path string, files ...fileContents) ([]byte, error) {
+	dir := t.TempDir()
 
 	for _, file := range files {
 		name := file.name

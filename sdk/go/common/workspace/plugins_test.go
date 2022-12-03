@@ -812,7 +812,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	t.Parallel()
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir := t.TempDir()
 	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
 
 	//write to pyaml

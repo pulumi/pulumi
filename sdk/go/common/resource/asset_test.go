@@ -444,8 +444,7 @@ func TestNestedArchive(t *testing.T) {
 	t.Parallel()
 
 	// Create temp dir and place some files.
-	dirName, err := os.MkdirTemp("", "")
-	assert.Nil(t, err)
+	dirName := t.TempDir()
 	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
 	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0777))
 	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
@@ -487,8 +486,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	t.Parallel()
 
 	// Create temp dir and place some files.
-	dirName, err := os.MkdirTemp("", "")
-	assert.Nil(t, err)
+	dirName := t.TempDir()
 	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
 	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
 
