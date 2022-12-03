@@ -133,7 +133,7 @@ func titleLookup(shortName string) (string, bool) {
 		"rabbitmq":                             "RabbitMQ",
 		"rancher2":                             "Rancher2",
 		"random":                               "random",
-		"rke":                                  "Rancher RKE",
+		"rke":                                  "Rancher Kubernetes Engine (RKE)",
 		"run-my-darn-container":                "Run My Darn Container",
 		"shipa":                                "Shipa",
 		"signalfx":                             "SignalFx",
