@@ -376,6 +376,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd><p>The bucket resource.</p>
 </dd><dt class="property-"
             title="">
+        <span id="id_csharp">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
         <span id="websiteurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_csharp" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
 </span>
@@ -398,6 +407,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">Bucket</span>
     </dt>
     <dd><p>The bucket resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="id_go">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd><dt class="property-"
             title="">
         <span id="websiteurl_go">
@@ -424,6 +442,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd><p>The bucket resource.</p>
 </dd><dt class="property-"
             title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
         <span id="websiteurl_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_java" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
 </span>
@@ -446,6 +473,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">pulumi<wbr>Awss3Bucket</span>
     </dt>
     <dd><p>The bucket resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="id_nodejs">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd><dt class="property-"
             title="">
         <span id="websiteurl_nodejs">
@@ -472,6 +508,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd><p>The bucket resource.</p>
 </dd><dt class="property-"
             title="">
+        <span id="id_python">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
         <span id="website_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#website_url_python" style="color: inherit; text-decoration: inherit;">website_<wbr>url</a>
 </span>
@@ -494,6 +539,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">aws:s3:Bucket</span>
     </dt>
     <dd><p>The bucket resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd><dt class="property-"
             title="">
         <span id="websiteurl_yaml">
