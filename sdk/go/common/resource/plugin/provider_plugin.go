@@ -1736,17 +1736,18 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
 func (p *provider) GetMapping(key string) ([]byte, string, error) {
-	// TODO: We have to do a dance here where first we publish a version of pulumi with these RPC structures
-	// then add methods to terraform-bridge to implement this method as if it did exist, and then actually add
-	// the RPC method and uncomment out the code below. This is all because we currently build these in a loop
-	// (pulumi include terraform-bridge, which includes pulumi).
-	return nil, "", nil
-
-	//resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
-	//	Key: key,
-	//})
-	//if err != nil {
-	//	return nil, "", err
-	//}
-	//return resp.Data, resp.Provider, nil
+	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
+		Key: key,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented {
+			// For backwards compatibility, just return nothing as if the provider didn't have a mapping for
+			// the given key
+			return nil, "", nil
+		}
+		return nil, "", err
+	}
+	return resp.Data, resp.Provider, nil
 }

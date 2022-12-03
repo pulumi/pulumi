@@ -178,6 +178,9 @@ func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 		Version: &prov.version,
 	}, nil
 }
+func (prov *testProvider) GetMapping(key string) ([]byte, string, error) {
+	return nil, "", nil
+}
 
 type providerLoader struct {
 	pkg     tokens.Package

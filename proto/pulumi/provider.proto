@@ -79,8 +79,9 @@ service ResourceProvider {
     // Attach sends the engine address to an already running plugin.
     rpc Attach(PluginAttach) returns (google.protobuf.Empty)  {}
 
-    // GetMapping fetches the mapping for this resource provider, if any.
-    // rpc GetMapping(GetMappingRequest) returns (GetMappingResponse) {}
+    // GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+    // response (not an error) if it doesn't have a mapping for the given key.
+    rpc GetMapping(GetMappingRequest) returns (GetMappingResponse) {}
 }
 
 message GetSchemaRequest {

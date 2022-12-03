@@ -197,3 +197,7 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
 }
+
+func (k *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+	return &rpc.GetMappingResponse{}, nil
+}

@@ -22,10 +22,15 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// An interface to map provider names (N.B. These aren't Pulumi provider names, but the names of "providers"
+// in the source language being converted from) to plugin specific mapping data.
 type Mapper interface {
+	// Returns plugin specific mapping data for the given provider name. Returns an empty result if no mapping
+	// information was available.
 	GetMapping(provider string) ([]byte, error)
 }
 
@@ -36,14 +41,20 @@ type pluginMapper struct {
 func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, error) {
 	entries := map[string][]byte{}
 
-	// Enumerate _all_ our installed plugins to ask for any mappings they provider. This allows users to
+	// Enumerate _all_ our installed plugins to ask for any mappings they provide. This allows users to
 	// convert aws terraform code for example by just having 'pulumi-aws' plugin locally, without needing to
-	// specify it anywhere on the command line, and without tf2pulumi needing to know about every possible plugin.
+	// specify it anywhere on the command line, and without tf2pulumi needing to know about every possible
+	// plugin.
 	plugins, err := workspace.GetPlugins()
 	if err != nil {
 		return nil, fmt.Errorf("could not get plugins: %w", err)
 	}
-	// We only care about the latest version of each plugin
+
+	// First assumption we only care about the latest version of each plugin. If we add support to get a
+	// mapping for plugin version 1, it seems unlikely that we would remove support for that mapping in v2, so
+	// the latest version should in most cases be fine. If a user case comes up where this is not fine we can
+	// provide the manual workaround that this is based on what is locally installed, not what is published
+	// and so the user can just delete the higher version plugins from their cache.
 	latestVersions := make(map[string]semver.Version)
 	for _, plugin := range plugins {
 		if plugin.Kind != workspace.ResourcePlugin {
@@ -58,28 +69,32 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 			latestVersions[plugin.Name] = *plugin.Version
 		}
 	}
+
 	// Now go through each of those plugins and ask for any conversion data they have for the given key we're
-	// looking for.
-	//for pkg, version := range latestVersions {
-	// TODO: We have to do a dance here where first we publish a version of pulumi with these RPC structures
-	// then add methods to terraform-bridge to implement this method as if it did exist, and then actually add
-	// the RPC method and uncomment out the code below. This is all because we currently build these in a loop
-	// (pulumi include terraform-bridge, which includes pulumi).
+	// looking for. Second assumption is that only one pulumi provider will provide a mapping for each source
+	// mapping. This _might_ change in the future if we for example add support to convert terraform to
+	// azure/aws-native, or multiple community members bridge the same terraform provider. But as above the
+	// decisions here are based on what's locally installed so the user can manually edit their plugin cache
+	// to be the set of plugins they want to use.
+	for pkg, version := range latestVersions {
+		version := version
+		provider, err := host.Provider(tokens.Package(pkg), &version)
+		if err != nil {
+			return nil, fmt.Errorf("could not create provider '%s': %w", pkg, err)
+		}
 
-	//provider, err := host.Provider(tokens.Package(pkg), &version)
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not create provider '%s': %w", pkg, err)
-	//}
-
-	//data, mappedProvider, err := provider.GetMapping(key)
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not get mapping for provider '%s': %w", pkg, err)
-	//}
-	//entries[mappedProvider] = data
-	//}
+		data, mappedProvider, err := provider.GetMapping(key)
+		if err != nil {
+			return nil, fmt.Errorf("could not get mapping for provider '%s': %w", pkg, err)
+		}
+		// A provider returns empty if it didn't have a mapping
+		if mappedProvider != "" && len(data) != 0 {
+			entries[mappedProvider] = data
+		}
+	}
 
 	// These take precedence over any plugin returned mappings so we do them last and just overwrite the
-	// entries
+	// entries.
 	for _, path := range mappings {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -102,9 +117,5 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 }
 
 func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
-	entry, ok := l.entries[provider]
-	if ok {
-		return entry, nil
-	}
-	return nil, fmt.Errorf("could not find any conversion mapping for %s", provider)
+	return l.entries[provider], nil
 }

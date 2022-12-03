@@ -103,6 +103,11 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_plugin__pb2.PluginAttach.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.GetMapping = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/GetMapping',
+                request_serializer=pulumi_dot_provider__pb2.GetMappingRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.GetMappingResponse.FromString,
+                )
 
 
 class ResourceProviderServicer(object):
@@ -240,6 +245,14 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetMapping(self, request, context):
+        """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+        response (not an error) if it doesn't have a mapping for the given key.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -327,6 +340,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Attach,
                     request_deserializer=pulumi_dot_plugin__pb2.PluginAttach.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetMapping': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetMapping,
+                    request_deserializer=pulumi_dot_provider__pb2.GetMappingRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.GetMappingResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -626,5 +644,22 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Attach',
             pulumi_dot_plugin__pb2.PluginAttach.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetMapping(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/GetMapping',
+            pulumi_dot_provider__pb2.GetMappingRequest.SerializeToString,
+            pulumi_dot_provider__pb2.GetMappingResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

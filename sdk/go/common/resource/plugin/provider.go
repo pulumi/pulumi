@@ -102,8 +102,9 @@ type Provider interface {
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
 
-	// GetMapping returns the mapping (if any) for the provider.
-	// GetMapping(key string) ([]byte, string, error)
+	// GetMapping returns the mapping (if any) for the provider. A provider should return an empty response
+	// (not an error) if it doesn't have a mapping for the given key.
+	GetMapping(key string) ([]byte, string, error)
 }
 
 type GrpcProvider interface {

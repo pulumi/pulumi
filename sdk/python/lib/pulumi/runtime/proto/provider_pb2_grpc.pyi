@@ -131,6 +131,13 @@ class ResourceProviderStub:
         google.protobuf.empty_pb2.Empty,
     ]
     """Attach sends the engine address to an already running plugin."""
+    GetMapping: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.GetMappingRequest,
+        pulumi.provider_pb2.GetMappingResponse,
+    ]
+    """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+    response (not an error) if it doesn't have a mapping for the given key.
+    """
 
 class ResourceProviderServicer(metaclass=abc.ABCMeta):
     """ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
@@ -272,5 +279,14 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty:
         """Attach sends the engine address to an already running plugin."""
+    
+    def GetMapping(
+        self,
+        request: pulumi.provider_pb2.GetMappingRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.provider_pb2.GetMappingResponse:
+        """GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+        response (not an error) if it doesn't have a mapping for the given key.
+        """
 
 def add_ResourceProviderServicer_to_server(servicer: ResourceProviderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...
