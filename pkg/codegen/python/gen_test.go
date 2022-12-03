@@ -262,6 +262,6 @@ Here \\\\N slashes should be escaped but not N
 """
 `
 	w := &bytes.Buffer{}
-	printComment(w, source, "")
+	printComment(w, schema.MakeMarkdownDescription(source), "")
 	assert.Equal(t, expected, w.String())
 }
