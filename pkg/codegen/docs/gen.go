@@ -131,7 +131,7 @@ func titleLookup(shortName string) (string, bool) {
 		"postgresql":                           "PostgreSQL",
 		"prometheus-helm":                      "Prometheus (Helm)",
 		"rabbitmq":                             "RabbitMQ",
-		"rancher2":                             "Rancher 2",
+		"rancher2":                             "Rancher2",
 		"random":                               "random",
 		"rke":                                  "Rancher RKE",
 		"run-my-darn-container":                "Run My Darn Container",
