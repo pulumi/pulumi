@@ -844,10 +844,7 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	return "To" + outputTypeName
 }
 
-// printComment filters examples for the Go languages and prepends double forward slash to each line in the given
-// comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
-// resulting comment. It guarantees that each line is terminated with newline character.
-func printComment(w io.Writer, comment string, indent bool) int {
+func printComment(w io.Writer, comment schema.Description, indent bool) int {
 	comment = codegen.FilterExamples(comment, "go")
 
 	lines := strings.Split(comment, "\n")
@@ -867,7 +864,8 @@ func printComment(w io.Writer, comment string, indent bool) int {
 	return len(lines)
 }
 
-func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage string, indent bool) {
+func printCommentWithDeprecationMessage(w io.Writer, comment schema.Description,
+	deprecationMessage string, indent bool) {
 	lines := printComment(w, comment, indent)
 	if deprecationMessage != "" {
 		if lines > 0 {

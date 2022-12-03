@@ -473,16 +473,17 @@ var docCommentEscaper = strings.NewReplacer(
 	`>`, "&gt;",
 )
 
-func printComment(w io.Writer, comment, indent string) {
+func printComment(w io.Writer, comment schema.Description, indent string) {
 	printCommentWithOptions(w, comment, indent, true /*escape*/)
 }
 
-func printCommentWithOptions(w io.Writer, comment, indent string, escape bool) {
+func printCommentWithOptions(w io.Writer, comment schema.Description, indent string, escape bool) {
+	desc, _ := comment.NarrowToLanguage("csharp").RenderToMarkdown(nil)
 	if escape {
-		comment = docCommentEscaper.Replace(comment)
+		desc = docCommentEscaper.Replace(desc)
 	}
 
-	lines := strings.Split(comment, "\n")
+	lines := strings.Split(desc, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -500,7 +501,7 @@ type plainType struct {
 	mod                   *modContext
 	res                   *schema.Resource
 	name                  string
-	comment               string
+	comment               schema.Description
 	unescapeComment       bool
 	baseClass             string
 	propertyTypeQualifier string
@@ -561,9 +562,9 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
-		if prop.Comment != "" {
+		if c := prop.Comment.NarrowToLanguage("csharp"); len(c) > 0 {
 			fmt.Fprintf(w, "\n")
-			printComment(w, prop.Comment, indent)
+			printComment(w, c, indent)
 		}
 		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
@@ -888,7 +889,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "{\n")
 
 	// Write the documentation comment for the resource class
-	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
+	printComment(w, r.Comment.NarrowToLanguage("csharp"), "    ")
 
 	// Open the class.
 	className := name
@@ -1248,9 +1249,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		if len(args) > 0 {
 			comment, escape := fun.Inputs.Comment, true
-			if comment == "" {
-				comment, escape = fmt.Sprintf(
-					"The set of arguments for the <see cref=\"%s.%s\"/> method.", className, methodName), false
+			if len(comment) == 0 {
+				comment, escape = schema.MakeMarkdownDescription(fmt.Sprintf(
+					"The set of arguments for the <see cref=\"%s.%s\"/> method.", className, methodName)), false
 			}
 			argsType := &plainType{
 				mod:                   mod,
@@ -1272,9 +1273,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(fun.Outputs.Properties) == 1
 
 			comment, escape := fun.Inputs.Comment, true
-			if comment == "" {
-				comment, escape = fmt.Sprintf(
-					"The results of the <see cref=\"%s.%s\"/> method.", className, methodName), false
+			if len(comment) == 0 {
+				comment, escape =
+					schema.MakeMarkdownDescription(
+						fmt.Sprintf(
+							"The results of the <see cref=\"%s.%s\"/> method.", className, methodName)), false
 			}
 			resultType := &plainType{
 				mod:                   mod,
@@ -1881,7 +1884,10 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	}
 
 	// Ensure that the target module directory contains a README.md file.
-	readme := mod.pkg.Description()
+	readme, err := mod.pkg.Description().NarrowToLanguage("csharp").RenderToMarkdown(nil)
+	if err != nil {
+		return err
+	}
 	if readme != "" && readme[len(readme)-1] != '\n' {
 		readme += "\n"
 	}
