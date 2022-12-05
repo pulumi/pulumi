@@ -4,6 +4,34 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
-import * as utilities from "../utilities";
 
-export * as documentdb from "./documentdb/output";
+export namespace documentdb {
+    export interface CompositePathResponse {
+        /**
+         * Sort order for composite paths.
+         */
+        order?: string;
+        /**
+         * The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)
+         */
+        path?: string;
+    }
+
+    /**
+     * Cosmos DB indexing policy
+     */
+    export interface IndexingPolicyResponse {
+        /**
+         * List of composite path list
+         */
+        compositeIndexes?: outputs.documentdb.CompositePathResponse[][];
+    }
+
+    export interface SqlContainerGetPropertiesResponseResource {
+        /**
+         * The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container
+         */
+        indexingPolicy?: outputs.documentdb.IndexingPolicyResponse;
+    }
+
+}

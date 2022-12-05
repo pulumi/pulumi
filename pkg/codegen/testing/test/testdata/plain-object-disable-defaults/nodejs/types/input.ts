@@ -4,10 +4,9 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
+
 import * as utilities from "../utilities";
 
-export * as mod1 from "./mod1/input";
-export * as mod2 from "./mod2/input";
 /**
  * BETA FEATURE - Options to configure the Helm Release resource.
  */
@@ -146,4 +145,41 @@ export function typArgsProvideDefaults(val: TypArgs): TypArgs {
         mod2: (val.mod2 ? pulumi.output(val.mod2).apply(inputs.mod2.typArgsProvideDefaults) : undefined),
         val: (val.val) ?? "mod main",
     };
+}
+export namespace mod1 {
+    /**
+     * A test for namespaces (mod 1)
+     */
+    export interface TypArgs {
+        val?: pulumi.Input<string>;
+    }
+    /**
+     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
+     */
+    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
+        return {
+            ...val,
+            val: (val.val) ?? "mod1",
+        };
+    }
+}
+
+export namespace mod2 {
+    /**
+     * A test for namespaces (mod 2)
+     */
+    export interface TypArgs {
+        mod1?: pulumi.Input<inputs.mod1.TypArgs>;
+        val?: pulumi.Input<string>;
+    }
+    /**
+     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
+     */
+    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
+        return {
+            ...val,
+            mod1: (val.mod1 ? pulumi.output(val.mod1).apply(inputs.mod1.typArgsProvideDefaults) : undefined),
+            val: (val.val) ?? "mod2",
+        };
+    }
 }
