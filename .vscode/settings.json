@@ -1,6 +1,9 @@
 {
     "go.buildTags": "all",
     "go.testTimeout": "1h",
+    "go.testEnvVars": {
+        "PULUMI_TEST_PYTHON_SHARED_VENV": "true",
+    },
     "gopls": {
         // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
         "build.directoryFilters": [

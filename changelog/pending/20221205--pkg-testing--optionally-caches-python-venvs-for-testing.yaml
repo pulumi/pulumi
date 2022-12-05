@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg/testing
+  description: Optionally caches python venvs for testing

@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	cryptorand "crypto/rand"
+	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -292,6 +293,12 @@ type ProgramTestOptions struct {
 	UseAutomaticVirtualEnv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
+	// Use a shared virtual environment for tests based on the contents of the requirements file. Defaults to false.
+	UseSharedVirtualEnv *bool
+	// Shared venv path when UseSharedVirtualEnv is true. Defaults to $HOME/.pulumi-test-venvs.
+	SharedVirtualEnvPath string
+	// Refers to the shared venv directory when UseSharedVirtualEnv is true. Otherwise defaults to venv
+	virtualEnvDir string
 
 	// If set, this hook is called after the `pulumi preview` command has completed.
 	PreviewCompletedHook func(dir string) error
@@ -312,6 +319,13 @@ type ProgramTestOptions struct {
 
 	// Array of provider plugin dependencies which come from local packages.
 	LocalProviders []LocalDependency
+}
+
+func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
+	if opts.UseSharedVirtualEnv != nil {
+		return *opts.UseSharedVirtualEnv
+	}
+	return false
 }
 
 type LocalDependency struct {
@@ -373,6 +387,34 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	}
 
 	return tokens.QName(opts.StackName)
+}
+
+// Returns the md5 hash of the file at the given path as a string
+func hashFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	buf := make([]byte, 32*1024)
+	hash := sha256.New()
+	for {
+		n, err := file.Read(buf)
+		if n > 0 {
+			_, err := hash.Write(buf[:n])
+			if err != nil {
+				return "", err
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	sum := string(hash.Sum(nil))
+	return sum, nil
 }
 
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
@@ -547,6 +589,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
 	}
+	if overrides.UseSharedVirtualEnv != nil {
+		opts.UseSharedVirtualEnv = overrides.UseSharedVirtualEnv
+	}
+	if overrides.SharedVirtualEnvPath != "" {
+		opts.SharedVirtualEnvPath = overrides.SharedVirtualEnvPath
+	}
 	if overrides.PreviewCompletedHook != nil {
 		opts.PreviewCompletedHook = overrides.PreviewCompletedHook
 	}
@@ -697,6 +745,24 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 				t.Errorf("could not read random bytes: %v", err)
 			}
 			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
+		}
+	}
+
+	if opts.UseSharedVirtualEnv == nil {
+		if sharedVenv := os.Getenv("PULUMI_TEST_PYTHON_SHARED_VENV"); sharedVenv != "" {
+			useSharedVenvBool := sharedVenv == "true"
+			opts.UseSharedVirtualEnv = &useSharedVenvBool
+		}
+	}
+
+	if opts.virtualEnvDir == "" && !opts.GetUseSharedVirtualEnv() {
+		opts.virtualEnvDir = "venv"
+	}
+
+	if opts.SharedVirtualEnvPath == "" {
+		opts.SharedVirtualEnvPath = filepath.Join(os.Getenv("HOME"), ".pulumi-test-venvs")
+		if sharedVenvPath := os.Getenv("PULUMI_TEST_PYTHON_SHARED_VENV_PATH"); sharedVenvPath != "" {
+			opts.SharedVirtualEnvPath = sharedVenvPath
 		}
 	}
 
@@ -1025,7 +1091,7 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 		}()
 	}
 
-	virtualenvBinPath, err := getVirtualenvBinPath(wd, args[0])
+	virtualenvBinPath, err := getVirtualenvBinPath(wd, args[0], pt)
 	if err != nil {
 		return err
 	}
@@ -1985,11 +2051,21 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 	} else {
-		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
+		venvPath := "venv"
+		if pt.opts.GetUseSharedVirtualEnv() {
+			requirementsPath := filepath.Join(cwd, "requirements.txt")
+			requirementsmd5, err := hashFile(requirementsPath)
+			if err != nil {
+				return err
+			}
+			pt.opts.virtualEnvDir = fmt.Sprintf("pulumi-venv-%x", requirementsmd5)
+			venvPath = filepath.Join(pt.opts.SharedVirtualEnvPath, pt.opts.virtualEnvDir)
+		}
+		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", venvPath}, cwd); err != nil {
 			return err
 		}
 
-		projinfo.Proj.Runtime.SetOption("virtualenv", "venv")
+		projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
 		projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
 		if err = projinfo.Proj.Save(projfile); err != nil {
 			return fmt.Errorf("saving project: %w", err)
@@ -2077,10 +2153,14 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	return nil
 }
 
-func getVirtualenvBinPath(cwd, bin string) (string, error) {
-	virtualenvBinPath := filepath.Join(cwd, "venv", "bin", bin)
+func getVirtualenvBinPath(cwd, bin string, pt *ProgramTester) (string, error) {
+	virtualEnvBasePath := filepath.Join(cwd, pt.opts.virtualEnvDir)
+	if pt.opts.GetUseSharedVirtualEnv() {
+		virtualEnvBasePath = filepath.Join(pt.opts.SharedVirtualEnvPath, pt.opts.virtualEnvDir)
+	}
+	virtualenvBinPath := filepath.Join(virtualEnvBasePath, "bin", bin)
 	if runtime.GOOS == windowsOS {
-		virtualenvBinPath = filepath.Join(cwd, "venv", "Scripts", fmt.Sprintf("%s.exe", bin))
+		virtualenvBinPath = filepath.Join(virtualEnvBasePath, "Scripts", fmt.Sprintf("%s.exe", bin))
 	}
 	if info, err := os.Stat(virtualenvBinPath); err != nil || info.IsDir() {
 		return "", fmt.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)

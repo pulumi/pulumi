@@ -64,6 +64,7 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
+  PULUMI_TEST_PYTHON_SHARED_VENV: "true"
   PYTHON: python
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
