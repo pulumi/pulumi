@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "baseUrl": ".",
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -11,9 +10,6 @@
         "experimentalDecorators": true,
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
-        "paths": {
-            "@/*": ["*"]
-        },
         "strict": true
     },
     "files": [
@@ -22,9 +18,6 @@
         "funcWithAllOptionalInputs.ts",
         "index.ts",
         "provider.ts",
-        "types/config/index.ts",
-        "types/config/input.ts",
-        "types/config/output.ts",
         "types/enums/index.ts",
         "types/index.ts",
         "types/input.ts",
