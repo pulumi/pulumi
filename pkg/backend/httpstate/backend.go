@@ -1798,6 +1798,15 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
 		return capabilities{}
 	}
+
+	// Allow users to opt out of deltaCheckpointUpdates even if the backend indicates it should be used. This
+	// remains necessary while PULUMI_OPTIMIZED_CHECKPOINT_PATCH has higher memory requirements on the client and
+	// may cause out-of-memory issues in constrained environments.
+	switch strings.ToLower(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH")) {
+	case "0", "false":
+		caps.deltaCheckpointUpdates = nil
+	}
+
 	return caps
 }
 
