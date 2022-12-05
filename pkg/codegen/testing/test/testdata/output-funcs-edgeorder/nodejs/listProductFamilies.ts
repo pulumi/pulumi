@@ -54,9 +54,12 @@ export interface ListProductFamiliesResult {
      */
     readonly value: outputs.ProductFamilyResponse[];
 }
-
+/**
+ * The list of product families.
+ * API Version: 2020-12-01-preview.
+ */
 export function listProductFamiliesOutput(args: ListProductFamiliesOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListProductFamiliesResult> {
-    return pulumi.output(args).apply(a => listProductFamilies(a, opts))
+    return pulumi.output(args).apply((a: any) => listProductFamilies(a, opts))
 }
 
 export interface ListProductFamiliesOutputArgs {

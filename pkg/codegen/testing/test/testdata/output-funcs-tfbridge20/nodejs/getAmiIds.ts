@@ -71,9 +71,12 @@ export interface GetAmiIdsResult {
     readonly owners: string[];
     readonly sortAscending?: boolean;
 }
-
+/**
+ * Taken from pulumi-AWS to regress an issue
+ */
+/** @deprecated aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds */
 export function getAmiIdsOutput(args: GetAmiIdsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetAmiIdsResult> {
-    return pulumi.output(args).apply(a => getAmiIds(a, opts))
+    return pulumi.output(args).apply((a: any) => getAmiIds(a, opts))
 }
 
 /**

@@ -1182,6 +1182,13 @@ func (mod *modContext) genFunctionOutputVersion(
 		return info, nil
 	}
 
+	// Write the TypeDoc/JSDoc for the data source function.
+	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
+
+	if fun.DeprecationMessage != "" {
+		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
+	}
+
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
 	info.functionOutputVersionName = fnOutput
@@ -1195,9 +1202,8 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
-	fmt.Fprintf(w, `
-export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(args).apply(a => %s(a, opts))
+	fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+    return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
 `, fnOutput, argsig, functionReturnType(fun), originalName)
 	fmt.Fprintf(w, "\n")

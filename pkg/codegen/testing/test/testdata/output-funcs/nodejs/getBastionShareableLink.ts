@@ -44,9 +44,12 @@ export interface GetBastionShareableLinkResult {
      */
     readonly nextLink?: string;
 }
-
+/**
+ * Response for all the Bastion Shareable Link endpoints.
+ * API Version: 2020-11-01.
+ */
 export function getBastionShareableLinkOutput(args: GetBastionShareableLinkOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetBastionShareableLinkResult> {
-    return pulumi.output(args).apply(a => getBastionShareableLink(a, opts))
+    return pulumi.output(args).apply((a: any) => getBastionShareableLink(a, opts))
 }
 
 export interface GetBastionShareableLinkOutputArgs {

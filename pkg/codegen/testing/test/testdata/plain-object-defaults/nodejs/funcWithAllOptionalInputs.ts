@@ -33,9 +33,11 @@ export interface FuncWithAllOptionalInputsArgs {
 export interface FuncWithAllOptionalInputsResult {
     readonly r: string;
 }
-
+/**
+ * Check codegen of functions with all optional inputs.
+ */
 export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithAllOptionalInputsResult> {
-    return pulumi.output(args).apply(a => funcWithAllOptionalInputs(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithAllOptionalInputs(a, opts))
 }
 
 export interface FuncWithAllOptionalInputsOutputArgs {
