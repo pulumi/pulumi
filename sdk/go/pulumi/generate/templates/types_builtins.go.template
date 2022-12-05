@@ -47,6 +47,12 @@ type {{.PtrType}} {{.ElemElementType}}
 func {{.Name}}(v {{.ElemElementType}}) {{.Name}}Input {
 	return ({{.InputType}})(&v)
 }
+func {{.Name}}FromPtr(v *{{.ElemElementType}}) {{.Name}}Input {
+	if v == nil {
+		return nil
+	}
+	return ({{.InputType}})(v)
+}
 {{end}}
 {{if .DefineInputMethods}}
 // ElementType returns the element type of this Input ({{.ElementType}}).

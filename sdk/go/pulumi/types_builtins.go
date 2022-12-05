@@ -1378,6 +1378,12 @@ type boolPtr bool
 func BoolPtr(v bool) BoolPtrInput {
 	return (*boolPtr)(&v)
 }
+func BoolPtrFromPtr(v *bool) BoolPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*boolPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*bool).
 func (*boolPtr) ElementType() reflect.Type {
@@ -1908,6 +1914,12 @@ type float64Ptr float64
 // Float64Ptr is an input type for *float64 values.
 func Float64Ptr(v float64) Float64PtrInput {
 	return (*float64Ptr)(&v)
+}
+func Float64PtrFromPtr(v *float64) Float64PtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*float64Ptr)(v)
 }
 
 // ElementType returns the element type of this Input (*float64).
@@ -2454,6 +2466,12 @@ type idPtr ID
 // IDPtr is an input type for *ID values.
 func IDPtr(v ID) IDPtrInput {
 	return (*idPtr)(&v)
+}
+func IDPtrFromPtr(v *ID) IDPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*idPtr)(v)
 }
 
 // ElementType returns the element type of this Input (*ID).
@@ -3462,6 +3480,12 @@ type intPtr int
 func IntPtr(v int) IntPtrInput {
 	return (*intPtr)(&v)
 }
+func IntPtrFromPtr(v *int) IntPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*intPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*int).
 func (*intPtr) ElementType() reflect.Type {
@@ -3992,6 +4016,12 @@ type stringPtr string
 // StringPtr is an input type for *string values.
 func StringPtr(v string) StringPtrInput {
 	return (*stringPtr)(&v)
+}
+func StringPtrFromPtr(v *string) StringPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*stringPtr)(v)
 }
 
 // ElementType returns the element type of this Input (*string).
@@ -4538,6 +4568,12 @@ type urnPtr URN
 // URNPtr is an input type for *URN values.
 func URNPtr(v URN) URNPtrInput {
 	return (*urnPtr)(&v)
+}
+func URNPtrFromPtr(v *URN) URNPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*urnPtr)(v)
 }
 
 // ElementType returns the element type of this Input (*URN).
