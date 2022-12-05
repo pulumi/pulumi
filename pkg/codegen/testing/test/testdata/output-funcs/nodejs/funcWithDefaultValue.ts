@@ -24,9 +24,11 @@ export interface FuncWithDefaultValueArgs {
 export interface FuncWithDefaultValueResult {
     readonly r: string;
 }
-
+/**
+ * Check codegen of functions with default values.
+ */
 export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDefaultValueResult> {
-    return pulumi.output(args).apply(a => funcWithDefaultValue(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithDefaultValue(a, opts))
 }
 
 export interface FuncWithDefaultValueOutputArgs {

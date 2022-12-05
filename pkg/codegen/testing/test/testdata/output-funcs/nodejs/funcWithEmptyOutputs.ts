@@ -24,9 +24,11 @@ export interface FuncWithEmptyOutputsArgs {
 
 export interface FuncWithEmptyOutputsResult {
 }
-
+/**
+ * n/a
+ */
 export function funcWithEmptyOutputsOutput(args: FuncWithEmptyOutputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithEmptyOutputsResult> {
-    return pulumi.output(args).apply(a => funcWithEmptyOutputs(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithEmptyOutputs(a, opts))
 }
 
 export interface FuncWithEmptyOutputsOutputArgs {

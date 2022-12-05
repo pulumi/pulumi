@@ -24,9 +24,8 @@ export interface FuncWithSecretsResult {
     readonly id: string;
     readonly plaintext: string;
 }
-
 export function funcWithSecretsOutput(args: FuncWithSecretsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithSecretsResult> {
-    return pulumi.output(args).apply(a => funcWithSecrets(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithSecrets(a, opts))
 }
 
 export interface FuncWithSecretsOutputArgs {

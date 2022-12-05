@@ -49,9 +49,12 @@ export interface ListConfigurationsResult {
      */
     readonly value: outputs.ConfigurationResponse[];
 }
-
+/**
+ * The list of configurations.
+ * API Version: 2020-12-01-preview.
+ */
 export function listConfigurationsOutput(args: ListConfigurationsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListConfigurationsResult> {
-    return pulumi.output(args).apply(a => listConfigurations(a, opts))
+    return pulumi.output(args).apply((a: any) => listConfigurations(a, opts))
 }
 
 export interface ListConfigurationsOutputArgs {
