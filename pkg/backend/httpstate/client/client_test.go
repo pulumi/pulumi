@@ -14,11 +14,13 @@
 package client
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -135,25 +137,25 @@ func TestGzip(t *testing.T) {
 
 }
 
-func TestPatchUpdateCheckpointVerbatimPreservesIndent(t *testing.T) {
+func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	t.Parallel()
 
 	deployment := apitype.DeploymentV3{
-		Resources: []apitype.ResourceV3{{URN: resource.URN("urn1")}},
+		Resources: []apitype.ResourceV3{
+			{URN: resource.URN("urn1")},
+			{URN: resource.URN("urn2")},
+		},
 	}
 
-	var indented json.RawMessage
-	{
-		indented1, err := json.MarshalIndent(deployment, "", "")
-		require.NoError(t, err)
-		untyped := apitype.UntypedDeployment{
-			Version:    3,
-			Deployment: indented1,
-		}
-		indented2, err := json.MarshalIndent(untyped, "", "")
-		require.NoError(t, err)
-		indented = indented2
-	}
+	var serializedDeployment json.RawMessage
+	serializedDeployment, err := json.Marshal(deployment)
+	assert.NoError(t, err)
+
+	untypedDeployment, err := json.Marshal(apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: serializedDeployment,
+	})
+	assert.NoError(t, err)
 
 	var request apitype.PatchUpdateVerbatimCheckpointRequest
 
@@ -173,11 +175,22 @@ func TestPatchUpdateCheckpointVerbatimPreservesIndent(t *testing.T) {
 
 	sequenceNumber := 1
 
-	err := client.PatchUpdateCheckpointVerbatim(context.Background(),
-		UpdateIdentifier{}, sequenceNumber, indented, "token")
+	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
+		UpdateIdentifier{}, sequenceNumber, &deployment, "token")
 	assert.NoError(t, err)
 
-	assert.Equal(t, string(indented), string(request.UntypedDeployment))
+	compacted := func(raw json.RawMessage) string {
+		var buf bytes.Buffer
+		err := json.Compact(&buf, []byte(raw))
+		assert.NoError(t, err)
+		return buf.String()
+	}
+
+	// It should have more than one line as json.Marshal would produce.
+	assert.Equal(t, 4, len(strings.Split(string(request.UntypedDeployment), "\n")))
+
+	// Compacting should recover the same form as json.Marshal would produce.
+	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))
 }
 
 func TestGetCapabilities(t *testing.T) {

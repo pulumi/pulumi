@@ -915,15 +915,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
 	token string) error {
 
-	rawDeployment, err := json.Marshal(deployment)
-	if err != nil {
-		return err
-	}
-
-	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    3,
-		Deployment: rawDeployment,
-	}
+	req := &marshalPatchUpdateCheckpointRequest{deployment}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
@@ -934,22 +926,13 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token string) error {
+	sequenceNumber int, deployment *apitype.DeploymentV3, token string) error {
 
-	req := apitype.PatchUpdateVerbatimCheckpointRequest{
-		Version:           3,
-		UntypedDeployment: untypedDeploymentBytes,
-		SequenceNumber:    sequenceNumber,
-	}
-
-	reqPayload, err := marshalVerbatimCheckpointRequest(req)
-	if err != nil {
-		return err
-	}
+	payload := &marshalPatchUpdateVerbatimCheckpointRequest{deployment, sequenceNumber}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, payload, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 

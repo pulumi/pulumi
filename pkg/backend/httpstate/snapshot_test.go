@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"net/http"
@@ -30,9 +31,11 @@ import (
 
 	"github.com/hexops/gotextdiff"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -44,6 +47,37 @@ import (
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+
+	expectationsFile := "testdata/snapshot_test.json"
+	expectations := map[string]string{}
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	if accept {
+		t.Cleanup(func() {
+			bytes, err := json.MarshalIndent(expectations, "", "  ")
+			require.NoError(t, err)
+			err = os.WriteFile(expectationsFile, bytes, 0700)
+			require.NoError(t, err)
+		})
+	} else {
+		data, err := os.ReadFile(expectationsFile)
+		require.NoError(t, err)
+		err = json.Unmarshal(data, &expectations)
+		require.NoError(t, err)
+	}
+
+	assertEquals := func(expectedKey string, actual string) {
+		if accept {
+			expectations[expectedKey] = actual
+			return
+		}
+		expected, ok := expectations[expectedKey]
+		assert.True(t, ok)
+		assert.Equal(t, expected, actual, expectedKey)
+	}
+
+	assertEqual := func(expectedKey string, actual json.RawMessage) {
+		assertEquals(expectedKey, string(actual))
+	}
 
 	stackID := client.StackIdentifier{
 		Owner:   "owner",
@@ -156,9 +190,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	req1 := lastRequestAsVerbatim()
 	assert.Equal(t, 1, req1.SequenceNumber)
 	assert.Equal(t, 3, req1.Version)
-	assert.Equal(t, "{\"version\":3,\"deployment\":{\n\"manifest\": {\n\"time\": \"0001-01-01T00:00:00Z\""+
-		",\n\"magic\": \"\",\n\"version\": \"\"\n},\n\"resources\": [\n{\n\"urn\": \"urn-1\",\n\"custom\":"+
-		" false,\n\"type\": \"\"\n}\n]\n}}", string(req1.UntypedDeployment))
+	assertEqual("req1", req1.UntypedDeployment)
 
 	handleVerbatim(req1)
 	assert.Equal(t, []apitype.ResourceV3{
@@ -178,17 +210,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	req2 := lastRequestAsDelta()
 	assert.Equal(t, 2, req2.SequenceNumber)
-	assert.Equal(t, "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":12,\"column\":1,\"offset\":-1},\"end\""+
-		":{\"line\":12,\"column\":1,\"offset\":-1}},\"NewText\":\"},\\n\"},{\"Span\":{\"uri\":\"\","+
-		"\"start\":{\"line\":12,\"column\":1,\"offset\":-1},\"end\":{\"line\":12,"+
-		"\"column\":1,\"offset\":-1}},\"NewText\":\"{\\n\"},{\"Span\":{\"uri\":\"\",\"start\":"+
-		"{\"line\":12,\"column\":1,\"offset\":-1},\"end\":{\"line\":12,\"column\":1,\"offset\":-1}}"+
-		",\"NewText\":\"\\\"urn\\\": \\\"urn-2\\\",\\n\"},{\"Span\":{\"uri\":\"\",\"start\":"+
-		"{\"line\":12,\"column\":1,\"offset\":-1},\"end\":{\"line\":12,\"column\":1,\"offset\":-1}}"+
-		",\"NewText\":\"\\\"custom\\\": false,\\n\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":12,"+
-		"\"column\":1,\"offset\":-1},\"end\":{\"line\":12,\"column\":1,\"offset\":-1}},\"NewText\":\""+
-		"\\\"type\\\": \\\"\\\"\\n\"}]", string(req2.DeploymentDelta))
-	assert.Equal(t, "75e2f82ca2735650366fba27b53ec97f310abd457aca27266fb29c4377ee00e7", req2.CheckpointHash)
+	assertEqual("req2", req2.DeploymentDelta)
+	assertEquals("req2.hash", req2.CheckpointHash)
 
 	handleDelta(req2)
 	assert.Equal(t, []apitype.ResourceV3{
@@ -207,17 +230,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	req3 := lastRequestAsDelta()
 	assert.Equal(t, 3, req3.SequenceNumber)
-	assert.Equal(t, "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":12,\"column\":1,\"offset\":-1"+
-		"},\"end\":{\"line\":13,\"column\":1,\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{"+
-		"\"uri\":\"\",\"start\":{\"line\":13,\"column\":1,\"offset\":-1},\"end\":{\"line\":14,"+
-		"\"column\":1,\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":"+
-		"{\"line\":14,\"column\":1,\"offset\":-1},\"end\":{\"line\":15,\"column\":1,"+
-		"\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":15,"+
-		"\"column\":1,\"offset\":-1},\"end\":{\"line\":16,\"column\":1,\"offset\":-1}},"+
-		"\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":16,\"column\":1,"+
-		"\"offset\":-1},\"end\":{\"line\":17,\"column\":1,\"offset\":-1}},\"NewText\":\"\"}]",
-		string(req3.DeploymentDelta))
-	assert.Equal(t, "5f2fd84a225e7c1895528b4b9394607d6b39aefa4ee74f57e018dadcb16bf2e2", req3.CheckpointHash)
+	assertEqual("req3", req3.DeploymentDelta)
+	assertEquals("req3.hash", req3.CheckpointHash)
 
 	handleDelta(req3)
 	assert.Equal(t, []apitype.ResourceV3{

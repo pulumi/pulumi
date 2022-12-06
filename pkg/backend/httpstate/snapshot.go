@@ -16,7 +16,6 @@ package httpstate
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -62,20 +61,15 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			persister.context, persister.update, deploymentV3, token)
 	}
 
-	deployment, err := persister.marshalDeployment(deploymentV3)
-	if err != nil {
-		return err
-	}
-
 	differ := persister.deploymentDiffState
 
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
-	if !differ.ShouldDiff(deployment) {
-		if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
+	if !differ.ShouldDiff(deploymentV3) {
+		if err := persister.saveFullVerbatim(ctx, differ, deploymentV3, token); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
-		diff, err := differ.Diff(ctx, deployment)
+		diff, err := differ.Diff(ctx, deploymentV3)
 		if err != nil {
 			return err
 		}
@@ -85,13 +79,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)
 			}
-			if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
+			if err := persister.saveFullVerbatim(ctx, differ, deploymentV3, token); err != nil {
 				return err
 			}
 		}
 	}
 
-	return persister.deploymentDiffState.Saved(ctx, deployment)
+	return persister.deploymentDiffState.Saved(ctx, deploymentV3)
 }
 
 func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
@@ -102,23 +96,10 @@ func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment *apitype.UntypedDeployment, token string) error {
-	untypedDeploymentBytes, err := marshalUntypedDeployment(deployment)
-	if err != nil {
-		return err
-	}
+	differ *deploymentDiffState, deployment *apitype.DeploymentV3, token string) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
-		untypedDeploymentBytes, token)
-}
-
-func (persister *cloudSnapshotPersister) marshalDeployment(
-	deployment *apitype.DeploymentV3) (*apitype.UntypedDeployment, error) {
-	raw, err := json.MarshalIndent(deployment, "", "")
-	if err != nil {
-		return nil, fmt.Errorf("serializing deployment to json: %w", err)
-	}
-	return &apitype.UntypedDeployment{Deployment: raw, Version: 3}, nil
+		deployment, token)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)

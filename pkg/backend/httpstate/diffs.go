@@ -15,6 +15,7 @@
 package httpstate
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -28,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	opentracing "github.com/opentracing/opentracing-go"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 )
 
 type deploymentDiffState struct {
@@ -59,28 +62,39 @@ func (dds *deploymentDiffState) CanDiff() bool {
 
 // Size-based heuristics trying to estimate if the diff method will be
 // worth it and take less time than sending the entire deployment.
-func (dds *deploymentDiffState) ShouldDiff(new *apitype.UntypedDeployment) bool {
+func (dds *deploymentDiffState) ShouldDiff(new *apitype.DeploymentV3) bool {
 	if !dds.CanDiff() {
 		return false
 	}
 	if len(dds.lastSavedDeployment) < dds.minimalDiffSize {
 		return false
 	}
-	if len(new.Deployment) < dds.minimalDiffSize {
-		return false
+	w := &maxLengthWriter{maxLength: dds.minimalDiffSize}
+	_, err := client.MarshalUntypedDeployment(new).WriteTo(w)
+	if err != nil && err.Error() == "maxLength exceeded" {
+		return true
 	}
-	return true
+	return false
 }
 
-func (dds *deploymentDiffState) Diff(ctx context.Context,
-	deployment *apitype.UntypedDeployment) (deploymentDiff, error) {
+type maxLengthWriter struct {
+	maxLength     int
+	currentLength int
+}
+
+func (sw *maxLengthWriter) Write(data []byte) (int, error) {
+	n := len(data)
+	sw.currentLength += n
+	if sw.currentLength > sw.maxLength {
+		return 0, fmt.Errorf("maxLength exceeded")
+	}
+	return n, nil
+}
+
+func (dds *deploymentDiffState) Diff(ctx context.Context, deployment *apitype.DeploymentV3) (deploymentDiff, error) {
 
 	if !dds.CanDiff() {
 		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
-	}
-
-	if deployment.Version == 0 {
-		return deploymentDiff{}, fmt.Errorf("deployment.Version should be set")
 	}
 
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")
@@ -88,8 +102,8 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 
 	before := dds.lastSavedDeployment
 
-	after, err := marshalUntypedDeployment(deployment)
-	if err != nil {
+	afterBuf := bytes.Buffer{}
+	if _, err := client.MarshalUntypedDeployment(deployment).WriteTo(&afterBuf); err != nil {
 		return deploymentDiff{}, fmt.Errorf("marshalUntypedDeployment failed: %v", err)
 	}
 
@@ -99,10 +113,10 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 	checkpointHashReady.Add(1)
 	go func() {
 		defer checkpointHashReady.Done()
-		checkpointHash = dds.computeHash(childCtx, after)
+		checkpointHash = dds.computeHash(childCtx, afterBuf.Bytes())
 	}()
 
-	delta, err := dds.computeEdits(childCtx, string(before), string(after))
+	delta, err := dds.computeEdits(childCtx, string(before), afterBuf.String())
 	if err != nil {
 		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
 	}
@@ -110,9 +124,9 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 	checkpointHashReady.Wait()
 
 	tracingSpan.SetTag("before", len(before))
-	tracingSpan.SetTag("after", len(after))
+	tracingSpan.SetTag("after", afterBuf.Len())
 	tracingSpan.SetTag("diff", len(delta))
-	tracingSpan.SetTag("compression", 100.0*float64(len(delta))/float64(len(after)))
+	tracingSpan.SetTag("compression", 100.0*float64(len(delta))/float64(afterBuf.Len()))
 	tracingSpan.SetTag("hash", checkpointHash)
 
 	diff := deploymentDiff{
@@ -125,14 +139,14 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 }
 
 // Indicates that a deployment was just saved to the service.
-func (dds *deploymentDiffState) Saved(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	d, err := marshalUntypedDeployment(deployment)
+func (dds *deploymentDiffState) Saved(ctx context.Context, deployment *apitype.DeploymentV3) error {
+	var buf bytes.Buffer
+	_, err := client.MarshalUntypedDeployment(deployment).WriteTo(&buf)
 	if err != nil {
 		return err
 	}
-	dds.lastSavedDeployment = d
+	dds.lastSavedDeployment = buf.Bytes()
 	dds.sequenceNumber++
-
 	return nil
 }
 
