@@ -112,25 +112,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configurationfilters_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_csharp" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_csharp/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">List&lt;Configuration<wbr>Filters&gt;</a></span>
+        <span class="property-type"><a href="#configurationfilters/">List&lt;Configuration<wbr>Filters&gt;</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_csharp" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_csharp/" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_csharp" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_csharp/" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -145,25 +145,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configurationfilters_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_go" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_go/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">[]Configuration<wbr>Filters</a></span>
+        <span class="property-type"><a href="#configurationfilters/">[]Configuration<wbr>Filters</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_go" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_go/" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_go" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_go/" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -178,25 +178,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configurationfilters_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_java/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">List&lt;Configuration<wbr>Filters&gt;</a></span>
+        <span class="property-type"><a href="#configurationfilters/">List&lt;Configuration<wbr>Filters&gt;</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_java" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_java/" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_java" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_java/" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -211,25 +211,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configurationfilters_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_nodejs" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_nodejs/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">Configuration<wbr>Filters[]</a></span>
+        <span class="property-type"><a href="#configurationfilters/">Configuration<wbr>Filters[]</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_nodejs" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_nodejs/" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_nodejs" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_nodejs/" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -244,25 +244,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configuration_filters_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_filters_python" style="color: inherit; text-decoration: inherit;">configuration_<wbr>filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_filters_python/" style="color: inherit; text-decoration: inherit;">configuration_<wbr>filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">Sequence[Configuration<wbr>Filters]</a></span>
+        <span class="property-type"><a href="#configurationfilters/">Sequence[Configuration<wbr>Filters]</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customer_subscription_details_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customer_subscription_details_python" style="color: inherit; text-decoration: inherit;">customer_<wbr>subscription_<wbr>details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customer_subscription_details_python/" style="color: inherit; text-decoration: inherit;">customer_<wbr>subscription_<wbr>details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skip_token_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skip_token_python" style="color: inherit; text-decoration: inherit;">skip_<wbr>token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skip_token_python/" style="color: inherit; text-decoration: inherit;">skip_<wbr>token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -277,25 +277,25 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="configurationfilters_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_yaml/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationfilters">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#configurationfilters/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Holds details about product hierarchy information and filterable property.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_yaml" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_yaml/" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">Property Map</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails/">Property Map</a></span>
     </dt>
     <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_yaml" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_yaml/" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -319,16 +319,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp/" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#configurationresponse/">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="nextlink_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp/" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -343,16 +343,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go/" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">[]Configuration<wbr>Response</a></span>
+        <span class="property-type"><a href="#configurationresponse/">[]Configuration<wbr>Response</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="nextlink_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go/" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -367,16 +367,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#configurationresponse/">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="nextlink_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -391,16 +391,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">Configuration<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#configurationresponse/">Configuration<wbr>Response[]</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -415,16 +415,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">Sequence[Configuration<wbr>Response]</a></span>
+        <span class="property-type"><a href="#configurationresponse/">Sequence[Configuration<wbr>Response]</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="next_link_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python/" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -439,16 +439,16 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#configurationresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of configurations.</p>
 </dd><dt class="property-"
             title="">
         <span id="nextlink_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -473,7 +473,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_csharp/" style="color: inherit; text-decoration: inherit;">Availability<wbr>Stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -482,7 +482,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_csharp/" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -491,7 +491,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_csharp/" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -506,7 +506,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_go" style="color: inherit; text-decoration: inherit;">Availability<wbr>Stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_go/" style="color: inherit; text-decoration: inherit;">Availability<wbr>Stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -515,7 +515,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_go/" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -524,7 +524,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_go/" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -539,7 +539,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_java" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_java/" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -548,7 +548,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_java/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -557,7 +557,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_java/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -572,7 +572,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_nodejs" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_nodejs/" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -581,7 +581,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_nodejs/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -590,7 +590,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_nodejs/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -605,7 +605,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_stage_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availability_stage_python" style="color: inherit; text-decoration: inherit;">availability_<wbr>stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availability_stage_python/" style="color: inherit; text-decoration: inherit;">availability_<wbr>stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -614,7 +614,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_python/" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -623,7 +623,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_message_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_message_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason_<wbr>message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_message_python/" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason_<wbr>message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -638,7 +638,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_yaml" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_yaml/" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -647,7 +647,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_yaml/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -656,7 +656,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_yaml/" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -675,7 +675,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_csharp" style="color: inherit; text-decoration: inherit;">Frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_csharp/" style="color: inherit; text-decoration: inherit;">Frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -684,16 +684,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_csharp/" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse/">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_csharp" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_csharp/" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -702,7 +702,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -717,7 +717,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_go" style="color: inherit; text-decoration: inherit;">Frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_go/" style="color: inherit; text-decoration: inherit;">Frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -726,16 +726,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_go/" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse/">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_go" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_go/" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -744,7 +744,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -759,7 +759,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_java" style="color: inherit; text-decoration: inherit;">frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_java/" style="color: inherit; text-decoration: inherit;">frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -768,16 +768,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_java/" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse/">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_java" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_java/" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -786,7 +786,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -801,7 +801,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_nodejs" style="color: inherit; text-decoration: inherit;">frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_nodejs/" style="color: inherit; text-decoration: inherit;">frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -810,16 +810,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_nodejs/" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse/">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_nodejs" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_nodejs/" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -828,7 +828,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -843,7 +843,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_python" style="color: inherit; text-decoration: inherit;">frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_python/" style="color: inherit; text-decoration: inherit;">frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -852,16 +852,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meter_details_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_details_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_details_python/" style="color: inherit; text-decoration: inherit;">meter_<wbr>details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse/">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="metering_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metering_type_python" style="color: inherit; text-decoration: inherit;">metering_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metering_type_python/" style="color: inherit; text-decoration: inherit;">metering_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -870,7 +870,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -885,7 +885,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_yaml" style="color: inherit; text-decoration: inherit;">frequency</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_yaml/" style="color: inherit; text-decoration: inherit;">frequency</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -894,16 +894,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_yaml/" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">Property Map</a> | <a href="#purchasemeterdetailsresponse">Property Map</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse/">Property Map</a> | <a href="#purchasemeterdetailsresponse/">Property Map</a></span>
     </dt>
     <dd><p>Represents MeterDetails</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_yaml" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_yaml/" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -912,7 +912,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -931,19 +931,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp/" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Hierarchy<wbr>Information</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterableproperty_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_csharp/" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">List&lt;Filterable<wbr>Property&gt;</a></span>
+        <span class="property-type"><a href="#filterableproperty/">List&lt;Filterable<wbr>Property&gt;</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -955,19 +955,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go/" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Hierarchy<wbr>Information</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterableproperty_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_go/" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">[]Filterable<wbr>Property</a></span>
+        <span class="property-type"><a href="#filterableproperty/">[]Filterable<wbr>Property</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -979,19 +979,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Hierarchy<wbr>Information</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterableproperty_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_java/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">List&lt;Filterable<wbr>Property&gt;</a></span>
+        <span class="property-type"><a href="#filterableproperty/">List&lt;Filterable<wbr>Property&gt;</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -1003,19 +1003,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Hierarchy<wbr>Information</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterableproperty_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_nodejs/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">Filterable<wbr>Property[]</a></span>
+        <span class="property-type"><a href="#filterableproperty/">Filterable<wbr>Property[]</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -1027,19 +1027,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python/" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Hierarchy<wbr>Information</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterable_property_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_property_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_property_python/" style="color: inherit; text-decoration: inherit;">filterable_<wbr>property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">Sequence[Filterable<wbr>Property]</a></span>
+        <span class="property-type"><a href="#filterableproperty/">Sequence[Filterable<wbr>Property]</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -1051,19 +1051,19 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformation">Property Map</a></span>
+        <span class="property-type"><a href="#hierarchyinformation/">Property Map</a></span>
     </dt>
     <dd><p>Product hierarchy information</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filterableproperty_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_yaml/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterableproperty">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#filterableproperty/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -1079,43 +1079,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_csharp/" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp/" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp/" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Description<wbr>Response</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_csharp" style="color: inherit; text-decoration: inherit;">Dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_csharp/" style="color: inherit; text-decoration: inherit;">Dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Dimensions<wbr>Response</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp/" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1124,37 +1124,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp/" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp/" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp/" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_csharp" style="color: inherit; text-decoration: inherit;">Specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_csharp/" style="color: inherit; text-decoration: inherit;">Specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#specificationresponse/">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1166,43 +1166,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_go" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_go/" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go/" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go/" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Description<wbr>Response</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_go" style="color: inherit; text-decoration: inherit;">Dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_go/" style="color: inherit; text-decoration: inherit;">Dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Dimensions<wbr>Response</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go/" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1211,37 +1211,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go/" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go/" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go/" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_go" style="color: inherit; text-decoration: inherit;">Specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_go/" style="color: inherit; text-decoration: inherit;">Specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">[]Specification<wbr>Response</a></span>
+        <span class="property-type"><a href="#specificationresponse/">[]Specification<wbr>Response</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1253,43 +1253,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_java" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_java/" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="costinformation_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java/" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java/" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Description<wbr>Response</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_java" style="color: inherit; text-decoration: inherit;">dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_java/" style="color: inherit; text-decoration: inherit;">dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Dimensions<wbr>Response</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="displayname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java/" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1298,37 +1298,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java/" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_java" style="color: inherit; text-decoration: inherit;">specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_java/" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#specificationresponse/">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1340,43 +1340,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_nodejs" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_nodejs/" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs/" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs/" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Description<wbr>Response</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_nodejs" style="color: inherit; text-decoration: inherit;">dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_nodejs/" style="color: inherit; text-decoration: inherit;">dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Dimensions<wbr>Response</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs/" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1385,37 +1385,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs/" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_nodejs" style="color: inherit; text-decoration: inherit;">specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_nodejs/" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">Specification<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#specificationresponse/">Specification<wbr>Response[]</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1427,43 +1427,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availability_information_python" style="color: inherit; text-decoration: inherit;">availability_<wbr>information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availability_information_python/" style="color: inherit; text-decoration: inherit;">availability_<wbr>information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python/" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python/" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Description<wbr>Response</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_python" style="color: inherit; text-decoration: inherit;">dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_python/" style="color: inherit; text-decoration: inherit;">dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Dimensions<wbr>Response</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python/" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -1472,37 +1472,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python/" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python/" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python/" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_python" style="color: inherit; text-decoration: inherit;">specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_python/" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">Sequence[Specification<wbr>Response]</a></span>
+        <span class="property-type"><a href="#specificationresponse/">Sequence[Specification<wbr>Response]</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1514,43 +1514,43 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_yaml" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_yaml/" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse/">Property Map</a></span>
     </dt>
     <dd><p>Availability information of the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="costinformation_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml/" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
+        <span class="property-type"><a href="#costinformationresponse/">Property Map</a></span>
     </dt>
     <dd><p>Cost information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="description_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml/" style="color: inherit; text-decoration: inherit;">description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
+        <span class="property-type"><a href="#descriptionresponse/">Property Map</a></span>
     </dt>
     <dd><p>Description related to the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="dimensions_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_yaml" style="color: inherit; text-decoration: inherit;">dimensions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_yaml/" style="color: inherit; text-decoration: inherit;">dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">Property Map</a></span>
+        <span class="property-type"><a href="#dimensionsresponse/">Property Map</a></span>
     </dt>
     <dd><p>Dimensions of the configuration</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="displayname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml/" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1559,37 +1559,37 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml/" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>list of filters supported for a product</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml/" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse/">Property Map</a></span>
     </dt>
     <dd><p>Hierarchy information of a product.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml/" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="specifications_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_yaml" style="color: inherit; text-decoration: inherit;">specifications</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_yaml/" style="color: inherit; text-decoration: inherit;">specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#specificationresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
@@ -1605,7 +1605,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_csharp" style="color: inherit; text-decoration: inherit;">Billing<wbr>Info<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_csharp/" style="color: inherit; text-decoration: inherit;">Billing<wbr>Info<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1614,10 +1614,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_csharp" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_csharp/" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1629,7 +1629,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_go" style="color: inherit; text-decoration: inherit;">Billing<wbr>Info<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_go/" style="color: inherit; text-decoration: inherit;">Billing<wbr>Info<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1638,10 +1638,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_go" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_go/" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">[]Billing<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">[]Billing<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1653,7 +1653,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_java/" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1662,10 +1662,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_java/" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1677,7 +1677,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_nodejs" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_nodejs/" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1686,10 +1686,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_nodejs" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_nodejs/" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">Billing<wbr>Meter<wbr>Details<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">Billing<wbr>Meter<wbr>Details<wbr>Response[]</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1701,7 +1701,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billing_info_url_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_info_url_python" style="color: inherit; text-decoration: inherit;">billing_<wbr>info_<wbr>url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_info_url_python/" style="color: inherit; text-decoration: inherit;">billing_<wbr>info_<wbr>url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -1710,10 +1710,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billing_meter_details_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_meter_details_python" style="color: inherit; text-decoration: inherit;">billing_<wbr>meter_<wbr>details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_meter_details_python/" style="color: inherit; text-decoration: inherit;">billing_<wbr>meter_<wbr>details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">Sequence[Billing<wbr>Meter<wbr>Details<wbr>Response]</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">Sequence[Billing<wbr>Meter<wbr>Details<wbr>Response]</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1725,7 +1725,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_yaml/" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1734,10 +1734,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_yaml/" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1753,7 +1753,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_csharp" style="color: inherit; text-decoration: inherit;">Quota<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_csharp/" style="color: inherit; text-decoration: inherit;">Quota<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1762,7 +1762,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_csharp" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_csharp/" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1771,10 +1771,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_csharp" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_csharp/" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1786,7 +1786,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_go" style="color: inherit; text-decoration: inherit;">Quota<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_go/" style="color: inherit; text-decoration: inherit;">Quota<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1795,7 +1795,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_go" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_go/" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1804,10 +1804,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_go" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_go/" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">[]Customer<wbr>Subscription<wbr>Registered<wbr>Features</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">[]Customer<wbr>Subscription<wbr>Registered<wbr>Features</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1819,7 +1819,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_java" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_java/" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1828,7 +1828,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_java" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_java/" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1837,10 +1837,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_java" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_java/" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1852,7 +1852,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_nodejs" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_nodejs/" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1861,7 +1861,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_nodejs" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_nodejs/" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1870,10 +1870,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_nodejs" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_nodejs/" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features[]</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">Customer<wbr>Subscription<wbr>Registered<wbr>Features[]</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1885,7 +1885,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quota_id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quota_id_python" style="color: inherit; text-decoration: inherit;">quota_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quota_id_python/" style="color: inherit; text-decoration: inherit;">quota_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -1894,7 +1894,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="location_placement_id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#location_placement_id_python" style="color: inherit; text-decoration: inherit;">location_<wbr>placement_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#location_placement_id_python/" style="color: inherit; text-decoration: inherit;">location_<wbr>placement_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -1903,10 +1903,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registered_features_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registered_features_python" style="color: inherit; text-decoration: inherit;">registered_<wbr>features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registered_features_python/" style="color: inherit; text-decoration: inherit;">registered_<wbr>features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Sequence[Customer<wbr>Subscription<wbr>Registered<wbr>Features]</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">Sequence[Customer<wbr>Subscription<wbr>Registered<wbr>Features]</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1918,7 +1918,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_yaml" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_yaml/" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1927,7 +1927,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_yaml" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_yaml/" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -1936,10 +1936,10 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_yaml" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_yaml/" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
@@ -1955,7 +1955,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1964,7 +1964,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_csharp" style="color: inherit; text-decoration: inherit;">State</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_csharp/" style="color: inherit; text-decoration: inherit;">State</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1979,7 +1979,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -1988,7 +1988,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_go" style="color: inherit; text-decoration: inherit;">State</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_go/" style="color: inherit; text-decoration: inherit;">State</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2003,7 +2003,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2012,7 +2012,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_java" style="color: inherit; text-decoration: inherit;">state</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_java/" style="color: inherit; text-decoration: inherit;">state</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2027,7 +2027,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2036,7 +2036,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_nodejs" style="color: inherit; text-decoration: inherit;">state</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_nodejs/" style="color: inherit; text-decoration: inherit;">state</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2051,7 +2051,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2060,7 +2060,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_python" style="color: inherit; text-decoration: inherit;">state</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_python/" style="color: inherit; text-decoration: inherit;">state</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2075,7 +2075,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2084,7 +2084,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="state_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_yaml" style="color: inherit; text-decoration: inherit;">state</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_yaml/" style="color: inherit; text-decoration: inherit;">state</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2103,7 +2103,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_csharp" style="color: inherit; text-decoration: inherit;">Attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_csharp/" style="color: inherit; text-decoration: inherit;">Attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -2112,7 +2112,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_csharp" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_csharp/" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2121,7 +2121,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_csharp" style="color: inherit; text-decoration: inherit;">Keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_csharp/" style="color: inherit; text-decoration: inherit;">Keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -2130,16 +2130,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_csharp" style="color: inherit; text-decoration: inherit;">Links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_csharp/" style="color: inherit; text-decoration: inherit;">Links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#linkresponse/">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="longdescription_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_csharp" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_csharp/" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2148,7 +2148,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_csharp" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_csharp/" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2163,7 +2163,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_go" style="color: inherit; text-decoration: inherit;">Attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_go/" style="color: inherit; text-decoration: inherit;">Attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -2172,7 +2172,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_go" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_go/" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2181,7 +2181,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_go" style="color: inherit; text-decoration: inherit;">Keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_go/" style="color: inherit; text-decoration: inherit;">Keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -2190,16 +2190,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_go" style="color: inherit; text-decoration: inherit;">Links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_go/" style="color: inherit; text-decoration: inherit;">Links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">[]Link<wbr>Response</a></span>
+        <span class="property-type"><a href="#linkresponse/">[]Link<wbr>Response</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="longdescription_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_go" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_go/" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2208,7 +2208,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_go" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_go/" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2223,7 +2223,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_java" style="color: inherit; text-decoration: inherit;">attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_java/" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -2232,7 +2232,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_java" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_java/" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2241,7 +2241,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_java" style="color: inherit; text-decoration: inherit;">keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_java/" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -2250,16 +2250,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_java" style="color: inherit; text-decoration: inherit;">links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_java/" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#linkresponse/">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="longdescription_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_java" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_java/" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2268,7 +2268,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_java" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_java/" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2283,7 +2283,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_nodejs" style="color: inherit; text-decoration: inherit;">attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_nodejs/" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -2292,7 +2292,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_nodejs" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_nodejs/" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2301,7 +2301,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_nodejs" style="color: inherit; text-decoration: inherit;">keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_nodejs/" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -2310,16 +2310,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_nodejs" style="color: inherit; text-decoration: inherit;">links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_nodejs/" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">Link<wbr>Response[]</a></span>
+        <span class="property-type"><a href="#linkresponse/">Link<wbr>Response[]</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="longdescription_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_nodejs" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_nodejs/" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2328,7 +2328,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_nodejs" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_nodejs/" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2343,7 +2343,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_python" style="color: inherit; text-decoration: inherit;">attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_python/" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -2352,7 +2352,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="description_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_type_python" style="color: inherit; text-decoration: inherit;">description_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_type_python/" style="color: inherit; text-decoration: inherit;">description_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2361,7 +2361,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_python" style="color: inherit; text-decoration: inherit;">keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_python/" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -2370,16 +2370,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_python" style="color: inherit; text-decoration: inherit;">links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_python/" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">Sequence[Link<wbr>Response]</a></span>
+        <span class="property-type"><a href="#linkresponse/">Sequence[Link<wbr>Response]</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="long_description_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#long_description_python" style="color: inherit; text-decoration: inherit;">long_<wbr>description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#long_description_python/" style="color: inherit; text-decoration: inherit;">long_<wbr>description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2388,7 +2388,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="short_description_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#short_description_python" style="color: inherit; text-decoration: inherit;">short_<wbr>description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#short_description_python/" style="color: inherit; text-decoration: inherit;">short_<wbr>description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2403,7 +2403,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_yaml" style="color: inherit; text-decoration: inherit;">attributes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_yaml/" style="color: inherit; text-decoration: inherit;">attributes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -2412,7 +2412,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_yaml" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_yaml/" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2421,7 +2421,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="keywords_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_yaml" style="color: inherit; text-decoration: inherit;">keywords</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_yaml/" style="color: inherit; text-decoration: inherit;">keywords</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -2430,16 +2430,16 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="links_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_yaml" style="color: inherit; text-decoration: inherit;">links</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_yaml/" style="color: inherit; text-decoration: inherit;">links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#linkresponse/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>Links for the product system.</p>
 </dd><dt class="property-required"
             title="Required">
         <span id="longdescription_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_yaml" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_yaml/" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2448,7 +2448,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_yaml" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_yaml/" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2467,7 +2467,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_csharp" style="color: inherit; text-decoration: inherit;">Depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_csharp/" style="color: inherit; text-decoration: inherit;">Depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -2476,7 +2476,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_csharp" style="color: inherit; text-decoration: inherit;">Height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_csharp/" style="color: inherit; text-decoration: inherit;">Height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -2485,7 +2485,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_csharp" style="color: inherit; text-decoration: inherit;">Length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_csharp/" style="color: inherit; text-decoration: inherit;">Length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -2494,7 +2494,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_csharp" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_csharp/" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2503,7 +2503,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_csharp" style="color: inherit; text-decoration: inherit;">Weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_csharp/" style="color: inherit; text-decoration: inherit;">Weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -2512,7 +2512,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weightunit_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_csharp" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_csharp/" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2521,7 +2521,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_csharp" style="color: inherit; text-decoration: inherit;">Width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_csharp/" style="color: inherit; text-decoration: inherit;">Width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -2536,7 +2536,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_go" style="color: inherit; text-decoration: inherit;">Depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_go/" style="color: inherit; text-decoration: inherit;">Depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -2545,7 +2545,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_go" style="color: inherit; text-decoration: inherit;">Height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_go/" style="color: inherit; text-decoration: inherit;">Height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -2554,7 +2554,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_go" style="color: inherit; text-decoration: inherit;">Length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_go/" style="color: inherit; text-decoration: inherit;">Length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -2563,7 +2563,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_go" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_go/" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2572,7 +2572,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_go" style="color: inherit; text-decoration: inherit;">Weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_go/" style="color: inherit; text-decoration: inherit;">Weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -2581,7 +2581,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weightunit_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_go" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_go/" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2590,7 +2590,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_go" style="color: inherit; text-decoration: inherit;">Width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_go/" style="color: inherit; text-decoration: inherit;">Width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -2605,7 +2605,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_java" style="color: inherit; text-decoration: inherit;">depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_java/" style="color: inherit; text-decoration: inherit;">depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -2614,7 +2614,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_java" style="color: inherit; text-decoration: inherit;">height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_java/" style="color: inherit; text-decoration: inherit;">height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -2623,7 +2623,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_java" style="color: inherit; text-decoration: inherit;">length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_java/" style="color: inherit; text-decoration: inherit;">length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -2632,7 +2632,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_java" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_java/" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2641,7 +2641,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_java" style="color: inherit; text-decoration: inherit;">weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_java/" style="color: inherit; text-decoration: inherit;">weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -2650,7 +2650,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weightunit_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_java" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_java/" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2659,7 +2659,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_java" style="color: inherit; text-decoration: inherit;">width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_java/" style="color: inherit; text-decoration: inherit;">width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -2674,7 +2674,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_nodejs" style="color: inherit; text-decoration: inherit;">depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_nodejs/" style="color: inherit; text-decoration: inherit;">depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -2683,7 +2683,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_nodejs" style="color: inherit; text-decoration: inherit;">height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_nodejs/" style="color: inherit; text-decoration: inherit;">height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -2692,7 +2692,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_nodejs" style="color: inherit; text-decoration: inherit;">length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_nodejs/" style="color: inherit; text-decoration: inherit;">length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -2701,7 +2701,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_nodejs" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_nodejs/" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2710,7 +2710,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_nodejs" style="color: inherit; text-decoration: inherit;">weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_nodejs/" style="color: inherit; text-decoration: inherit;">weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -2719,7 +2719,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weightunit_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_nodejs" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_nodejs/" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -2728,7 +2728,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_nodejs" style="color: inherit; text-decoration: inherit;">width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_nodejs/" style="color: inherit; text-decoration: inherit;">width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -2743,7 +2743,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_python" style="color: inherit; text-decoration: inherit;">depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_python/" style="color: inherit; text-decoration: inherit;">depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -2752,7 +2752,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_python" style="color: inherit; text-decoration: inherit;">height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_python/" style="color: inherit; text-decoration: inherit;">height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -2761,7 +2761,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_python" style="color: inherit; text-decoration: inherit;">length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_python/" style="color: inherit; text-decoration: inherit;">length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -2770,7 +2770,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_height_unit_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_height_unit_python" style="color: inherit; text-decoration: inherit;">length_<wbr>height_<wbr>unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_height_unit_python/" style="color: inherit; text-decoration: inherit;">length_<wbr>height_<wbr>unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2779,7 +2779,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_python" style="color: inherit; text-decoration: inherit;">weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_python/" style="color: inherit; text-decoration: inherit;">weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -2788,7 +2788,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_unit_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_unit_python" style="color: inherit; text-decoration: inherit;">weight_<wbr>unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_unit_python/" style="color: inherit; text-decoration: inherit;">weight_<wbr>unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -2797,7 +2797,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_python" style="color: inherit; text-decoration: inherit;">width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_python/" style="color: inherit; text-decoration: inherit;">width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -2812,7 +2812,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_yaml" style="color: inherit; text-decoration: inherit;">depth</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_yaml/" style="color: inherit; text-decoration: inherit;">depth</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -2821,7 +2821,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="height_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_yaml" style="color: inherit; text-decoration: inherit;">height</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_yaml/" style="color: inherit; text-decoration: inherit;">height</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -2830,7 +2830,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="length_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_yaml" style="color: inherit; text-decoration: inherit;">length</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_yaml/" style="color: inherit; text-decoration: inherit;">length</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -2839,7 +2839,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_yaml" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_yaml/" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2848,7 +2848,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weight_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_yaml" style="color: inherit; text-decoration: inherit;">weight</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_yaml/" style="color: inherit; text-decoration: inherit;">weight</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -2857,7 +2857,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="weightunit_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_yaml" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_yaml/" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -2866,7 +2866,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="width_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_yaml" style="color: inherit; text-decoration: inherit;">width</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_yaml/" style="color: inherit; text-decoration: inherit;">width</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -2885,7 +2885,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_csharp" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_csharp/" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -2894,10 +2894,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp/" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#supportedfiltertypes">Pulumi.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">string | <a href="#supportedfiltertypes/">Pulumi.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2909,7 +2909,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_go" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_go/" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -2918,10 +2918,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go/" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">string | <a href="#supportedfiltertypes/">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2933,7 +2933,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -2942,10 +2942,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">String | <a href="#supportedfiltertypes/">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2957,7 +2957,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_nodejs" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_nodejs/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -2966,10 +2966,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">string | <a href="#supportedfiltertypes/">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2981,7 +2981,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supported_values_python" style="color: inherit; text-decoration: inherit;">supported_<wbr>values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supported_values_python/" style="color: inherit; text-decoration: inherit;">supported_<wbr>values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -2990,10 +2990,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">str | <a href="#supportedfiltertypes/">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -3005,7 +3005,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -3014,10 +3014,10 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#supportedfiltertypes">&#34;Ship<wbr>To<wbr>Countries&#34; | &#34;Double<wbr>Encryption<wbr>Status&#34;</a></span>
+        <span class="property-type">String | <a href="#supportedfiltertypes/">&#34;Ship<wbr>To<wbr>Countries&#34; | &#34;Double<wbr>Encryption<wbr>Status&#34;</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -3033,7 +3033,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_csharp" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_csharp/" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -3042,7 +3042,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp/" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3057,7 +3057,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_go" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_go/" style="color: inherit; text-decoration: inherit;">Supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -3066,7 +3066,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go/" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3081,7 +3081,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -3090,7 +3090,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3105,7 +3105,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_nodejs" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_nodejs/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -3114,7 +3114,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3129,7 +3129,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supported_values_python" style="color: inherit; text-decoration: inherit;">supported_<wbr>values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supported_values_python/" style="color: inherit; text-decoration: inherit;">supported_<wbr>values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -3138,7 +3138,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3153,7 +3153,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml/" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -3162,7 +3162,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="type_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml/" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3181,7 +3181,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_csharp" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_csharp/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3190,7 +3190,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3199,7 +3199,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3208,7 +3208,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3223,7 +3223,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_go" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_go/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3232,7 +3232,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3241,7 +3241,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3250,7 +3250,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3265,7 +3265,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3274,7 +3274,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3283,7 +3283,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3292,7 +3292,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3307,7 +3307,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_nodejs" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_nodejs/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3316,7 +3316,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3325,7 +3325,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3334,7 +3334,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3349,7 +3349,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configuration_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_name_python" style="color: inherit; text-decoration: inherit;">configuration_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_name_python/" style="color: inherit; text-decoration: inherit;">configuration_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3358,7 +3358,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_family_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3367,7 +3367,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_line_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3376,7 +3376,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3391,7 +3391,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3400,7 +3400,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3409,7 +3409,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3418,7 +3418,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3437,7 +3437,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_csharp" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_csharp/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3446,7 +3446,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3455,7 +3455,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3464,7 +3464,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3479,7 +3479,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_go" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_go/" style="color: inherit; text-decoration: inherit;">Configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3488,7 +3488,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3497,7 +3497,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3506,7 +3506,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3521,7 +3521,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3530,7 +3530,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3539,7 +3539,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3548,7 +3548,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3563,7 +3563,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_nodejs" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_nodejs/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3572,7 +3572,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3581,7 +3581,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3590,7 +3590,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3605,7 +3605,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configuration_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_name_python" style="color: inherit; text-decoration: inherit;">configuration_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configuration_name_python/" style="color: inherit; text-decoration: inherit;">configuration_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3614,7 +3614,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_family_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3623,7 +3623,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_line_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3632,7 +3632,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="product_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3647,7 +3647,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml/" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3656,7 +3656,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3665,7 +3665,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3674,7 +3674,7 @@ The following output properties are available:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="productname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3693,7 +3693,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_csharp/" style="color: inherit; text-decoration: inherit;">Image<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3702,7 +3702,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="imageurl_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_csharp/" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3717,7 +3717,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_go/" style="color: inherit; text-decoration: inherit;">Image<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3726,7 +3726,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="imageurl_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_go/" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3741,7 +3741,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_java" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_java/" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3750,7 +3750,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="imageurl_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_java" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_java/" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3765,7 +3765,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_nodejs/" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3774,7 +3774,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="imageurl_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_nodejs/" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3789,7 +3789,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="image_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_type_python" style="color: inherit; text-decoration: inherit;">image_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_type_python/" style="color: inherit; text-decoration: inherit;">image_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3798,7 +3798,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="image_url_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_url_python" style="color: inherit; text-decoration: inherit;">image_<wbr>url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_url_python/" style="color: inherit; text-decoration: inherit;">image_<wbr>url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3813,7 +3813,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_yaml/" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3822,7 +3822,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="imageurl_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_yaml/" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3841,7 +3841,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_csharp" style="color: inherit; text-decoration: inherit;">Link<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_csharp/" style="color: inherit; text-decoration: inherit;">Link<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3850,7 +3850,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="linkurl_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_csharp" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_csharp/" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3865,7 +3865,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_go" style="color: inherit; text-decoration: inherit;">Link<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_go/" style="color: inherit; text-decoration: inherit;">Link<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3874,7 +3874,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="linkurl_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_go" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_go/" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3889,7 +3889,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_java" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_java/" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3898,7 +3898,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="linkurl_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_java" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_java/" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3913,7 +3913,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_nodejs" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_nodejs/" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3922,7 +3922,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="linkurl_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_nodejs" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_nodejs/" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3937,7 +3937,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="link_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_type_python" style="color: inherit; text-decoration: inherit;">link_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_type_python/" style="color: inherit; text-decoration: inherit;">link_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3946,7 +3946,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="link_url_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_url_python" style="color: inherit; text-decoration: inherit;">link_<wbr>url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_url_python/" style="color: inherit; text-decoration: inherit;">link_<wbr>url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -3961,7 +3961,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_yaml" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_yaml/" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3970,7 +3970,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="linkurl_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_yaml" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_yaml/" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -3989,7 +3989,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_csharp" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_csharp/" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -3998,7 +3998,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterguid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_csharp/" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4007,7 +4007,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp/" style="color: inherit; text-decoration: inherit;">Multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -4022,7 +4022,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_go" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_go/" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4031,7 +4031,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterguid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_go/" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4040,7 +4040,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go/" style="color: inherit; text-decoration: inherit;">Multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -4055,7 +4055,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4064,7 +4064,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterguid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_java/" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4073,7 +4073,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -4088,7 +4088,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_nodejs" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_nodejs/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4097,7 +4097,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterguid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_nodejs/" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4106,7 +4106,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -4121,7 +4121,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#charging_type_python" style="color: inherit; text-decoration: inherit;">charging_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#charging_type_python/" style="color: inherit; text-decoration: inherit;">charging_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4130,7 +4130,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meter_guid_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_guid_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_guid_python/" style="color: inherit; text-decoration: inherit;">meter_<wbr>guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4139,7 +4139,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -4154,7 +4154,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4163,7 +4163,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="meterguid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_yaml/" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4172,7 +4172,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -4191,7 +4191,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_csharp" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_csharp/" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4200,7 +4200,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp/" style="color: inherit; text-decoration: inherit;">Multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -4209,7 +4209,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="productid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_csharp/" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4218,7 +4218,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="skuid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_csharp" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_csharp/" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4227,7 +4227,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="termid_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_csharp" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_csharp/" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4242,7 +4242,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_go" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_go/" style="color: inherit; text-decoration: inherit;">Charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4251,7 +4251,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go/" style="color: inherit; text-decoration: inherit;">Multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -4260,7 +4260,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="productid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_go/" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4269,7 +4269,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="skuid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_go" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_go/" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4278,7 +4278,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="termid_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_go" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_go/" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4293,7 +4293,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4302,7 +4302,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -4311,7 +4311,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="productid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_java" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_java/" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4320,7 +4320,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="skuid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_java" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_java/" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4329,7 +4329,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="termid_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_java" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_java/" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4344,7 +4344,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_nodejs" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_nodejs/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4353,7 +4353,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -4362,7 +4362,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="productid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_nodejs/" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4371,7 +4371,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="skuid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_nodejs" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_nodejs/" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4380,7 +4380,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="termid_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_nodejs" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_nodejs/" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4395,7 +4395,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#charging_type_python" style="color: inherit; text-decoration: inherit;">charging_<wbr>type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#charging_type_python/" style="color: inherit; text-decoration: inherit;">charging_<wbr>type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4404,7 +4404,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -4413,7 +4413,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="product_id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_id_python" style="color: inherit; text-decoration: inherit;">product_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_id_python/" style="color: inherit; text-decoration: inherit;">product_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4422,7 +4422,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="sku_id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sku_id_python" style="color: inherit; text-decoration: inherit;">sku_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sku_id_python/" style="color: inherit; text-decoration: inherit;">sku_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4431,7 +4431,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="term_id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#term_id_python" style="color: inherit; text-decoration: inherit;">term_<wbr>id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#term_id_python/" style="color: inherit; text-decoration: inherit;">term_<wbr>id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4446,7 +4446,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml/" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4455,7 +4455,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="multiplier_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml/" style="color: inherit; text-decoration: inherit;">multiplier</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>
@@ -4464,7 +4464,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="productid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_yaml/" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4473,7 +4473,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="skuid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_yaml" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_yaml/" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4482,7 +4482,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="termid_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_yaml" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_yaml/" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4501,7 +4501,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4510,7 +4510,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp/" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4525,7 +4525,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4534,7 +4534,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go/" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4549,7 +4549,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4558,7 +4558,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4573,7 +4573,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4582,7 +4582,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -4597,7 +4597,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4606,7 +4606,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -4621,7 +4621,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -4630,7 +4630,7 @@ The following output properties are available:
 </dd><dt class="property-required"
             title="Required">
         <span id="value_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml/" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

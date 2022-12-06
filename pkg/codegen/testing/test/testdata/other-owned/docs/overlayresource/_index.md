@@ -36,7 +36,7 @@ no_edit_this_page: true
                     <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[ConfigMapOverlayArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[OverlayResourceArgs]</a></span> = None<span class="p">,</span>
+                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[OverlayResourceArgs]</a></span> = None<span class="p">,</span>
                     <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -49,15 +49,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">OverlayResourceArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">OverlayResourceArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">OverlayResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">OverlayResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">OverlayResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">OverlayResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -111,7 +111,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">OverlayResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">OverlayResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -169,7 +169,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">OverlayResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">OverlayResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -195,7 +195,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">OverlayResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">OverlayResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -223,18 +223,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp/" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Other.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay/">Other.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Other.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Other.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -245,18 +245,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go/" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay/">Enum<wbr>Overlay</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,18 +267,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java/" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay/">Enum<wbr>Overlay</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -289,18 +289,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs/" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay/">Enum<wbr>Overlay</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -311,18 +311,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python/" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay/">Enum<wbr>Overlay</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -333,18 +333,18 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="bar_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml/" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">&#34;SOME_ENUM_VALUE&#34;</a></span>
+        <span class="property-type"><a href="#enumoverlay/">&#34;SOME_ENUM_VALUE&#34;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="foo_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Property Map</a></span>
+        <span class="property-type"><a href="#configmapoverlay/">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -362,7 +362,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -377,7 +377,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -392,7 +392,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -407,7 +407,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -422,7 +422,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -437,7 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -464,7 +464,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -478,7 +478,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -492,7 +492,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -506,7 +506,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -520,7 +520,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -534,7 +534,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

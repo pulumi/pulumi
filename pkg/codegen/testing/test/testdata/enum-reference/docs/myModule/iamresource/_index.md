@@ -35,7 +35,7 @@ no_edit_this_page: true
                 <span class="nx">config</span><span class="p">:</span> <span class="nx">Optional[pulumi_google_native.iam.v1.AuditConfigArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[IamResourceArgs]</a></span> = None<span class="p">,</span>
+                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[IamResourceArgs]</a></span> = None<span class="p">,</span>
                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -48,15 +48,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">IamResourceArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">IamResource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">IamResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -110,7 +110,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -168,7 +168,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -194,7 +194,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">IamResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">IamResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -222,10 +222,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig/">Pulumi.<wbr>Google<wbr>Native.<wbr>IAM.<wbr>V1.<wbr>Inputs.<wbr>Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -236,10 +236,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig/">Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -250,10 +250,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig/">Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -264,10 +264,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig/">pulumi<wbr>Google<wbr>Native.types.input.iam.v1.<wbr>Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -278,10 +278,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Audit<wbr>Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#auditconfig/">Audit<wbr>Config<wbr>Args</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,10 +292,10 @@ The IamResource resource accepts the following [input](/docs/intro/concepts/inpu
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="config_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#auditconfig">Property Map</a></span>
+        <span class="property-type"><a href="#auditconfig/">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

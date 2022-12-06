@@ -35,7 +35,7 @@ no_edit_this_page: true
              <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Union[str, Color]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
+             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -48,15 +48,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ProviderArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ProviderArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ProviderArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -110,7 +110,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ProviderArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ProviderArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -168,7 +168,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ProviderArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ProviderArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -194,7 +194,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ProviderArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ProviderArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -222,10 +222,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_csharp/" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color</a></span>
+        <span class="property-type">string | <a href="#color/">Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -237,10 +237,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_go" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_go/" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Color</a></span>
+        <span class="property-type">string | <a href="#color/">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -252,10 +252,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_java" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_java/" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#color">Color</a></span>
+        <span class="property-type">String | <a href="#color/">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -267,10 +267,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_nodejs" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_nodejs/" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Color</a></span>
+        <span class="property-type">string | <a href="#color/">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -282,10 +282,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favorite_color_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favorite_color_python" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favorite_color_python/" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str | <a href="#color">Color</a></span>
+        <span class="property-type">str | <a href="#color/">Color</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -297,10 +297,10 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_yaml" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_yaml/" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#color">&#34;blue&#34; | &#34;red&#34;</a></span>
+        <span class="property-type">String | <a href="#color/">&#34;blue&#34; | &#34;red&#34;</a></span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd></dl>
@@ -319,7 +319,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -334,7 +334,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -349,7 +349,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -364,7 +364,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -379,7 +379,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -394,7 +394,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

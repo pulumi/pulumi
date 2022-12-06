@@ -36,7 +36,7 @@ no_edit_this_page: true
               <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[_accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
+              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -49,15 +49,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -111,7 +111,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -169,7 +169,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -195,7 +195,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -223,18 +223,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="localenum_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_csharp" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_csharp/" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">Pulumi.<wbr>Example.<wbr>Local.<wbr>My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum/">Pulumi.<wbr>Example.<wbr>Local.<wbr>My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remoteenum_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_csharp" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_csharp/" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -245,18 +245,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="localenum_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_go" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_go/" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum/">My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remoteenum_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_go" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_go/" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,18 +267,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="localenum_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_java" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_java/" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum/">My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remoteenum_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_java" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_java/" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -289,18 +289,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="localenum_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_nodejs" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_nodejs/" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">local<wbr>My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum/">local<wbr>My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remoteenum_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_nodejs" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_nodejs/" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -311,18 +311,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="local_enum_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_enum_python" style="color: inherit; text-decoration: inherit;">local_<wbr>enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_enum_python/" style="color: inherit; text-decoration: inherit;">local_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type"><a href="#myenum/">My<wbr>Enum</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remote_enum_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remote_enum_python" style="color: inherit; text-decoration: inherit;">remote_<wbr>enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remote_enum_python/" style="color: inherit; text-decoration: inherit;">remote_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -333,18 +333,18 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="localenum_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_yaml" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_yaml/" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">3.1415 | 1e-07</a></span>
+        <span class="property-type"><a href="#myenum/">3.1415 | 1e-07</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="remoteenum_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_yaml" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_yaml/" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">&#34;MANAGEMENT_UNSPECIFIED&#34; | &#34;NONE&#34; | &#34;BASIC&#34; | &#34;COMPLETE&#34;</a></span>
+        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem/">&#34;MANAGEMENT_UNSPECIFIED&#34; | &#34;NONE&#34; | &#34;BASIC&#34; | &#34;COMPLETE&#34;</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -362,7 +362,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -377,7 +377,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -392,7 +392,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -407,7 +407,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -422,7 +422,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -437,7 +437,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

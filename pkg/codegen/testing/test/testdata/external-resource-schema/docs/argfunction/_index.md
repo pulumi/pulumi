@@ -105,7 +105,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
@@ -119,7 +119,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -133,7 +133,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -147,7 +147,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
@@ -161,7 +161,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -175,7 +175,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">random:Random<wbr>Pet</span>
@@ -198,7 +198,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_csharp/" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -212,7 +212,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_go/" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -226,7 +226,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_java" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_java/" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Integer</span>
@@ -240,7 +240,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_nodejs/" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -254,7 +254,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_python/" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -268,7 +268,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="age_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_yaml" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_yaml/" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>

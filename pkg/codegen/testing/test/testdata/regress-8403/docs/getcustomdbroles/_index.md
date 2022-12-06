@@ -136,10 +136,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_csharp/" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -150,10 +150,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_go/" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -164,10 +164,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_java" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_java/" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -178,10 +178,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_nodejs/" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -192,10 +192,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_python/" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -206,10 +206,10 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_yaml" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_yaml/" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">Property Map</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult/">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -34,7 +34,7 @@ no_edit_this_page: true
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[CatArgs]</a></span> = None<span class="p">,</span>
+        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[CatArgs]</a></span> = None<span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -47,15 +47,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">CatArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">CatArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -109,7 +109,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">CatArgs</a></span>
+        <span class="property-type"><a href="#inputs/">CatArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -167,7 +167,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">CatArgs</a></span>
+        <span class="property-type"><a href="#inputs/">CatArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -193,7 +193,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">CatArgs</a></span>
+        <span class="property-type"><a href="#inputs/">CatArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -264,7 +264,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -273,7 +273,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_csharp" style="color: inherit; text-decoration: inherit;">Foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_csharp/" style="color: inherit; text-decoration: inherit;">Foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Toy&gt;</span>
@@ -281,15 +281,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_csharp" style="color: inherit; text-decoration: inherit;">Friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_csharp/" style="color: inherit; text-decoration: inherit;">Friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
+        <span class="property-type"><a href="#toy/">List&lt;Toy&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -297,7 +297,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_csharp" style="color: inherit; text-decoration: inherit;">Other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_csharp/" style="color: inherit; text-decoration: inherit;">Other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Example.<wbr>God</span>
@@ -305,10 +305,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_csharp" style="color: inherit; text-decoration: inherit;">Toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_csharp/" style="color: inherit; text-decoration: inherit;">Toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -319,7 +319,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -328,7 +328,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_go" style="color: inherit; text-decoration: inherit;">Foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_go/" style="color: inherit; text-decoration: inherit;">Foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Toy</span>
@@ -336,15 +336,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_go" style="color: inherit; text-decoration: inherit;">Friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_go/" style="color: inherit; text-decoration: inherit;">Friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">[]Toy</a></span>
+        <span class="property-type"><a href="#toy/">[]Toy</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -352,7 +352,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_go" style="color: inherit; text-decoration: inherit;">Other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_go/" style="color: inherit; text-decoration: inherit;">Other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">God</span>
@@ -360,10 +360,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_go" style="color: inherit; text-decoration: inherit;">Toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_go/" style="color: inherit; text-decoration: inherit;">Toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -374,7 +374,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -383,7 +383,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_java" style="color: inherit; text-decoration: inherit;">foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_java/" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Toy&gt;</span>
@@ -391,15 +391,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_java" style="color: inherit; text-decoration: inherit;">friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_java/" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
+        <span class="property-type"><a href="#toy/">List&lt;Toy&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -407,7 +407,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_java" style="color: inherit; text-decoration: inherit;">other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_java/" style="color: inherit; text-decoration: inherit;">other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">God</span>
@@ -415,10 +415,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_java" style="color: inherit; text-decoration: inherit;">toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_java/" style="color: inherit; text-decoration: inherit;">toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -429,7 +429,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -438,7 +438,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_nodejs" style="color: inherit; text-decoration: inherit;">foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_nodejs/" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Toy}</span>
@@ -446,15 +446,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_nodejs" style="color: inherit; text-decoration: inherit;">friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_nodejs/" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy[]</a></span>
+        <span class="property-type"><a href="#toy/">Toy[]</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -462,7 +462,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_nodejs" style="color: inherit; text-decoration: inherit;">other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_nodejs/" style="color: inherit; text-decoration: inherit;">other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">God</span>
@@ -470,10 +470,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_nodejs" style="color: inherit; text-decoration: inherit;">toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_nodejs/" style="color: inherit; text-decoration: inherit;">toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -484,7 +484,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -493,7 +493,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_python" style="color: inherit; text-decoration: inherit;">foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_python/" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Toy]</span>
@@ -501,15 +501,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_python" style="color: inherit; text-decoration: inherit;">friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_python/" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Sequence[Toy]</a></span>
+        <span class="property-type"><a href="#toy/">Sequence[Toy]</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -517,7 +517,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_python" style="color: inherit; text-decoration: inherit;">other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_python/" style="color: inherit; text-decoration: inherit;">other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">God</span>
@@ -525,10 +525,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_python" style="color: inherit; text-decoration: inherit;">toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_python/" style="color: inherit; text-decoration: inherit;">toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -539,7 +539,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -548,7 +548,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="foes_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_yaml" style="color: inherit; text-decoration: inherit;">foes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foes_yaml/" style="color: inherit; text-decoration: inherit;">foes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;Property Map&gt;</span>
@@ -556,15 +556,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="friends_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_yaml" style="color: inherit; text-decoration: inherit;">friends</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#friends_yaml/" style="color: inherit; text-decoration: inherit;">friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#toy/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property- property-replacement"
             title="">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -572,7 +572,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="other_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_yaml" style="color: inherit; text-decoration: inherit;">other</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#other_yaml/" style="color: inherit; text-decoration: inherit;">other</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">example:God</span>
@@ -580,10 +580,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="toy_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_yaml" style="color: inherit; text-decoration: inherit;">toy</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#toy_yaml/" style="color: inherit; text-decoration: inherit;">toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Property Map</a></span>
+        <span class="property-type"><a href="#toy/">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -606,15 +606,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_csharp" style="color: inherit; text-decoration: inherit;">Associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_csharp/" style="color: inherit; text-decoration: inherit;">Associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_csharp/" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -622,7 +622,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_csharp" style="color: inherit; text-decoration: inherit;">Wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_csharp/" style="color: inherit; text-decoration: inherit;">Wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
@@ -636,15 +636,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_go" style="color: inherit; text-decoration: inherit;">Associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_go/" style="color: inherit; text-decoration: inherit;">Associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_go" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_go/" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -652,7 +652,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_go" style="color: inherit; text-decoration: inherit;">Wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_go/" style="color: inherit; text-decoration: inherit;">Wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
@@ -666,15 +666,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_java" style="color: inherit; text-decoration: inherit;">associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_java/" style="color: inherit; text-decoration: inherit;">associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_java" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_java/" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -682,7 +682,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_java" style="color: inherit; text-decoration: inherit;">wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_java/" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Double</span>
@@ -696,15 +696,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_nodejs" style="color: inherit; text-decoration: inherit;">associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_nodejs/" style="color: inherit; text-decoration: inherit;">associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_nodejs/" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -712,7 +712,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_nodejs" style="color: inherit; text-decoration: inherit;">wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_nodejs/" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -726,15 +726,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_python" style="color: inherit; text-decoration: inherit;">associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_python/" style="color: inherit; text-decoration: inherit;">associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy/">Toy</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_python/" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -742,7 +742,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_python" style="color: inherit; text-decoration: inherit;">wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_python/" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
@@ -756,15 +756,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_yaml" style="color: inherit; text-decoration: inherit;">associated</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#associated_yaml/" style="color: inherit; text-decoration: inherit;">associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Property Map</a></span>
+        <span class="property-type"><a href="#toy/">Property Map</a></span>
     </dt>
     <dd></dd><dt class="property-optional property-replacement"
             title="Optional">
         <span id="color_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_yaml" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_yaml/" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -772,7 +772,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="wear_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_yaml" style="color: inherit; text-decoration: inherit;">wear</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#wear_yaml/" style="color: inherit; text-decoration: inherit;">wear</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Number</span>

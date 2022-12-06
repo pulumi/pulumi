@@ -592,11 +592,11 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	case *schema.ObjectType:
 		tokenName := tokenToName(t.Token)
 		// Links to anchor tags on the same page must be lower-cased.
-		href = "#" + strings.ToLower(tokenName)
+		href = "#" + strings.ToLower(tokenName) + "/"
 	case *schema.EnumType:
 		tokenName := tokenToName(t.Token)
 		// Links to anchor tags on the same page must be lower-cased.
-		href = "#" + strings.ToLower(tokenName)
+		href = "#" + strings.ToLower(tokenName) + "/"
 	case *schema.UnionType:
 		var elements []string
 		for _, e := range t.ElementTypes {
@@ -797,7 +797,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: "#inputs",
+				Link: "#inputs/",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -849,7 +849,7 @@ func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool)
 			Name: "args",
 			Type: propertyType{
 				Name: name + "Args",
-				Link: "#inputs",
+				Link: "#inputs/",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -914,7 +914,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 			Type: propertyType{
 				Name:            typeName,
 				DescriptionName: descriptionName,
-				Link:            "#inputs",
+				Link:            "#inputs/",
 			},
 			Comment: ctorArgsArgComment,
 		})
@@ -1113,7 +1113,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 			// a) we will force the replace at the engine level
 			// b) we are told that the provider will require a replace
 			IsReplaceOnChanges: prop.ReplaceOnChanges || prop.WillReplaceOnChanges,
-			Link:               "#" + propID,
+			Link:               "#" + propID + "/",
 			Types:              propTypes,
 		})
 	}
@@ -1580,7 +1580,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 			for i := 0; i < len(stateProps); i++ {
 				id := "state_" + stateProps[i].ID
 				stateProps[i].ID = id
-				stateProps[i].Link = "#" + id
+				stateProps[i].Link = "#" + id + "/"
 			}
 			stateInputs[lang] = stateProps
 		}
@@ -1836,7 +1836,7 @@ func (mod *modContext) genIndex() indexData {
 		modName := mod.getModuleFileName()
 		displayName := modFilenameToDisplayName(modName)
 		modules = append(modules, indexEntry{
-			Link:        getModuleLink(displayName),
+			Link:        getModuleLink(displayName) + "/",
 			DisplayName: displayName,
 		})
 	}
@@ -1846,7 +1846,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        getResourceLink(name),
+			Link:        getResourceLink(name) + "/",
 			DisplayName: name,
 		})
 	}
@@ -1856,7 +1856,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        getFunctionLink(name),
+			Link:        getFunctionLink(name) + "/",
 			DisplayName: strings.Title(name),
 		})
 	}

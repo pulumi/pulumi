@@ -34,7 +34,7 @@ no_edit_this_page: true
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[WorkloadArgs]</a></span> = None<span class="p">,</span>
+             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">Optional[WorkloadArgs]</a></span> = None<span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -47,15 +47,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">WorkloadArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Workload</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">WorkloadArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -109,7 +109,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs/">WorkloadArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -167,7 +167,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs/">WorkloadArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -193,7 +193,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">WorkloadArgs</a></span>
+        <span class="property-type"><a href="#inputs/">WorkloadArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -264,7 +264,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -273,10 +273,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_csharp" style="color: inherit; text-decoration: inherit;">Pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_csharp/" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Outputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
+        <span class="property-type"><a href="#pod/">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Outputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -287,7 +287,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -296,10 +296,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_go" style="color: inherit; text-decoration: inherit;">Pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_go/" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod<wbr>Type</a></span>
+        <span class="property-type"><a href="#pod/">Pod<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -310,7 +310,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -319,10 +319,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_java" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_java/" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod</a></span>
+        <span class="property-type"><a href="#pod/">Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -333,7 +333,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -342,10 +342,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_nodejs" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_nodejs/" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">pulumi<wbr>Kubernetestypesoutputcorev1Pod</a></span>
+        <span class="property-type"><a href="#pod/">pulumi<wbr>Kubernetestypesoutputcorev1Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -356,7 +356,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -365,10 +365,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_python" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_python/" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod</a></span>
+        <span class="property-type"><a href="#pod/">Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -379,7 +379,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -388,10 +388,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="pod_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_yaml" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_yaml/" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Property Map</a></span>
+        <span class="property-type"><a href="#pod/">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

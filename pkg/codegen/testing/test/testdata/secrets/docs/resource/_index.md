@@ -40,7 +40,7 @@ no_edit_this_page: true
              <span class="nx">foo_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, str]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ResourceArgs</a></span><span class="p">,</span>
+             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">ResourceArgs</a></span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -53,15 +53,15 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ResourceArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -115,7 +115,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -173,7 +173,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -199,7 +199,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs">ResourceArgs</a></span>
+        <span class="property-type"><a href="#inputs/">ResourceArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -227,23 +227,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configarray_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_csharp" style="color: inherit; text-decoration: inherit;">Config<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_csharp/" style="color: inherit; text-decoration: inherit;">Config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">List&lt;Config<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#config/">List&lt;Config<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configmap_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_csharp" style="color: inherit; text-decoration: inherit;">Config<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_csharp/" style="color: inherit; text-decoration: inherit;">Config<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Config<wbr>Args&gt;</span>
@@ -251,7 +251,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -259,7 +259,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="fooarray_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_csharp" style="color: inherit; text-decoration: inherit;">Foo<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_csharp/" style="color: inherit; text-decoration: inherit;">Foo<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -267,7 +267,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foomap_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_csharp" style="color: inherit; text-decoration: inherit;">Foo<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_csharp/" style="color: inherit; text-decoration: inherit;">Foo<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, string&gt;</span>
@@ -281,23 +281,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go" style="color: inherit; text-decoration: inherit;">Config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_go/" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configarray_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_go" style="color: inherit; text-decoration: inherit;">Config<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_go/" style="color: inherit; text-decoration: inherit;">Config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">[]Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">[]Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configmap_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_go" style="color: inherit; text-decoration: inherit;">Config<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_go/" style="color: inherit; text-decoration: inherit;">Config<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Config<wbr>Args</span>
@@ -305,7 +305,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -313,7 +313,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="fooarray_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_go" style="color: inherit; text-decoration: inherit;">Foo<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_go/" style="color: inherit; text-decoration: inherit;">Foo<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -321,7 +321,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foomap_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_go" style="color: inherit; text-decoration: inherit;">Foo<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_go/" style="color: inherit; text-decoration: inherit;">Foo<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]string</span>
@@ -335,23 +335,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configarray_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_java" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_java/" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">List&lt;Config<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#config/">List&lt;Config<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configmap_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_java" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_java/" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Config<wbr>Args&gt;</span>
@@ -359,7 +359,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -367,7 +367,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="fooarray_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_java" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_java/" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -375,7 +375,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foomap_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_java" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_java/" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,String&gt;</span>
@@ -389,23 +389,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configarray_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_nodejs" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_nodejs/" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args[]</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args[]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configmap_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_nodejs" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_nodejs/" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Config<wbr>Args}</span>
@@ -413,7 +413,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -421,7 +421,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="fooarray_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_nodejs" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_nodejs/" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -429,7 +429,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foomap_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_nodejs" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_nodejs/" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: string}</span>
@@ -443,23 +443,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_python/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config/">Config<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="config_array_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_array_python" style="color: inherit; text-decoration: inherit;">config_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_array_python/" style="color: inherit; text-decoration: inherit;">config_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Sequence[Config<wbr>Args]</a></span>
+        <span class="property-type"><a href="#config/">Sequence[Config<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="config_map_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_map_python" style="color: inherit; text-decoration: inherit;">config_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_map_python/" style="color: inherit; text-decoration: inherit;">config_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Config<wbr>Args]</span>
@@ -467,7 +467,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -475,7 +475,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_array_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_array_python" style="color: inherit; text-decoration: inherit;">foo_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_array_python/" style="color: inherit; text-decoration: inherit;">foo_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -483,7 +483,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_map_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_map_python" style="color: inherit; text-decoration: inherit;">foo_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_map_python/" style="color: inherit; text-decoration: inherit;">foo_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, str]</span>
@@ -497,23 +497,23 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="config_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml" style="color: inherit; text-decoration: inherit;">config</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_yaml/" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Property Map</a></span>
+        <span class="property-type"><a href="#config/">Property Map</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configarray_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_yaml" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_yaml/" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#config/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="configmap_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_yaml" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configmap_yaml/" style="color: inherit; text-decoration: inherit;">config<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;Property Map&gt;</span>
@@ -521,7 +521,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foo_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -529,7 +529,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="fooarray_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_yaml" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#fooarray_yaml/" style="color: inherit; text-decoration: inherit;">foo<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -537,7 +537,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="foomap_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_yaml" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foomap_yaml/" style="color: inherit; text-decoration: inherit;">foo<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String&gt;</span>
@@ -558,7 +558,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -573,7 +573,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -588,7 +588,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -603,7 +603,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -618,7 +618,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -633,7 +633,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -660,7 +660,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -674,7 +674,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go/" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -688,7 +688,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -702,7 +702,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -716,7 +716,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -730,7 +730,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="foo_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml/" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

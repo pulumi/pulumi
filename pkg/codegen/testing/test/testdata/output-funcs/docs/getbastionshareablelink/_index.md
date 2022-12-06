@@ -112,7 +112,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_csharp" style="color: inherit; text-decoration: inherit;">Bastion<wbr>Host<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_csharp/" style="color: inherit; text-decoration: inherit;">Bastion<wbr>Host<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -121,7 +121,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp/" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -130,10 +130,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_csharp" style="color: inherit; text-decoration: inherit;">Vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_csharp/" style="color: inherit; text-decoration: inherit;">Vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -145,7 +145,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_go" style="color: inherit; text-decoration: inherit;">Bastion<wbr>Host<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_go/" style="color: inherit; text-decoration: inherit;">Bastion<wbr>Host<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -154,7 +154,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go/" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -163,10 +163,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_go" style="color: inherit; text-decoration: inherit;">Vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_go/" style="color: inherit; text-decoration: inherit;">Vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">[]Bastion<wbr>Shareable<wbr>Link</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">[]Bastion<wbr>Shareable<wbr>Link</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -178,7 +178,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_java" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_java/" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -187,7 +187,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java/" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -196,10 +196,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_java" style="color: inherit; text-decoration: inherit;">vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_java/" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -211,7 +211,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_nodejs" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_nodejs/" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -220,7 +220,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs/" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -229,10 +229,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_nodejs" style="color: inherit; text-decoration: inherit;">vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_nodejs/" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">Bastion<wbr>Shareable<wbr>Link[]</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">Bastion<wbr>Shareable<wbr>Link[]</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -244,7 +244,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastion_host_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastion_host_name_python" style="color: inherit; text-decoration: inherit;">bastion_<wbr>host_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastion_host_name_python/" style="color: inherit; text-decoration: inherit;">bastion_<wbr>host_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -253,7 +253,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python/" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -262,10 +262,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_python" style="color: inherit; text-decoration: inherit;">vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_python/" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">Sequence[Bastion<wbr>Shareable<wbr>Link]</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">Sequence[Bastion<wbr>Shareable<wbr>Link]</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -277,7 +277,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_yaml" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_yaml/" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -286,7 +286,7 @@ The following arguments are supported:
 </dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml/" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -295,10 +295,10 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="vms_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_yaml" style="color: inherit; text-decoration: inherit;">vms</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_yaml/" style="color: inherit; text-decoration: inherit;">vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#bastionshareablelink/">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>List of VM references.</p>
 </dd></dl>
@@ -319,7 +319,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp/" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -334,7 +334,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go/" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -349,7 +349,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -364,7 +364,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -379,7 +379,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="next_link_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python/" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -394,7 +394,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml/" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -419,7 +419,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_csharp" style="color: inherit; text-decoration: inherit;">Vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_csharp/" style="color: inherit; text-decoration: inherit;">Vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -434,7 +434,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_go" style="color: inherit; text-decoration: inherit;">Vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_go/" style="color: inherit; text-decoration: inherit;">Vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -449,7 +449,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_java" style="color: inherit; text-decoration: inherit;">vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_java/" style="color: inherit; text-decoration: inherit;">vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -464,7 +464,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_nodejs" style="color: inherit; text-decoration: inherit;">vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_nodejs/" style="color: inherit; text-decoration: inherit;">vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -479,7 +479,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_python" style="color: inherit; text-decoration: inherit;">vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_python/" style="color: inherit; text-decoration: inherit;">vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -494,7 +494,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_yaml" style="color: inherit; text-decoration: inherit;">vm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_yaml/" style="color: inherit; text-decoration: inherit;">vm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
