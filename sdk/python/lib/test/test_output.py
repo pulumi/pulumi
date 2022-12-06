@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import asyncio
 import unittest
 from typing import Mapping, Optional, Sequence, cast
@@ -295,3 +296,76 @@ class OutputFormatTests(unittest.TestCase):
         x = Output.format("{0}, {s}", i, s=s)
         x_val = await x.future()
         self.assertEqual(x_val, "1, hi")
+
+class OutputJsonTests(unittest.TestCase):
+    @pulumi_test
+    async def test_basic(self):
+        i = Output.from_input([0, 1])
+        x = Output.json_dumps(i)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+
+    # from_input handles _most_ nested outputs, so we need to use user defined types to "work around"
+    # that, which means we also need to use a custom encoder
+    class CustomClass(object):
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+    class CustomEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, OutputJsonTests.CustomClass):
+                return (o.a, o.b)
+            return json.JSONEncoder.default(self, o)
+
+    @pulumi_test
+    async def test_nested(self):
+        i = Output.from_input(OutputJsonTests.CustomClass(Output.from_input(0), Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+
+    @pulumi_test
+    async def test_nested_unknown(self):
+        future = asyncio.Future()
+        future.set_result(None)
+        is_known = asyncio.Future()
+        is_known.set_result(False)
+        unknown = Output(resources=set(), future=future, is_known=is_known)
+
+        i = Output.from_input(OutputJsonTests.CustomClass(unknown, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), False)
+
+    @pulumi_test
+    async def test_nested_secret(self):
+        future = asyncio.Future()
+        future.set_result(0)
+        future_true = asyncio.Future()
+        future_true.set_result(True)
+        inner = Output(resources=set(), future=future, is_known=future_true, is_secret=future_true)
+
+        i = Output.from_input(OutputJsonTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), True)
+        self.assertEqual(await x.is_known(), True)
+
+    @pulumi_test
+    async def test_nested_dependencies(self):
+        future = asyncio.Future()
+        future.set_result(0)
+        future_true = asyncio.Future()
+        future_true.set_result(True)
+        resource = object()
+        inner = Output(resources=set([resource]), future=future, is_known=future_true)
+
+        i = Output.from_input(OutputJsonTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+        self.assertIn(resource, await x.resources())
