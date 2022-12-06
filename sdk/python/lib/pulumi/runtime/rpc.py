@@ -29,6 +29,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Union,
     TYPE_CHECKING,
     cast,
 )
@@ -45,7 +46,7 @@ from .. import urn as urn_util
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import CustomResource, Resource, ProviderResource
+    from ..resource import Resource, CustomResource, ProviderResource
     from ..asset import (
         FileAsset,
         RemoteAsset,
@@ -518,11 +519,11 @@ def deserialize_properties(
         if props_struct[_special_sig_key] == _special_asset_sig:
             # This is an asset. Re-hydrate this object into an Asset.
             if "path" in props_struct:
-                return FileAsset(props_struct["path"])
+                return FileAsset(str(props_struct["path"]))
             if "text" in props_struct:
-                return StringAsset(props_struct["text"])
+                return StringAsset(str(props_struct["text"]))
             if "uri" in props_struct:
-                return RemoteAsset(props_struct["uri"])
+                return RemoteAsset(str(props_struct["uri"]))
             raise AssertionError(
                 "Invalid asset encountered when unmarshalling resource property"
             )
@@ -531,9 +532,9 @@ def deserialize_properties(
             if "assets" in props_struct:
                 return AssetArchive(deserialize_property(props_struct["assets"]))
             if "path" in props_struct:
-                return FileArchive(props_struct["path"])
+                return FileArchive(str(props_struct["path"]))
             if "uri" in props_struct:
-                return RemoteArchive(props_struct["uri"])
+                return RemoteArchive(str(props_struct["uri"]))
             raise AssertionError(
                 "Invalid archive encountered when unmarshalling resource property"
             )
@@ -570,9 +571,11 @@ def deserialize_properties(
 
 def deserialize_resource(
     ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None
-) -> "Resource":
-    urn = ref_struct["urn"]
-    version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
+) -> Union["Resource", str]:
+    urn = str(ref_struct["urn"])
+    version = (
+        str(ref_struct["packageVersion"]) if "packageVersion" in ref_struct else ""
+    )
 
     urn_parts = urn_util._parse_urn(urn)
     urn_name = urn_parts.urn_name
