@@ -125,14 +125,6 @@ jobs:
         if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
-      # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
-      - name: Configure Windows pagefile
-        uses: aaronfriel/action-configure-pagefile@v2.0-beta.1
-        if: ${{ runner.os == 'Windows' }}
-        with:
-          minimum-size: 4GB
-          maximum-size: 4GB
-          disk-root: "D:"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
