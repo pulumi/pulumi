@@ -52,8 +52,6 @@
         "runtime/closure/serializeClosure.ts",
         "runtime/closure/utils.ts",
         "runtime/closure/v8.ts",
-        "runtime/closure/v8_v10andLower.ts",
-        "runtime/closure/v8_v11andHigher.ts",
 
         "runtime/asyncIterableUtil.ts",
         "runtime/config.ts",
