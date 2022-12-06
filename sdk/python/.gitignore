@@ -6,3 +6,4 @@
 .venv/
 venv/
 .coverage
+build/

@@ -39,4 +39,6 @@ class StackOutputTest(LanghostTest):
             "output": 1.0,
             "class": {"num": 1.0},
             "recursive": {"a": 1.0, "b": 2.0},
+            "duplicate_output_0": {'num': 1.0},
+            "duplicate_output_1": {'num': 1.0},
         }, outputs)
