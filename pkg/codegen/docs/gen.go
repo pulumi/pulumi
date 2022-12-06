@@ -701,7 +701,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: "#inputs",
+				Link: "#inputs/",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -749,7 +749,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: "#inputs",
+				Link: "#inputs/",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -927,7 +927,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		Type: propertyType{
 			Name:            "Optional[ResourceOptions]",
 			DescriptionName: "ResourceOptions",
-			Link:            "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions",
+			Link:            "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/",
 		},
 		Comment: ctorOptsArgComment,
 	})
@@ -1836,7 +1836,7 @@ func (mod *modContext) genIndex() indexData {
 		modName := mod.getModuleFileName()
 		displayName := modFilenameToDisplayName(modName)
 		modules = append(modules, indexEntry{
-			Link:        getModuleLink(displayName) + "/",
+			Link:        getModuleLink(displayName),
 			DisplayName: displayName,
 		})
 	}

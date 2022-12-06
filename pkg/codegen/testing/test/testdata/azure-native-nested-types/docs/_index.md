@@ -13,7 +13,7 @@ A native Pulumi package for creating and managing Azure resources.
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="documentdb//" title="documentdb"><span class="api-symbol api-symbol--module"></span>documentdb</a></li>
+    <li><a href="documentdb/" title="documentdb"><span class="api-symbol api-symbol--module"></span>documentdb</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>

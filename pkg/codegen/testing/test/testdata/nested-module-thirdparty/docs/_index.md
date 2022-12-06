@@ -13,7 +13,7 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="deeply//" title="deeply"><span class="api-symbol api-symbol--module"></span>deeply</a></li>
+    <li><a href="deeply/" title="deeply"><span class="api-symbol api-symbol--module"></span>deeply</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>
