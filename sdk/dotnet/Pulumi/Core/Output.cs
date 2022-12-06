@@ -5,11 +5,88 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
 namespace Pulumi
 {
+    /// <summary>
+    /// Internal class used for Output.JsonSerialize.
+    /// </summary>
+    sealed class OutputJsonConverter : System.Text.Json.Serialization.JsonConverterFactory
+    {
+        private sealed class OutputJsonConverterInner<T> : System.Text.Json.Serialization.JsonConverter<Output<T>>
+        {
+            readonly OutputJsonConverter Parent;
+            readonly JsonConverter<T> Converter;
+
+            public OutputJsonConverterInner(OutputJsonConverter parent, JsonSerializerOptions options) {
+                Parent = parent;
+                Converter = (JsonConverter<T>)options.GetConverter(typeof(T));
+            }
+
+            public override Output<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                throw new NotImplementedException("JsonSerialize only supports writing to JSON");
+            }
+
+            public override void Write(Utf8JsonWriter writer, Output<T> value, JsonSerializerOptions options)
+            {
+                // Sadly we have to block here as converters aren't async
+                var result = value.DataTask.Result;
+                // Add the seen dependencies to the resources set
+                Parent.Resources.AddRange(result.Resources);
+                if (!result.IsKnown)
+                {
+                    // If the result isn't known we can just write a null and flag the parent to reject this whole serialization
+                    writer.WriteNullValue();
+                    Parent.SeenUnknown = true;
+                }
+                else
+                {
+                    // The result is known we can just serialize the inner value, but flag the parent if we've seen a secret
+                    Converter.Write(writer, result.Value, options);
+                    Parent.SeenSecret |= result.IsSecret;
+                }
+            }
+        }
+
+        public bool SeenUnknown {get; private set;}
+        public bool SeenSecret {get; private set;}
+        public ImmutableHashSet<Resource> SeenResources => Resources.ToImmutableHashSet();
+        private readonly HashSet<Resource> Resources;
+
+        public OutputJsonConverter()
+        {
+            Resources = new HashSet<Resource>();
+        }
+
+        public override bool CanConvert(Type typeToConvert)
+        {
+            if (typeToConvert.IsGenericType)
+            {
+                var genericType = typeToConvert.GetGenericTypeDefinition();
+                return genericType == typeof(Output<>);
+            }
+            return false;
+        }
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
+        {
+            Type elementType = typeToConvert.GetGenericArguments()[0];
+            JsonConverter converter = (JsonConverter)Activator.CreateInstance(
+                typeof(OutputJsonConverterInner<>).MakeGenericType(
+                    new Type[] { elementType }),
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public,
+                    binder: null,
+                    args: new object[] { this, options },
+                    culture: null)!;
+            return converter;
+        }
+    }
+
     /// <summary>
     /// Useful static utility methods for both creating and working with <see cref="Output{T}"/>s.
     /// </summary>
@@ -106,6 +183,70 @@ namespace Pulumi
 
         internal static Output<ImmutableArray<T>> Concat<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
             => Tuple(values1, values2).Apply(tuple => tuple.Item1.AddRange(tuple.Item2));
+
+        /// <summary>
+        /// Uses <see cref="System.Text.Json.JsonSerializer.SerializeAsync{T}"/> to serialize the given <see
+        /// cref="Output{T}"/> value into a JSON string.
+        /// </summary>
+        public static Output<string> JsonSerialize<T>(Output<T> value, System.Text.Json.JsonSerializerOptions? options = null)
+        {
+            if (value == null) {
+                throw new ArgumentNullException("value");
+            }
+
+            async Task<OutputData<string>> GetData()
+            {
+                var result = await value.DataTask;
+
+                if (!result.IsKnown) {
+                    return new OutputData<string>(result.Resources, "", false, result.IsSecret);
+                }
+
+                var utf8 = new System.IO.MemoryStream();
+                // This needs to handle nested potentially secret and unknown Output values, we do this by
+                // hooking options to handle any seen Output<T> values.
+
+                // TODO: This can be simplified in net6.0 to just new System.Text.Json.JsonSerializerOptions(options);
+                var internalOptions = new System.Text.Json.JsonSerializerOptions();
+                internalOptions.AllowTrailingCommas = options?.AllowTrailingCommas ?? internalOptions.AllowTrailingCommas;
+                if (options != null)
+                {
+                    foreach(var converter in options.Converters)
+                    {
+                        internalOptions.Converters.Add(converter);
+                    }
+                }
+                internalOptions.DefaultBufferSize = options?.DefaultBufferSize ?? internalOptions.DefaultBufferSize;
+                internalOptions.DictionaryKeyPolicy = options?.DictionaryKeyPolicy ?? internalOptions.DictionaryKeyPolicy;
+                internalOptions.Encoder = options?.Encoder ?? internalOptions.Encoder;
+                internalOptions.IgnoreNullValues = options?.IgnoreNullValues ?? internalOptions.IgnoreNullValues;
+                internalOptions.IgnoreReadOnlyProperties = options?.IgnoreReadOnlyProperties ?? internalOptions.IgnoreReadOnlyProperties;
+                internalOptions.MaxDepth = options?.MaxDepth ?? internalOptions.MaxDepth;
+                internalOptions.PropertyNameCaseInsensitive = options?.PropertyNameCaseInsensitive ?? internalOptions.PropertyNameCaseInsensitive;
+                internalOptions.PropertyNamingPolicy = options?.PropertyNamingPolicy ?? internalOptions.PropertyNamingPolicy;
+                internalOptions.ReadCommentHandling = options?.ReadCommentHandling ?? internalOptions.ReadCommentHandling;
+                internalOptions.WriteIndented = options?.WriteIndented ?? internalOptions.WriteIndented;
+
+                // Add the magic converter to allow us to do nested outputs
+                var outputConverter = new OutputJsonConverter();
+                internalOptions.Converters.Add(outputConverter);
+
+                await System.Text.Json.JsonSerializer.SerializeAsync<T>(utf8, result.Value, internalOptions);
+
+                // Check if the result is valid or not, that is if we saw any nulls we can just throw away the json string made and return unknown
+                if (outputConverter.SeenUnknown) {
+                    return new OutputData<string>(result.Resources.Union(outputConverter.SeenResources), "", false, result.IsSecret | outputConverter.SeenSecret);
+                }
+
+                // GetBuffer returns the entire byte array backing the MemoryStream, wrapping a span of the
+                // correct length around that rather than just calling ToArray() saves an array copy.
+                var json = System.Text.Encoding.UTF8.GetString(new ReadOnlySpan<byte>(utf8.GetBuffer(), 0, (int)utf8.Length));
+
+                return new OutputData<string>(result.Resources.Union(outputConverter.SeenResources), json, true, result.IsSecret | outputConverter.SeenSecret);
+            }
+
+            return new Output<string>(GetData());
+        }
     }
 
     /// <summary>
@@ -128,7 +269,7 @@ namespace Pulumi
     /// <see cref="Output{T}"/>s are a key part of how Pulumi tracks dependencies between <see
     /// cref="Resource"/>s. Because the values of outputs are not available until resources are
     /// created, these are represented using the special <see cref="Output{T}"/>s type, which
-    /// internally represents two things: an eventually available value of the output and 
+    /// internally represents two things: an eventually available value of the output and
     /// the dependency on the source(s) of the output value.
     /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
     /// Additionally, they carry along dependency information.

@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,11 +10,29 @@ using Xunit;
 
 namespace Pulumi.Tests.Core
 {
+    // Simple struct used for JSON tests
+    public struct TestStructure {
+        public int X { get; set;}
+
+        private int y;
+
+        public string Z => (y+1).ToString();
+
+        public TestStructure(int x, int y) {
+            X = x;
+            this.y = y;
+        }
+    }
+
     public class OutputTests : PulumiTest
     {
         private static Output<T> CreateOutput<T>(T value, bool isKnown, bool isSecret = false)
             => new Output<T>(Task.FromResult(OutputData.Create(
                 ImmutableHashSet<Resource>.Empty, value, isKnown, isSecret)));
+
+        private static Output<T> CreateOutput<T>(IEnumerable<Resource> resources, T value, bool isKnown, bool isSecret = false)
+            => new Output<T>(Task.FromResult(OutputData.Create(
+                ImmutableHashSet.CreateRange(resources), value, isKnown, isSecret)));
 
         public class PreviewTests
         {
@@ -618,6 +637,122 @@ namespace Pulumi.Tests.Core
                     Assert.True(data.IsSecret);
                     Assert.Equal(0, data.Value);
                 });
+
+            [Fact]
+            public Task JsonSerializeBasic()
+                => RunInNormal(async () =>
+                {
+                    var o1 = CreateOutput(new int[]{ 0, 1} , true);
+                    var o2 = Output.JsonSerialize(o1);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.True(data.IsKnown);
+                    Assert.False(data.IsSecret);
+                    Assert.Equal("[0,1]", data.Value);
+                });
+
+            [Fact]
+            public Task JsonSerializeNested()
+                => RunInNormal(async () =>
+                {
+                    var o1 = CreateOutput(new Output<int>[] {
+                        CreateOutput(0, true),
+                        CreateOutput(1, true),
+                    }, true);
+                    var o2 = Output.JsonSerialize(o1);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.True(data.IsKnown);
+                    Assert.False(data.IsSecret);
+                    Assert.Equal("[0,1]", data.Value);
+                });
+
+            [Fact]
+            public Task JsonSerializeNestedUnknown()
+                => RunInNormal(async () =>
+                {
+                    var o1 = CreateOutput(new Output<int>[] {
+                        CreateOutput<int>(default, false),
+                        CreateOutput(1, true),
+                    }, true);
+                    var o2 = Output.JsonSerialize(o1);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.False(data.IsKnown);
+                    Assert.False(data.IsSecret);
+                });
+
+            [Fact]
+            public Task JsonSerializeNestedSecret()
+                => RunInNormal(async () =>
+                {
+                    var o1 = CreateOutput(new Output<int>[] {
+                        CreateOutput(0, true, true),
+                        CreateOutput(1, true),
+                    }, true);
+                    var o2 = Output.JsonSerialize(o1);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.True(data.IsKnown);
+                    Assert.True(data.IsSecret);
+                    Assert.Equal("[0,1]", data.Value);
+                });
+
+            [Fact]
+            public Task JsonSerializeWithOptions()
+                => RunInNormal(async () =>
+                {
+                    var v = new System.Collections.Generic.Dictionary<string, TestStructure>();
+                    v.Add("a", new TestStructure(1, 2));
+                    v.Add("b", new TestStructure(int.MinValue, int.MaxValue));
+                    var o1 = CreateOutput(v, true);
+                    var options = new System.Text.Json.JsonSerializerOptions();
+                    options.WriteIndented = true;
+                    var o2 = Output.JsonSerialize(o1, options);
+                    var data = await o2.DataTask.ConfigureAwait(false);
+                    Assert.True(data.IsKnown);
+                    Assert.False(data.IsSecret);
+                    var expected = @"{
+  ""a"": {
+    ""X"": 1,
+    ""Z"": ""3""
+  },
+  ""b"": {
+    ""X"": -2147483648,
+    ""Z"": ""-2147483648""
+  }
+}";
+                    Assert.Equal(expected, data.Value);
+                });
+
+            [Fact]
+            public async Task JsonSerializeNestedDependencies() {
+                // We need a custom mock setup for this because new CustomResource will call into the
+                // deployment to try and register.
+                var runner = new Moq.Mock<IRunner>(Moq.MockBehavior.Strict);
+                runner.Setup(r => r.RegisterTask(Moq.It.IsAny<string>(), Moq.It.IsAny<Task>()));
+
+                var logger = new Moq.Mock<IEngineLogger>(Moq.MockBehavior.Strict);
+                logger.Setup(l => l.DebugAsync(Moq.It.IsAny<string>(), Moq.It.IsAny<Resource>(), Moq.It.IsAny<int?>(), Moq.It.IsAny<bool?>())).Returns(Task.CompletedTask);
+
+                var mock = new Moq.Mock<IDeploymentInternal>(Moq.MockBehavior.Strict);
+                mock.Setup(d => d.IsDryRun).Returns(false);
+                mock.Setup(d => d.Stack).Returns(() => null!);
+                mock.Setup(d => d.Runner).Returns(runner.Object);
+                mock.Setup(d => d.Logger).Returns(logger.Object);
+                mock.Setup(d => d.ReadOrRegisterResource(Moq.It.IsAny<Resource>(), Moq.It.IsAny<bool>(), Moq.It.IsAny<System.Func<string, Resource>>(), Moq.It.IsAny<ResourceArgs>(), Moq.It.IsAny<ResourceOptions>()));
+
+                Deployment.Instance = new DeploymentInstance(mock.Object);
+
+                var resource = new CustomResource("type", "name", null);
+
+                var o1 = CreateOutput(new Output<int>[] {
+                    CreateOutput(new Resource[] { resource}, 0, true, true),
+                    CreateOutput(1, true),
+                }, true);
+                var o2 = Output.JsonSerialize(o1);
+                var data = await o2.DataTask.ConfigureAwait(false);
+                Assert.True(data.IsKnown);
+                Assert.True(data.IsSecret);
+                Assert.Contains(resource, data.Resources);
+                Assert.Equal("[0,1]", data.Value);
+            }
         }
     }
 }
