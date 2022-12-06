@@ -31,6 +31,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
+func boolPointer(b bool) *bool {
+	return &b
+}
+
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -83,6 +87,7 @@ func TestDynamicPython(t *testing.T) {
 				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
 			},
 		}},
+		UseSharedVirtualEnv: boolPointer(false),
 	})
 }
 
@@ -144,7 +149,8 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, localProvid
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
-		Quick: true,
+		Quick:               true,
+		UseSharedVirtualEnv: boolPointer(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
