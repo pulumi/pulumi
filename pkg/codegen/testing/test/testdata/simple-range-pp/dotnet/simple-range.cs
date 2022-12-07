@@ -1,20 +1,24 @@
 using System.Collections.Generic;
 using Pulumi;
-using Aws = Pulumi.Aws;
+using Random = Pulumi.Random;
 
 return await Deployment.RunAsync(() => 
 {
-    var bucket = new List<Aws.S3.Bucket>();
-    for (var rangeIndex = 0; rangeIndex < 10; rangeIndex++)
+    var numbers = new List<Random.RandomInteger>();
+    for (var rangeIndex = 0; rangeIndex < 2; rangeIndex++)
     {
         var range = new { Value = rangeIndex };
-        bucket.Add(new Aws.S3.Bucket($"bucket-{range.Value}", new()
+        numbers.Add(new Random.RandomInteger($"numbers-{range.Value}", new()
         {
-            Website = new Aws.S3.Inputs.BucketWebsiteArgs
-            {
-                IndexDocument = $"index-{range.Value}.html",
-            },
+            Min = 1,
+            Max = range.Value,
+            Seed = $"seed{range.Value}",
         }));
     }
+    return new Dictionary<string, object?>
+    {
+        ["first"] = numbers[0].Id,
+        ["second"] = numbers[1].Id,
+    };
 });
 
