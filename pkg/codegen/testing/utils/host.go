@@ -9,10 +9,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
+type SchemaProvider struct {
+	name    string
+	version string
+}
+
 // NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
 // enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
 // program, it will panic.
-func NewHost(schemaDirectoryPath string) plugin.Host {
+func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvider) plugin.Host {
 	mockProvider := func(name tokens.Package, version string) *deploytest.PluginLoader {
 		return deploytest.NewProviderLoader(name, semver.MustParse(version), func() (plugin.Provider, error) {
 			panic(fmt.Sprintf(
@@ -22,37 +27,55 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
+	var pluginLoaders []*deploytest.PluginLoader
+
+	for _, v := range providers {
+		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))
+	}
+
 	// For the pulumi/pulumi repository, this must be kept in sync with the makefile and/or committed
 	// schema files in the given schema directory. This is the minimal set of schemas that must be
 	// supplied.
 	return deploytest.NewPluginHost(nil, nil, nil,
-		mockProvider("aws", "4.15.0"),
-		mockProvider("aws", "4.26.0"),
-		mockProvider("aws", "4.36.0"),
-		mockProvider("aws", "4.37.1"),
-		mockProvider("aws", "5.16.2"),
-		mockProvider("azure", "4.18.0"),
-		mockProvider("azure-native", "1.28.0"),
-		mockProvider("azure-native", "1.29.0"),
-		mockProvider("random", "4.2.0"),
-		mockProvider("random", "4.3.1"),
-		mockProvider("kubernetes", "3.7.0"),
-		mockProvider("kubernetes", "3.7.2"),
-		mockProvider("eks", "0.37.1"),
-		mockProvider("google-native", "0.18.2"),
-		mockProvider("aws-native", "0.13.0"),
-		mockProvider("docker", "3.1.0"),
-		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
-		mockProvider("aws", "5.4.0"),
-		mockProvider("azure-native", "1.56.0"),
-		mockProvider("eks", "0.40.0"),
-		mockProvider("aws-native", "0.13.0"),
-		mockProvider("docker", "3.1.0"),
-		mockProvider("awsx", "1.0.0-beta.5"),
-		mockProvider("kubernetes", "3.0.0"),
-		mockProvider("aws", "4.37.1"),
+		pluginLoaders...,
+	)
+}
 
-		mockProvider("other", "0.1.0"),
-		mockProvider("synthetic", "1.0.0"),
+// NewHost creates a schema-only plugin host, supporting multiple package versions in tests. This
+// enables running tests offline. If this host is used to load a plugin, that is, to run a Pulumi
+// program, it will panic.
+func NewHost(schemaDirectoryPath string) plugin.Host {
+	// For the pulumi/pulumi repository, this must be kept in sync with the makefile and/or committed
+	// schema files in the given schema directory. This is the minimal set of schemas that must be
+	// supplied.
+	return NewHostWithProviders(schemaDirectoryPath,
+		SchemaProvider{"aws", "4.15.0"},
+		SchemaProvider{"aws", "4.26.0"},
+		SchemaProvider{"aws", "4.36.0"},
+		SchemaProvider{"aws", "4.37.1"},
+		SchemaProvider{"aws", "5.16.2"},
+		SchemaProvider{"azure", "4.18.0"},
+		SchemaProvider{"azure-native", "1.28.0"},
+		SchemaProvider{"azure-native", "1.29.0"},
+		SchemaProvider{"random", "4.2.0"},
+		SchemaProvider{"random", "4.3.1"},
+		SchemaProvider{"kubernetes", "3.7.0"},
+		SchemaProvider{"kubernetes", "3.7.2"},
+		SchemaProvider{"eks", "0.37.1"},
+		SchemaProvider{"google-native", "0.18.2"},
+		SchemaProvider{"aws-native", "0.13.0"},
+		SchemaProvider{"docker", "3.1.0"},
+		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
+		SchemaProvider{"aws", "5.4.0"},
+		SchemaProvider{"azure-native", "1.56.0"},
+		SchemaProvider{"eks", "0.40.0"},
+		SchemaProvider{"aws-native", "0.13.0"},
+		SchemaProvider{"docker", "4.0.0-alpha.0"},
+		SchemaProvider{"awsx", "1.0.0-beta.5"},
+		SchemaProvider{"kubernetes", "3.0.0"},
+		SchemaProvider{"aws", "4.37.1"},
+
+		SchemaProvider{"other", "0.1.0"},
+		SchemaProvider{"synthetic", "1.0.0"},
 	)
 }

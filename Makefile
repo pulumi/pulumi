@@ -191,6 +191,7 @@ get_schemas: \
 			schema-eks!0.37.1           \
 			schema-eks!0.40.0           \
 			schema-docker!3.1.0         \
+			schema-docker!4.0.0-alpha.0 \
 			schema-awsx!1.0.0-beta.5    \
 			schema-aws-native!0.13.0    \
 			schema-google-native!0.18.2
