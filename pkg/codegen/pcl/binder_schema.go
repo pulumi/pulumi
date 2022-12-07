@@ -33,6 +33,8 @@ type packageSchema struct {
 	schema schema.PackageReference
 
 	// These maps map from canonical tokens to actual tokens.
+	//
+	// Both maps take `nil` to mean uninitialized.
 	resourceTokenMap map[string]string
 	functionTokenMap map[string]string
 }
@@ -42,8 +44,24 @@ type packageOpts struct {
 	pluginDownloadURL string
 }
 
+// Lookup a PCL invoke token in a schema.
+func LookupFunction(pkg schema.PackageReference, token string) (*schema.Function, bool, error) {
+	s, _, ok, err := newPackageSchema(pkg).LookupFunction(token)
+	return s, ok, err
+}
+
+// Lookup a PCL resource token in a schema.
+func LookupResource(pkg schema.PackageReference, token string) (*schema.Resource, bool, error) {
+	r, _, ok, err := newPackageSchema(pkg).LookupResource(token)
+	return r, ok, err
+}
+
 func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
 	contract.Assert(ps != nil)
+
+	if ps.functionTokenMap == nil {
+		ps.initFunctionMap()
+	}
 
 	schemaToken, ok := ps.functionTokenMap[token]
 	if !ok {
@@ -61,6 +79,10 @@ func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string,
 func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
 	contract.Assert(ps != nil)
 
+	if ps.resourceTokenMap == nil {
+		ps.initResourceMap()
+	}
+
 	schemaToken, ok := ps.resourceTokenMap[token]
 	if !ok {
 		token = canonicalizeToken(token, ps.schema)
@@ -72,6 +94,26 @@ func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string,
 
 	res, ok, err := ps.schema.Resources().Get(schemaToken)
 	return res, token, ok, err
+}
+
+func (ps *packageSchema) initFunctionMap() {
+	functionTokenMap := map[string]string{}
+	for it := ps.schema.Functions().Range(); it.Next(); {
+		functionTokenMap[canonicalizeToken(it.Token(), ps.schema)] = it.Token()
+	}
+	ps.functionTokenMap = functionTokenMap
+}
+
+func (ps *packageSchema) initResourceMap() {
+	resourceTokenMap := map[string]string{}
+	for it := ps.schema.Resources().Range(); it.Next(); {
+		resourceTokenMap[canonicalizeToken(it.Token(), ps.schema)] = it.Token()
+	}
+	ps.resourceTokenMap = resourceTokenMap
+}
+
+func newPackageSchema(pkg schema.PackageReference) *packageSchema {
+	return &packageSchema{schema: pkg}
 }
 
 type PackageInfo struct {
@@ -122,20 +164,7 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 		return nil, err
 	}
 
-	resourceTokenMap := map[string]string{}
-	for it := pkg.Resources().Range(); it.Next(); {
-		resourceTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
-	}
-	functionTokenMap := map[string]string{}
-	for it := pkg.Functions().Range(); it.Next(); {
-		functionTokenMap[canonicalizeToken(it.Token(), pkg)] = it.Token()
-	}
-
-	schema := &packageSchema{
-		schema:           pkg,
-		resourceTokenMap: resourceTokenMap,
-		functionTokenMap: functionTokenMap,
-	}
+	schema := newPackageSchema(pkg)
 
 	c.m.Lock()
 	defer c.m.Unlock()

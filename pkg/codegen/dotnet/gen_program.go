@@ -260,23 +260,23 @@ func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{
 	})
 }
 
-func (g *generator) findFunctionSchema(function string, location *hcl.Range) (*schema.Function, bool) {
-	function = LowerCamelCase(function)
+func (g *generator) findFunctionSchema(token string, location *hcl.Range) (*schema.Function, bool) {
 	for _, pkg := range g.program.PackageReferences() {
-		for it := pkg.Functions().Range(); it.Next(); {
-			if strings.HasSuffix(it.Token(), function) {
-				fn, err := it.Function()
-
-				if err != nil {
-					g.warnf(location, "Could not find function schema for '%s'; err %s", function, err.Error())
-					return nil, false
-				}
-
-				return fn, true
-			}
+		fn, ok, err := pcl.LookupFunction(pkg, token)
+		if !ok {
+			continue
 		}
+		if err != nil {
+			g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Summary:  fmt.Sprintf("Could not find function schema for '%s'", token),
+				Detail:   err.Error(),
+				Subject:  location,
+			})
+			return nil, false
+		}
+		return fn, true
 	}
-
 	return nil, false
 }
 
@@ -287,12 +287,8 @@ func (g *generator) isFunctionInvoke(localVariable *pcl.LocalVariable) (*schema.
 		call := value.(*model.FunctionCallExpression)
 		switch call.Name {
 		case pcl.Invoke:
-			args := call.Args[0]
-			_, fullFunctionName := g.functionName(args)
-			functionNameParts := strings.Split(fullFunctionName, ".")
-			functionName := functionNameParts[len(functionNameParts)-1]
-			location := value.SyntaxNode().Range().Ptr()
-			return g.findFunctionSchema(functionName, location)
+			token := call.Args[0].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
+			return g.findFunctionSchema(token, call.Args[0].SyntaxNode().Range().Ptr())
 		}
 	}
 
