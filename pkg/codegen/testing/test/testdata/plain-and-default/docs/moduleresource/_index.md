@@ -31,7 +31,7 @@ no_edit_this_page: true
 <pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
                    <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
                    <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
                    <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
@@ -49,7 +49,7 @@ no_edit_this_page: true
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ModuleResourceArgs</a></span><span class="p">,</span>
-                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
+                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -129,7 +129,7 @@ no_edit_this_page: true
         class="property-optional" title="Optional">
         <span>opts</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/">ResourceOptions</a></span>
+        <span class="property-type"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">ResourceOptions</a></span>
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 

@@ -927,7 +927,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		Type: propertyType{
 			Name:            "Optional[ResourceOptions]",
 			DescriptionName: "ResourceOptions",
-			Link:            "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/",
+			Link:            "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions",
 		},
 		Comment: ctorOptsArgComment,
 	})
