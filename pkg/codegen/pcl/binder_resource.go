@@ -305,6 +305,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					diags := rangeExpr.Typecheck(false)
 					contract.Assert(len(diags) == 0)
 
+					rangeValue = model.IntType
+
 					node.VariableType = rangeExpr.Type()
 				default:
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range())

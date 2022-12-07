@@ -110,7 +110,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "simple-range",
 		Description: "Simple range as int expression translation",
-		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables},
 	},
 	{
 		Directory:   "azure-native",
