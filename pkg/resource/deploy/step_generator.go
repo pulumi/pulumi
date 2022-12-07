@@ -973,7 +973,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						dependentResource := toReplace[i].res
 
 						// If we already deleted this resource due to some other DBR, don't do it again.
-						if sg.deletes[dependentResource.URN] {
+						if sg.pendingDeletes[dependentResource] {
 							continue
 						}
 
@@ -992,10 +992,16 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 							dependentResource.URN, urn)
 
-						steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
+						// This resource might already be pending-delete
+						if dependentResource.Delete {
+							steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource))
+						} else {
+							steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
+						}
 						// Mark the condemned resource as deleted. We won't know until later in the deployment whether
 						// or not we're going to be replacing this resource.
 						sg.deletes[dependentResource.URN] = true
+						sg.pendingDeletes[dependentResource] = true
 					}
 				}
 

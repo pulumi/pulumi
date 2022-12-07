@@ -1,6 +1,6 @@
 ---
 title: "configstation"
-title_tag: "configstation.configstation"
+title_tag: "configstation Package"
 meta_desc: ""
 layout: api
 no_edit_this_page: true
@@ -10,6 +10,11 @@ no_edit_this_page: true
 <!-- Do not edit by hand unless you're certain you know what you are doing! -->
 
 
+
+<h2 id="modules">Modules</h2>
+<ul class="api">
+    <li><a href="config/" title="config"><span class="api-symbol api-symbol--module"></span>config</a></li>
+</ul>
 
 <h2 id="resources">Resources</h2>
 <ul class="api">

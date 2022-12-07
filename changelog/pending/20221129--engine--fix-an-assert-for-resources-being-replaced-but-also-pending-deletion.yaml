@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix an assert for resources being replaced but also pending deletion.

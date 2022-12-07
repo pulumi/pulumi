@@ -16,6 +16,14 @@
         "defaultInfo": {
           "environment": ["FAVE_COLOR"]
         }
+      },
+      "secretSandwiches": {
+        "type": "array",
+        "items": {
+         "$ref": "#/types/configstation:config:sandwich"
+        },
+        "description": "Super duper secret sandwiches.\n",
+        "secret": true
       }
     }
   },

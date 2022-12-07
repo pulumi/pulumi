@@ -4437,3 +4437,173 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Because we made the B first that's what should end up in the state file
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB"), snap.Resources[1].URN)
 }
+
+func TestPendingDeleteReplacement(t *testing.T) {
+	// Test for https://github.com/pulumi/pulumi/issues/11391, check that if we
+	// try to replace a resource via delete before replace, but fail to delete
+	// it, then rerun that we don't error.
+
+	t.Parallel()
+
+	cloudID := 0
+	cloudState := map[resource.ID]resource.PropertyMap{}
+
+	failDeletionOfTypB := true
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					id := resource.ID("")
+					if !preview {
+						id = resource.ID(fmt.Sprintf("%d", cloudID))
+						cloudID = cloudID + 1
+						cloudState[id] = news
+					}
+					return id, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					// Fail if anything in cloud state still points to us
+					for _, res := range cloudState {
+						for _, v := range res {
+							if v.IsString() && v.StringValue() == string(id) {
+								return resource.StatusOK, fmt.Errorf("Can not delete %s", id)
+							}
+						}
+					}
+
+					if strings.Contains(string(urn), "typB") && failDeletionOfTypB {
+						return resource.StatusOK, fmt.Errorf("Could not delete typB")
+					}
+
+					delete(cloudState, id)
+					return resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					if strings.Contains(string(urn), "typA") {
+						if !olds["foo"].DeepEquals(news["foo"]) {
+							return plugin.DiffResult{
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"foo"},
+								DetailedDiff: map[string]plugin.PropertyDiff{
+									"foo": {
+										Kind:      plugin.DiffUpdateReplace,
+										InputDiff: true,
+									},
+								},
+								DeleteBeforeReplace: true,
+							}, nil
+						}
+					}
+					if strings.Contains(string(urn), "typB") {
+						if !olds["parent"].DeepEquals(news["parent"]) {
+							return plugin.DiffResult{
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"parent"},
+								DetailedDiff: map[string]plugin.PropertyDiff{
+									"parent": {
+										Kind:      plugin.DiffUpdateReplace,
+										InputDiff: true,
+									},
+								},
+								DeleteBeforeReplace: false,
+							}, nil
+						}
+						if !olds["frob"].DeepEquals(news["frob"]) {
+							return plugin.DiffResult{
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"frob"},
+								DetailedDiff: map[string]plugin.PropertyDiff{
+									"frob": {
+										Kind:      plugin.DiffUpdateReplace,
+										InputDiff: true,
+									},
+								},
+								DeleteBeforeReplace: false,
+							}, nil
+						}
+					}
+
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					assert.Fail(t, "Didn't expect update to be called")
+					return nil, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	inB := "active"
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urnA, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: insA,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"parent": idA,
+				"frob":   inB,
+			}),
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"parent": {urnA},
+			},
+			Dependencies: []resource.URN{urnA},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resources
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+
+	// Trigger a replacement of B but fail to delete it
+	inB = "inactive"
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	// Assert that this fails, we should have two B's one marked to delete
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
+	assert.False(t, snap.Resources[1].Delete)
+	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
+	assert.False(t, snap.Resources[2].Delete)
+	assert.Equal(t, snap.Resources[3].Type, tokens.Type("pkgA:m:typB"))
+	assert.True(t, snap.Resources[3].Delete)
+
+	// Now trigger a replacment of A, which will also trigger B to replace
+	insA = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	failDeletionOfTypB = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	// Assert this is ok, we should have just one A and B
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
+	assert.False(t, snap.Resources[1].Delete)
+	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
+	assert.False(t, snap.Resources[2].Delete)
+}

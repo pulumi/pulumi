@@ -46,6 +46,22 @@ namespace Configstation.Pulumi.Configstation
         [Input("favoriteColor", json: true)]
         public InputUnion<string, Configstation.Pulumi.Configstation.Color>? FavoriteColor { get; set; }
 
+        [Input("secretSandwiches", json: true)]
+        private InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>? _secretSandwiches;
+
+        /// <summary>
+        /// Super duper secret sandwiches.
+        /// </summary>
+        public InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs> SecretSandwiches
+        {
+            get => _secretSandwiches ?? (_secretSandwiches = new InputList<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>());
+            set
+            {
+                var emptySecret = Output.CreateSecret(ImmutableArray.Create<Configstation.Pulumi.Configstation.Config.Inputs.SandwichArgs>());
+                _secretSandwiches = Output.All(value, emptySecret).Apply(v => v[0]);
+            }
+        }
+
         public ProviderArgs()
         {
             FavoriteColor = Utilities.GetEnv("FAVE_COLOR");
