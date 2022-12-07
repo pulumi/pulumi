@@ -200,8 +200,7 @@ func runConvert(
 	}
 	defer contract.IgnoreClose(host)
 	loader := schema.NewPluginLoader(host)
-	// TODO: Mapper will be used by tfconvert (and others as we add them)
-	_, err = convert.NewPluginMapper(host, from, mappings)
+	mapper, err := convert.NewPluginMapper(host, from, mappings)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
 	}
@@ -225,7 +224,7 @@ func runConvert(
 			return result.FromError(fmt.Errorf("unrecognized source %s", from))
 		}
 	} else if from == "tf" {
-		proj, program, err = tfgen.Eject(cwd, loader)
+		proj, program, err = tfgen.Eject(cwd, loader, mapper)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
 		}
