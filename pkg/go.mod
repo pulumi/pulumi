@@ -36,7 +36,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.48.1-0.20221205185749-86e7d56df231
+	github.com/pulumi/pulumi/sdk/v3 v3.48.1-0.20221207010559-e812f69ba562
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.2.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
@@ -73,7 +73,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.6.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
-	github.com/pulumi/pulumi-yaml v1.0.3
+	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
