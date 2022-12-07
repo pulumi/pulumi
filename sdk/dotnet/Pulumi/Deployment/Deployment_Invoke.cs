@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,8 +19,20 @@ namespace Pulumi
         Task<T> IDeployment.InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options)
             => InvokeAsync<T>(token, args, options, convertResult: true);
 
+        async Task<T> IDeployment.InvokeSingleAsync<T>(string token, InvokeArgs args, InvokeOptions? options)
+        {
+            var outputs = await InvokeAsync<Dictionary<string, T>>(token, args, options, convertResult: true);
+            return outputs.Values.First();
+        }
+
         Output<T> IDeployment.Invoke<T>(string token, InvokeArgs args, InvokeOptions? options)
             => new Output<T>(RawInvoke<T>(token, args, options));
+
+        Output<T> IDeployment.InvokeSingle<T>(string token, InvokeArgs args, InvokeOptions? options)
+        {
+            var outputResult = new Output<Dictionary<string, T>>(RawInvoke<Dictionary<string, T>>(token, args, options));
+            return outputResult.Apply(outputs => outputs.Values.First());
+        }
 
         private async Task<OutputData<T>> RawInvoke<T>(string token, InvokeArgs args, InvokeOptions? options)
         {

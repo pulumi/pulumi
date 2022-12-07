@@ -42,6 +42,18 @@ namespace Pulumi
         /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
         /// provider plugin.
         /// <para/>
+        /// The result of <see cref="InvokeSingleAsync"/> will be a <see cref="Task"/> resolved to the
+        /// result value of the provider plugin that returns a bag of properties with a single value that is returned.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        Task<T> InvokeSingleAsync<T>(string token, InvokeArgs args, InvokeOptions? options = null);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
         /// The result of <see cref="Invoke"/> will be a <see cref="Output"/> resolved to the
         /// result value of the provider plugin.
         /// <para/>
@@ -49,6 +61,18 @@ namespace Pulumi
         /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
         /// </summary>
         Output<T> Invoke<T>(string token, InvokeArgs args, InvokeOptions? options = null);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
+        /// The result of <see cref="InvokeSingle"/> will be a <see cref="Output"/> resolved to the
+        /// result value of the provider plugin that returns a bag of properties with a single value that is returned.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        Output<T> InvokeSingle<T>(string token, InvokeArgs args, InvokeOptions? options = null);
 
         /// <summary>
         /// Same as <see cref="InvokeAsync{T}(string, InvokeArgs, InvokeOptions)"/>, however the

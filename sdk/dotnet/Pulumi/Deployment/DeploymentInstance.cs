@@ -54,6 +54,22 @@ namespace Pulumi
         /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
         /// provider plugin.
         /// <para/>
+        /// The result of <see cref="InvokeSingle"/> will be a <see cref="Output"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// Similar to the earlier <see cref="InvokeSingleAsync"/>, but supports passing input values
+        /// and returns an Output value.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        public Output<T> InvokeSingle<T>(string token, InvokeArgs args, InvokeOptions? options = null)
+            => _deployment.InvokeSingle<T>(token, args, options);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
         /// The result of <see cref="InvokeAsync"/> will be a <see cref="Task"/> resolved to the
         /// result value of the provider plugin.
         /// <para/>
@@ -62,6 +78,19 @@ namespace Pulumi
         /// </summary>
         public Task<T> InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options = null)
             => _deployment.InvokeAsync<T>(token, args, options);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
+        /// The result of <see cref="InvokeSingleAsync"/> will be a <see cref="Task"/> resolved to the
+        /// result value of the provider plugin which is expected to be a dictionary with single value.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        public Task<T> InvokeSingleAsync<T>(string token, InvokeArgs args, InvokeOptions? options = null)
+            => _deployment.InvokeSingleAsync<T>(token, args, options);
 
         /// <summary>
         /// Same as <see cref="InvokeAsync{T}(string, InvokeArgs, InvokeOptions)"/>, however the
