@@ -117,7 +117,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_csharp/" style="color: inherit; text-decoration: inherit;">Owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_csharp" style="color: inherit; text-decoration: inherit;">Owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -126,7 +126,7 @@ The following arguments are supported:
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executableusers_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_csharp/" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_csharp" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -136,10 +136,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_csharp/" style="color: inherit; text-decoration: inherit;">Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_csharp" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -147,7 +147,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="nameregex_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_csharp/" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -160,7 +160,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sortascending_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_csharp/" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_csharp" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -175,7 +175,7 @@ options to narrow down the list AWS returns.</p>
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_go/" style="color: inherit; text-decoration: inherit;">Owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_go" style="color: inherit; text-decoration: inherit;">Owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -184,7 +184,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executableusers_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_go/" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_go" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -194,10 +194,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_go/" style="color: inherit; text-decoration: inherit;">Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_go" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">[]Get<wbr>Ami<wbr>Ids<wbr>Filter</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">[]Get<wbr>Ami<wbr>Ids<wbr>Filter</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -205,7 +205,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="nameregex_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_go/" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -218,7 +218,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sortascending_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_go/" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_go" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -233,7 +233,7 @@ options to narrow down the list AWS returns.</p>
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -242,7 +242,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executableusers_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -252,10 +252,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -263,7 +263,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="nameregex_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -276,7 +276,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sortascending_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
@@ -291,7 +291,7 @@ options to narrow down the list AWS returns.</p>
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_nodejs/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_nodejs" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -300,7 +300,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executableusers_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_nodejs/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_nodejs" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -310,10 +310,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_nodejs/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_nodejs" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">Get<wbr>Ami<wbr>Ids<wbr>Filter[]</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">Get<wbr>Ami<wbr>Ids<wbr>Filter[]</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -321,7 +321,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="nameregex_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_nodejs/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -334,7 +334,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sortascending_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_nodejs/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_nodejs" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
@@ -349,7 +349,7 @@ options to narrow down the list AWS returns.</p>
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_python/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_python" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -358,7 +358,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executable_users_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executable_users_python/" style="color: inherit; text-decoration: inherit;">executable_<wbr>users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executable_users_python" style="color: inherit; text-decoration: inherit;">executable_<wbr>users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -368,10 +368,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_python/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_python" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">Sequence[Get<wbr>Ami<wbr>Ids<wbr>Filter]</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">Sequence[Get<wbr>Ami<wbr>Ids<wbr>Filter]</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -379,7 +379,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="name_regex_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_regex_python/" style="color: inherit; text-decoration: inherit;">name_<wbr>regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_regex_python" style="color: inherit; text-decoration: inherit;">name_<wbr>regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -392,7 +392,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sort_ascending_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sort_ascending_python/" style="color: inherit; text-decoration: inherit;">sort_<wbr>ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sort_ascending_python" style="color: inherit; text-decoration: inherit;">sort_<wbr>ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -407,7 +407,7 @@ options to narrow down the list AWS returns.</p>
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -416,7 +416,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="executableusers_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -426,10 +426,10 @@ permission on  the image. Valid items are the numeric account ID or <code>self</
 </dd><dt class="property-optional"
             title="Optional">
         <span id="filters_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd><p>One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -437,7 +437,7 @@ are several valid keys, for a full reference, check out
 </dd><dt class="property-optional"
             title="Optional">
         <span id="nameregex_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -450,7 +450,7 @@ options to narrow down the list AWS returns.</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sortascending_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
@@ -474,7 +474,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -483,7 +483,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_csharp/" style="color: inherit; text-decoration: inherit;">Ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_csharp" style="color: inherit; text-decoration: inherit;">Ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -491,7 +491,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_csharp/" style="color: inherit; text-decoration: inherit;">Owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_csharp" style="color: inherit; text-decoration: inherit;">Owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -499,7 +499,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executableusers_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_csharp/" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_csharp" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -507,15 +507,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_csharp/" style="color: inherit; text-decoration: inherit;">Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_csharp" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="nameregex_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_csharp/" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -523,7 +523,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sortascending_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_csharp/" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_csharp" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -537,7 +537,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -546,7 +546,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_go/" style="color: inherit; text-decoration: inherit;">Ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_go" style="color: inherit; text-decoration: inherit;">Ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -554,7 +554,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_go/" style="color: inherit; text-decoration: inherit;">Owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_go" style="color: inherit; text-decoration: inherit;">Owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -562,7 +562,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executableusers_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_go/" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_go" style="color: inherit; text-decoration: inherit;">Executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -570,15 +570,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_go/" style="color: inherit; text-decoration: inherit;">Filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_go" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">[]Get<wbr>Ami<wbr>Ids<wbr>Filter</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">[]Get<wbr>Ami<wbr>Ids<wbr>Filter</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="nameregex_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_go/" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -586,7 +586,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sortascending_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_go/" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_go" style="color: inherit; text-decoration: inherit;">Sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -600,7 +600,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -609,7 +609,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_java/" style="color: inherit; text-decoration: inherit;">ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_java" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -617,7 +617,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -625,7 +625,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executableusers_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -633,15 +633,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="nameregex_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -649,7 +649,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sortascending_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
@@ -663,7 +663,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -672,7 +672,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_nodejs/" style="color: inherit; text-decoration: inherit;">ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_nodejs" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -680,7 +680,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_nodejs/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_nodejs" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -688,7 +688,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executableusers_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_nodejs/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_nodejs" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -696,15 +696,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_nodejs/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_nodejs" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">Get<wbr>Ami<wbr>Ids<wbr>Filter[]</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">Get<wbr>Ami<wbr>Ids<wbr>Filter[]</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="nameregex_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_nodejs/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -712,7 +712,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sortascending_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_nodejs/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_nodejs" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
@@ -726,7 +726,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -735,7 +735,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_python/" style="color: inherit; text-decoration: inherit;">ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_python" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -743,7 +743,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_python/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_python" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -751,7 +751,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executable_users_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executable_users_python/" style="color: inherit; text-decoration: inherit;">executable_<wbr>users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executable_users_python" style="color: inherit; text-decoration: inherit;">executable_<wbr>users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -759,15 +759,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_python/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_python" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">Sequence[Get<wbr>Ami<wbr>Ids<wbr>Filter]</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">Sequence[Get<wbr>Ami<wbr>Ids<wbr>Filter]</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="name_regex_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_regex_python/" style="color: inherit; text-decoration: inherit;">name_<wbr>regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_regex_python" style="color: inherit; text-decoration: inherit;">name_<wbr>regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -775,7 +775,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sort_ascending_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sort_ascending_python/" style="color: inherit; text-decoration: inherit;">sort_<wbr>ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sort_ascending_python" style="color: inherit; text-decoration: inherit;">sort_<wbr>ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -789,7 +789,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -798,7 +798,7 @@ The following output properties are available:
 </dd><dt class="property-"
             title="">
         <span id="ids_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_yaml/" style="color: inherit; text-decoration: inherit;">ids</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_yaml" style="color: inherit; text-decoration: inherit;">ids</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -806,7 +806,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="owners_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml/" style="color: inherit; text-decoration: inherit;">owners</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -814,7 +814,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="executableusers_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml/" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -822,15 +822,15 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="filters_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml/" style="color: inherit; text-decoration: inherit;">filters</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter/">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-"
             title="">
         <span id="nameregex_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml/" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -838,7 +838,7 @@ The following output properties are available:
     <dd></dd><dt class="property-"
             title="">
         <span id="sortascending_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml/" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Boolean</span>
@@ -862,7 +862,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp/" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -870,7 +870,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_csharp/" style="color: inherit; text-decoration: inherit;">Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_csharp" style="color: inherit; text-decoration: inherit;">Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -884,7 +884,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go/" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -892,7 +892,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_go/" style="color: inherit; text-decoration: inherit;">Values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_go" style="color: inherit; text-decoration: inherit;">Values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -906,7 +906,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java/" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -914,7 +914,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_java/" style="color: inherit; text-decoration: inherit;">values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_java" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>
@@ -928,7 +928,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs/" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -936,7 +936,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_nodejs/" style="color: inherit; text-decoration: inherit;">values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_nodejs" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -950,7 +950,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python/" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -958,7 +958,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_python/" style="color: inherit; text-decoration: inherit;">values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_python" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -972,7 +972,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml/" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -980,7 +980,7 @@ The following output properties are available:
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="values_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_yaml/" style="color: inherit; text-decoration: inherit;">values</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_yaml" style="color: inherit; text-decoration: inherit;">values</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;String&gt;</span>

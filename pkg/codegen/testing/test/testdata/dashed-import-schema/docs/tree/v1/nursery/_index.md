@@ -23,7 +23,7 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -36,28 +36,28 @@ no_edit_this_page: true
             <span class="nx">varieties</span><span class="p">:</span> <span class="nx">Optional[Sequence[RubberTreeVariety]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-            <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p">,</span>
+            <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p">,</span>
             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewNursery</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Nursery</span>, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewNursery</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Nursery</span>, error)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -85,7 +85,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">NurseryArgs</a></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -111,7 +111,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">NurseryArgs</a></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -143,7 +143,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">NurseryArgs</a></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -169,7 +169,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">NurseryArgs</a></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -195,7 +195,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">NurseryArgs</a></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -223,16 +223,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_csharp/" style="color: inherit; text-decoration: inherit;">Varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_csharp" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">List&lt;Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_csharp/" style="color: inherit; text-decoration: inherit;">Sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
@@ -247,16 +247,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_go/" style="color: inherit; text-decoration: inherit;">Varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_go" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">[]Rubber<wbr>Tree<wbr>Variety</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">[]Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_go/" style="color: inherit; text-decoration: inherit;">Sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_go" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Tree<wbr>Size</span>
@@ -271,16 +271,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_java/" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_java" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">List&lt;Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_java/" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_java" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Tree<wbr>Size&gt;</span>
@@ -295,16 +295,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_nodejs/" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_nodejs" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">Rubber<wbr>Tree<wbr>Variety[]</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety[]</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_nodejs/" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_nodejs" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Tree<wbr>Size}</span>
@@ -319,16 +319,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_python/" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_python" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">Sequence[Rubber<wbr>Tree<wbr>Variety]</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Sequence[Rubber<wbr>Tree<wbr>Variety]</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_python/" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_python" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Tree<wbr>Size]</span>
@@ -343,16 +343,16 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_yaml/" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_yaml" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety/">List&lt;&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;&gt;</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;&#34;Burgundy&#34; | &#34;Ruby&#34; | &#34;Tineke&#34;&gt;</a></span>
     </dt>
     <dd><p>The varieties available</p>
 </dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_yaml/" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_yaml" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;&#34;small&#34; | &#34;medium&#34; | &#34;large&#34;&gt;</span>
@@ -374,7 +374,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -389,7 +389,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -404,7 +404,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -419,7 +419,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -434,7 +434,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -449,7 +449,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>

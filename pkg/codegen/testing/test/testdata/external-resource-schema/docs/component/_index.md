@@ -23,7 +23,7 @@ no_edit_this_page: true
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Component</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -40,28 +40,28 @@ no_edit_this_page: true
               <span class="nx">required_metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p">,</span>
+              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions/">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewComponent</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Component</span>, error)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <div class="highlight"><pre class="chroma">
-<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
-<span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs/">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Component</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
 </code></pre></div>
 </pulumi-choosable>
 </div>
@@ -89,7 +89,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -115,7 +115,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -147,7 +147,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -173,7 +173,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -199,7 +199,7 @@ no_edit_this_page: true
         class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#inputs/">ComponentArgs</a></span>
+        <span class="property-type"><a href="#inputs">ComponentArgs</a></span>
     </dt>
     <dd>The arguments to resource properties.</dd><dt
         class="property-optional" title="Optional">
@@ -227,23 +227,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredmetadata_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_csharp/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_csharp/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadatamap_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_csharp/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</span>
@@ -251,23 +251,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_csharp/" style="color: inherit; text-decoration: inherit;">Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_csharp" style="color: inherit; text-decoration: inherit;">Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_csharp/" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadatamap_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_csharp/" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</span>
@@ -281,23 +281,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredmetadata_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_go/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_go/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadatamap_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_go/" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Object<wbr>Meta<wbr>Args</span>
@@ -305,23 +305,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_go/" style="color: inherit; text-decoration: inherit;">Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_go" style="color: inherit; text-decoration: inherit;">Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_go/" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadatamap_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_go/" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Object<wbr>Meta<wbr>Args</span>
@@ -335,23 +335,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredmetadata_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_java/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_java/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadatamap_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_java/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_java" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Object<wbr>Meta<wbr>Args&gt;</span>
@@ -359,23 +359,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_java/" style="color: inherit; text-decoration: inherit;">metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_java" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadatamap_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_java/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Object<wbr>Meta<wbr>Args&gt;</span>
@@ -389,23 +389,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredmetadata_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_nodejs/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_nodejs/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[]</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadatamap_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_nodejs/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta}</span>
@@ -413,23 +413,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_nodejs/" style="color: inherit; text-decoration: inherit;">metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_nodejs" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_nodejs/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[]</a></span>
+        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[]</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadatamap_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_nodejs/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta}</span>
@@ -443,23 +443,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_metadata_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_python/" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_metadata_array_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_array_python/" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="required_metadata_map_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_map_python/" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_metadata_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
@@ -467,23 +467,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python/" style="color: inherit; text-decoration: inherit;">metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_array_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python/" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_map_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_map_python/" style="color: inherit; text-decoration: inherit;">metadata_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_map_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
@@ -497,23 +497,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredmetadata_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_yaml/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadata_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Property Map</a></span>
+        <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadataarray_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_yaml/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadataarray_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
         <span id="requiredmetadatamap_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_yaml/" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredmetadatamap_yaml" style="color: inherit; text-decoration: inherit;">required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;Property Map&gt;</span>
@@ -521,23 +521,23 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadata_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_yaml/" style="color: inherit; text-decoration: inherit;">metadata</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_yaml" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">Property Map</a></span>
+        <span class="property-type"><a href="#objectmeta">Property Map</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadataarray_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta/">List&lt;Property Map&gt;</a></span>
+        <span class="property-type"><a href="#objectmeta">List&lt;Property Map&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="metadatamap_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_yaml/" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;Property Map&gt;</span>
@@ -558,7 +558,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -567,7 +567,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="securitygroup_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_csharp/" style="color: inherit; text-decoration: inherit;">Security<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_csharp" style="color: inherit; text-decoration: inherit;">Security<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>Ec2.<wbr>Security<wbr>Group</span>
@@ -575,7 +575,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_csharp/" style="color: inherit; text-decoration: inherit;">Provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_csharp" style="color: inherit; text-decoration: inherit;">Provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Kubernetes.<wbr>Provider</span>
@@ -583,7 +583,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storageclasses_csharp">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_csharp/" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_csharp" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Storage.<wbr>V1.<wbr>Storage<wbr>Class&gt;</span>
@@ -597,7 +597,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go/" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -606,7 +606,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="securitygroup_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_go/" style="color: inherit; text-decoration: inherit;">Security<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_go" style="color: inherit; text-decoration: inherit;">Security<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
@@ -614,7 +614,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_go/" style="color: inherit; text-decoration: inherit;">Provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_go" style="color: inherit; text-decoration: inherit;">Provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
@@ -622,7 +622,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storageclasses_go">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_go/" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_go" style="color: inherit; text-decoration: inherit;">Storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Storage<wbr>Class</span>
@@ -636,7 +636,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -645,7 +645,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="securitygroup_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_java/" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_java" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
@@ -653,7 +653,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_java/" style="color: inherit; text-decoration: inherit;">provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_java" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
@@ -661,7 +661,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storageclasses_java">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_java/" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_java" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,Storage<wbr>Class&gt;</span>
@@ -675,7 +675,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -684,7 +684,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="securitygroup_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_nodejs/" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_nodejs" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awsec2Security<wbr>Group</span>
@@ -692,7 +692,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_nodejs/" style="color: inherit; text-decoration: inherit;">provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_nodejs" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Kubernetes<wbr>Provider</span>
@@ -700,7 +700,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storageclasses_nodejs">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_nodejs/" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_nodejs" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: pulumi<wbr>Kubernetesstoragev1Storage<wbr>Class}</span>
@@ -714,7 +714,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -723,7 +723,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="security_group_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#security_group_python/" style="color: inherit; text-decoration: inherit;">security_<wbr>group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#security_group_python" style="color: inherit; text-decoration: inherit;">security_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Security<wbr>Group</span>
@@ -731,7 +731,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_python/" style="color: inherit; text-decoration: inherit;">provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_python" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Provider</span>
@@ -739,7 +739,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storage_classes_python">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storage_classes_python/" style="color: inherit; text-decoration: inherit;">storage_<wbr>classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storage_classes_python" style="color: inherit; text-decoration: inherit;">storage_<wbr>classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Storage<wbr>Class]</span>
@@ -753,7 +753,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml/" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
@@ -762,7 +762,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt class="property-"
             title="">
         <span id="securitygroup_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_yaml/" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#securitygroup_yaml" style="color: inherit; text-decoration: inherit;">security<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">aws:ec2:Security<wbr>Group</span>
@@ -770,7 +770,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="provider_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_yaml/" style="color: inherit; text-decoration: inherit;">provider</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#provider_yaml" style="color: inherit; text-decoration: inherit;">provider</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi:providers:kubernetes</span>
@@ -778,7 +778,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd></dd><dt class="property-"
             title="">
         <span id="storageclasses_yaml">
-<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_yaml/" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#storageclasses_yaml" style="color: inherit; text-decoration: inherit;">storage<wbr>Classes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;kubernetes:storage.k8s.io/v1:Storage<wbr>Class&gt;</span>
