@@ -237,9 +237,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%.v", expr.Args[0])
 				return
 			}
-			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
+			var moduleNameOverrides map[string]string
+			if pkg, err := enum.(*schema.EnumType).PackageReference.Definition(); err == nil {
+				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
+			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
 				pkg += "." + m
 			}
 			enumName := tokenToName(to.Token)

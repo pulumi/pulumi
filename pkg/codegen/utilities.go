@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -183,4 +184,25 @@ func (fs Fs) Add(path string, contents []byte) {
 	_, has := fs[path]
 	contract.Assertf(!has, "duplicate file: %s", path)
 	fs[path] = contents
+}
+
+// Check if two packages are the same.
+func PkgEquals(p1, p2 schema.PackageReference) bool {
+	if p1 == p2 {
+		return true
+	} else if p1 == nil || p2 == nil {
+		return false
+	}
+
+	if p1.Name() != p2.Name() {
+		return false
+	}
+
+	v1, v2 := p1.Version(), p2.Version()
+	if v1 == v2 {
+		return true
+	} else if v1 == nil || v2 == nil {
+		return false
+	}
+	return v1.Equals(*v2)
 }

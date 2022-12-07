@@ -1507,6 +1507,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	fn := &Function{
 		Package:            t.pkg,
+		PackageReference:   t.externalPackage(),
 		Token:              token,
 		Comment:            spec.Description,
 		Inputs:             inputs,

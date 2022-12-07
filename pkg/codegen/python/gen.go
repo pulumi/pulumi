@@ -97,7 +97,7 @@ type modLocator struct {
 }
 
 type modContext struct {
-	pkg              *schema.Package
+	pkg              schema.PackageReference
 	modLocator       *modLocator
 	mod              string
 	pyPkgName        string
@@ -158,10 +158,12 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) modNameAndName(pkg *schema.Package, t schema.Type, input bool) (modName string, name string) {
+func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type, input bool) (modName string, name string) {
 	var info PackageInfo
-	contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
-	if v, ok := pkg.Language["python"].(PackageInfo); ok {
+	p, err := pkg.Definition()
+	contract.AssertNoError(err)
+	contract.AssertNoError(p.ImportLanguages(map[string]schema.Language{"python": Importer}))
+	if v, ok := p.Language["python"].(PackageInfo); ok {
 		info = v
 	}
 
@@ -213,9 +215,10 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
 	}
 
 	// If it's an external type, reference it via fully qualified name.
-	if t.Package != mod.pkg {
-		modName, name := mod.modNameAndName(t.Package, t, input)
-		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.Package.Name), modName, prefix, name)
+
+	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+		modName, name := mod.modNameAndName(t.PackageReference, t, input)
+		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.PackageReference.Name()), modName, prefix, name)
 	}
 
 	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input)
@@ -255,7 +258,8 @@ func (mod *modContext) tokenToEnum(tok string) string {
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
-	if r.Resource == nil || r.Resource.Package == mod.pkg {
+
+	if r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
 		return mod.tokenToResource(r.Token)
 	}
 
@@ -265,9 +269,9 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 		return fmt.Sprintf("pulumi_%s.Provider", pkgName)
 	}
 
-	pkg := r.Resource.Package
+	pkg := r.Resource.PackageReference
 	modName, name := mod.modNameAndName(pkg, r, false)
-	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name), modName, name)
+	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name()), modName, name)
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
@@ -304,8 +308,12 @@ func tokenToName(tok string) string {
 	return title(components[2])
 }
 
-func tokenToModule(tok string, pkg *schema.Package, moduleNameOverrides map[string]string) string {
+func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides map[string]string) string {
 	// See if there's a manually-overridden module name.
+	if pkg == nil {
+		// If pkg is nil, we use the default `TokenToModule` scheme.
+		pkg = (&schema.Package{}).Reference()
+	}
 	canonicalModName := pkg.TokenToModule(tok)
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
 		return override
@@ -397,20 +405,23 @@ func relPathToRelImport(relPath string) string {
 	return relImport
 }
 
-func (mod *modContext) genUtilitiesFile() []byte {
+func (mod *modContext) genUtilitiesFile() ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
 	fmt.Fprintf(buffer, utilitiesFile)
 	optionalURL := "None"
-	if url := mod.pkg.PluginDownloadURL; url != "" {
+	pkg, err := mod.pkg.Definition()
+	if err != nil {
+		return nil, err
+	}
+	if url := pkg.PluginDownloadURL; url != "" {
 		optionalURL = fmt.Sprintf("%q", url)
 	}
-	_, err := fmt.Fprintf(buffer, `
+	_, err = fmt.Fprintf(buffer, `
 def get_plugin_download_url():
 	return %s
 `, optionalURL)
-	contract.AssertNoError(err)
-	return buffer.Bytes()
+	return buffer.Bytes(), err
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
@@ -438,28 +449,37 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
-		fs.Add(filepath.Join(dir, "_utilities.py"), mod.genUtilitiesFile())
+		utils, err := mod.genUtilitiesFile()
+		if err != nil {
+			return err
+		}
+		fs.Add(filepath.Join(dir, "_utilities.py"), utils)
 		fs.Add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 
+		pkg, err := mod.pkg.Definition()
+		if err != nil {
+			return err
+		}
+
 		var readme string
-		if pythonInfo, ok := mod.pkg.Language["python"]; ok {
+		if pythonInfo, ok := pkg.Language["python"]; ok {
 			if typedInfo, ok := pythonInfo.(PackageInfo); ok {
 				readme = typedInfo.Readme
 			}
 		}
 
 		if readme == "" {
-			readme = mod.pkg.Description
+			readme = mod.pkg.Description()
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
-			if mod.pkg.Attribution != "" {
+			if pkg.Attribution != "" {
 				if len(readme) != 0 {
 					readme += "\n"
 				}
-				readme += mod.pkg.Attribution
+				readme += pkg.Attribution
 			}
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
@@ -468,13 +488,17 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	case "config":
-		if len(mod.pkg.Config) > 0 {
-			vars, err := mod.genConfig(mod.pkg.Config)
+		config, err := mod.pkg.Config()
+		if err != nil {
+			return err
+		}
+		if len(config) > 0 {
+			vars, err := mod.genConfig(config)
 			if err != nil {
 				return err
 			}
 			addFile("vars.py", vars)
-			typeStubs, err := mod.genConfigStubs(mod.pkg.Config)
+			typeStubs, err := mod.genConfigStubs(config)
 			if err != nil {
 				return err
 			}
@@ -600,7 +624,7 @@ func (mod *modContext) fullyQualifiedImportName() string {
 		return mod.pyPkgName
 	}
 	if mod.parent == nil {
-		return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name), name)
+		return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name()), name)
 	}
 	return fmt.Sprintf("%s.%s", mod.parent.fullyQualifiedImportName(), name)
 }
@@ -712,8 +736,8 @@ func (mod *modContext) genUtilitiesImport() string {
 }
 
 func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
-	if t.Package != mod.pkg {
-		return fmt.Sprintf("import %s", pyPack(t.Package.Name))
+	if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+		return fmt.Sprintf("import %s", pyPack(t.PackageReference.Name()))
 	}
 
 	tok := t.Token
@@ -730,7 +754,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 	}
 
 	importPath := mod.getRelImportFromRoot()
-	if mod.pkg.Name != parts[0] {
+	if mod.pkg.Name() != parts[0] {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
@@ -747,8 +771,8 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 }
 
 func (mod *modContext) importEnumType(e *schema.EnumType) string {
-	if e.Package != mod.pkg {
-		return fmt.Sprintf("import %s", pyPack(e.Package.Name))
+	if !codegen.PkgEquals(e.PackageReference, mod.pkg) {
+		return fmt.Sprintf("import %s", pyPack(e.PackageReference.Name()))
 	}
 
 	modName := mod.tokenToModule(e.Token)
@@ -767,8 +791,9 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 }
 
 func (mod *modContext) importResourceType(r *schema.ResourceType) string {
-	if r.Resource != nil && r.Resource.Package != mod.pkg {
-		return fmt.Sprintf("import %s", pyPack(r.Resource.Package.Name))
+
+	if r.Resource != nil && !codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
+		return fmt.Sprintf("import %s", pyPack(r.Resource.PackageReference.Name()))
 	}
 
 	tok := r.Token
@@ -785,7 +810,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	modName := mod.tokenToResource(tok)
 
 	importPath := mod.getRelImportFromRoot()
-	if mod.pkg.Name != parts[0] {
+	if mod.pkg.Name() != parts[0] {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
@@ -815,7 +840,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "\n")
 
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name)
+	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name())
 	fmt.Fprintf(w, "\n\n")
 
 	// To avoid a breaking change to the existing config getters, we define a class that extends
@@ -1359,7 +1384,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Finally, chain to the base constructor, which will actually register the resource.
 	tok := res.Token
 	if res.IsProvider {
-		tok = mod.pkg.Name
+		tok = mod.pkg.Name()
 	}
 	fmt.Fprintf(w, "        super(%s, __self__).__init__(\n", name)
 	fmt.Fprintf(w, "            '%s',\n", tok)
@@ -2628,8 +2653,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// modules map will contain modContext entries for all modules in current package (pkg)
 	modules := map[string]*modContext{}
 
-	var getMod func(modName string, p *schema.Package) *modContext
-	getMod = func(modName string, p *schema.Package) *modContext {
+	var getMod func(modName string, p schema.PackageReference) *modContext
+	getMod = func(modName string, p schema.PackageReference) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
@@ -2642,7 +2667,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 			}
 
-			if modName != "" && p == pkg {
+			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
 				parentName := path.Dir(modName)
 				if parentName == "." {
 					parentName = ""
@@ -2653,14 +2678,15 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 			// Save the module only if it's for the current package.
 			// This way, modules for external packages are not saved.
-			if p == pkg {
+
+			if codegen.PkgEquals(p, pkg.Reference()) {
 				modules[modName] = mod
 			}
 		}
 		return mod
 	}
 
-	getModFromToken := func(tok string, p *schema.Package) *modContext {
+	getModFromToken := func(tok string, p schema.PackageReference) *modContext {
 		modName := tokenToModule(tok, p, info.ModuleNameOverrides)
 		return getMod(modName, p)
 	}
@@ -2668,40 +2694,40 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
 		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
-		configMod := getMod("config", pkg)
+		configMod := getMod("config", pkg.Reference())
 		configMod.isConfig = true
 	}
 
 	visitObjectTypes(pkg.Config, func(t schema.Type) {
 		if t, ok := t.(*schema.ObjectType); ok {
-			getModFromToken(t.Token, t.Package).details(t).outputType = true
+			getModFromToken(t.Token, t.PackageReference).details(t).outputType = true
 		}
 	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token, pkg)
+		mod := getModFromToken(r.Token, pkg.Reference())
 		mod.resources = append(mod.resources, r)
 		visitObjectTypes(r.Properties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getModFromToken(T.Token, T.Package).details(T).outputType = true
-				getModFromToken(T.Token, T.Package).details(T).resourceOutputType = true
+				getModFromToken(T.Token, T.PackageReference).details(T).outputType = true
+				getModFromToken(T.Token, T.PackageReference).details(T).resourceOutputType = true
 			}
 		})
 		visitObjectTypes(r.InputProperties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getModFromToken(T.Token, T.Package).details(T).inputType = true
+				getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
 			}
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.Package).details(T).inputType = true
+					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.Package)
+					getModFromToken(T.Token, T.Resource.PackageReference)
 				}
 			})
 		}
@@ -2714,7 +2740,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token, f.Package)
+		mod := getModFromToken(f.Token, f.PackageReference)
 		if !f.IsMethod {
 			mod.functions = append(mod.functions, f)
 		}
@@ -2722,10 +2748,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(f.Inputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.Package).details(T).inputType = true
-					getModFromToken(T.Token, T.Package).details(T).plainType = true
+					getModFromToken(T.Token, T.PackageReference).details(T).inputType = true
+					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.Package)
+					getModFromToken(T.Token, T.Resource.PackageReference)
 				}
 			})
 		}
@@ -2733,10 +2759,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(f.Outputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token, T.Package).details(T).outputType = true
-					getModFromToken(T.Token, T.Package).details(T).plainType = true
+					getModFromToken(T.Token, T.PackageReference).details(T).outputType = true
+					getModFromToken(T.Token, T.PackageReference).details(T).plainType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token, T.Resource.Package)
+					getModFromToken(T.Token, T.Resource.PackageReference)
 				}
 			})
 		}
@@ -2746,14 +2772,14 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getModFromToken(typ.Token, typ.Package)
+			mod := getModFromToken(typ.Token, typ.PackageReference)
 			d := mod.details(typ)
 			if d.inputType || d.outputType {
 				mod.types = append(mod.types, typ)
 			}
 		case *schema.EnumType:
 			if !typ.IsOverlay {
-				mod := getModFromToken(typ.Token, pkg)
+				mod := getModFromToken(typ.Token, pkg.Reference())
 				mod.enums = append(mod.enums, typ)
 			}
 		default:
@@ -2772,7 +2798,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		if modName == "/" || modName == "." {
 			modName = ""
 		}
-		mod := getMod(modName, pkg)
+		mod := getMod(modName, pkg.Reference())
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
 	}
 
@@ -2780,11 +2806,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// modContext for every ObjectType.
 	modLocator := &modLocator{
 		objectTypeMod: func(t *schema.ObjectType) *modContext {
-			if t.Package != pkg {
+			if !codegen.PkgEquals(t.PackageReference, pkg.Reference()) {
 				return nil
 			}
 
-			return getModFromToken(t.Token, t.Package)
+			return getModFromToken(t.Token, t.PackageReference)
 		},
 	}
 
