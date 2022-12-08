@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Interpret schema.Asset as pcl.AssetOrArchive.
