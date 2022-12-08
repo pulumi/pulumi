@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Generate JS doc comments for output-versioned invokes and use explicit any type.

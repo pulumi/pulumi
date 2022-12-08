@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk
-  description: Add methods to cast pointer types to corresponding Pulumi Ptr types

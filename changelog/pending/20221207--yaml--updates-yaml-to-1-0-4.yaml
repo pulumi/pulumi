@@ -1,6 +1,0 @@
-changes:
-- type: feat
-  scope: yaml
-  description: >
-    [Updates Pulumi YAML to v1.0.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.4)
-    unblocking Docker Image resource support in a future Docker provider release.

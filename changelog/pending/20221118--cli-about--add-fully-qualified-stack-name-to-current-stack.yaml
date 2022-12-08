@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/about
-  description: Add fully qualified stack name to current stack.

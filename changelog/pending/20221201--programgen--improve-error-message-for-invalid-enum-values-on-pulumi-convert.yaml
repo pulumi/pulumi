@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Improve error message for invalid enum values on `pulumi convert`.
