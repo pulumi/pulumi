@@ -125,7 +125,7 @@ func namespaceName(namespaces map[string]string, name string) string {
 }
 
 type modContext struct {
-	pkg                    *schema.Package
+	pkg                    schema.PackageReference
 	mod                    string
 	propertyNames          map[*schema.Property]string
 	types                  []*schema.ObjectType
@@ -372,13 +372,15 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		return fmt.Sprintf("%v<string, %v>", mapType, mod.typeString(t.ElementType, qualifier, input, state, false))
 	case *schema.ObjectType:
 		namingCtx := mod
-		if t.Package != mod.pkg {
+		if !codegen.PkgEquals(t.PackageReference, mod.pkg) {
 			// If object type belongs to another package, we apply naming conventions from that package,
 			// including namespace naming and compatibility mode.
-			extPkg := t.Package
+			extPkg := t.PackageReference
 			var info CSharpPackageInfo
-			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
-			if v, ok := t.Package.Language["csharp"].(CSharpPackageInfo); ok {
+			def, err := extPkg.Definition()
+			contract.AssertNoError(err)
+			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
 			namingCtx = &modContext{
@@ -406,13 +408,15 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		namingCtx := mod
-		if t.Resource != nil && t.Resource.Package != mod.pkg {
+		if t.Resource != nil && !codegen.PkgEquals(t.Resource.PackageReference, mod.pkg) {
 			// If resource type belongs to another package, we apply naming conventions from that package,
 			// including namespace naming and compatibility mode.
-			extPkg := t.Resource.Package
+			extPkg := t.Resource.PackageReference
 			var info CSharpPackageInfo
-			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
-			if v, ok := t.Resource.Package.Language["csharp"].(CSharpPackageInfo); ok {
+			def, err := extPkg.Definition()
+			contract.AssertNoError(err)
+			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
 			namingCtx = &modContext{
@@ -906,7 +910,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
-	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name), r.Token)
+	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name()), r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -967,7 +971,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	tok := r.Token
 	if r.IsProvider {
-		tok = mod.pkg.Name
+		tok = mod.pkg.Name()
 	}
 
 	argsOverride := fmt.Sprintf("args ?? new %sArgs()", className)
@@ -1046,7 +1050,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            var defaultOptions = new %s\n", optionsType)
 	fmt.Fprintf(w, "            {\n")
 	fmt.Fprintf(w, "                Version = Utilities.Version,\n")
-	if url := mod.pkg.PluginDownloadURL; url != "" {
+	def, err := mod.pkg.Definition()
+	if err != nil {
+		return err
+	}
+	if url := def.PluginDownloadURL; url != "" {
 		fmt.Fprintf(w, "                PluginDownloadURL = %q,\n", url)
 	}
 
@@ -1702,7 +1710,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, im
 	case *schema.ResourceType:
 		// If it's an external resource, we'll be using fully-qualified type names, so there's no need
 		// for an import.
-		if t.Resource != nil && t.Resource.Package != mod.pkg {
+		if t.Resource != nil && !codegen.PkgEquals(t.Resource.PackageReference, mod.pkg) {
 			return
 		}
 
@@ -1875,7 +1883,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "\n")
 
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "        private static readonly global::Pulumi.Config __config = new global::Pulumi.Config(\"%v\");\n", mod.pkg.Name)
+	fmt.Fprintf(w, "        private static readonly global::Pulumi.Config __config = new global::Pulumi.Config(\"%v\");\n", mod.pkg.Name())
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1953,12 +1961,16 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
-	err := csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
-		Name:              namespaceName(mod.namespaces, mod.pkg.Name),
+	def, err := mod.pkg.Definition()
+	if err != nil {
+		return "", err
+	}
+	err = csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
+		Name:              namespaceName(mod.namespaces, mod.pkg.Name()),
 		Namespace:         mod.namespaceName,
 		ClassName:         "Utilities",
 		Tool:              mod.tool,
-		PluginDownloadURL: mod.pkg.PluginDownloadURL,
+		PluginDownloadURL: def.PluginDownloadURL,
 	})
 	if err != nil {
 		return "", err
@@ -1997,7 +2009,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	}
 
 	// Ensure that the target module directory contains a README.md file.
-	readme := mod.pkg.Description
+	readme := mod.pkg.Description()
 	if readme != "" && readme[len(readme)-1] != '\n' {
 		readme += "\n"
 	}
@@ -2012,8 +2024,12 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 		fs.Add("Utilities.cs", []byte(utilities))
 	case "config":
-		if len(mod.pkg.Config) > 0 {
-			config, err := mod.genConfig(mod.pkg.Config)
+		config, err := mod.pkg.Config()
+		if err != nil {
+			return err
+		}
+		if len(config) > 0 {
+			config, err := mod.genConfig(config)
 			if err != nil {
 				return err
 			}
@@ -2252,19 +2268,20 @@ type LanguageResource struct {
 func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
 	// Decode .NET-specific info for each package as we discover them.
 	infos := map[*schema.Package]*CSharpPackageInfo{}
-	var getPackageInfo = func(p *schema.Package) *CSharpPackageInfo {
-		info, ok := infos[p]
+	var getPackageInfo = func(p schema.PackageReference) *CSharpPackageInfo {
+		def, err := p.Definition()
+		contract.AssertNoError(err)
+		info, ok := infos[def]
 		if !ok {
-			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-				panic(err)
-			}
+			err := def.ImportLanguages(map[string]schema.Language{"csharp": Importer})
+			contract.AssertNoError(err)
 			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 			info = &csharpInfo
-			infos[p] = info
+			infos[def] = info
 		}
 		return info
 	}
-	infos[pkg] = getPackageInfo(pkg)
+	infos[pkg] = getPackageInfo(pkg.Reference())
 
 	propertyNames := map[*schema.Property]string{}
 	computePropertyNames(pkg.Config, propertyNames)
@@ -2304,8 +2321,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	modules := map[string]*modContext{}
 	details := map[*schema.ObjectType]*typeDetails{}
 
-	var getMod func(modName string, p *schema.Package) *modContext
-	getMod = func(modName string, p *schema.Package) *modContext {
+	var getMod func(modName string, p schema.PackageReference) *modContext
+	getMod = func(modName string, p schema.PackageReference) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			info := getPackageInfo(p)
@@ -2338,41 +2355,41 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 
 			// Save the module only if it's for the current package.
 			// This way, modules for external packages are not saved.
-			if p == pkg {
+			if codegen.PkgEquals(p, pkg.Reference()) {
 				modules[modName] = mod
 			}
 		}
 		return mod
 	}
 
-	getModFromToken := func(token string, p *schema.Package) *modContext {
+	getModFromToken := func(token string, p schema.PackageReference) *modContext {
 		return getMod(p.TokenToModule(token), p)
 	}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		cfg := getMod("config", pkg)
+		cfg := getMod("config", pkg.Reference())
 		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
 
 	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {
-		getModFromToken(t.Token, pkg).details(t).outputType = true
+		getModFromToken(t.Token, pkg.Reference()).details(t).outputType = true
 	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token, pkg)
+		mod := getModFromToken(r.Token, pkg.Reference())
 		mod.resources = append(mod.resources, r)
 		visitObjectTypes(r.Properties, func(t *schema.ObjectType) {
-			getModFromToken(t.Token, t.Package).details(t).outputType = true
+			getModFromToken(t.Token, t.PackageReference).details(t).outputType = true
 		})
 		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType) {
-			getModFromToken(t.Token, t.Package).details(t).inputType = true
+			getModFromToken(t.Token, t.PackageReference).details(t).inputType = true
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType) {
-				getModFromToken(t.Token, t.Package).details(t).inputType = true
-				getModFromToken(t.Token, t.Package).details(t).stateType = true
+				getModFromToken(t.Token, t.PackageReference).details(t).inputType = true
+				getModFromToken(t.Token, t.PackageReference).details(t).stateType = true
 			})
 		}
 	}
@@ -2389,19 +2406,19 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			continue
 		}
 
-		mod := getModFromToken(f.Token, pkg)
+		mod := getModFromToken(f.Token, pkg.Reference())
 		if !f.IsMethod {
 			mod.functions = append(mod.functions, f)
 		}
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
-				details := getModFromToken(t.Token, t.Package).details(t)
+				details := getModFromToken(t.Token, t.PackageReference).details(t)
 				details.inputType = true
 				details.plainType = true
 			})
 			if f.NeedsOutputVersion() {
 				visitObjectTypes(f.Inputs.InputShape.Properties, func(t *schema.ObjectType) {
-					details := getModFromToken(t.Token, t.Package).details(t)
+					details := getModFromToken(t.Token, t.PackageReference).details(t)
 					details.inputType = true
 					details.usedInFunctionOutputVersionInputs = true
 				})
@@ -2409,7 +2426,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {
-				details := getModFromToken(t.Token, t.Package).details(t)
+				details := getModFromToken(t.Token, t.PackageReference).details(t)
 				details.outputType = true
 				details.plainType = true
 			})
@@ -2420,11 +2437,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getModFromToken(typ.Token, pkg)
+			mod := getModFromToken(typ.Token, pkg.Reference())
 			mod.types = append(mod.types, typ)
 		case *schema.EnumType:
 			if !typ.IsOverlay {
-				mod := getModFromToken(typ.Token, pkg)
+				mod := getModFromToken(typ.Token, pkg.Reference())
 				mod.enums = append(mod.enums, typ)
 			}
 		default:

@@ -316,8 +316,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
 				var info CSharpPackageInfo
-				if r.Schema != nil && r.Schema.Package != nil {
-					if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
+				if r.Schema != nil && r.Schema.PackageReference != nil {
+					def, err := r.Schema.PackageReference.Definition()
+					contract.AssertNoError(err)
+					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 						info = csharpinfo
 					}
 				}
