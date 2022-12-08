@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/service
-  description: Allows the service to opt into a bandwidth-optimized DIFF protocol for storing checkpoints. Previously this required setting the PULUMI_OPTIMIZED_CHECKPOINT_PATCH env variable on the client. This env variable is now deprecated.

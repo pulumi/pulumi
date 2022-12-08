@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: docs
-  description: Exclude id output property for component resources

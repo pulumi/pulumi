@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fixes superfluous newline being added between documentation comment and package statement in doc.go

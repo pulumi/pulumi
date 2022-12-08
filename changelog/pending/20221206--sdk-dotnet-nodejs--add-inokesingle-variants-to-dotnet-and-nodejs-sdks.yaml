@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/dotnet,nodejs
-  description: Add InvokeSingle variants to dotnet and nodejs SDKs

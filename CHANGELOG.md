@@ -1,5 +1,67 @@
 # Changelog
 
+## 3.49.0 (2022-12-08)
+
+
+### Features
+
+- [sdk] Add methods to cast pointer types to corresponding Pulumi Ptr types
+  [#11539](https://github.com/pulumi/pulumi/pull/11539)
+
+- [yaml] [Updates Pulumi YAML to v1.0.4](https://github.com/pulumi/pulumi-yaml/releases/tag/v1.0.4) unblocking Docker Image resource support in a future Docker provider release.
+  [#11583](https://github.com/pulumi/pulumi/pull/11583)
+
+- [backend/service] Allows the service to opt into a bandwidth-optimized DIFF protocol for storing checkpoints. Previously this required setting the PULUMI_OPTIMIZED_CHECKPOINT_PATCH env variable on the client. This env variable is now deprecated.
+  [#11421](https://github.com/pulumi/pulumi/pull/11421)
+
+- [cli/about] Add fully qualified stack name to current stack.
+  [#11387](https://github.com/pulumi/pulumi/pull/11387)
+
+- [sdk/{dotnet,nodejs}] Add InvokeSingle variants to dotnet and nodejs SDKs
+  [#11564](https://github.com/pulumi/pulumi/pull/11564)
+
+
+### Bug Fixes
+
+- [docs] Exclude id output property for component resources
+  [#11469](https://github.com/pulumi/pulumi/pull/11469)
+
+- [engine] Fix an assert for resources being replaced but also pending deletion.
+  [#11475](https://github.com/pulumi/pulumi/pull/11475)
+
+- [pkg] Fixes codegen/python generation of non-string secrets in provider properties
+  [#11494](https://github.com/pulumi/pulumi/pull/11494)
+
+- [pkg/testing] Optionally caches python venvs for testing
+  [#11532](https://github.com/pulumi/pulumi/pull/11532)
+
+- [programgen] Improve error message for invalid enum values on `pulumi convert`.
+  [#11019](https://github.com/pulumi/pulumi/pull/11019)
+
+- [programgen] Interpret schema.Asset as pcl.AssetOrArchive.
+  [#11593](https://github.com/pulumi/pulumi/pull/11593)
+
+- [programgen/go] Convert the result of immediate invokes to ouputs when necessary.
+  [#11480](https://github.com/pulumi/pulumi/pull/11480)
+
+- [programgen/nodejs] Add `.` between `?` and `[`.
+  [#11477](https://github.com/pulumi/pulumi/pull/11477)
+
+- [programgen/nodejs] Fix capitalization when generating `fs.readdirSync`.
+  [#11478](https://github.com/pulumi/pulumi/pull/11478)
+
+- [sdk/nodejs] Fix regression when passing a provider to a MLC
+  [#11509](https://github.com/pulumi/pulumi/pull/11509)
+
+- [sdk/python] Allows for duplicate output values in python
+  [#11559](https://github.com/pulumi/pulumi/pull/11559)
+
+- [sdkgen/go] Fixes superfluous newline being added between documentation comment and package statement in doc.go
+  [#11492](https://github.com/pulumi/pulumi/pull/11492)
+
+- [sdkgen/nodejs] Generate JS doc comments for output-versioned invokes and use explicit any type.
+  [#11511](https://github.com/pulumi/pulumi/pull/11511)
+
 ## 3.48.0 (2022-11-23)
 
 
