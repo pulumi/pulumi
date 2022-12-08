@@ -79,6 +79,10 @@ type NodePackageInfo struct {
 	// requires TypeScript 3.8 or higher to compile the generated
 	// code.
 	UseTypeOnlyReferences bool `json:"useTypeOnlyReferences,omitempty"`
+
+	// Experimental flag that splits type definitions at /types
+	// into smaller units, recursively creating new files for modules.
+	SplitTypesFiles *bool `json:"split_types_files,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
