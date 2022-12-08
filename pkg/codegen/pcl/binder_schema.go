@@ -389,7 +389,11 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		case schema.ArchiveType:
 			return ArchiveType
 		case schema.AssetType:
-			return AssetType
+			// Generated SDK code accepts assets or archives when schema.AssetType is
+			// specified. In an effort to keep PCL type checking in sync with our
+			// generated SDKs, we match the SDKs behavior when translating schema types to
+			// PCL types.
+			return AssetOrArchiveType
 		case schema.JSONType:
 			fallthrough
 		case schema.AnyType:

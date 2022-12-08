@@ -249,7 +249,6 @@ var PulumiPulumiYAMLProgramTests = []ProgramTest{
 		Directory:   transpiled("azure-app-service"),
 		Description: "Azure App Service",
 		Skip:        codegen.NewStringSet("go", "dotnet"),
-		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
 	{
 		Directory:   transpiled("azure-container-apps"),

@@ -301,7 +301,9 @@ func enumName(enum *model.EnumType) (string, string) {
 	if !ok {
 		return "", ""
 	}
-	namespaceMap := e.(*schema.EnumType).Package.Language["csharp"].(CSharpPackageInfo).Namespaces
+	def, err := e.(*schema.EnumType).PackageReference.Definition()
+	contract.AssertNoError(err)
+	namespaceMap := def.Language["csharp"].(CSharpPackageInfo).Namespaces
 	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {
 		namespace += "." + namespaceName(namespaceMap, components[1])
