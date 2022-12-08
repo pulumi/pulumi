@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,9 +122,7 @@ func TestCompatibleVersions(t *testing.T) {
 func TestGetRequiredPlugins(t *testing.T) {
 	t.Parallel()
 
-	dir, err := ioutil.TempDir("", "test-dir")
-	assert.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	files := []struct {
 		path    string

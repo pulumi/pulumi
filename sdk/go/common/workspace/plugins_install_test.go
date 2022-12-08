@@ -84,8 +84,7 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginSpec) {
 	tarball := prepareTestPluginTGZ(t, files)
 
-	dir, err := ioutil.TempDir("", "plugins-test-dir")
-	require.NoError(t, err)
+	dir := t.TempDir()
 
 	v1 := semver.MustParse("0.1.0")
 	plugin := PluginSpec{
@@ -163,7 +162,6 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	}
 
 	dir, tarball, plugin := prepareTestDir(t, files)
-	defer os.RemoveAll(dir)
 
 	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
@@ -182,7 +180,6 @@ func TestInstallNoDeps(t *testing.T) {
 	content := []byte("hello\n")
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
-	defer os.RemoveAll(dir)
 
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
@@ -201,7 +198,6 @@ func TestReinstall(t *testing.T) {
 	content := []byte("hello\n")
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
-	defer os.RemoveAll(dir)
 
 	err := plugin.Install(tarball, false)
 	require.NoError(t, err)
@@ -231,7 +227,6 @@ func TestConcurrentInstalls(t *testing.T) {
 	content := []byte("hello\n")
 
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
-	defer os.RemoveAll(dir)
 
 	assertSuccess := func() PluginInfo {
 		pluginInfo := assertPluginInstalled(t, dir, plugin)
@@ -266,7 +261,6 @@ func TestConcurrentInstalls(t *testing.T) {
 
 func TestInstallCleansOldFiles(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
-	defer os.RemoveAll(dir)
 
 	// Leftover temp dirs.
 	tempDir1, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
@@ -298,7 +292,6 @@ func TestInstallCleansOldFiles(t *testing.T) {
 
 func TestGetPluginsSkipsPartial(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
-	defer os.RemoveAll(dir)
 
 	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)

@@ -22,8 +22,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Test that RunCommand writes the command's output to a log file.
@@ -42,9 +40,7 @@ func TestRunCommandLog(t *testing.T) {
 		Stderr: os.Stderr,
 	}
 
-	tempdir, err := ioutil.TempDir("", "test")
-	contract.AssertNoError(err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	args := []string{node, "-e", "console.log('output from node');"}
 	err = RunCommand(t, "node", args, tempdir, opts)

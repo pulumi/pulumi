@@ -57,8 +57,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	}
 
 	// Create a new empty test directory and change the current working directory to it.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	t.Cleanup(func() { os.RemoveAll(tempdir) })
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
 	// Create a package directory to install dependencies into.

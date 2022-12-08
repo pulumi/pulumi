@@ -18,8 +18,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -30,8 +28,7 @@ import (
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
 	var args = newPolicyArgs{
@@ -54,9 +51,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		tempdir, _ := ioutil.TempDir("", "test-env")
-		defer os.RemoveAll(tempdir)
-		assert.DirExists(t, tempdir)
+		tempdir := t.TempDir()
 		chdir(t, tempdir)
 
 		var args = newPolicyArgs{
@@ -71,8 +66,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		tempdir, _ := ioutil.TempDir("", "test-env")
-		defer os.RemoveAll(tempdir)
+		tempdir := t.TempDir()
 		chdir(t, tempdir)
 
 		var args = newPolicyArgs{

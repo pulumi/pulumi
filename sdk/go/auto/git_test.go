@@ -21,10 +21,7 @@ func TestGitClone(t *testing.T) {
 
 	// This makes a git repo to clone from, so to avoid relying on something at GitHub that could
 	// change or be inaccessible.
-	tmpDir, err := os.MkdirTemp("", "pulumi-git-test")
-	assert.NoError(t, err)
-	assert.True(t, len(tmpDir) > 1)
-	t.Cleanup(func() { os.RemoveAll(tmpDir) })
+	tmpDir := t.TempDir()
 	originDir := filepath.Join(tmpDir, "origin")
 
 	origin, err := git.PlainInit(originDir, false)

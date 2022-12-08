@@ -707,9 +707,7 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 
 // TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
 func TestTracePropagationGo(t *testing.T) {
-	dir, err := os.MkdirTemp("", "pulumi-tracefiles")
-	assert.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	opts := &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("empty", "go"),

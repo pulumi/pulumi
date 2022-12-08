@@ -16,8 +16,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,8 +27,7 @@ import (
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
 	var args = newPolicyArgs{

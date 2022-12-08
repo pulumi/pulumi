@@ -844,11 +844,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 
 // MakeTempBackend creates a temporary backend directory which will clean up on test exit.
 func MakeTempBackend(t *testing.T) string {
-	tempDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	tempDir := t.TempDir()
 	return fmt.Sprintf("file://%s", filepath.ToSlash(tempDir))
 }
 

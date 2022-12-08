@@ -3,7 +3,6 @@ package filestate
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -143,8 +142,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 //nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -205,8 +203,7 @@ func TestDrillError(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -224,8 +221,7 @@ func TestCancel(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -286,8 +282,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -330,8 +325,7 @@ func TestRenameWorks(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -445,8 +439,7 @@ func TestHtmlEscaping(t *testing.T) {
 	}
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
