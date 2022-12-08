@@ -530,8 +530,11 @@ type Method struct {
 
 // Function describes a Pulumi function.
 type Function struct {
-	// Package is the package that defines the function.
+	// Package is the package that defines the function. Package will not be accurate for
+	// types loaded by reference. In that case, use PackageReference instead.
 	Package *Package
+	// PackageReference is the PackageReference that defines the function.
+	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
@@ -894,7 +897,7 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 }
 
-func (pkg *Package) TokenToRuntimeModule(tok string) string {
+func TokenToRuntimeModule(tok string) string {
 	// token := pkg ":" module ":" member
 
 	components := strings.Split(tok, ":")
@@ -902,6 +905,10 @@ func (pkg *Package) TokenToRuntimeModule(tok string) string {
 		return ""
 	}
 	return components[1]
+}
+
+func (pkg *Package) TokenToRuntimeModule(tok string) string {
+	return TokenToRuntimeModule(tok)
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {

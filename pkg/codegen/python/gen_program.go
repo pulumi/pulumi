@@ -211,9 +211,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				continue
 			}
 			packageName := "pulumi_" + makeValidIdentifier(pkg)
-			if r.Schema != nil && r.Schema.Package != nil {
-				if info, ok := r.Schema.Package.Language["python"].(PackageInfo); ok && info.PackageName != "" {
-					packageName = info.PackageName
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				pkg, err := r.Schema.PackageReference.Definition()
+				if err == nil {
+					if info, ok := pkg.Language["python"].(PackageInfo); ok && info.PackageName != "" {
+						packageName = info.PackageName
+					}
 				}
 			}
 			importSet[packageName] = Import{ImportAs: true, Pkg: makeValidIdentifier(pkg)}
@@ -306,13 +309,22 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 
 	// Normalize module.
 	if r.Schema != nil {
-		pkg := r.Schema.Package
-		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
-		contract.AssertNoError(err)
-		if lang, ok := pkg.Language["python"]; ok {
-			pkgInfo := lang.(PackageInfo)
-			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
-				module = m
+		pkg, err := r.Schema.PackageReference.Definition()
+		if err != nil {
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "unable to bind schema for resource",
+				Detail:   err.Error(),
+				Subject:  r.Definition.Syntax.DefRange().Ptr(),
+			})
+		} else {
+			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+			contract.AssertNoError(err)
+			if lang, ok := pkg.Language["python"]; ok {
+				pkgInfo := lang.(PackageInfo)
+				if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+					module = m
+				}
 			}
 		}
 	}
@@ -341,10 +353,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	pkgName, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diagnostics) == 0)
 
-	modName := objType.Package.TokenToModule(token)
+	modName := objType.PackageReference.TokenToModule(token)
 
 	// Normalize module.
-	pkg := objType.Package
+	pkg, err := objType.PackageReference.Definition()
+	contract.AssertNoError(err)
 	if lang, ok := pkg.Language["python"]; ok {
 		pkgInfo := lang.(PackageInfo)
 		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
