@@ -1452,11 +1452,11 @@ func (d DescriptionSpec) marshal(marshal func(interface{}) ([]byte, error)) func
 		if d.Legacy != "" && len(d.Structured) > 0 {
 			return nil, fmt.Errorf("cannot marshal multiple fields in a union")
 		}
-		if d.Legacy != "" {
-			return marshal(d.Legacy)
+		if len(d.Structured) > 0 {
+			return marshal(d.Structured)
 		}
 
-		return marshal(d.Structured)
+		return marshal(d.Legacy)
 	}
 }
 
@@ -1523,7 +1523,7 @@ type PropertySpec struct {
 	TypeSpec `yaml:",inline"`
 
 	// Description is the description of the property, if any.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Const is the constant value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
 	Const interface{} `json:"const,omitempty" yaml:"const,omitempty"`
@@ -1548,7 +1548,7 @@ type PropertySpec struct {
 // ObjectTypeSpec is the serializable form of an object type.
 type ObjectTypeSpec struct {
 	// Description is the description of the type, if any.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Properties, if present, is a map from property name to PropertySpec that describes the type's properties.
 	Properties map[string]PropertySpec `json:"properties,omitempty" yaml:"properties,omitempty"`
 	// Type must be "object" if this is an object type, or the underlying type for an enum.
@@ -1579,7 +1579,7 @@ type EnumValueSpec struct {
 	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Description of the enum value.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Value is the enum value itself.
 	Value interface{} `json:"value" yaml:"value"`
 	// DeprecationMessage indicates whether or not the value is deprecated.
@@ -1623,7 +1623,7 @@ type ResourceSpec struct {
 // FunctionSpec is the serializable form of a function description.
 type FunctionSpec struct {
 	// Description is the description of the function, if any.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
@@ -1663,7 +1663,7 @@ type PackageInfoSpec struct {
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
@@ -1706,7 +1706,7 @@ type PackageSpec struct {
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
-	Description DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
+	Description *DescriptionSpec `json:"description,omitempty" yaml:"description,omitempty"`
 	// Keywords is the list of keywords that are associated with the package, if any.
 	// Some reserved keywords can be specified as well that help with categorizing the
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only

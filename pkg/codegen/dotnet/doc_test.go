@@ -26,7 +26,7 @@ import (
 var testPackageSpec = schema.PackageSpec{
 	Name:    "aws",
 	Version: "0.0.1",
-	Description: schema.DescriptionSpec{
+	Description: &schema.DescriptionSpec{
 		Legacy: "A fake provider package used for testing.",
 	},
 	Meta: &schema.MetadataSpec{
@@ -35,13 +35,13 @@ var testPackageSpec = schema.PackageSpec{
 	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Description: schema.DescriptionSpec{
+				Description: &schema.DescriptionSpec{
 					Legacy: "The resource options object.",
 				},
 				Type: "object",
 				Properties: map[string]schema.PropertySpec{
 					"stringProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "A string prop.",
 						},
 						TypeSpec: schema.TypeSpec{

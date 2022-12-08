@@ -5,7 +5,7 @@ import (
 )
 
 func newPulumiPackage() *Package {
-	md := func(s string) DescriptionSpec {
+	md := func(s string) *DescriptionSpec {
 		spec, err := MakeMarkdownDescription(s).marshal()
 		contract.AssertNoError(err)
 		return spec

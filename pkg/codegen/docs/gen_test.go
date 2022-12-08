@@ -36,7 +36,7 @@ const (
 var (
 	simpleProperties = map[string]schema.PropertySpec{
 		"stringProp": {
-			Description: schema.DescriptionSpec{
+			Description: &schema.DescriptionSpec{
 				Legacy: "A string prop.",
 			},
 			TypeSpec: schema.TypeSpec{
@@ -44,7 +44,7 @@ var (
 			},
 		},
 		"boolProp": {
-			Description: schema.DescriptionSpec{
+			Description: &schema.DescriptionSpec{
 				Legacy: "A bool prop.",
 			},
 			TypeSpec: schema.TypeSpec{
@@ -66,7 +66,7 @@ func initTestPackageSpec(t *testing.T) {
 	testPackageSpec = schema.PackageSpec{
 		Name:    providerPackage,
 		Version: "0.0.1",
-		Description: schema.DescriptionSpec{
+		Description: &schema.DescriptionSpec{
 			Legacy: "A fake provider package used for testing.",
 		},
 		Meta: &schema.MetadataSpec{
@@ -76,7 +76,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Package-level types.
 			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Options object for the package-level function getPackageResource.",
 					},
 					Type:       "object",
@@ -87,7 +87,7 @@ func initTestPackageSpec(t *testing.T) {
 			// Module-level types.
 			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Options object for the module-level function getModuleResource.",
 					},
 					Type:       "object",
@@ -96,13 +96,13 @@ func initTestPackageSpec(t *testing.T) {
 			},
 			"prov:module/ResourceOptions:ResourceOptions": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "The resource options object.",
 					},
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
 						"stringProp": {
-							Description: schema.DescriptionSpec{
+							Description: &schema.DescriptionSpec{
 								Legacy: "A string prop.",
 							},
 							Language: pythonMapCase,
@@ -111,7 +111,7 @@ func initTestPackageSpec(t *testing.T) {
 							},
 						},
 						"boolProp": {
-							Description: schema.DescriptionSpec{
+							Description: &schema.DescriptionSpec{
 								Legacy: "A bool prop.",
 							},
 							Language: pythonMapCase,
@@ -120,7 +120,7 @@ func initTestPackageSpec(t *testing.T) {
 							},
 						},
 						"recursiveType": {
-							Description: schema.DescriptionSpec{
+							Description: &schema.DescriptionSpec{
 								Legacy: "I am a recursive type.",
 							},
 							Language: pythonMapCase,
@@ -133,13 +133,13 @@ func initTestPackageSpec(t *testing.T) {
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "The resource options object.",
 					},
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
 						"uniqueProp": {
-							Description: schema.DescriptionSpec{
+							Description: &schema.DescriptionSpec{
 								Legacy: "This is a property unique to this type.",
 							},
 							Language: pythonMapCase,
@@ -153,14 +153,14 @@ func initTestPackageSpec(t *testing.T) {
 		},
 		Provider: schema.ResourceSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
-				Description: schema.DescriptionSpec{
+				Description: &schema.DescriptionSpec{
 					Legacy: fmt.Sprintf("The provider type for the %s package.", providerPackage),
 				},
 				Type: "object",
 			},
 			InputProperties: map[string]schema.PropertySpec{
 				"stringProp": {
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "A stringProp for the provider resource.",
 					},
 					TypeSpec: schema.TypeSpec{
@@ -172,7 +172,7 @@ func initTestPackageSpec(t *testing.T) {
 		Resources: map[string]schema.ResourceSpec{
 			"prov:module2/resource2:Resource2": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: `This is a module-level resource called Resource.
 {{% examples %}}
 ## Example Usage
@@ -211,7 +211,7 @@ $ pulumi import prov:module/resource:Resource test test
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "This is integerProp's description.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -219,7 +219,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"stringProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "This is stringProp's description.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -227,7 +227,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"boolProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "A bool prop.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -245,7 +245,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"recursiveType": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "I am a recursive type.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -256,7 +256,7 @@ $ pulumi import prov:module/resource:Resource test test
 			},
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: `This is a module-level resource called Resource.
 {{% examples %}}
 ## Example Usage
@@ -295,7 +295,7 @@ $ pulumi import prov:module/resource:Resource test test
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"integerProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "This is integerProp's description.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -303,7 +303,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"stringProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "This is stringProp's description.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -311,7 +311,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"boolProp": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "A bool prop.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -329,7 +329,7 @@ $ pulumi import prov:module/resource:Resource test test
 						},
 					},
 					"recursiveType": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "I am a recursive type.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -340,13 +340,13 @@ $ pulumi import prov:module/resource:Resource test test
 			},
 			"prov:/packageLevelResource:PackageLevelResource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "This is a package-level resource.",
 					},
 				},
 				InputProperties: map[string]schema.PropertySpec{
 					"prop": {
-						Description: schema.DescriptionSpec{
+						Description: &schema.DescriptionSpec{
 							Legacy: "An input property.",
 						},
 						TypeSpec: schema.TypeSpec{
@@ -359,11 +359,11 @@ $ pulumi import prov:module/resource:Resource test test
 		Functions: map[string]schema.FunctionSpec{
 			// Package-level Functions.
 			"prov:/getPackageResource:getPackageResource": {
-				Description: schema.DescriptionSpec{
+				Description: &schema.DescriptionSpec{
 					Legacy: "A package-level function.",
 				},
 				Inputs: &schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Inputs for getPackageResource.",
 					},
 					Type: "object",
@@ -376,7 +376,7 @@ $ pulumi import prov:module/resource:Resource test test
 					},
 				},
 				Outputs: &schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Outputs for getPackageResource.",
 					},
 					Properties: simpleProperties,
@@ -386,11 +386,11 @@ $ pulumi import prov:module/resource:Resource test test
 
 			// Module-level Functions.
 			"prov:module/getModuleResource:getModuleResource": {
-				Description: schema.DescriptionSpec{
+				Description: &schema.DescriptionSpec{
 					Legacy: "A module-level function.",
 				},
 				Inputs: &schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Inputs for getModuleResource.",
 					},
 					Type: "object",
@@ -403,7 +403,7 @@ $ pulumi import prov:module/resource:Resource test test
 					},
 				},
 				Outputs: &schema.ObjectTypeSpec{
-					Description: schema.DescriptionSpec{
+					Description: &schema.DescriptionSpec{
 						Legacy: "Outputs for getModuleResource.",
 					},
 					Properties: simpleProperties,

@@ -501,7 +501,8 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 
 		if readme == "" {
-			readme, err := mod.pkg.Description().NarrowToLanguage("python").RenderToMarkdown(nil)
+			var err error
+			readme, err = mod.pkg.Description().NarrowToLanguage("python").RenderToMarkdown(nil)
 			if err != nil {
 				return err
 			}

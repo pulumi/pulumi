@@ -489,7 +489,10 @@ func bindHelpers(path string, errs *multierror.Error, obj map[string]interface{}
 // TODO: Cleanup into separate functions.
 //
 // We should have adding new node types as an explicit design goal here.
-func bindDescription(path string, spec DescriptionSpec) (Description, *hcl.Diagnostic) {
+func bindDescription(path string, spec *DescriptionSpec) (Description, *hcl.Diagnostic) {
+	if spec == nil {
+		return Description{}, nil
+	}
 	if spec.Legacy != "" && len(spec.Structured) != 0 {
 		return nil, errorf(path, "cannot specify both legacy and structured")
 	}

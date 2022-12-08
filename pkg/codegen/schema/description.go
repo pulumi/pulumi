@@ -217,18 +217,18 @@ func MakeMarkdownDescription(s string) Description {
 
 // Implementation details for marshaling and unmarshaling
 
-func (d Description) marshal() (DescriptionSpec, error) {
+func (d Description) marshal() (*DescriptionSpec, error) {
 	if isLegacy, legacyText, otherNodes := d.checkLegacy(); isLegacy {
 		if len(otherNodes) != 0 {
-			return DescriptionSpec{}, fmt.Errorf("cannot mutate a legacy description")
+			return nil, fmt.Errorf("cannot mutate a legacy description")
 		}
-		return DescriptionSpec{Legacy: legacyText}, nil
+		return &DescriptionSpec{Legacy: legacyText}, nil
 	}
 	structured := make([]interface{}, len(d))
 	for i, node := range d {
 		structured[i] = node
 	}
-	return DescriptionSpec{Structured: structured}, nil
+	return &DescriptionSpec{Structured: structured}, nil
 }
 
 func (d Description) checkLegacy() (bool, string, []DescriptionNode) {
