@@ -77,7 +77,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	}
 
 	modCtx := &modContext{
-		pkg: pkg,
+		pkg: pkg.Reference(),
 		mod: moduleName,
 	}
 	typeName := modCtx.typeString(t, input, nil)
@@ -114,7 +114,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 	if info, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
 		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
 			modCtx := &modContext{
-				pkg: pkg,
+				pkg: pkg.Reference(),
 				mod: modName,
 			}
 			return modCtx.typeString(m.Function.Outputs.Properties[0].Type, false, nil)
