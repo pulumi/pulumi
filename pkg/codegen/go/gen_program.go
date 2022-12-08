@@ -272,7 +272,8 @@ func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkg
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	v := generatePackageContextMap(tool, pkg, goPkgInfo, cache)
+	v, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, cache)
+	contract.AssertNoError(err)
 	packageContexts.Store(pkg, v)
 	return v
 }

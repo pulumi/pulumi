@@ -135,7 +135,8 @@ func TestGenerateTypeNames(t *testing.T) {
 		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 			goPkgInfo = goInfo
 		}
-		packages := generatePackageContextMap("test", pkg, goPkgInfo, nil)
+		packages, err := generatePackageContextMap("test", pkg.Reference(), goPkgInfo, nil)
+		require.NoError(t, err)
 
 		root, ok := packages[""]
 		require.True(t, ok)
@@ -252,7 +253,7 @@ func TestTokenToType(t *testing.T) {
 	}{
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec),
+				pkg:            importSpec(t, awsSpec).Reference(),
 				importBasePath: awsImportBasePath,
 			},
 			token:    "aws:s3/BucketWebsite:BucketWebsite",
@@ -260,7 +261,7 @@ func TestTokenToType(t *testing.T) {
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec),
+				pkg:            importSpec(t, awsSpec).Reference(),
 				importBasePath: awsImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
@@ -271,7 +272,7 @@ func TestTokenToType(t *testing.T) {
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, googleNativeSpec),
+				pkg:            importSpec(t, googleNativeSpec).Reference(),
 				importBasePath: googleNativeImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
@@ -316,7 +317,7 @@ func TestTokenToResource(t *testing.T) {
 	}{
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec),
+				pkg:            importSpec(t, awsSpec).Reference(),
 				importBasePath: awsImportBasePath,
 			},
 			token:    "aws:s3/Bucket:Bucket",
@@ -324,7 +325,7 @@ func TestTokenToResource(t *testing.T) {
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, awsSpec),
+				pkg:            importSpec(t, awsSpec).Reference(),
 				importBasePath: awsImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
@@ -335,7 +336,7 @@ func TestTokenToResource(t *testing.T) {
 		},
 		{
 			pkg: &pkgContext{
-				pkg:            importSpec(t, googleNativeSpec),
+				pkg:            importSpec(t, googleNativeSpec).Reference(),
 				importBasePath: googleNativeImportBasePath,
 				pkgImportAliases: map[string]string{
 					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
@@ -368,7 +369,7 @@ func TestGenHeader(t *testing.T) {
 
 	pkg := &pkgContext{
 		tool: "a tool",
-		pkg:  &schema.Package{Name: "test-pkg"},
+		pkg:  (&schema.Package{Name: "test-pkg"}).Reference(),
 	}
 
 	s := func() string {
