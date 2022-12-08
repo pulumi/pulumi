@@ -1846,7 +1846,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        getResourceLink(name),
+			Link:        getResourceLink(name) + "/",
 			DisplayName: name,
 		})
 	}
@@ -1856,7 +1856,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        getFunctionLink(name),
+			Link:        getFunctionLink(name) + "/",
 			DisplayName: strings.Title(name),
 		})
 	}
