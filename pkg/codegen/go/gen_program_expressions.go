@@ -371,7 +371,10 @@ func outputVersionFunctionArgTypeName(t model.Type, cache *Cache) (string, error
 		return "", fmt.Errorf("Expected a schema.ObjectType, got %s", schemaType.String())
 	}
 
-	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}, externalPackages: cache}
+	pkg := &pkgContext{
+		pkg:              (&schema.Package{Name: "main"}).Reference(),
+		externalPackages: cache,
+	}
 
 	var ty string
 	if pkg.isExternalReference(objType) {
@@ -781,8 +784,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
-		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}, externalPackages: g.externalCache}
-		return pkg.argsType(schemaType)
+		return (&pkgContext{
+			pkg:              (&schema.Package{Name: "main"}).Reference(),
+			externalPackages: g.externalCache,
+		}).argsType(schemaType)
 	}
 
 	switch destType := destType.(type) {

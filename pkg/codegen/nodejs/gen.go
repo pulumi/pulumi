@@ -128,7 +128,7 @@ func externalModuleName(s string) string {
 }
 
 type modContext struct {
-	pkg              *schema.Package
+	pkg              schema.PackageReference
 	mod              string
 	types            []*schema.ObjectType
 	enums            []*schema.EnumType
@@ -180,15 +180,17 @@ func (mod *modContext) tokenToModName(tok string) string {
 	return modName
 }
 
-func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext, pkgName string, external bool) {
+func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *modContext, pkgName string, external bool) {
 	namingCtx = mod
-	if pkg != nil && pkg != mod.pkg {
+	if pkg != nil && !codegen.PkgEquals(pkg, mod.pkg) {
 		external = true
-		pkgName = pkg.Name + "."
+		pkgName = pkg.Name() + "."
 
 		var info NodePackageInfo
-		contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}))
-		if v, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
+		def, err := pkg.Definition()
+		contract.AssertNoError(err)
+		contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"nodejs": Importer}))
+		if v, ok := def.Language["nodejs"].(NodePackageInfo); ok {
 			info = v
 		}
 		namingCtx = &modContext{
@@ -200,7 +202,7 @@ func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext
 	return
 }
 
-func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok string, input, args, enum bool) string {
+func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDetails, tok string, input, args, enum bool) string {
 
 	root := "outputs."
 	if input {
@@ -238,7 +240,7 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
-		if pkgName != mod.pkg.Name {
+		if pkgName != mod.pkg.Name() {
 			pkgName = externalModuleName(pkgName)
 		}
 
@@ -247,7 +249,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 
 	pkg := mod.pkg
 	if r.Resource != nil {
-		pkg = r.Resource.Package
+		pkg = r.Resource.PackageReference
 	}
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if external {
@@ -298,14 +300,14 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(t.Package, nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(t.PackageReference, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
 		return tstypes.StringMap(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.ObjectType:
 		details := mod.details(t)
-		return tstypes.Identifier(mod.objectType(t.Package, details, t.Token, input, t.IsInputShape(), false))
+		return tstypes.Identifier(mod.objectType(t.PackageReference, details, t.Token, input, t.IsInputShape(), false))
 	case *schema.ResourceType:
 		return tstypes.Identifier(mod.resourceType(t))
 	case *schema.TokenType:
@@ -670,7 +672,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	pulumiType := r.Token
 	if r.IsProvider {
-		pulumiType = mod.pkg.Name
+		pulumiType = mod.pkg.Name()
 	}
 
 	fmt.Fprintf(w, "    /** @internal */\n")
@@ -1314,7 +1316,9 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	}
 
 	var nodePackageInfo NodePackageInfo
-	if languageInfo, hasLanguageInfo := mod.pkg.Language["nodejs"]; hasLanguageInfo {
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+	if languageInfo, hasLanguageInfo := def.Language["nodejs"]; hasLanguageInfo {
 		nodePackageInfo = languageInfo.(NodePackageInfo)
 	}
 
@@ -1337,16 +1341,16 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.EnumType:
 		// If the enum is from another package, add an import for the external package.
-		if t.Package != nil && t.Package != mod.pkg {
-			pkg := t.Package.Name
+		if t.PackageReference != nil && !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+			pkg := t.PackageReference.Name()
 			writeImports(pkg)
 			return false
 		}
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
-		if t.Package != nil && t.Package != mod.pkg {
-			pkg := t.Package.Name
+		if t.PackageReference != nil && !codegen.PkgEquals(t.PackageReference, mod.pkg) {
+			pkg := t.PackageReference.Name()
 			writeImports(pkg)
 			return false
 		}
@@ -1357,8 +1361,8 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return true
 	case *schema.ResourceType:
 		// If it's from another package, add an import for the external package.
-		if t.Resource != nil && t.Resource.Package != mod.pkg {
-			pkg := t.Resource.Package.Name
+		if t.Resource != nil && !codegen.PkgEquals(t.Resource.PackageReference, mod.pkg) {
+			pkg := t.Resource.PackageReference.Name()
 			writeImports(pkg)
 			return false
 		}
@@ -1510,7 +1514,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	fmt.Fprintf(w, "declare var exports: any;\n")
 
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "const __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
+	fmt.Fprintf(w, "const __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name())
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1561,9 +1565,11 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 			fmt.Sprintf(`import * as outputs from "%s/types/output";`, relRoot),
 		}...)
 
-		if mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums {
+		def, err := mod.pkg.Definition()
+		contract.AssertNoError(err)
+		if def.Language["nodejs"].(NodePackageInfo).ContainsEnums {
 			code := `import * as enums from "%s/types/enums";`
-			if lookupNodePackageInfo(mod.pkg).UseTypeOnlyReferences {
+			if lookupNodePackageInfo(def).UseTypeOnlyReferences {
 				code = `import type * as enums from "%s/types/enums";`
 			}
 			imports = append(imports, fmt.Sprintf(code, relRoot))
@@ -1754,7 +1760,9 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 	case "utilities.ts":
 		return mod.mod == ""
 	case "vars.ts":
-		return len(mod.pkg.Config) > 0
+		config, err := mod.pkg.Config()
+		contract.AssertNoError(err)
+		return len(config) > 0
 	default:
 		return false
 	}
@@ -1800,26 +1808,34 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		fs.Add(p, []byte(contents))
 	}
 
+	def, err := mod.pkg.Definition()
+	if err != nil {
+		return err
+	}
+
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil, nil)
-		mod.genUtilitiesFile(buffer)
+		err := mod.genUtilitiesFile(buffer)
+		if err != nil {
+			return err
+		}
 		fs.Add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
-		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
+		readme := def.Language["nodejs"].(NodePackageInfo).Readme
 		if readme == "" {
-			readme = mod.pkg.Description
+			readme = def.Description
 			if readme != "" && readme[len(readme)-1] != '\n' {
 				readme += "\n"
 			}
-			if mod.pkg.Attribution != "" {
+			if def.Attribution != "" {
 				if len(readme) != 0 {
 					readme += "\n"
 				}
-				readme += mod.pkg.Attribution
+				readme += def.Attribution
 			}
 		}
 		if readme != "" && readme[len(readme)-1] != '\n' {
@@ -1827,9 +1843,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		}
 		fs.Add(path.Join(modDir, "README.md"), []byte(readme))
 	case "config":
-		if len(mod.pkg.Config) > 0 {
+		if len(def.Config) > 0 {
 			buffer := &bytes.Buffer{}
-			if err := mod.genConfig(buffer, mod.pkg.Config); err != nil {
+			if err := mod.genConfig(buffer, def.Config); err != nil {
 				return err
 			}
 			addFile(otherFileType, "vars.ts", buffer.String())
@@ -1904,7 +1920,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 
 	// Nested types
 	// Importing enums always imports inputs and outputs, so if we have enums we generate inputs and outputs
-	if len(mod.types) > 0 || (mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums && mod.mod == "types") {
+	if len(mod.types) > 0 || (def.Language["nodejs"].(NodePackageInfo).ContainsEnums && mod.mod == "types") {
 		input, output, err := mod.genTypes()
 		if err != nil {
 			return err
@@ -1975,7 +1991,10 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		}
 	}
 
-	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
+	info, _ := def.Language["nodejs"].(NodePackageInfo)
 	if info.ContainsEnums {
 		if mod.mod == "types" {
 			children.Add("enums")
@@ -2050,7 +2069,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 				continue
 			}
 
-			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
+			registrations.Add(schema.TokenToRuntimeModule(r.Token))
 		}
 
 		fmt.Fprintf(w, "\nconst _module = {\n")
@@ -2078,12 +2097,12 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "    },\n")
 		fmt.Fprintf(w, "};\n")
 		for _, name := range registrations.SortedValues() {
-			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name, name)
+			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name(), name)
 		}
 	}
 
 	if provider != nil {
-		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
+		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name())
 		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
 		fmt.Fprintf(w, "        if (type !== \"%v\") {\n", provider.Token)
@@ -2352,7 +2371,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                          pkg,
+				pkg:                          pkg.Reference(),
 				mod:                          modName,
 				tool:                         tool,
 				compatibility:                info.Compatibility,
@@ -2571,7 +2590,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
-func (mod *modContext) genUtilitiesFile(w io.Writer) {
+func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 	const body = `
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {
@@ -2636,12 +2655,16 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
     }
 }
 `
+	def, err := mod.pkg.Definition()
+	if err != nil {
+		return err
+	}
 	var pluginDownloadURL string
-	if url := mod.pkg.PluginDownloadURL; url != "" {
+	if url := def.PluginDownloadURL; url != "" {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
 	}
-	_, err := fmt.Fprintf(w, body, pluginDownloadURL)
-	contract.AssertNoError(err)
+	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
+	return err
 }
 
 func genInstallScript(pluginDownloadURL string) string {

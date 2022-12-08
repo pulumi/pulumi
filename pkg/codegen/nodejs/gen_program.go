@@ -73,7 +73,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	var index bytes.Buffer
-	g.genPreamble(&index, program, preambleHelperMethods)
+	err = g.genPreamble(&index, program, preambleHelperMethods)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, n := range nodes {
 		if g.asyncMain {
 			break
@@ -281,7 +284,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) error {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
@@ -296,8 +299,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				continue
 			}
 			pkgName := "@pulumi/" + pkg
-			if r.Schema != nil && r.Schema.Package != nil {
-				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				def, err := r.Schema.PackageReference.Definition()
+				if err != nil {
+					return err
+				}
+				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
 				}
 				npmToPuPkgName[pkgName] = pkg
@@ -345,6 +352,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
+	return nil
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -384,18 +392,20 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 	pkg, module, member, diagnostics := r.DecomposeToken()
 
 	if r.Schema != nil {
-		module = moduleName(module, r.Schema.Package)
+		module = moduleName(module, r.Schema.PackageReference)
 	}
 
 	return makeValidIdentifier(pkg), module, title(member), diagnostics
 }
 
-func moduleName(module string, pkg *schema.Package) string {
+func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
-		err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		def, err := pkg.Definition()
 		contract.AssertNoError(err)
-		if lang, ok := pkg.Language["nodejs"]; ok {
+		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		contract.AssertNoError(err)
+		if lang, ok := def.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
 				module = m

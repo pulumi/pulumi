@@ -103,7 +103,7 @@ func Title(s string) string {
 	return s
 }
 
-func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string) string {
+func tokenToPackage(pkg schema.PackageReference, overrides map[string]string, tok string) string {
 	mod := pkg.TokenToModule(tok)
 	if override, ok := overrides[mod]; ok {
 		mod = override
@@ -140,7 +140,7 @@ func (c *Cache) setContextMap(pkg *schema.Package, m map[string]*pkgContext) {
 }
 
 type pkgContext struct {
-	pkg             *schema.Package
+	pkg             schema.PackageReference
 	mod             string
 	importBasePath  string
 	rootPackageName string
@@ -226,7 +226,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = packageRoot(pkg.pkg)
+		var err error
+		mod, err = packageRoot(pkg.pkg)
+		contract.AssertNoError(err)
 	}
 
 	var importPath string
@@ -624,30 +626,26 @@ func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
 
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
 func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
-	isExternal bool, extPkg *schema.Package, token string) {
-	var err error
+	isExternal bool, extPkg schema.PackageReference, token string) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
-		isExternal = typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
+		isExternal = typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
-			extPkg, err = typ.PackageReference.Definition()
-			contract.AssertNoError(err)
+			extPkg = typ.PackageReference
 			token = typ.Token
 		}
 		return
 	case *schema.ResourceType:
-		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
+		isExternal = typ.Resource != nil && pkg.pkg != nil && !codegen.PkgEquals(typ.Resource.PackageReference, pkg.pkg)
 		if isExternal {
-			extPkg, err = typ.Resource.PackageReference.Definition()
-			contract.AssertNoError(err)
+			extPkg = typ.Resource.PackageReference
 			token = typ.Token
 		}
 		return
 	case *schema.EnumType:
-		isExternal = pkg.pkg != nil && typ.Package != pkg.pkg
+		isExternal = pkg.pkg != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
 		if isExternal {
-			extPkg, err = typ.PackageReference.Definition()
-			contract.AssertNoError(err)
+			extPkg = typ.PackageReference
 			token = typ.Token
 		}
 		return
@@ -666,7 +664,7 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	extPkgCtx, _ := pkg.contextForExternalReference(t)
 	resType := extPkgCtx.tokenToResource(t.Token)
 	if !strings.Contains(resType, ".") {
-		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, resType)
+		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name(), resType)
 	}
 	return resType
 }
@@ -694,8 +692,10 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	contract.Assert(isExternal)
 
 	var goInfo GoPackageInfo
-	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+	extDef, err := extPkg.Definition()
+	contract.AssertNoError(err)
+	contract.AssertNoError(extDef.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := extDef.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
 	} else {
 		goInfo.ImportBasePath = extractImportBasePath(extPkg)
@@ -705,7 +705,9 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 
 	// Ensure that any package import aliases we have specified locally take precedence over those
 	// specified in the remote package.
-	if ourPkgGoInfoI, has := pkg.pkg.Language["go"]; has {
+	def, err := pkg.pkg.Definition()
+	contract.AssertNoError(err)
+	if ourPkgGoInfoI, has := def.Language["go"]; has {
 		ourPkgGoInfo := ourPkgGoInfoI.(GoPackageInfo)
 		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
 			pkgImportAliases = make(map[string]string)
@@ -722,11 +724,12 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 
 	var maps map[string]*pkgContext
 
-	if extMap, ok := pkg.externalPackages.lookupContextMap(extPkg); ok {
+	if extMap, ok := pkg.externalPackages.lookupContextMap(extDef); ok {
 		maps = extMap
 	} else {
-		maps = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
-		pkg.externalPackages.setContextMap(extPkg, maps)
+		maps, err = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
+		contract.AssertNoError(err)
+		pkg.externalPackages.setContextMap(extDef, maps)
 	}
 	extPkgCtx := maps[""]
 	extPkgCtx.pkgImportAliases = pkgImportAliases
@@ -1792,7 +1795,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
-	pkg.GenPkgDefaultsOptsCall(w, false /*invoke*/)
+	err := pkg.GenPkgDefaultsOptsCall(w, false /*invoke*/)
+	if err != nil {
+		return err
+	}
 
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
@@ -2129,7 +2135,10 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		outputsType = name + "Result"
 	}
 
-	pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
+	err := pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
+	if err != nil {
+		return err
+	}
 
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
 	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
@@ -2735,13 +2744,13 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 }
 
-func extractImportBasePath(extPkg *schema.Package) string {
-	version := extPkg.Version.Major
+func extractImportBasePath(extPkg schema.PackageReference) string {
+	version := extPkg.Version().Major
 	var vPath string
 	if version > 1 {
 		vPath = fmt.Sprintf("/v%d", version)
 	}
-	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name, vPath, extPkg.Name)
+	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name(), vPath, extPkg.Name())
 }
 
 func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
@@ -2799,7 +2808,9 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 
 	var pkgName string
 	if pkg.mod == "" {
-		pkgName = packageName(pkg.pkg)
+		def, err := pkg.pkg.Definition()
+		contract.AssertNoError(err)
+		pkgName = packageName(def)
 	} else {
 		pkgName = path.Base(pkg.mod)
 	}
@@ -2869,7 +2880,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
-		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name, cgstrings.Camel(p.Name))
+		configKey := fmt.Sprintf("\"%s:%s\"", pkg.pkg.Name(), cgstrings.Camel(p.Name))
 
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", Title(p.Name), getType)
 		if p.DefaultValue != nil {
@@ -2896,7 +2907,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 // Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
 // definition and its registration to support rehydrating providers.
-func (pkg *pkgContext) genResourceModule(w io.Writer) {
+func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	contract.Assert(len(pkg.resources) != 0)
 	allResourcesAreOverlays := true
 	for _, r := range pkg.resources {
@@ -2907,7 +2918,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	}
 	if allResourcesAreOverlays {
 		// If all resources in this module are overlays, skip further code generation.
-		return
+		return nil
 	}
 
 	basePath := pkg.importBasePath
@@ -2928,7 +2939,11 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	// If there are any internal dependencies, include them as blank imports.
 	if topLevelModule {
-		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		if goInfo, ok := def.Language["go"].(GoPackageInfo); ok {
 			for _, dep := range goInfo.InternalDependencies {
 				imports[dep] = "_"
 			}
@@ -2985,7 +3000,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "}\n\n")
 
 		fmt.Fprintf(w, "func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pulumi.ProviderResource, error) {\n")
-		fmt.Fprintf(w, "\tif typ != \"pulumi:providers:%s\" {\n", pkg.pkg.Name)
+		fmt.Fprintf(w, "\tif typ != \"pulumi:providers:%s\" {\n", pkg.pkg.Name())
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown provider type: %%s\", typ)\n")
 		fmt.Fprintf(w, "\t}\n\n")
 		fmt.Fprintf(w, "\tr := &Provider{}\n")
@@ -3017,7 +3032,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {
 			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
-			fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name)
+			fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name())
 			fmt.Fprintf(w, "\t\t%q,\n", mod)
 			fmt.Fprintf(w, "\t\t&module{version},\n")
 			fmt.Fprintf(w, "\t)\n")
@@ -3025,15 +3040,16 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	}
 	if provider != nil {
 		fmt.Fprintf(w, "\tpulumi.RegisterResourcePackage(\n")
-		fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name)
+		fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name())
 		fmt.Fprintf(w, "\t\t&pkg{version},\n")
 		fmt.Fprintf(w, "\t)\n")
 	}
-	fmt.Fprintf(w, "}\n")
+	_, err := fmt.Fprintf(w, "}\n")
+	return err
 }
 
 // generatePackageContextMap groups resources, types, and functions into Go packages.
-func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo, externalPkgs *Cache) map[string]*pkgContext {
+func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo GoPackageInfo, externalPkgs *Cache) (map[string]*pkgContext, error) {
 	packages := map[string]*pkgContext{}
 
 	// Share the cache
@@ -3085,7 +3101,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
-	if len(pkg.Config) > 0 {
+	config, err := pkg.Config()
+	if err != nil {
+		return nil, err
+	}
+	if len(config) > 0 {
 		_ = getPkg("config")
 	}
 
@@ -3176,13 +3196,17 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	// Rewrite cyclic types. See the docs on rewriteCyclicFields for the motivation.
-	rewriteCyclicObjectFields(pkg)
+	def, err := pkg.Definition()
+	if err != nil {
+		return nil, err
+	}
+	rewriteCyclicObjectFields(def)
 
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
 	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
 	seenMap := codegen.NewStringSet()
-	for _, t := range pkg.Types {
+	for _, t := range def.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
 			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
@@ -3293,8 +3317,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
-	scanResource(pkg.Provider)
-	for _, r := range pkg.Resources {
+	scanResource(def.Provider)
+	for _, r := range def.Resources {
 		scanResource(r)
 	}
 
@@ -3402,7 +3426,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
-	for _, t := range pkg.Types {
+	for _, t := range def.Types {
 		scanType(t)
 	}
 
@@ -3410,7 +3434,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// input or output property type metadata, in case they have
 	// types used in array or pointer element positions.
 	if !goInfo.DisableFunctionOutputVersions || goInfo.GenerateExtraInputTypes {
-		for _, f := range pkg.Functions {
+		for _, f := range def.Functions {
 			if f.NeedsOutputVersion() || goInfo.GenerateExtraInputTypes {
 				optional := false
 				if f.Inputs != nil {
@@ -3423,7 +3447,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
-	for _, f := range pkg.Functions {
+	for _, f := range def.Functions {
 		if f.IsMethod {
 			continue
 		}
@@ -3454,7 +3478,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
-	return packages
+	return packages, nil
 }
 
 // LanguageResource is derived from the schema and can be used by downstream codegen.
@@ -3479,7 +3503,10 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, globalCache)
+	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, globalCache)
+	if err != nil {
+		return nil, err
+	}
 
 	// emit each package
 	var pkgMods []string
@@ -3517,19 +3544,23 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 // source file should be under this root. For example:
 //
 // root = aws => sdk/go/aws/*.go
-func packageRoot(pkg *schema.Package) string {
+func packageRoot(pkg schema.PackageReference) (string, error) {
+	def, err := pkg.Definition()
+	if err != nil {
+		return "", err
+	}
 	var info GoPackageInfo
-	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+	if goInfo, ok := def.Language["go"].(GoPackageInfo); ok {
 		info = goInfo
 	}
 	if info.RootPackageName != "" {
 		// package structure is flat
-		return ""
+		return "", nil
 	}
 	if info.ImportBasePath != "" {
-		return path.Base(info.ImportBasePath)
+		return path.Base(info.ImportBasePath), nil
 	}
-	return goPackage(pkg.Name)
+	return goPackage(pkg.Name()), nil
 }
 
 // packageName is the go package name for the generated package.
@@ -3541,7 +3572,9 @@ func packageName(pkg *schema.Package) string {
 	if info.RootPackageName != "" {
 		return info.RootPackageName
 	}
-	return goPackage(packageRoot(pkg))
+	root, err := packageRoot(pkg.Reference())
+	contract.AssertNoErrorf(err, "We generated the ref from a pkg, so we know its a valid ref")
+	return goPackage(root)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
@@ -3553,7 +3586,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	packages := generatePackageContextMap(tool, pkg, goPkgInfo, NewCache())
+	packages, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, NewCache())
+	if err != nil {
+		return nil, err
+	}
 
 	// emit each package
 	var pkgMods []string
@@ -3563,7 +3599,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	sort.Strings(pkgMods)
 
 	name := packageName(pkg)
-	pathPrefix := packageRoot(pkg)
+	pathPrefix, err := packageRoot(pkg.Reference())
+	if err != nil {
+		return nil, err
+	}
 
 	files := codegen.Fs{}
 
@@ -3602,8 +3641,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		switch mod {
 		case "":
 			buffer := &bytes.Buffer{}
-			if pkg.pkg.Description != "" {
-				printComment(buffer, pkg.pkg.Description, false)
+			if pkg.pkg.Description() != "" {
+				printComment(buffer, pkg.pkg.Description(), false)
 			} else {
 				fmt.Fprintf(buffer, "// Package %[1]s exports types, functions, subpackages for provisioning %[1]s resources.\n", name)
 			}
@@ -3612,9 +3651,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			setFile(path.Join(mod, "doc.go"), buffer.String())
 
 		case "config":
-			if len(pkg.pkg.Config) > 0 {
+			config, err := pkg.pkg.Config()
+			if err != nil {
+				return nil, err
+			}
+			if len(config) > 0 {
 				buffer := &bytes.Buffer{}
-				if err := pkg.genConfig(buffer, pkg.pkg.Config); err != nil {
+				if err := pkg.genConfig(buffer, config); err != nil {
 					return nil, err
 				}
 
@@ -3729,12 +3772,15 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
-			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name)
+			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name())
 			if pkg.rootPackageName != "" {
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
 			}
 
-			pkg.GenUtilitiesFile(buffer, packageRegex)
+			err := pkg.GenUtilitiesFile(buffer, packageRegex)
+			if err != nil {
+				return nil, err
+			}
 
 			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
 		}
@@ -3742,7 +3788,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// If there are resources in this module, register the module with the runtime.
 		if len(pkg.resources) != 0 && !allResourcesAreOverlays(pkg.resources) {
 			buffer := &bytes.Buffer{}
-			pkg.genResourceModule(buffer)
+			err := pkg.genResourceModule(buffer)
+			if err != nil {
+				return nil, err
+			}
 
 			setFile(path.Join(mod, "init.go"), buffer.String())
 		}
@@ -3802,7 +3851,7 @@ func goPackage(name string) string {
 	return strings.ReplaceAll(name, "-", "")
 }
 
-func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) {
+func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error {
 	const utilitiesFile = `
 type envParser func(v string) interface{}
 
@@ -3876,14 +3925,20 @@ func isZero(v interface{}) bool {
 }
 `
 	_, err := fmt.Fprintf(w, utilitiesFile, packageRegex)
-	contract.AssertNoError(err)
-	pkg.GenPkgDefaultOpts(w)
+	if err != nil {
+		return err
+	}
+	return pkg.GenPkgDefaultOpts(w)
 }
 
-func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) {
-	url := pkg.pkg.PluginDownloadURL
+func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
+	p, err := pkg.pkg.Definition()
+	if err != nil {
+		return err
+	}
+	url := p.PluginDownloadURL
 	if url == "" {
-		return
+		return nil
 	}
 	const template string = `
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
@@ -3895,28 +3950,35 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 `
 	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
 	version := ""
-	if info := pkg.pkg.Language["go"]; info != nil {
-		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version != nil {
-			version = fmt.Sprintf(", pulumi.Version(%q)", pkg.pkg.Version.String())
+	if info := p.Language["go"]; info != nil {
+		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
+			version = fmt.Sprintf(", pulumi.Version(%q)", p.Version.String())
 		}
 	}
 	for _, typ := range []string{"Resource", "Invoke"} {
 		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, version)
-		contract.AssertNoError(err)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
-func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) {
+func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	// The `pkg%sDefaultOpts` call won't do anything, so we don't insert it.
-	if pkg.pkg.PluginDownloadURL == "" {
-		return
+	p, err := pkg.pkg.Definition()
+	if err != nil {
+		return err
+	}
+	if p.PluginDownloadURL == "" {
+		return nil
 	}
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
 		typ = "Invoke"
 	}
-	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
-	contract.AssertNoError(err)
+	_, err = fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
+	return err
 }

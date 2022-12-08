@@ -309,11 +309,15 @@ func enumName(enum *model.EnumType) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("Could not get associated enum")
 	}
-	if name := e.(*schema.EnumType).Package.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
+	def, err := e.(*schema.EnumType).PackageReference.Definition()
+	if err != nil {
+		return "", err
+	}
+	if name := def.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
 		pkg = name
 	}
 	if mod := components[1]; mod != "" && mod != "index" {
-		if pkg := e.(*schema.EnumType).Package; pkg != nil {
+		if pkg := e.(*schema.EnumType).PackageReference; pkg != nil {
 			mod = moduleName(mod, pkg)
 		}
 		pkg += "." + mod
