@@ -80,7 +80,7 @@ func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen Language
 	}
 
 	parser := syntax.NewParser()
-	if err := parser.ParseFile(&hcl2Text, string("anonymous.pp")); err != nil {
+	if err := parser.ParseFile(&hcl2Text, "anonymous.pp"); err != nil {
 		return err
 	}
 	if parser.Diagnostics.HasErrors() {

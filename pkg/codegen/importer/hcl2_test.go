@@ -89,10 +89,14 @@ func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) resource.
 }
 
 func renderTemplate(t *testing.T, x *model.TemplateExpression) resource.PropertyValue {
-	if !assert.Len(t, x.Parts, 1) {
-		return resource.NewStringProperty("")
+	if len(x.Parts) == 1 {
+		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
-	return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
+	b := ""
+	for _, p := range x.Parts {
+		b += p.(*model.LiteralValueExpression).Value.AsString()
+	}
+	return resource.NewStringProperty(b)
 }
 
 func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) resource.PropertyValue {

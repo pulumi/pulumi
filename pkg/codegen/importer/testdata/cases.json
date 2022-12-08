@@ -1556,7 +1556,7 @@
 			"type": "random:index/randomId:RandomId",
 			"inputs": {
 				"byteLength": 42,
-				"prefix": "foobar"
+				"prefix": "f${oo}ba%{}r"
 			}
 		}
     ]

@@ -1281,14 +1281,39 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 		if !escaped {
 			return value.AsString()
 		}
-		s := strconv.Quote(value.AsString())
-		if !quoted {
-			return s[1 : len(s)-1]
+		s := escapeString(value.AsString())
+		if quoted {
+			return fmt.Sprintf(`"%s"`, s)
 		}
 		return s
 	default:
 		panic(fmt.Errorf("unexpected literal type %v", value.Type().FriendlyName()))
 	}
+}
+
+func escapeString(s string) string {
+	// escape special characters
+	s = strconv.Quote(s)
+	s = s[1 : len(s)-1] // Remove surrounding double quote (`"`)
+
+	// Escape `${`
+	runes := []rune(s)
+	out := make([]rune, 0, len(runes))
+	for i, r := range runes {
+		next := func() rune {
+			if i >= len(runes)-1 {
+				return 0
+			}
+			return runes[i+1]
+		}
+		if r == '$' && next() == '{' {
+			out = append(out, '$')
+		} else if r == '%' && next() == '{' {
+			out = append(out, '%')
+		}
+		out = append(out, r)
+	}
+	return string(out)
 }
 
 // LiteralValueExpression represents a semantically-analyzed literal value expression.
