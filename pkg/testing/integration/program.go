@@ -36,6 +36,7 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"golang.org/x/mod/modfile"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -2242,14 +2243,10 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	// link local dependencies
-	for _, pkg := range pt.opts.Dependencies {
-		var editStr string
-		if strings.ContainsRune(pkg, '=') {
-			// Use a literal replacement path.
-			editStr = pkg
-		} else {
-			dep := getRewritePath(pkg, gopath, depRoot)
-			editStr = fmt.Sprintf("%s=%s", pkg, dep)
+	for _, dep := range pt.opts.Dependencies {
+		editStr, err := getEditStr(dep, gopath, depRoot)
+		if err != nil {
+			return fmt.Errorf("error generating go mod replacement for dep %q: %w", dep, err)
 		}
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
@@ -2280,6 +2277,62 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	return nil
+}
+
+func getEditStr(dep string, gopath string, depRoot string) (string, error) {
+	checkModName := true
+	var err error
+	var modName string
+	var modDir string
+	if strings.ContainsRune(dep, '=') {
+		parts := strings.Split(dep, "=")
+		modName = parts[0]
+		modDir = parts[1]
+	} else if !modfile.IsDirectoryPath(dep) {
+		modName = dep
+		modDir = getRewritePath(dep, gopath, depRoot)
+	} else {
+		modDir = dep
+		modName, err = getModName(modDir)
+		if err != nil {
+			return "", err
+		}
+		// We've read the package name from the go.mod file, skip redundant check below.
+		checkModName = false
+	}
+
+	modDir, err = filepath.Abs(modDir)
+	if err != nil {
+		return "", err
+	}
+
+	if checkModName {
+		actualModName, err := getModName(modDir)
+		if err != nil {
+			return "", fmt.Errorf("no go.mod at directory, set the path to the module explicitly or place "+
+				"the dependency in the path specified by PULUMI_GO_DEP_ROOT or the default GOPATH: %w", err)
+		}
+		if actualModName != modName {
+			return "", fmt.Errorf("found module %s, expected %s", actualModName, modName)
+		}
+	}
+
+	editStr := fmt.Sprintf("%s=%s", modName, modDir)
+	return editStr, nil
+}
+
+func getModName(dir string) (string, error) {
+	pkgModPath := filepath.Join(dir, "go.mod")
+	pkgModData, err := os.ReadFile(pkgModPath)
+	if err != nil {
+		return "", fmt.Errorf("error reading go.mod at %s: %w", dir, err)
+	}
+	pkgMod, err := modfile.Parse(pkgModPath, pkgModData, nil)
+	if err != nil {
+		return "", fmt.Errorf("error parsing go.mod at %s: %w", dir, err)
+	}
+
+	return pkgMod.Module.Mod.Path, nil
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.
