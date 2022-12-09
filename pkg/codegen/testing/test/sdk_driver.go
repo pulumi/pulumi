@@ -84,7 +84,7 @@ var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any"
 var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "naming-collisions",
-		Description: "Schema with types that could potentially produce collisions (go).",
+		Description: "Schema with types that could potentially produce collisions.",
 	},
 	{
 		Directory:   "dash-named-schema",

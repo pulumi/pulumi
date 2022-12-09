@@ -1,4 +1,4 @@
 changes:
-- type: fix
-  scope: sdkgen/nodejs
-  description: Fix NodeJS SDK when a component is using another component from the same schema as a property
+  - type: fix
+    scope: sdkgen/nodejs,dotnet
+    description: Fix imports when a component is using another component from the same schema as a property
