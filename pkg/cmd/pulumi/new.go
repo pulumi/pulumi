@@ -435,8 +435,9 @@ func newNewCmd() *cobra.Command {
 		Long: "Create a new Pulumi project and stack from a template.\n" +
 			"\n" +
 			"To create a project from a specific template, pass the template name (such as `aws-typescript`\n" +
-			"or `azure-python`).  If no template name is provided, a list of suggested templates will be presented\n" +
+			"or `azure-python`). If no template name is provided, a list of suggested templates will be presented\n" +
 			"which can be selected interactively.\n" +
+			"For testing, a path to a local template may be passed instead (such as `~/templates/aws-typescript`)\n" +
 			"\n" +
 			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
 			"provider and a stack created using the local or cloud object storage backend will use the\n" +
