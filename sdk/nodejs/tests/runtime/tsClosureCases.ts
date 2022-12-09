@@ -859,10 +859,11 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             title: "Capture built in module by ref",
             func: () => os,
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f0() {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return () => os;
 
@@ -886,10 +887,11 @@ return () => os;
                        return { v };
                    },
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f0(__0, __1, __2) {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return (a, b, c) => {
                 const v = os;
@@ -915,10 +917,11 @@ return (a, b, c) => {
             title: "Capture module through indirect function references",
             func: func,
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f1() {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return () => os;
 
@@ -6645,10 +6648,11 @@ return function (thisArg, _arguments, P, generator) {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
+const mockpackage_1 = require("mockpackage");
 
 function __f1() {
   return (function() {
-    with({ mockpackage_1: require("mockpackage") }) {
+    with({  }) {
 
 return () => mockpackage_1.z.object({
             message: mockpackage_1.z.string(),
