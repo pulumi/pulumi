@@ -558,7 +558,7 @@ func (fun *Function) NeedsOutputVersion() bool {
 	// support them and return `Task`, but there are no such
 	// functions in `pulumi-azure-native` or `pulumi-aws` so we
 	// omit to simplify.
-	if fun.Outputs == nil {
+	if fun.Outputs == nil || len(fun.Outputs.Properties) == 0 {
 		return false
 	}
 

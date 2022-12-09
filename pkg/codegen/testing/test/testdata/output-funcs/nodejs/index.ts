@@ -24,10 +24,9 @@ export const funcWithDictParam: typeof import("./funcWithDictParam").funcWithDic
 export const funcWithDictParamOutput: typeof import("./funcWithDictParam").funcWithDictParamOutput = null as any;
 utilities.lazyLoad(exports, ["funcWithDictParam","funcWithDictParamOutput"], () => require("./funcWithDictParam"));
 
-export { FuncWithEmptyOutputsArgs, FuncWithEmptyOutputsResult, FuncWithEmptyOutputsOutputArgs } from "./funcWithEmptyOutputs";
+export { FuncWithEmptyOutputsArgs } from "./funcWithEmptyOutputs";
 export const funcWithEmptyOutputs: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputs = null as any;
-export const funcWithEmptyOutputsOutput: typeof import("./funcWithEmptyOutputs").funcWithEmptyOutputsOutput = null as any;
-utilities.lazyLoad(exports, ["funcWithEmptyOutputs","funcWithEmptyOutputsOutput"], () => require("./funcWithEmptyOutputs"));
+utilities.lazyLoad(exports, ["funcWithEmptyOutputs"], () => require("./funcWithEmptyOutputs"));
 
 export { FuncWithListParamArgs, FuncWithListParamResult, FuncWithListParamOutputArgs } from "./funcWithListParam";
 export const funcWithListParam: typeof import("./funcWithListParam").funcWithListParam = null as any;

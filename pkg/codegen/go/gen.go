@@ -2104,7 +2104,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
 	}
 	var retty string
-	if f.Outputs == nil {
+	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
 		retty = "error"
 	} else {
 		retty = fmt.Sprintf("(*%sResult, error)", name)
@@ -2123,7 +2123,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 
 	// Now simply invoke the runtime function with the arguments.
 	var outputsType string
-	if f.Outputs == nil {
+	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
 		outputsType = "struct{}"
 	} else {
 		outputsType = name + "Result"
@@ -2134,7 +2134,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
 	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
 
-	if f.Outputs == nil {
+	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
 		fmt.Fprintf(w, "\treturn err\n")
 	} else {
 		// Check the error before proceeding.
@@ -2164,7 +2164,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 			}
 		}
 	}
-	if f.Outputs != nil {
+	if f.Outputs != nil && len(f.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 		fnOutputsName := pkg.functionResultTypeName(f)
 		pkg.genPlainType(w, fnOutputsName, f.Outputs.Comment, "", f.Outputs.Properties)

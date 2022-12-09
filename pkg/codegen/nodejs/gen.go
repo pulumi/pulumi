@@ -1142,7 +1142,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 		info.functionArgsInterfaceName = argsInterfaceName
 	}
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 		resultInterfaceName := title(name) + "Result"
 		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
@@ -1166,7 +1166,7 @@ func functionArgsOptional(fun *schema.Function) bool {
 }
 
 func functionReturnType(fun *schema.Function) string {
-	if fun.Outputs == nil {
+	if fun.Outputs == nil || len(fun.Outputs.Properties) == 0 {
 		return "void"
 	}
 	return title(tokenToFunctionName(fun.Token)) + "Result"
