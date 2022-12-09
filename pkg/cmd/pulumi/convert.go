@@ -178,6 +178,8 @@ func runConvert(
 		projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
+			// No plugin for PCL to install dependencies with
+			generateOnly = true
 			projectGenerator = pclGenerateProject
 			break
 		}
@@ -214,8 +216,6 @@ func runConvert(
 		}
 	} else if from == "pcl" {
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
-			// No plugin for PCL to generate with
-			generateOnly = true
 			proj, program, err = pclEject(cwd, loader)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))
