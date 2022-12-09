@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { MainComponentArgs } from "./mainComponent";
+export type MainComponent = import("./mainComponent").MainComponent;
+export const MainComponent: typeof import("./mainComponent").MainComponent = null as any;
+utilities.lazyLoad(exports, ["MainComponent"], () => require("./mainComponent"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
@@ -25,9 +30,11 @@ utilities.lazyLoad(exports, ["ResourceInput"], () => require("./resourceInput"))
 export * from "./types/enums";
 
 // Export sub-modules:
+import * as mod from "./mod";
 import * as types from "./types";
 
 export {
+    mod,
     types,
 };
 
@@ -35,6 +42,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "example::MainComponent":
+                return new MainComponent(name, <any>undefined, { urn })
             case "example::Resource":
                 return new Resource(name, <any>undefined, { urn })
             case "example::ResourceInput":
