@@ -1126,7 +1126,6 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 		language[name] = json.RawMessage(raw)
 	}
 
-	obj.Package = t.pkg
 	obj.PackageReference = t.externalPackage()
 	obj.Token = token
 	obj.Comment = spec.Description
@@ -1135,7 +1134,6 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.properties = propertyMap
 	obj.IsOverlay = spec.IsOverlay
 
-	obj.InputShape.Package = t.pkg
 	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
 	obj.InputShape.Comment = spec.Description
@@ -1193,7 +1191,6 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}
 
 	return &EnumType{
-		Package:          t.pkg,
 		PackageReference: t.externalPackage(),
 		Token:            token,
 		Elements:         values,
@@ -1386,7 +1383,6 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	}
 
 	*decl = Resource{
-		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
 		Comment:            spec.Description,
@@ -1506,7 +1502,6 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	}
 
 	fn := &Function{
-		Package:            t.pkg,
 		PackageReference:   t.externalPackage(),
 		Token:              token,
 		Comment:            spec.Description,
