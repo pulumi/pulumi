@@ -4,66 +4,17 @@
 package mypkg
 
 import (
-	"context"
-	"reflect"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // n/a
-func FuncWithEmptyOutputs(ctx *pulumi.Context, args *FuncWithEmptyOutputsArgs, opts ...pulumi.InvokeOption) (*FuncWithEmptyOutputsResult, error) {
-	var rv FuncWithEmptyOutputsResult
+func FuncWithEmptyOutputs(ctx *pulumi.Context, args *FuncWithEmptyOutputsArgs, opts ...pulumi.InvokeOption) error {
+	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithEmptyOutputs", args, &rv, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &rv, nil
+	return err
 }
 
 type FuncWithEmptyOutputsArgs struct {
 	// The Name of the FeatureGroup.
 	Name string `pulumi:"name"`
-}
-
-type FuncWithEmptyOutputsResult struct {
-}
-
-func FuncWithEmptyOutputsOutput(ctx *pulumi.Context, args FuncWithEmptyOutputsOutputArgs, opts ...pulumi.InvokeOption) FuncWithEmptyOutputsResultOutput {
-	return pulumi.ToOutputWithContext(context.Background(), args).
-		ApplyT(func(v interface{}) (FuncWithEmptyOutputsResult, error) {
-			args := v.(FuncWithEmptyOutputsArgs)
-			r, err := FuncWithEmptyOutputs(ctx, &args, opts...)
-			var s FuncWithEmptyOutputsResult
-			if r != nil {
-				s = *r
-			}
-			return s, err
-		}).(FuncWithEmptyOutputsResultOutput)
-}
-
-type FuncWithEmptyOutputsOutputArgs struct {
-	// The Name of the FeatureGroup.
-	Name pulumi.StringInput `pulumi:"name"`
-}
-
-func (FuncWithEmptyOutputsOutputArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*FuncWithEmptyOutputsArgs)(nil)).Elem()
-}
-
-type FuncWithEmptyOutputsResultOutput struct{ *pulumi.OutputState }
-
-func (FuncWithEmptyOutputsResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*FuncWithEmptyOutputsResult)(nil)).Elem()
-}
-
-func (o FuncWithEmptyOutputsResultOutput) ToFuncWithEmptyOutputsResultOutput() FuncWithEmptyOutputsResultOutput {
-	return o
-}
-
-func (o FuncWithEmptyOutputsResultOutput) ToFuncWithEmptyOutputsResultOutputWithContext(ctx context.Context) FuncWithEmptyOutputsResultOutput {
-	return o
-}
-
-func init() {
-	pulumi.RegisterOutputType(FuncWithEmptyOutputsResultOutput{})
 }

@@ -365,27 +365,52 @@ func genStandardHeader(w io.Writer, tool string) {
 	fmt.Fprintf(w, "# *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 }
 
+func typingImports() []string {
+	return []string{
+		"Any",
+		"Mapping",
+		"Optional",
+		"Sequence",
+		"Union",
+		"overload",
+	}
+}
+
+func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typingImports []string) {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	relImport := relPathToRelImport(relRoot)
+
+	fmt.Fprintf(w, "import copy\n")
+	fmt.Fprintf(w, "import warnings\n")
+	fmt.Fprintf(w, "import pulumi\n")
+	fmt.Fprintf(w, "import pulumi.runtime\n")
+	fmt.Fprintf(w, "from typing import %s\n", strings.Join(typingImports, ", "))
+	fmt.Fprintf(w, "from %s import _utilities\n", relImport)
+	for _, imp := range imports.strings() {
+		fmt.Fprintf(w, "%s\n", imp)
+	}
+	fmt.Fprintf(w, "\n")
+}
+
 func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 	genStandardHeader(w, mod.tool)
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		rel, err := filepath.Rel(mod.mod, "")
-		contract.Assert(err == nil)
-		relRoot := path.Dir(rel)
-		relImport := relPathToRelImport(relRoot)
-
-		fmt.Fprintf(w, "import copy\n")
-		fmt.Fprintf(w, "import warnings\n")
-		fmt.Fprintf(w, "import pulumi\n")
-		fmt.Fprintf(w, "import pulumi.runtime\n")
-		fmt.Fprintf(w, "from typing import Any, Mapping, Optional, Sequence, Union, overload\n")
-		fmt.Fprintf(w, "from %s import _utilities\n", relImport)
-		for _, imp := range imports.strings() {
-			fmt.Fprintf(w, "%s\n", imp)
-		}
-		fmt.Fprintf(w, "\n")
+		typings := typingImports()
+		mod.generateCommonImports(w, imports, typings)
 	}
+}
+
+func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function, imports imports) {
+	genStandardHeader(w, mod.tool)
+	typings := typingImports()
+	if function.Outputs == nil || len(function.Outputs.Properties) == 0 {
+		typings = append(typings, "Awaitable")
+	}
+	mod.generateCommonImports(w, imports, typings)
 }
 
 func relPathToRelImport(relPath string) string {
@@ -1696,17 +1721,17 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		mod.collectImports(fun.Outputs.Properties, imports, false)
 	}
 
-	mod.genHeader(w, true /*needsSDK*/, imports)
+	mod.genFunctionHeader(w, fun, imports)
 
 	var baseName, awaitableName string
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		baseName, awaitableName = awaitableTypeNames(fun.Outputs.Token)
 	}
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1724,9 +1749,11 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	// If there is a return type, emit it.
 	retTypeName := ""
 	var rets []*schema.Property
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		retTypeName, rets = mod.genAwaitableType(w, fun.Outputs), fun.Outputs.Properties
 		fmt.Fprintf(w, "\n\n")
+	} else {
+		retTypeName = "Awaitable[None]"
 	}
 
 	var args []*schema.Property
@@ -1750,7 +1777,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
 		typ = fmt.Sprintf(", typ=%s", baseName)
@@ -1759,7 +1786,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "\n")
 
 	// And copy the results to an object, if there are indeed any expected returns.
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "    return %s(", retTypeName)
 		for i, ret := range rets {
 			if i > 0 {

@@ -1349,7 +1349,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "{\n")
 
 	var typeParameter string
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
@@ -1412,7 +1412,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		return err
 	}
 
-	if fun.Outputs != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 
 		res := &plainType{
