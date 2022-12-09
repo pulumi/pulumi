@@ -252,10 +252,12 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 		pkg = r.Resource.PackageReference
 	}
 	namingCtx, pkgName, external := mod.namingContext(pkg)
-	if external {
-		pkgName = externalModuleName(pkgName)
+	if !external {
+		name := tokenToName(r.Token)
+		return title(name)
 	}
 
+	pkgName = externalModuleName(pkgName)
 	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
 
 	return pkgName + modName + title(name)
