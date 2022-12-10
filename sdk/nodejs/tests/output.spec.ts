@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret } from "../output";
+import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret, jsonStringify } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 
@@ -138,8 +138,7 @@ describe("output", () => {
 
     describe("apply", () => {
         function createOutput<T>(val: T, isKnown: boolean, isSecret: boolean = false): Output<T> {
-            return new Output(new Set(), Promise.resolve(val), Promise.resolve(isKnown), Promise.resolve(isSecret),
-                Promise.resolve(new Set()));
+            return new Output<T>(new Set(), Promise.resolve(val), Promise.resolve(isKnown), Promise.resolve(isSecret), Promise.resolve(new Set()));
         }
 
         it("can run on known value during preview", async () => {
@@ -856,6 +855,72 @@ describe("output", () => {
         it ("handles multiple args", async () => {
             const result = interpolate `http://${output("a")}:${80}/`;
             assert.strictEqual(await result.promise(), "http://a:80/");
+        });
+    });
+
+    describe("jsonStringify", () => {
+        it ("basic", async () => {
+            const x = output([0, 1])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested", async () => {
+            const x = output([output(0), output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested unknowns", async () => {
+            const x = output([
+                new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.isKnown, false);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested secret", async () => {
+            const x = output([
+                new Output(new Set(), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, true);
+        });
+
+        it ("with options", async () => {
+            const x = output([0, 1])
+            const result = jsonStringify(x, undefined, " ")
+            assert.strictEqual(await result.promise(), "[\n 0,\n 1\n]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested dependencies", async () => {
+            // Output's don't actually _look_ at the resources, they just need to keep a collection of them
+            const mockResource : Resource = {} as any
+            const mockResources : Resource[] = [mockResource]
+
+            const x = output([
+                new Output(new Set(mockResources), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, true);
+            if (result.allResources === undefined) {
+                assert.fail("Output.allResources was undefined")
+            }
+            const allResources = await result.allResources();
+            // We should have just the one mockResource in this set
+            assert.strictEqual(allResources.size, 1)
+            assert.ok(allResources.has(mockResource))
         });
     });
 

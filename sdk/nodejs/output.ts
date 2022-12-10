@@ -1013,3 +1013,12 @@ export function interpolate(literals: TemplateStringsArray, ...placeholders: Inp
         return result;
     });
 }
+
+/**
+ * [jsonStringify] Uses JSON.stringify to serialize the given Input value into a JSON string.
+ */
+export function jsonStringify(obj: Input<any>, replacer?: (this: any, key: string, value: any) => any | (number | string)[], space?: string | number): Output<string> {
+    return output(obj).apply(o => {
+        return JSON.stringify(o, replacer, space);
+    });
+}
