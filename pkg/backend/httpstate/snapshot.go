@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -61,15 +60,20 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			persister.context, persister.update, deploymentV3, token)
 	}
 
+	deployment, err := client.MarshalUntypedDeployment(deploymentV3)
+	if err != nil {
+		return err
+	}
+
 	differ := persister.deploymentDiffState
 
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
-	if !differ.ShouldDiff(deploymentV3) {
-		if err := persister.saveFullVerbatim(ctx, differ, deploymentV3, token); err != nil {
+	if !differ.ShouldDiff(deployment) {
+		if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
-		diff, err := differ.Diff(ctx, deploymentV3)
+		diff, err := differ.Diff(ctx, deployment)
 		if err != nil {
 			return err
 		}
@@ -79,13 +83,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)
 			}
-			if err := persister.saveFullVerbatim(ctx, differ, deploymentV3, token); err != nil {
+			if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
 				return err
 			}
 		}
 	}
 
-	return persister.deploymentDiffState.Saved(ctx, deploymentV3)
+	return persister.deploymentDiffState.Saved(ctx, deployment)
 }
 
 func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
@@ -96,7 +100,7 @@ func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment *apitype.DeploymentV3, token string) error {
+	differ *deploymentDiffState, deployment string, token string) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
 		deployment, token)

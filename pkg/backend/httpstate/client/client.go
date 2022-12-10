@@ -926,9 +926,12 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, deployment *apitype.DeploymentV3, token string) error {
+	sequenceNumber int, deployment string, token string) error {
 
-	payload := &marshalPatchUpdateVerbatimCheckpointRequest{deployment, sequenceNumber}
+	payload := &marshalPatchUpdateVerbatimCheckpointRequest{
+		deployment:     deployment,
+		sequenceNumber: sequenceNumber,
+	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.

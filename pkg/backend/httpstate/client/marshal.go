@@ -17,6 +17,7 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -28,13 +29,23 @@ import (
 
 var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 
-// Implements io.WriterTo that writes canonical JSON in the apitype.UntypedDeployment format.
+// Marshals to canonical JSON in the apitype.UntypedDeployment format.
 //
-// Optimized for large checkpoints. Streams the data instead of buffering everything upfront.
+// Optimized for large checkpoints.
 //
 // Injects newlines to allow efficient textual diffs over the JSON.
-func MarshalUntypedDeployment(deployment *apitype.DeploymentV3) io.WriterTo {
-	return &marshalUntypedDeployment{deployment}
+func MarshalUntypedDeployment(deployment *apitype.DeploymentV3) (string, error) {
+	var buf bytes.Buffer
+	md := &marshalUntypedDeployment{deployment}
+	_, err := md.WriteTo(&buf)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func Marshal(v interface{}) (json.RawMessage, error) {
+	return jsonIterConfig.Marshal(v)
 }
 
 type marshalUntypedDeployment struct {
@@ -110,45 +121,10 @@ func (c *marshalUntypedDeployment) writeDeploymentV3(stream *jsoniter.Stream) (e
 	return stream.Flush()
 }
 
-// Similar to marshalUntypedDeployment but in apitype.PatchUpdateVerbatimCheckpointRequest format.
-type marshalPatchUpdateVerbatimCheckpointRequest struct {
-	deployment     *apitype.DeploymentV3
-	sequenceNumber int
-}
-
-var _ io.WriterTo = (*marshalPatchUpdateVerbatimCheckpointRequest)(nil)
-
-func (c *marshalPatchUpdateVerbatimCheckpointRequest) WriteTo(w io.Writer) (int64, error) {
-	cw := &countingWriter{w: w}
-	cfg := jsonIterConfig
-	stream := cfg.BorrowStream(cw)
-	defer cfg.ReturnStream(stream)
-
-	stream.WriteObjectStart()
-	stream.WriteObjectField("version")
-	stream.WriteInt(3)
-	stream.WriteMore()
-	stream.WriteObjectField("untypedDeployment")
-
-	md := &marshalUntypedDeployment{c.deployment}
-	if err := md.writeToStream(stream); err != nil {
-		return cw.written, err
-	}
-
-	stream.WriteMore()
-	stream.WriteObjectField("sequenceNumber")
-	stream.WriteInt(c.sequenceNumber)
-	stream.WriteObjectEnd()
-	err := stream.Flush()
-	return cw.written, err
-}
-
 // Similar to marshalUntypedDeployment but in apitype.PatchUpdateCheckpointRequest format.
 type marshalPatchUpdateCheckpointRequest struct {
 	deployment *apitype.DeploymentV3
 }
-
-var _ io.WriterTo = (*marshalPatchUpdateVerbatimCheckpointRequest)(nil)
 
 func (c *marshalPatchUpdateCheckpointRequest) WriteTo(w io.Writer) (int64, error) {
 	cw := &countingWriter{w: w}
@@ -169,6 +145,34 @@ func (c *marshalPatchUpdateCheckpointRequest) WriteTo(w io.Writer) (int64, error
 			return cw.written, err
 		}
 	}
+	stream.WriteObjectEnd()
+	err := stream.Flush()
+	return cw.written, err
+}
+
+type marshalPatchUpdateVerbatimCheckpointRequest struct {
+	deployment     string
+	sequenceNumber int
+}
+
+var _ io.WriterTo = &marshalPatchUpdateVerbatimCheckpointRequest{}
+
+func (c *marshalPatchUpdateVerbatimCheckpointRequest) WriteTo(w io.Writer) (int64, error) {
+	cw := &countingWriter{w: w}
+	cfg := jsonIterConfig
+	stream := cfg.BorrowStream(cw)
+	defer cfg.ReturnStream(stream)
+	stream.WriteObjectStart()
+	stream.WriteObjectField("version")
+	stream.WriteInt(3)
+	if c.deployment != "null" {
+		stream.WriteMore()
+		stream.WriteObjectField("untypedDeployment")
+		stream.WriteRaw(c.deployment)
+	}
+	stream.WriteMore()
+	stream.WriteObjectField("sequenceNumber")
+	stream.WriteInt(c.sequenceNumber)
 	stream.WriteObjectEnd()
 	err := stream.Flush()
 	return cw.written, err
