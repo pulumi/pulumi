@@ -43,6 +43,15 @@ class LanguageServer(LanguageRuntimeServicer):
     def GetRequiredPlugins(self, request, context):
         return language_pb2.GetRequiredPluginsResponse()
 
+    def _exception_handler(self, loop, context):
+        # Exception are normally handler deeper in the stack. If this class of
+        # exception bubble up to here, something is wrong and we should stop
+        # the event loop
+        if "exception" in context and isinstance(context["exception"], grpc.RpcError):
+            loop.stop()
+        else:
+            loop.default_exception_handler(context)
+
     def Run(self, request, context):
         _suppress_unobserved_task_logging()
 
@@ -67,6 +76,7 @@ class LanguageServer(LanguageRuntimeServicer):
         result = language_pb2.RunResponse()
         loop = asyncio.new_event_loop()
 
+        loop.set_exception_handler(self._exception_handler)
         try:
             loop.run_until_complete(run_in_stack(self.program))
         except RunError as exn:
