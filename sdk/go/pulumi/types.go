@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -602,6 +603,23 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
+// JSONMarshal uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
+func JSONMarshal(v interface{}) StringOutput {
+	return JSONMarshalWithContext(context.Background(), v)
+}
+
+// JSONMarshalWithContext uses "encoding/json".Marshal to serialize the given Output value into a JSON string.
+func JSONMarshalWithContext(ctx context.Context, v interface{}) StringOutput {
+	o := ToOutputWithContext(ctx, v)
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v interface{}) (string, error) {
+		json, err := json.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return string(json), nil
+	}).(StringOutput)
+}
+
 func gatherJoins(v interface{}) workGroups {
 	if v == nil {
 		return nil
@@ -1065,6 +1083,10 @@ func anyWithContext(ctx context.Context, join *workGroup, v interface{}) AnyOutp
 
 type AnyOutput struct{ *OutputState }
 
+func (AnyOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
@@ -1129,6 +1151,10 @@ func convert(v interface{}, to reflect.Type) interface{} {
 // TODO: ResourceOutput and the init() should probably be code generated.
 type ResourceOutput struct{ *OutputState }
 
+func (ResourceOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (Resource).
 func (ResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Resource)(nil)).Elem()
@@ -1191,6 +1217,10 @@ func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) Re
 
 // ResourceArrayOutput is an Output that returns []Resource values.
 type ResourceArrayOutput struct{ *OutputState }
+
+func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]Resource).
 func (ResourceArrayOutput) ElementType() reflect.Type {

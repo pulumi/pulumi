@@ -1087,3 +1087,44 @@ func TestTypeCoersion(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONMarshalBasic(t *testing.T) {
+	t.Parallel()
+
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve([]int{0, 1})
+	}()
+	json := JSONMarshal(out)
+	v, known, secret, deps, err := await(json)
+	assert.Nil(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.NotNil(t, v)
+	assert.Equal(t, "[0,1]", v.(string))
+}
+
+func TestJSONMarshalNested(t *testing.T) {
+	t.Parallel()
+
+	a, resolvea, _ := NewOutput()
+	go func() {
+		resolvea(0)
+	}()
+	b, resolveb, _ := NewOutput()
+	go func() {
+		resolveb(1)
+	}()
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve([]Output{a, b})
+	}()
+	json := JSONMarshal(out)
+	v, known, secret, deps, err := await(json)
+	assert.Equal(t, "json: error calling MarshalJSON for type pulumi.AnyOutput: Outputs can not be marshaled to JSON", err.Error())
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Nil(t, v)
+}

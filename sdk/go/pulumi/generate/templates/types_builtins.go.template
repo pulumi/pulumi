@@ -19,6 +19,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 )
 
@@ -55,6 +56,7 @@ func {{.Name}}FromPtr(v *{{.ElemElementType}}) {{.Name}}Input {
 }
 {{end}}
 {{if .DefineInputMethods}}
+
 // ElementType returns the element type of this Input ({{.ElementType}}).
 func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
@@ -91,6 +93,10 @@ func (in {{.InputType}}) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{
 {{end}}
 // {{.Name}}Output is an Output that returns {{.ElementType}} values.
 type {{.Name}}Output struct { *OutputState }
+
+func ({{.Name}}Output) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ({{.ElementType}}).
 func ({{.Name}}Output) ElementType() reflect.Type {
