@@ -105,16 +105,7 @@ func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
 		}
 	}
 
-	// use a 2 space indent:
-
-	var b bytes.Buffer
-	yamlEncoder := yaml.NewEncoder(&b)
-	yamlEncoder.SetIndent(2)
-	err := yamlEncoder.Encode(v)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling value %#v: %w", v, err)
-	}
-	return b.Bytes(), nil
+	return yamlutil.YamlEncode(v)
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
