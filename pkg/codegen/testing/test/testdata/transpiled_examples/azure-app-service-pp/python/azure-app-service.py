@@ -17,7 +17,7 @@ container = azure_native.storage.BlobContainer("container",
     resource_group_name=appservicegroup.name,
     account_name=sa.name,
     public_access=azure_native.storage.PublicAccess.NONE)
-blob_access_token = pulumi.secret(pulumi.Output.all(sa.name, appservicegroup.name, sa.name, container.name).apply(lambda saName, appservicegroupName, saName1, containerName: azure_native.storage.list_storage_account_service_sas_output(account_name=sa_name,
+blob_access_token = pulumi.Output.secret(pulumi.Output.all(sa.name, appservicegroup.name, sa.name, container.name).apply(lambda saName, appservicegroupName, saName1, containerName: azure_native.storage.list_storage_account_service_sas_output(account_name=sa_name,
     protocols=azure_native.storage.HttpProtocol.HTTPS,
     shared_access_start_time="2022-01-01",
     shared_access_expiry_time="2030-01-01",
