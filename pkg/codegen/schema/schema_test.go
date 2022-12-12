@@ -55,7 +55,7 @@ func TestImportSpec(t *testing.T) {
 	}
 
 	for _, r := range pkg.Resources {
-		assert.NotNil(t, r.Package, "expected resource %s to have an associated Package", r.Token)
+		assert.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
 	}
 }
 
@@ -127,7 +127,6 @@ func TestEnums(t *testing.T) {
 					t.Error(err)
 				}
 				result := pkg.Types[0]
-				tt.expected.Package = pkg
 				tt.expected.PackageReference = pkg.Reference()
 				assert.Equal(t, tt.expected, result)
 			}

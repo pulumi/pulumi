@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type methodDocArgs struct {
@@ -216,7 +217,9 @@ func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
 			}
 		})
 		for _, arg := range args {
-			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, arg.Type, true /*input*/)
+			def, err := mod.pkg.Definition()
+			contract.AssertNoError(err)
+			typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, arg.Type, true /*input*/)
 			var defaultValue string
 			if !arg.IsRequired() {
 				defaultValue = " = None"
@@ -322,7 +325,9 @@ func (mod *modContext) getMethodResult(r *schema.Resource, m *schema.Method) map
 	var resultTypeName string
 	for _, lang := range dctx.supportedLanguages {
 		if m.Function.Outputs != nil && len(m.Function.Outputs.Properties) > 0 {
-			resultTypeName = dctx.getLanguageDocHelper(lang).GetMethodResultName(mod.pkg, mod.mod, r, m)
+			def, err := mod.pkg.Definition()
+			contract.AssertNoError(err)
+			resultTypeName = dctx.getLanguageDocHelper(lang).GetMethodResultName(def, mod.mod, r, m)
 		}
 		resourceMap[lang] = propertyType{
 			Name: resultTypeName,
