@@ -862,6 +862,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// and time elapsed.
 		display.opStopwatch.start[step.URN] = time.Now()
 
+		// Clear out potential event end timings for prior operations on the same resource.
+		delete(display.opStopwatch.end, step.URN)
+
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
