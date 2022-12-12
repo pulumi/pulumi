@@ -26,7 +26,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/hcl/v2 v2.14.0
+	github.com/hashicorp/hcl/v2 v2.14.1
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/mitchellh/copystructure v1.2.0
@@ -45,7 +45,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zclconf/go-cty v1.10.0
+	github.com/zclconf/go-cty v1.12.1
 	gocloud.dev v0.27.0
 	gocloud.dev/secrets/hashivault v0.27.0
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503
@@ -54,7 +54,7 @@ require (
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	google.golang.org/api v0.91.0
 	google.golang.org/genproto v0.0.0-20220802133213-ce4fa296bf78
-	google.golang.org/grpc v1.49.0
+	google.golang.org/grpc v1.51.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.4.7
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
@@ -71,7 +71,7 @@ require (
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
-	github.com/pulumi/pulumi-java/pkg v0.6.0
+	github.com/pulumi/pulumi-java/pkg v0.7.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/rivo/uniseg v0.2.0
@@ -235,7 +235,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24 // indirect
-	golang.org/x/text v0.3.8 // indirect
+	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
