@@ -1166,6 +1166,34 @@ func TestESMTSCompiled(t *testing.T) {
 	})
 }
 
+// Test that the resource stopwatch doesn't contain a negative time.
+func TestNoNegativeTimingsOnRefresh(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+	t.Parallel()
+
+	dir := filepath.Join("empty", "nodejs")
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "negative-timings")
+	e.RunCommand("pulumi", "stack", "select", "negative-timings")
+	e.RunCommand("pulumi", "up", "--yes")
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--refresh=true")
+	// Assert there are no negative times in the output.
+	assert.NotContainsf(t, stdout, " (-",
+		"`pulumi destroy --skip-preview --refresh=true` contains a negative time")
+}
+
 // Test that the about command works as expected. Because about parses the
 // results of each runtime independently, we have an integration test in each
 // language.
