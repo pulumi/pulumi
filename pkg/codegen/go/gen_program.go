@@ -816,9 +816,6 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			assignment = "="
 		}
 	}
-	if name == "_" {
-		assignment = "="
-	}
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
