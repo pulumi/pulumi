@@ -15,6 +15,7 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -157,7 +158,8 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(ctx context.Context,
 	requestSpan opentracing.Span,
-	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+	d diag.Sink, client httpClient, cloudAPI, method, path string,
+	body io.WriterTo,
 	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
 
 	// Normalize URL components
@@ -165,40 +167,20 @@ func pulumiAPICall(ctx context.Context,
 	path = cleanPath(path)
 
 	url := fmt.Sprintf("%s%s", cloudAPI, path)
-	var bodyReader io.Reader
-	if opts.GzipCompress {
-		// If we're being asked to compress the payload, go ahead and do it here to an intermediate buffer.
-		//
-		// If this becomes a performance bottleneck, we may want to consider marshaling json directly to this
-		// gzip.Writer instead of marshaling to a byte array and compressing it to another buffer.
-		logging.V(apiRequestDetailLogLevel).Infoln("compressing payload using gzip")
-		var buf bytes.Buffer
-		writer := gzip.NewWriter(&buf)
-		defer contract.IgnoreClose(writer)
-		if _, err := writer.Write(body); err != nil {
-			return "", nil, fmt.Errorf("compressing payload: %w", err)
-		}
 
-		// gzip.Writer will not actually write anything unless it is flushed,
-		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
-		// Without this, the compressed bytes do not decompress properly e.g. in python.
-		if err := writer.Close(); err != nil {
-			return "", nil, fmt.Errorf("closing compressed payload: %w", err)
-		}
-
-		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
-			float64(len(body))/float64(len(buf.Bytes())), len(body))
-		bodyReader = &buf
-	} else {
-		bodyReader = bytes.NewReader(body)
-	}
-
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
+	if body != nil {
+		if opts.GzipCompress {
+			body = &gzipEncodingWriterTo{body}
+		}
+		if err := setupBody(req, body); err != nil {
+			return "", nil, fmt.Errorf("setting up body for the new HTTP request: %w", err)
+		}
+	}
 
-	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
@@ -233,8 +215,11 @@ func pulumiAPICall(ctx context.Context,
 
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
 	if logging.V(apiRequestDetailLogLevel) {
+		var buf bytes.Buffer
+		_, err := body.WriteTo(&buf)
+		contract.IgnoreError(err)
 		logging.V(apiRequestDetailLogLevel).Infof(
-			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, buf.String())
 	}
 
 	resp, err := client.Do(req, opts.RetryAllMethods)
@@ -285,6 +270,72 @@ func pulumiAPICall(ctx context.Context,
 	return url, resp, nil
 }
 
+func setupBody(req *http.Request, body io.WriterTo) error {
+	// For large requests setupBody will serialize simultaneously with sending the request using a helper goroutine
+	// behind a pipe. It turns out that even for large requests it is important to set ContentLength, otherwise the
+	// requests slow down a lot (possibly due to the use of Chunked Transfer Encoding).
+	//
+	// How is it possible to know ContentLength without serializing the large request into a temporary buffer in
+	// memory? The solution is to serialize twice.
+	//
+	// First serialize into a limitWriter that retains only up to 1mb of the request, discarding the rest, but
+	// computing the true ContentLength.
+	oneMB := 1024 * 1024
+	w := &limitWriter{maxBytes: oneMB}
+	_, err := body.WriteTo(w)
+	if err != nil {
+		return err
+	}
+	if w.Overflow() {
+		// Overflow indicates that the true content did not fit into 1mb. Serialize the body again and pipe it.
+		req.GetBody = func() (io.ReadCloser, error) {
+			return pipedBody(body), nil
+		}
+	} else {
+		// If the content fit in the 1mb buffer, no more serialization is needed, keep it in memory.
+		data := w.buf.Bytes()
+		req.GetBody = func() (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader(data)), nil
+		}
+	}
+	req.Body, err = req.GetBody()
+	if err != nil {
+		return err
+	}
+	req.ContentLength = w.written
+	return nil
+}
+
+func pipedBody(body io.WriterTo) io.ReadCloser {
+	pipeBufferSize := 1024 * 1024
+	bodyReader, bodyWriter := io.Pipe()
+
+	go func() {
+		bufWriter := bufio.NewWriterSize(bodyWriter, pipeBufferSize)
+		_, err := body.WriteTo(bufWriter)
+
+		flushErr := bufWriter.Flush()
+		if err != nil {
+			err = flushErr
+		}
+
+		if err != nil && err != io.ErrClosedPipe {
+			bodyWriter.CloseWithError(err)
+		} else {
+			bodyWriter.Close()
+		}
+	}()
+
+	type readcloser struct {
+		io.Reader
+		io.Closer
+	}
+	return readcloser{
+		Reader: bufio.NewReaderSize(bodyReader, pipeBufferSize),
+		Closer: bodyReader,
+	}
+}
+
 // restClient is an abstraction for calling the Pulumi REST API.
 type restClient interface {
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
@@ -324,18 +375,17 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	}
 
 	// Compute request body from request object
-	var reqBody []byte
+	var reqBody io.WriterTo
 	var err error
 	if reqObj != nil {
 		// Send verbatim if already marshalled. This is
 		// important when sending indented JSON is needed.
 		if raw, ok := reqObj.(json.RawMessage); ok {
-			reqBody = []byte(raw)
+			reqBody = &bytesWriterTo{[]byte(raw)}
+		} else if raw, ok := reqObj.(io.WriterTo); ok {
+			reqBody = raw
 		} else {
-			reqBody, err = json.Marshal(reqObj)
-			if err != nil {
-				return fmt.Errorf("marshalling request object as JSON: %w", err)
-			}
+			reqBody = &jsonMarshalWriterTo{reqObj}
 		}
 	}
 
