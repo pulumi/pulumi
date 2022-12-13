@@ -9,6 +9,8 @@ joined = "-".join([
     decoded,
     "2",
 ])
+zone = aws.get_availability_zones()
+zone2 = aws.get_availability_zones()
 bucket = aws.s3.Bucket("bucket")
 encoded2 = bucket.id.apply(lambda id: base64.b64encode(id.encode()).decode())
 decoded2 = bucket.id.apply(lambda id: base64.b64decode(id.encode()).decode())

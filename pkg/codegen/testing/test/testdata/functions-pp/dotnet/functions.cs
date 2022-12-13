@@ -16,6 +16,10 @@ return await Deployment.RunAsync(() =>
         "2",
     });
 
+    var zone = Aws.GetAvailabilityZones.Invoke();
+
+    var zone2 = Aws.GetAvailabilityZones.Invoke();
+
     var bucket = new Aws.S3.Bucket("bucket");
 
     var encoded2 = bucket.Id.Apply(id => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(id)));
