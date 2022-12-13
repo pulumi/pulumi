@@ -595,7 +595,6 @@ func TestProviderDownloadURL(t *testing.T) {
 
 		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
 		{"nodejs", "@pulumi/pulumi"},
-		{"dotnet", "Pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
 

@@ -52,11 +52,6 @@
             }
         },
         "go": {},
-        "python": {},
-        "csharp": {
-            "projectReferences": [
-                "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-            ]
-        }
+        "python": {}
     }
 }

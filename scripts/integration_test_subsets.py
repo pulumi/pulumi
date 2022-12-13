@@ -12,7 +12,7 @@ def get_integration_tests():
     root_dir = os.path.realpath(os.path.join(current_dir, '..'))
     integration_dir = os.path.join(root_dir, 'tests', 'integration')
 
-    languages = ["dotnet", "go", "nodejs", "python"]
+    languages = ["go", "nodejs", "python"]
     get_lang_filename = lambda lang: f"integration_{lang}_test.go"
 
     sdk_tests = [get_lang_filename(lang) for lang in languages]

@@ -24,7 +24,7 @@ func TestGenerateProgram(t *testing.T) {
 			Extension:  "cs",
 			OutputFile: "Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				codegenDotnet.Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
+				codegenDotnet.Check(t, path, dependencies, "")
 			},
 			GenProgram: codegenDotnet.GenerateProgram,
 			TestCases:  test.PulumiPulumiYAMLProgramTests,

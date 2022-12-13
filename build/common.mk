@@ -97,7 +97,6 @@ PIP ?= pip3
 
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
-PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
 # Extra options to pass to `go test` command, for example:
 #
@@ -170,7 +169,6 @@ install::
 	@# Implicitly creates PULUMI_ROOT.
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
-	@mkdir -p $(PULUMI_NUGET)
 
 dist::
 	$(call STEP_MESSAGE)

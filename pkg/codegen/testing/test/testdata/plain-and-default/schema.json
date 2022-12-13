@@ -120,10 +120,7 @@
     "csharp": {
       "namespaces": {
         "foobar": "FooBar"
-      },
-     "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "plain-and-default/foo",

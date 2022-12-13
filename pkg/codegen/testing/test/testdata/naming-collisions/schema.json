@@ -83,11 +83,6 @@
   },
   "functions": {},
   "language": {
-    "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-    },
     "go": {
       "importBasePath": "naming-collisions/example",
       "generateExtraInputTypes": true

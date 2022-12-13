@@ -134,7 +134,7 @@ func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
 			Extension:  "cs",
 			OutputFile: "Program.cs",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
+				Check(t, path, dependencies, "")
 			},
 			GenProgram: GenerateProgram,
 			TestCases:  testCases,

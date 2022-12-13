@@ -11,10 +11,6 @@ coverage:
           - "sdk/go/common/*"
           - "sdk/go/auto/*"
           - "sdk/proto/*"
-      sdk-dotnet:
-        informational: true
-        paths:
-          - "sdk/dotnet/*"
       sdk-go:
         informational: true
         paths:

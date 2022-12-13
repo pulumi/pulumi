@@ -138,12 +138,6 @@ jobs:
       - name: Rename SDKs
         run: |
           (
-            cd artifacts.tmp/artifacts-dotnet-sdk
-            for file in *.nupkg ; do
-              mv -vT "$file" "sdk-dotnet-$file"
-            done
-          )
-          (
             cd artifacts.tmp/artifacts-python-sdk
             for file in *.whl ; do
               mv -vT "$file" "sdk-python-$file"

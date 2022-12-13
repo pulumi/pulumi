@@ -1,3 +1,0 @@
-name: test-provider-url-dotnet
-runtime: dotnet
-description: A minimal .NET Pulumi program for testing the PluginDownloadURL option

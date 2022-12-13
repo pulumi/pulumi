@@ -244,10 +244,7 @@
       "namespaces": {
         "plant": "Plant",
         "tree/v1": "Tree.V1"
-      },
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "simple-enum-schema/plant",
