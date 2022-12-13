@@ -202,12 +202,8 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "tok: %s", tok)
-	if pkg == nil {
-		panic(fmt.Errorf("pkg is nil. token %s", tok))
-	}
-	if pkg.pkg == nil {
-		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
-	}
+	contract.Assertf(pkg != nil, "pkg is nil. token %s", tok)
+	contract.Assertf(pkg.pkg != nil, "pkg.pkg is nil. token %s", tok)
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
@@ -235,7 +231,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
 		importPath = alias
 	} else {
-		importPath = strings.ReplaceAll(mod, "/", "")
+		importPath = mod[strings.IndexRune(mod, '/')+1:]
 		importPath = strings.ReplaceAll(importPath, "-", "")
 	}
 
