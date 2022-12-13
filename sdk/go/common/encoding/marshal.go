@@ -22,7 +22,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var (
@@ -97,7 +98,14 @@ type yamlMarshaler struct {
 }
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return yaml.Marshal(v)
+	if r, ok := v.(yamlutil.HasRawValue); ok {
+		if len(r.RawValue()) > 0 {
+			// Attempt a comment preserving edit:
+			return yamlutil.Edit(r.RawValue(), v)
+		}
+	}
+
+	return yamlutil.YamlEncode(v)
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {

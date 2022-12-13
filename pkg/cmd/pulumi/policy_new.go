@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -28,14 +27,12 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/util/yamlutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 type newPolicyArgs struct {
@@ -178,41 +175,16 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return err
 	}
 
-	if filepath.Ext(projPath) == ".yaml" {
-		filedata, err := os.ReadFile(projPath)
-		if err != nil {
-			return err
+	// Workaround for python, most of our templates don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the template does give virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
 		}
-		var workspaceDocument yaml.Node
-		err = yaml.Unmarshal(filedata, &workspaceDocument)
-		if err != nil {
-			return err
-		}
-		if proj.Runtime.Name() == "python" {
-			// If the template does give virtualenv use it, else default to "venv"
-			if len(proj.Runtime.Options()) == 0 {
-				proj.Runtime.SetOption("virtualenv", "venv")
-				err = yamlutil.Insert(&workspaceDocument, "runtime", strings.TrimSpace(`
-name: python
-options:
-virtualenv: venv
-`))
-				if err != nil {
-					return err
-				}
-			}
-		}
+	}
 
-		contract.Assert(len(workspaceDocument.Content) == 1)
-		projFile, err := yaml.Marshal(workspaceDocument.Content[0])
-		if err != nil {
-			return err
-		}
-
-		err = os.WriteFile(projPath, projFile, 0600)
-		if err != nil {
-			return err
-		}
+	if err = proj.Save(projPath); err != nil {
+		return fmt.Errorf("saving project: %w", err)
 	}
 
 	// Install dependencies.
