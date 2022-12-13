@@ -5,11 +5,16 @@ import (
 )
 
 func newPulumiPackage() *Package {
+	md := func(s string) *DescriptionSpec {
+		spec, err := MakeMarkdownDescription(s).marshal()
+		contract.AssertNoError(err)
+		return spec
+	}
 	spec := PackageSpec{
 		Name:        "pulumi",
 		DisplayName: "Pulumi",
 		Version:     "1.0.0",
-		Description: "mock pulumi package",
+		Description: md("mock pulumi package"),
 		Resources: map[string]ResourceSpec{
 			"pulumi:pulumi:StackReference": {
 				ObjectTypeSpec: ObjectTypeSpec{
@@ -28,7 +33,7 @@ func newPulumiPackage() *Package {
 		Provider: ResourceSpec{
 			InputProperties: map[string]PropertySpec{
 				"name": {
-					Description: "fully qualified name of stack, i.e. <organization>/<project>/<stack>",
+					Description: md("fully qualified name of stack, i.e. <organization>/<project>/<stack>"),
 					TypeSpec: TypeSpec{
 						Type: "string",
 					},
