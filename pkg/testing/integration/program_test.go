@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -116,6 +117,11 @@ func TestGoModEdits(t *testing.T) {
 `), 0600)
 	require.NoError(t, err)
 
+	errNotExists := "no such file or directory"
+	if runtime.GOOS == "windows" {
+		errNotExists = "The system cannot find the path specified"
+	}
+
 	tests := []struct {
 		name          string
 		dep           string
@@ -130,7 +136,7 @@ func TestGoModEdits(t *testing.T) {
 		{
 			name:          "invalid-path-non-existent",
 			dep:           "../../../.tmp.non-existent-dir",
-			expectedError: "open ../../../.tmp.non-existent-dir/go.mod: no such file or directory",
+			expectedError: errNotExists,
 		},
 		{
 			name:          "invalid-path-bad-go-mod",
