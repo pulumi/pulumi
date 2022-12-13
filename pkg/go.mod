@@ -77,6 +77,7 @@ require (
 	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
