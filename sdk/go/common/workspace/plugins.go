@@ -137,7 +137,7 @@ type InstallPluginError struct {
 
 func (err *InstallPluginError) Error() string {
 	if err.Version != nil {
-		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s' "+
 			"at version v%[3]s, "+
 			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
 			"Underlying error: %[4]s",
