@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Improve performance of convert to not try and load so many provider plugins.
