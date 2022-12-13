@@ -889,8 +889,18 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		return g.argumentTypeName(expr, destType.ElementType, isInput)
 	case *model.UnionType:
 		for _, ut := range destType.ElementTypes {
+			isOptional := false
+			// check if the union contains none, which indicates this is an optional value
+			for _, ut := range destType.ElementTypes {
+				if ut.Equals(model.NoneType) {
+					isOptional = true
+				}
+			}
 			switch ut := ut.(type) {
 			case *model.OpaqueType:
+				if isOptional {
+					return g.argumentTypeNamePtr(expr, ut, isInput)
+				}
 				return g.argumentTypeName(expr, ut, isInput)
 			case *model.ConstType:
 				return g.argumentTypeName(expr, ut.Type, isInput)
@@ -905,6 +915,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		contract.Failf("unexpected destType type %T", destType)
 	}
 	return ""
+}
+
+func (g *generator) argumentTypeNamePtr(expr model.Expression, destType model.Type, isInput bool) (result string) {
+	res := g.argumentTypeName(expr, destType, isInput)
+	return "*" + res
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
@@ -1012,6 +1027,15 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	if retType == "[]string" {
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	} else {
+		if strings.HasPrefix(retType, "*") {
+			retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			switch then.Body.(type) {
+			case *model.ScopeTraversalExpression:
+				traversal := then.Body.(*model.ScopeTraversalExpression)
+				traversal.RootName = "&" + traversal.RootName
+				then.Body = traversal
+			}
+		}
 		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
 		if !strings.Contains(retType, ".") {
 			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
