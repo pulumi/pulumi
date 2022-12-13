@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -81,7 +82,7 @@ func newDestroyCmd() *cobra.Command {
 			"all of this stack's resources and associated state are deleted.\n" +
 			"\n" +
 			"The stack itself is not deleted. Use `pulumi stack rm` or the \n" +
-			"`--remove` flag to delete the stack.\n" +
+			"`--remove` flag to delete the stack and its config file.\n" +
 			"\n" +
 			"Warning: this command is generally irreversible and should be used with great care.",
 		Args: cmdArgs,
@@ -271,9 +272,15 @@ func newDestroyCmd() *cobra.Command {
 					_, err = s.Remove(ctx, false)
 					if err != nil {
 						return result.FromError(err)
-					} else if !jsonDisplay {
-						fmt.Printf("The resources in the stack have been deleted, and the history and " +
-							"configuration removed.\n")
+					}
+					// Remove also the stack config file.
+					if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
+						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+							return result.FromError(err)
+						} else if !jsonDisplay {
+							fmt.Printf("The resources in the stack have been deleted, and the history and " +
+								"configuration removed.\n")
+						}
 					}
 				}
 			} else if res != nil && res.Error() == context.Canceled {
@@ -288,7 +295,7 @@ func newDestroyCmd() *cobra.Command {
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVar(
 		&remove, "remove", false,
-		"Remove the stack after all resources in the stack have been deleted")
+		"Remove the stack and its config file after all resources in the stack have been deleted")
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -368,7 +375,7 @@ func newDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-// seperateProtected returns a list or unprotected and protected resources respectively. This allows
+// separateProtected returns a list or unprotected and protected resources respectively. This allows
 // us to safely destroy all resources in the unprotected list without invalidating any resource in
 // the protected list. Protection is contravarient: A < B where A: Protected => B: Protected, A < B
 // where B: Protected !=> A: Protected.
@@ -385,7 +392,7 @@ func newDestroyCmd() *cobra.Command {
 //
 // We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
 // This function understands that providers live outside this topological sort.
-func seperateProtected(resources []*resource.State) (
+func separateProtected(resources []*resource.State) (
 	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
 	dg := graph.NewDependencyGraph(resources)
 	transitiveProtected := graph.ResourceSet{}
@@ -409,7 +416,7 @@ func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]string, int
 	} else if snapshot == nil {
 		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
 	}
-	unprotected, protected := seperateProtected(snapshot.Resources)
+	unprotected, protected := separateProtected(snapshot.Resources)
 	targetUrns := make([]string, len(unprotected))
 	for i, r := range unprotected {
 		targetUrns[i] = string(r.URN)
