@@ -641,10 +641,29 @@
             "description": "Describes Java specific settings",
             "type": "object",
             "properties": {
+                "packages": {
+                    "$ref": "#/$defs/schemaStringMap"
+                },
                 "basePackage": {
                     "description": "Base Java package name for the generated Java provider SDK",
                     "type": "string",
                     "default": "com.pulumi"
+                },
+                "buildFiles": {
+                    "description": "If set to \"gradle\" enables a generation of a basic set of Gradle build files.",
+                    "type": "string"
+                },
+                "dependencies": {
+                    "description": "Specifies Maven-style dependencies for the generated code.",
+                    "$ref": "#/$defs/schemaStringMap"
+                },
+                "gradleNexusPublishPluginVersion": {
+                    "description": "Enables the use of a given version of io.github.gradle-nexus.publish-plugin in the generated Gradle build files (only when `buildFiles=\"gradle\")",
+                    "type": "string"
+                },
+                "gradleTest": {
+                    "description": "generates a test section to enable `gradle test` command to run unit tests over the generated code. Supported values: \"JUnitPlatform\" (only when `buildFiles=\"gradle\")",
+                    "enum": ["JUnitPlatform"]
                 }
             }
         },
