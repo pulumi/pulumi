@@ -546,8 +546,6 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	fmt.Printf("Using run path: %s\n", runPath)
-
 	runPath, err = locateModule(ctx, runPath, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
