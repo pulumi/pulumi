@@ -125,7 +125,7 @@ func makeResourceOptions(state *resource.State, names NameTable) (*model.Block, 
 		if !providers.IsDefaultProvider(ref.URN()) {
 			name, ok := names[ref.URN()]
 			if !ok {
-				return nil, fmt.Errorf("no name for provider %v", state.Parent)
+				return nil, fmt.Errorf("no name for provider %v", state.Provider)
 			}
 			resourceOptions = appendResourceOption(resourceOptions, "provider", newVariableReference(name))
 		}
