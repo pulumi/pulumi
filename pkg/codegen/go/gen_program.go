@@ -851,13 +851,12 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
 		case fromBase64Fn:
 			tmpVar := fmt.Sprintf("%s%d", "tmpVar", g.tmpVarCount)
-			g.Fgenf(w, "%s, _ %s %.3v;\n", tmpVar, assignment, expr)
+			g.Fgenf(w, "%s, _ := %.3v;\n", tmpVar, expr)
 			if name == "_" {
-				assignment = ":="
+				assignment = "="
 			}
 			g.Fgenf(w, "%s %s string(%s)\n", name, assignment, tmpVar)
 			g.tmpVarCount++
-			g.isErrAssigned = true
 		default:
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
