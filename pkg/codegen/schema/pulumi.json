@@ -50,7 +50,7 @@
             "description": "The URL of the package's logo, if any.",
             "type": "string"
         },
-        "pluginDownloadUrl": {
+        "pluginDownloadURL": {
             "description": "The URL to use when downloading the provider plugin binary.",
             "type": "string"
         },
