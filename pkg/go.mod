@@ -73,7 +73,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.7.1
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.33.1-0.20221206123933-cdc390c674b1
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.34.1-0.20221214173921-8e65b1f9fdd5
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
