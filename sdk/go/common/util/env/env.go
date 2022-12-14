@@ -12,14 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A small library for creating consistent and documented environmental variable accesses.
+// A small library for creating typed, consistent and documented environmental variable
+// accesses.
 //
-// Public environmental variables should be declared as a module level variable.
+// Declaring a variable is as simple as declaring a module level constant.
+//
+//   var Var = env.Bool("VAR", "A boolean variable")
+//
+// Typed values can be retrieved by calling `Var.Value()`.
 package env
 
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -104,7 +110,11 @@ var envVars []Var
 
 // Variables is a list of variables declared.
 func Variables() []Var {
-	return envVars
+	vars := envVars
+	sort.SliceStable(vars, func(i, j int) bool {
+		return vars[i].Name() < vars[j].Name()
+	})
+	return vars
 }
 
 // An Option to configure a environmental variable.
@@ -180,12 +190,12 @@ func (v value) withStore(store Store) *value {
 func (v value) String() string {
 	_, present := v.Underlying()
 	if !present {
-		return fmt.Sprintf("%#v: unset", v.Var().Name())
+		return "unset"
 	}
 	if m := v.missingPrerequs(); m != "" {
-		return fmt.Sprintf("%#v: need %s (%s)", v.Var().Name(), m, v.Var().Value.formattedValue())
+		return fmt.Sprintf("need %s (%s)", m, v.Var().Value.formattedValue())
 	}
-	return fmt.Sprintf("%#v: %s", v.Var().Name(), v.Var().Value.formattedValue())
+	return fmt.Sprintf("%s", v.Var().Value.formattedValue())
 }
 
 func (v *value) setVar(variable Var) {
@@ -249,7 +259,7 @@ func (b BoolValue) formattedValue() string {
 
 func (b BoolValue) Validate() ValidateError {
 	v, ok := b.Underlying()
-	if !ok || b.Value() || v != "0" || strings.EqualFold(v, "false") {
+	if !ok || b.Value() || v == "0" || strings.EqualFold(v, "false") {
 		return ValidateError{}
 	}
 	return ValidateError{

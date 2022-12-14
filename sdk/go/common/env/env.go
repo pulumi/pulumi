@@ -23,10 +23,12 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 // Re-export some types and functions from the env library.
 
 type Env = env.Env
+
 type MapStore = env.MapStore
 
 func NewEnv(s env.Store) env.Env { return env.NewEnv(s) }
 
+// Global is the environment defined by environmental variables.
 func Global() env.Env {
 	return env.NewEnv(env.Global)
 }
@@ -40,3 +42,6 @@ var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and com
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi")
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself")
+
+var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
+	"Discover additional plugins by examining the $PATH")
