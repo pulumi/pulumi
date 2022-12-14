@@ -28,6 +28,7 @@ var (
 )
 
 func TestInt(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 3, AnInt.Value())
 	assert.Equal(t, 3, env.NewEnv(env.Global).GetInt(AnInt))
 	assert.Equal(t, 6, env.NewEnv(

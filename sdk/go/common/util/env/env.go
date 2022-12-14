@@ -35,13 +35,14 @@ type Store interface {
 	Raw(key string) (string, bool)
 }
 
-// An environment backed by a Store.
+// A strongly typed environment.
 type Env interface {
 	GetString(val StringValue) string
 	GetBool(val BoolValue) bool
 	GetInt(val IntValue) int
 }
 
+// Create a new strongly typed Env from an untyped Store.
 func NewEnv(store Store) Env {
 	return env{store}
 }
