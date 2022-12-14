@@ -183,6 +183,8 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 // perform.
 
 type monitorProxy struct {
+	pulumirpc.UnimplementedResourceMonitorServer
+
 	target pulumirpc.ResourceMonitorClient
 }
 

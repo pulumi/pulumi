@@ -65,6 +65,8 @@ func main() {
 }
 
 type testproviderProvider struct {
+	rpc.UnimplementedResourceProviderServer
+
 	host    *provider.HostClient
 	name    string
 	version string

@@ -2879,6 +2879,8 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 }
 
 type updateContext struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	*deploytest.ResourceMonitor
 
 	resmon       chan *deploytest.ResourceMonitor

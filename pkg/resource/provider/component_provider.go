@@ -27,6 +27,8 @@ import (
 )
 
 type componentProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
 	host      *HostClient
 	name      string
 	version   string
@@ -114,12 +116,6 @@ func (p *componentProvider) Construct(ctx context.Context,
 		return provider.Construct(ctx, req, p.host.conn, p.construct)
 	}
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
-}
-
-// CheckConfig validates the configuration for this provider.
-func (p *componentProvider) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
 }
 
 // DiffConfig diffs the configuration for this provider.

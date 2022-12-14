@@ -165,6 +165,8 @@ func locateModule(ctx context.Context, mod string, nodeBin string) (string, erro
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	engineAddress string
 	tracing       string
 	typescript    bool
@@ -465,7 +467,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: serverCancel,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target})
+			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target: target})
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
