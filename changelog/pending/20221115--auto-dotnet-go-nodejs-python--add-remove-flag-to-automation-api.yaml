@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/dotnet,go,nodejs,python
+  description: Add `remove` flag to Automation API

@@ -466,6 +466,9 @@ Event: ${line}\n${e.toString()}`);
         args.push(...this.remoteArgs());
 
         if (opts) {
+            if (opts.remove) {
+                args.push("--remove");
+            }
             if (opts.message) {
                 args.push("--message", opts.message);
             }
@@ -897,6 +900,7 @@ export interface DestroyOptions extends GlobalOpts {
     color?: "always" | "never" | "raw" | "auto";
     // Include secrets in the DestroySummary
     showSecrets?: boolean;
+    remove?: boolean;
 }
 
 const execKind = {
