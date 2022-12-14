@@ -66,17 +66,6 @@ jobs:
           python-version: ${{ fromJson(inputs.version-set).python }}
           cache: pip
           cache-dependency-path: sdk/python/requirements.txt
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
-      - run: mkdir -p "${{ runner.temp }}/opt/pulumi/nuget"
-      - name: Add NuGet packages as a local NuGet source
-        run: |
-          command -v dotnet
-          dotnet --version
-          dotnet nuget add source "${{ runner.temp }}/opt/pulumi/nuget"
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         uses: actions/setup-node@v3
         with:
@@ -108,9 +97,6 @@ jobs:
       - name: Lint Python
         run: |
           cd sdk/python && make lint
-      - name: Lint .NET
-        run: |
-          cd sdk/dotnet && make lint
 
   actionlint:
     name: Lint GHA

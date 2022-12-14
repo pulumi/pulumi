@@ -124,36 +124,3 @@ jobs:
           path: sdk/nodejs/bin/*.tgz
           retention-days: 1
           if-no-files-found: error
-
-  build_dotnet_sdk:
-    name: dotnet
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Setup versioning env vars
-        env:
-          version: ${{ inputs.version }}
-        run: |
-          ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
-      - name: Build the .NET SDK package
-        run: |
-          cd sdk/dotnet
-          dotnet build --configuration Release dotnet.sln "/p:Version=${DOTNET_VERSION}"
-      - name: Pack the .NET SDK package
-        run: |
-          cd sdk/dotnet
-          dotnet pack --configuration Release --output nupkgs dotnet.sln "/p:Version=${DOTNET_VERSION}"
-      - name: Upload the NuGet packages
-        uses: actions/upload-artifact@v2
-        with:
-          name: artifacts-dotnet-sdk
-          path: sdk/dotnet/nupkgs/*.nupkg
-          retention-days: 1
-          if-no-files-found: error

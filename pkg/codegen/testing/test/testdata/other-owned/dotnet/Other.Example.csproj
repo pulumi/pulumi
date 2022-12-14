@@ -45,11 +45,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.13" />
+    <PackageReference Include="Pulumi" Version="3.23" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
   </ItemGroup>
 
   <ItemGroup>

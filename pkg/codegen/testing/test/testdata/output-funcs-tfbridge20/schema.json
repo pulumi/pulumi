@@ -207,9 +207,6 @@
     },
     "csharp": {
       "compatibility": "tfbridge20",
-      "projectReferences": [
-         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ],
       "packageReferences": {
         "FluentAssertions": "5.10.2",
         "Microsoft.NET.Test.Sdk": "16.5.0",

@@ -33,11 +33,6 @@ builds:
   binary: pulumi-language-python
   dir: sdk
   main: ./python/cmd/pulumi-language-python
-- <<: *pulumibin
-  id: pulumi-language-dotnet
-  binary: pulumi-language-dotnet
-  dir: sdk
-  main: ./dotnet/cmd/pulumi-language-dotnet
 
 archives:
 - id: pulumi

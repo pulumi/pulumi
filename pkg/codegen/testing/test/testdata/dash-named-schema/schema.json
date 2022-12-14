@@ -43,10 +43,7 @@
         "Pulumi.Aws": "4.20",
         "Pulumi.Kubernetes": "3.7",
         "Pulumi.Random": "4.2"
-      },
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "dash-named-schema/foo",

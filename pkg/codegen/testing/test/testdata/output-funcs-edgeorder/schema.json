@@ -8,11 +8,6 @@
         "ts-node": "latest"
       }
     },
-    "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-    },
     "go": {
       "generateExtraInputTypes": true
     }

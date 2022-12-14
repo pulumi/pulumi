@@ -7,7 +7,6 @@
     "gopls": {
         // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
         "build.directoryFilters": [
-            "-sdk/dotnet/Pulumi.Automation.Tests/bin",
             "-sdk/nodejs/bin",
             "-sdk/nodejs/tests",
             "-sdk/python/env"
@@ -16,8 +15,6 @@
         "experimentalWorkspaceModule": true,
     },
 
-    "omnisharp.defaultLaunchSolution": "sdk/dotnet/dotnet.sln",
-    "dotnet-test-explorer.testProjectPath": "sdk/dotnet",
     "python.testing.pytestArgs": [
         "sdk/python/lib/test"
     ],

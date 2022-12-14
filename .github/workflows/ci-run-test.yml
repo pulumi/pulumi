@@ -84,7 +84,6 @@ jobs:
     name: ${{ inputs.test-name }}
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
-      PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
       TEST_ALL_DEPS: ""
 
     runs-on: ${{ inputs.platform }}
@@ -259,27 +258,6 @@ jobs:
           LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo "$LOCAL_PATH" >> "$GITHUB_PATH"
-      - name: Download Pulumi .NET NuGet packages
-        if: ${{ inputs.is-integration-test }}
-        uses: actions/download-artifact@v2
-        with:
-          name: artifacts-dotnet-sdk
-          # path set to match PULUMI_LOCAL_NUGET
-          path: ${{ github.workspace }}/nuget
-      - name: Add NuGet packages as a local NuGet source
-        if: ${{ inputs.is-integration-test }}
-        run: |
-          command -v dotnet
-          dotnet --version
-          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
-          SOURCE="$(./scripts/normpath "$PULUMI_LOCAL_NUGET")"
-          echo "SOURCE=$SOURCE"
-          dotnet nuget add source "$SOURCE"
-      - name: Inspect downloaded artifacts
-        if: ${{ inputs.is-integration-test }}
-        run: |
-          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
-          find "$PULUMI_LOCAL_NUGET"
 
         # /end integration test steps
       - name: Verify Pulumi Version

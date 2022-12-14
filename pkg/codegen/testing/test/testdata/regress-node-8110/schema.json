@@ -45,11 +45,6 @@
     }
   },
   "language": {
-    "csharp": {
-       "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-   },
     "nodejs": {
       "devDependencies": {
         "@types/node": "latest",

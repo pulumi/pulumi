@@ -78,7 +78,6 @@ class MakefileTest(TypedDict):
     eta: int
 
 MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
-    {"name": "sdk/dotnet test_auto", "run": "cd sdk/dotnet && ../../scripts/retry make test_auto", "eta": 5},
     {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && ../../scripts/retry make test_auto", "eta": 3},
     {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && ../../scripts/retry make unit_tests", "eta": 4},
     {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
@@ -86,7 +85,6 @@ MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
 ]
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
-    {"name": "sdk/dotnet dotnet_test", "run": "cd sdk/dotnet && ../../scripts/retry make dotnet_test", "eta": 3},
     {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
 ]
 

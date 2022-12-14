@@ -18,11 +18,8 @@
             }
         },
         "csharp": {
-            "projectReferences": [
-                "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-            ],
             "packageReferences": {
-                "Pulumi": "3.13",
+                "Pulumi": "3.33.2",
                 "Pulumi.GoogleNative": "0.20.0"
             },
             "respectSchemaVersion": true

@@ -45,11 +45,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Pulumi" Version="[3.23.0,4)" />
     <PackageReference Include="Pulumi.AzureNative" Version="1.28.*" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
   </ItemGroup>
 
   <ItemGroup>
